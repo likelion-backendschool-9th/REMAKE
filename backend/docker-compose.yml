@@ -1,0 +1,22 @@
+# 로컬 개발용 PostgreSQL
+# 실행: backend 폴더에서 `docker compose up -d`
+# 종료: `docker compose down`  (데이터까지 지우려면 `docker compose down -v`)
+# 접속 정보는 같은 폴더의 .env 파일에서 읽어 옴
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: remake-postgres
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    volumes:
+      - remake-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  remake-postgres-data:
