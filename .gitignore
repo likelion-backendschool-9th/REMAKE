@@ -1,5 +1,7 @@
 # env
 .env
+.env.*
+!.env.example
 
 # local-only folder (not shared)
 .local/
@@ -13,9 +15,26 @@ venv/
 # build
 dist/
 build/
+out/
+bin/
 
-# logs / OS / IDE
+# Gradle (Spring Boot)
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# logs
 *.log
+logs/
+
+# OS
 .DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
 .vscode/
 .idea/
+*.iml
+*.iws
+*.ipr
+*.swp

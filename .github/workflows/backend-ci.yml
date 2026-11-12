@@ -1,0 +1,63 @@
+# 백엔드 CI: dev/main으로 향하는 PR에서 backend 코드가 바뀌었을 때만 빌드·테스트 실행
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+concurrency:
+  group: backend-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: backend
+
+    # 테스트용 일회용 PostgreSQL (검사가 끝나면 사라짐)
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: remake
+          POSTGRES_USER: remake
+          POSTGRES_PASSWORD: remake
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U remake"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # application-local.yml이 읽는 값 (CI 전용 임시 값)
+    env:
+      DB_PORT: 5432
+      DB_NAME: remake
+      DB_USERNAME: remake
+      DB_PASSWORD: remake
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build and test
+        run: |
+          chmod +x gradlew
+          ./gradlew build --console=plain
