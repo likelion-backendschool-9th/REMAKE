@@ -1,0 +1,21 @@
+# env
+.env
+
+# local-only folder (not shared)
+.local/
+
+# dependencies
+node_modules/
+__pycache__/
+venv/
+.venv/
+
+# build
+dist/
+build/
+
+# logs / OS / IDE
+*.log
+.DS_Store
+.vscode/
+.idea/
