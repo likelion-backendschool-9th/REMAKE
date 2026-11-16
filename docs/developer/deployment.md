@@ -72,6 +72,8 @@ bash deploy/deploy.sh status     # 활성 슬롯과 컨테이너 상태 (배포 
 
 어느 단계에서든 실패하면(새 슬롯 준비 실패, 설정 검사 실패, 프록시 시작이나 reload 실패, 전환 확인 실패) `upstream.conf`와 프록시를 이전 상태로 되돌리고 중단한다. 이전 슬롯은 종료하지 않으므로 이전 버전이 계속 서비스된다. 실패 원인(`nginx -t` 출력, 새 슬롯의 최근 로그)은 배포 로그에 남는다. 처음 배포할 때는 `blue`가 먼저 올라가고 프록시가 시작된다. 롤백은 바로 직전 슬롯으로만 가능하다.
 
+드물게 되돌리기까지 실패하면(예: 이전 설정으로 reload 실패) 프록시가 새 슬롯을 가리키고 있을 수 있다. 이때는 어느 슬롯을 꺼도 장애가 날 수 있으므로 새 슬롯과 이전 슬롯을 모두 그대로 두고 "수동 확인 필요" 오류로 중단한다. `bash deploy/deploy.sh status`와 `proxy/upstream.conf`를 확인하고, `docker compose --env-file .env -f compose.prod.yml exec proxy nginx -s reload`로 프록시를 `upstream.conf`에 맞춘 뒤, 쓰지 않는 슬롯을 직접 종료한다.
+
 프록시는 슬롯 이름(`backend-blue`, `backend-green`)을 도커 내부 DNS로 10초마다 다시 조회한다. 그래서 활성 슬롯 컨테이너가 재시작되거나 서버가 재부팅되어 IP가 바뀌어도, 다음 배포를 기다리지 않고 자동으로 새 IP를 따라간다.
 
 ## 확인

@@ -72,6 +72,8 @@ Deploy flow:
 
 If any step fails (new slot not ready, config validation failure, proxy start or reload failure, switch check failure), the script restores `upstream.conf` and the proxy to the previous state and stops. The previous slot is never stopped, so the previous version keeps serving. The cause (`nginx -t` output, recent logs of the new slot) is written to the deploy log. On the first deployment, `blue` is started first and then the proxy. Rollback is possible only to the immediately previous slot.
 
+In the rare case that the restore also fails (for example, reload with the previous config fails), the proxy may still point to the new slot. Stopping either slot could then cause an outage, so the script leaves both the new and the previous slot running and stops with a "manual check required" error. Check `bash deploy/deploy.sh status` and `proxy/upstream.conf`, run `docker compose --env-file .env -f compose.prod.yml exec proxy nginx -s reload` to make the proxy match `upstream.conf`, then stop the unused slot manually.
+
 The proxy re-resolves the slot names (`backend-blue`, `backend-green`) through Docker's internal DNS every 10 seconds. If the active slot container restarts or the server reboots and its IP changes, the proxy follows the new IP automatically without waiting for the next deployment.
 
 ## Verification
