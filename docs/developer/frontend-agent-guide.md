@@ -15,22 +15,22 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 `frontend/`에서 작업할 �
 
 - 패키지 매니저는 **pnpm**만 씁니다. `npm`, `yarn`, `npx`를 쓰지 않습니다 (`pnpm dlx`, `pnpm exec` 사용).
 - 명령은 `frontend/` 폴더에서 실행합니다. git 루트는 한 단계 위(`REMAKE/`)입니다.
-- **Tailwind를 쓰지 않습니다.** 스타일은 CSS Modules(`*.module.css`)와 `src/app/globals.css`의 CSS 변수(디자인 토큰)로만 작성합니다. Tailwind, shadcn/ui, styled-components, emotion 같은 스타일 라이브러리를 추가하지 않습니다.
+- **Tailwind를 쓰지 않습니다.** 스타일은 CSS Modules(`*.module.css`)와 `app/globals.css`의 CSS 변수(디자인 토큰)로만 작성합니다. Tailwind, shadcn/ui, styled-components, emotion 같은 스타일 라이브러리를 추가하지 않습니다.
 - 서버 데이터는 TanStack Query로만 다룹니다. Zustand에는 로그인 정보 같은 최소한의 클라이언트 상태만 둡니다.
-- API 호출은 `src/lib/api/client.ts`(openapi-fetch)를 씁니다. `src/lib/api/schema.d.ts`는 `pnpm gen:api`로 생성하는 파일이므로 직접 수정하지 않습니다.
+- API 호출은 `lib/api/client.ts`(openapi-fetch)를 씁니다. `lib/api/schema.d.ts`는 `pnpm gen:api`로 생성하는 파일이므로 직접 수정하지 않습니다.
 - 백엔드 기능을 Next Route Handler나 Server Action으로 대신 구현하지 않습니다. 비즈니스 로직은 Spring 백엔드 담당입니다.
-- 환경 변수는 `src/lib/env.ts`에서만 읽습니다. 새 변수를 추가하면 `.env.example`에도 추가합니다.
+- 환경 변수는 `lib/env.ts`에서만 읽습니다. 새 변수를 추가하면 `.env.example`에도 추가합니다.
 - 아이콘은 Solar(`@solar-icons/react/<스타일>`)만 씁니다. lucide 등 다른 아이콘 라이브러리를 추가하지 않습니다.
-- 날짜는 `src/lib/dayjs.ts`에서 export한 `dayjs`를 씁니다 (ko 로케일 설정됨).
+- 날짜는 `lib/dayjs.ts`에서 export한 `dayjs`를 씁니다 (ko 로케일 설정됨).
 - 폼은 React Hook Form + Zod(`@hookform/resolvers/zod`)로 만듭니다.
-- 백엔드 API가 아직 없으면 `src/mocks/handlers.ts`에 MSW 핸들러를 추가해서 개발합니다.
+- 백엔드 API가 아직 없으면 `mocks/handlers.ts`에 MSW 핸들러를 추가해서 개발합니다.
 
 ## 코드 위치
 
-- 라우트(`src/app/**/page.tsx`)는 얇게 두고, 실제 UI·로직은 `src/features/<기능>/`에 둡니다.
-- 한 기능에서만 쓰는 코드는 그 기능 폴더에, 두 기능 이상에서 쓰면 `src/components`·`src/hooks`·`src/lib`로 올립니다.
+- 라우트(`app/**/page.tsx`)는 얇게 두고, 실제 UI·로직은 `features/<기능>/`에 둡니다.
+- 한 기능에서만 쓰는 코드는 그 기능 폴더에, 두 기능 이상에서 쓰면 `components`·`hooks`·`lib`로 올립니다.
 - 다른 기능 폴더의 내부 파일을 직접 import하지 않고 그 기능의 `index.ts`를 통해 씁니다.
-- import 경로는 `@/` 별칭을 씁니다 (`@/*` → `src/*`).
+- import 경로는 `@/` 별칭을 씁니다 (`@/*` → `./*`).
 
 ## 작업 후 확인
 

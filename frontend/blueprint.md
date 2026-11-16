@@ -12,7 +12,7 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 - **Frontend (Next.js)**: screens and user interaction only. No business logic or data storage.
 - **Backend (Spring Boot)**: authentication, data, OCR and AI processing, push delivery.
 - The frontend calls only the Spring REST API. Do not reimplement backend features with Next Route Handlers or Server Actions.
-  Exception: the service-worker serving route (`src/app/serwist/[path]`).
+  Exception: the service-worker serving route (`app/serwist/[path]`).
 
 ## 2. Tech stack
 
@@ -37,24 +37,23 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 
 ```
 frontend/
-├─ public/                  # static files, mockServiceWorker.js, (planned) .well-known/assetlinks.json, icons/
-└─ src/
-   ├─ app/                  # routes (screens). Keep page.tsx thin; compose components from features
-   │  ├─ sw.ts              # service worker (caching, push handling)
-   │  ├─ serwist/[path]/    # service-worker serving route
-   │  ├─ ~offline/          # offline fallback screen
-   │  └─ manifest.ts        # PWA manifest
-   ├─ components/           # shared UI used by several features (Button, Input, BottomSheet ...)
-   ├─ features/             # code grouped by feature (see rules below)
-   ├─ hooks/                # shared hooks not tied to a feature
-   ├─ lib/
-   │  ├─ api/               # client.ts (openapi-fetch), schema.d.ts (generated)
-   │  ├─ query-client.ts
-   │  ├─ dayjs.ts           # dayjs with ko locale and plugins configured
-   │  └─ env.ts             # the only place that reads environment variables
-   ├─ mocks/                # MSW handlers
-   ├─ providers/            # global providers (Serwist, TanStack Query, MSW)
-   └─ stores/               # Zustand stores
+├─ app/                  # routes (screens). Keep page.tsx thin; compose components from features
+│  ├─ sw.ts              # service worker (caching, push handling)
+│  ├─ serwist/[path]/    # service-worker serving route
+│  ├─ ~offline/          # offline fallback screen
+│  └─ manifest.ts        # PWA manifest
+├─ components/           # shared UI used by several features (Button, Input, BottomSheet ...)
+├─ features/             # code grouped by feature (see rules below)
+├─ hooks/                # shared hooks not tied to a feature
+├─ lib/
+│  ├─ api/               # client.ts (openapi-fetch), schema.d.ts (generated)
+│  ├─ query-client.ts
+│  ├─ dayjs.ts           # dayjs with ko locale and plugins configured
+│  └─ env.ts             # the only place that reads environment variables
+├─ mocks/                # MSW handlers
+├─ providers/            # global providers (Serwist, TanStack Query, MSW)
+├─ stores/               # Zustand stores
+└─ public/               # static files, mockServiceWorker.js, (planned) .well-known/assetlinks.json, icons/
 ```
 
 ### Feature folder rules
@@ -93,7 +92,7 @@ Planned feature folders: `auth`, `onboarding`, `fridge`, `receipt` (OCR), `recip
 ## 5. Data flow
 
 ```
-Spring API ──(OpenAPI spec)──> pnpm gen:api ──> src/lib/api/schema.d.ts
+Spring API ──(OpenAPI spec)──> pnpm gen:api ──> lib/api/schema.d.ts
                                                      │
 Screen (page.tsx) ─> features/*/components ─> features/*/api.ts (useQuery) ─> lib/api/client.ts ─> Spring API
                                                      │
@@ -115,12 +114,12 @@ Screen (page.tsx) ─> features/*/components ─> features/*/api.ts (useQuery) �
 ## 7. PWA · push · TWA
 
 - The service worker runs only with `pnpm build && pnpm start`. It is off in development mode and while MSW is in use (avoids a scope conflict).
-- Push: the frontend creates a subscription with `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and stores it on the backend; the backend sends notifications. Receiving and click handling live in `src/app/sw.ts`.
+- Push: the frontend creates a subscription with `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and stores it on the backend; the backend sends notifications. Receiving and click handling live in `app/sw.ts`.
 - Needed before the TWA release: 192/512 PNG icons, `public/.well-known/assetlinks.json` (app signing SHA-256), an HTTPS domain.
 
 ## 8. Development flow
 
-1. If a backend API does not exist yet, write dummy responses in `src/mocks/handlers.ts` first and build the screen against them.
+1. If a backend API does not exist yet, write dummy responses in `mocks/handlers.ts` first and build the screen against them.
 2. When the backend API is ready, regenerate types with `pnpm gen:api` and align the MSW handlers with the real spec.
 3. Before a PR, `pnpm lint && pnpm typecheck && pnpm build` must pass.
 

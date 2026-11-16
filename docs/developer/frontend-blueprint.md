@@ -12,7 +12,7 @@
 - **프론트(Next.js)**: 화면과 사용자 상호작용만 담당합니다. 비즈니스 로직과 데이터 저장은 하지 않습니다.
 - **백엔드(Spring Boot)**: 인증, 데이터, OCR·AI 처리, 푸시 발송을 담당합니다.
 - 프론트는 Spring REST API만 호출합니다. Next의 Route Handler·Server Action으로 백엔드 기능을 대신 만들지 않습니다.
-  예외: 서비스 워커 서빙 라우트(`src/app/serwist/[path]`).
+  예외: 서비스 워커 서빙 라우트(`app/serwist/[path]`).
 
 ## 2. 기술 스택
 
@@ -37,24 +37,23 @@
 
 ```
 frontend/
-├─ public/                  # 정적 파일, mockServiceWorker.js, (예정) .well-known/assetlinks.json, icons/
-└─ src/
-   ├─ app/                  # 라우트(화면). page.tsx는 얇게 두고 features의 컴포넌트를 조합
-   │  ├─ sw.ts              # 서비스 워커 (캐싱, 푸시 수신)
-   │  ├─ serwist/[path]/    # 서비스 워커 서빙 라우트
-   │  ├─ ~offline/          # 오프라인 대체 화면
-   │  └─ manifest.ts        # PWA 매니페스트
-   ├─ components/           # 여러 기능에서 쓰는 공용 UI (Button, Input, BottomSheet ...)
-   ├─ features/             # 기능별 코드 묶음 (아래 규칙 참고)
-   ├─ hooks/                # 기능과 무관한 공용 훅
-   ├─ lib/
-   │  ├─ api/               # client.ts(openapi-fetch), schema.d.ts(자동 생성)
-   │  ├─ query-client.ts
-   │  ├─ dayjs.ts           # ko 로케일 + 플러그인 설정된 dayjs
-   │  └─ env.ts             # 환경 변수는 여기서만 읽는다
-   ├─ mocks/                # MSW 핸들러
-   ├─ providers/            # 전역 Provider (Serwist, TanStack Query, MSW)
-   └─ stores/               # Zustand 스토어
+├─ app/                  # 라우트(화면). page.tsx는 얇게 두고 features의 컴포넌트를 조합
+│  ├─ sw.ts              # 서비스 워커 (캐싱, 푸시 수신)
+│  ├─ serwist/[path]/    # 서비스 워커 서빙 라우트
+│  ├─ ~offline/          # 오프라인 대체 화면
+│  └─ manifest.ts        # PWA 매니페스트
+├─ components/           # 여러 기능에서 쓰는 공용 UI (Button, Input, BottomSheet ...)
+├─ features/             # 기능별 코드 묶음 (아래 규칙 참고)
+├─ hooks/                # 기능과 무관한 공용 훅
+├─ lib/
+│  ├─ api/               # client.ts(openapi-fetch), schema.d.ts(자동 생성)
+│  ├─ query-client.ts
+│  ├─ dayjs.ts           # ko 로케일 + 플러그인 설정된 dayjs
+│  └─ env.ts             # 환경 변수는 여기서만 읽는다
+├─ mocks/                # MSW 핸들러
+├─ providers/            # 전역 Provider (Serwist, TanStack Query, MSW)
+├─ stores/               # Zustand 스토어
+└─ public/               # 정적 파일, mockServiceWorker.js, (예정) .well-known/assetlinks.json, icons/
 ```
 
 ### features 폴더 규칙
@@ -93,7 +92,7 @@ features/fridge/
 ## 5. 데이터 흐름
 
 ```
-Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> src/lib/api/schema.d.ts
+Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.ts
                                                      │
 화면(page.tsx) ─> features/*/components ─> features/*/api.ts (useQuery) ─> lib/api/client.ts ─> Spring API
                                                      │
@@ -115,12 +114,12 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> src/lib/api/schema
 ## 7. PWA · 푸시 · TWA
 
 - 서비스 워커는 `pnpm build && pnpm start`에서만 켜집니다. 개발 모드와 MSW 사용 중에는 꺼집니다(같은 scope 충돌 방지).
-- 푸시: 프론트가 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`로 구독을 만들어 백엔드에 저장하고, 백엔드가 발송합니다. 수신·클릭 처리는 `src/app/sw.ts`에서 합니다.
+- 푸시: 프론트가 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`로 구독을 만들어 백엔드에 저장하고, 백엔드가 발송합니다. 수신·클릭 처리는 `app/sw.ts`에서 합니다.
 - TWA 배포 전 준비물: 192/512 PNG 아이콘, `public/.well-known/assetlinks.json`(앱 서명 SHA-256), HTTPS 도메인
 
 ## 8. 개발 흐름
 
-1. 백엔드 API가 없으면 `src/mocks/handlers.ts`에 더미 응답을 먼저 만들고 화면을 개발합니다.
+1. 백엔드 API가 없으면 `mocks/handlers.ts`에 더미 응답을 먼저 만들고 화면을 개발합니다.
 2. 백엔드 API가 나오면 `pnpm gen:api`로 타입을 다시 생성하고 MSW 핸들러를 실제 스펙에 맞춥니다.
 3. PR 전에 `pnpm lint && pnpm typecheck && pnpm build`가 통과해야 합니다.
 
