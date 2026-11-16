@@ -46,3 +46,6 @@ Desktop.ini
 *.iws
 *.ipr
 *.swp
+
+# deploy.sh가 만드는 서버 전용 파일(활성 슬롯 기록). 커밋하지 않는다.
+/proxy/
