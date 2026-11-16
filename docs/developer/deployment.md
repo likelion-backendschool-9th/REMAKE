@@ -11,7 +11,7 @@ Resuit 프로젝트와 같이 `dev`의 변경을 GitHub Actions에서 검증한 
 ## 서버 준비
 
 1. Ubuntu 서버에 Docker Engine, Docker Compose 플러그인과 rsync를 설치한다. 배포 계정에 Docker 실행 권한을 준다.
-2. REMAKE만 사용하는 디렉터리를 정하고 그 안에 `.env`를 만든다. [`deploy/prod.env.example`](../deploy/prod.env.example)을 참고해 DB 비밀번호를 채우고 파일 권한을 `600`으로 제한한다. 이 디렉터리의 `backend/`는 배포 시 소스가 동기화되므로 다른 파일을 두지 않는다.
+2. REMAKE만 사용하는 디렉터리를 정하고 그 안에 `.env`를 만든다. [`deploy/prod.env.example`](../../deploy/prod.env.example)을 참고해 DB 비밀번호를 채우고 파일 권한을 `600`으로 제한한다. 이 디렉터리의 `backend/`는 배포 시 소스가 동기화되므로 다른 파일을 두지 않는다.
 3. GitHub Actions 전용 SSH 키를 준비하고, 공개 키를 배포 계정의 `authorized_keys`에 등록한다. 서버 호스트 키 지문을 별도로 확인한 뒤 `known_hosts` 항목을 저장한다.
 4. 저장소 **Settings → Secrets and variables → Actions**에 다음을 설정한다.
 
