@@ -133,6 +133,7 @@ Rules:
 - `AGENTS.md` files are agent docs (English). Their Korean translation lives in `docs/developer/`:
   - root `AGENTS.md` ↔ `docs/developer/agent-guide.md`
   - `<folder>/AGENTS.md` ↔ `docs/developer/<folder>-agent-guide.md`
+- Other docs that live outside `docs/` because agents read them in place (e.g. `frontend/blueprint.md`) follow the same pattern: English in place, Korean translation at `docs/developer/<folder>-<name>.md` (e.g. `docs/developer/frontend-blueprint.md`).
 - `CLAUDE.md` files contain only `@AGENTS.md` so Claude Code loads the same rules. Do not put content in them.
 - Out of scope (Korean only, no English copy): `README.md` files and `.github/` templates.
 - Use relative links that work from each document's location.
@@ -144,5 +145,7 @@ Current pairs:
 | `AGENTS.md` | `docs/developer/agent-guide.md` |
 | `docs/agent/git-convention.md` | `docs/developer/git-convention.md` |
 | `docs/agent/deployment.md` | `docs/developer/deployment.md` |
+| `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
+| `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |
 
 When you add a new pair, add a row to this table and to the matching table in `docs/developer/agent-guide.md`.

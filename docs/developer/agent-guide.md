@@ -133,6 +133,7 @@ PR 규칙:
 - `AGENTS.md` 파일은 에이전트용 문서(영문)이고, 한글 번역은 `docs/developer/`에 둡니다.
   - 루트 `AGENTS.md` ↔ `docs/developer/agent-guide.md`
   - `<폴더>/AGENTS.md` ↔ `docs/developer/<폴더>-agent-guide.md`
+- 에이전트가 제자리에서 읽어야 해서 `docs/` 밖에 있는 문서(예: `frontend/blueprint.md`)도 같은 방식입니다. 원래 위치에는 영문을 두고, 한글 번역은 `docs/developer/<폴더>-<이름>.md`에 둡니다 (예: `docs/developer/frontend-blueprint.md`).
 - `CLAUDE.md` 파일에는 `@AGENTS.md` 한 줄만 둡니다. Claude Code가 같은 규칙을 읽게 하기 위한 파일이라 다른 내용을 넣지 않습니다.
 - 대상이 아닌 문서(한글로만 관리, 영문판 없음): `README.md` 파일들, `.github/` 템플릿
 - 링크는 각 문서 위치에서 동작하는 상대 경로로 씁니다.
@@ -144,5 +145,7 @@ PR 규칙:
 | `AGENTS.md` | `docs/developer/agent-guide.md` |
 | `docs/agent/git-convention.md` | `docs/developer/git-convention.md` |
 | `docs/agent/deployment.md` | `docs/developer/deployment.md` |
+| `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
+| `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |
 
 새 짝을 추가하면 이 표와 `AGENTS.md`의 표에 모두 한 줄씩 추가합니다.
