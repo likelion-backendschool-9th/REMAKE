@@ -39,11 +39,22 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 이 저장소에서 작업할 
 
 ## 2. 커밋
 
-- 형식은 `<유형>: <작업내용>`이고, 콜론 뒤에 공백을 한 칸 둡니다.
+- 형식은 제목 한 줄, 빈 줄, 본문 순서입니다. **모든 커밋에 본문을 씁니다.**
+
+  ```
+  <유형>: <작업내용>
+
+  - <무엇을 왜 바꿨는지 한국어로>
+  - <눈에 띄는 변경마다 한 줄씩>
+  ```
+
+- 제목은 `<유형>: <작업내용>` 형식이고, 콜론 뒤에 공백을 한 칸 둡니다.
 - 유형은 `feat`, `fix`, `chore`, `docs` 넷 중 하나만 씁니다. `refactor`, `style`, `test` 등 다른 유형은 쓰지 않습니다.
 - 작업 내용은 **한국어로** 짧고 구체적으로 씁니다.
   - 좋은 예: `fix: 소비기한 D-day 계산 오류 수정`, `chore: Prettier 줄 길이 100자로 변경`
   - 나쁜 예(모호함): `fix: 수정`, `chore: update`, `feat: 작업`
+- 본문은 한국어 목록(`- `)으로 무엇을 왜 바꿨는지 씁니다. 바뀐 파일, 동작, 리뷰어가 알아야 할 점을 적고, 제목을 반복하지 않습니다. `git commit -F <파일>`이나 `-m`을 여러 번 써서 작성합니다.
+- Push 전에 브랜치의 모든 커밋에 본문이 있는지 확인합니다: `git log --format='%h %s%n%b' origin/dev..HEAD`. 빠진 커밋이 있으면 Push 전에 채웁니다(마지막 커밋은 `git commit --amend`, 이전 커밋은 `git rebase --exec`). 이미 Push한 커밋을 고치려면 `git push --force-with-lease`가 필요하므로 사용자에게 먼저 묻습니다.
 - 커밋 하나에는 주요 변경 하나만 담습니다. 성격이 다른 변경이 섞여 있으면 파일을 골라서 스테이징하고 여러 번 커밋합니다. 관련 없는 파일을 `git add .`로 함께 넣지 않습니다.
 - 커밋 전에 `git status`, `git diff --staged`로 확인합니다.
 - `.env`, 비밀 값, API 키, 빌드 산출물은 커밋하지 않습니다.
@@ -122,6 +133,7 @@ PR 규칙:
 - `AGENTS.md` 파일은 에이전트용 문서(영문)이고, 한글 번역은 `docs/developer/`에 둡니다.
   - 루트 `AGENTS.md` ↔ `docs/developer/agent-guide.md`
   - `<폴더>/AGENTS.md` ↔ `docs/developer/<폴더>-agent-guide.md`
+- 에이전트가 제자리에서 읽어야 해서 `docs/` 밖에 있는 문서(예: `frontend/blueprint.md`)도 같은 방식입니다. 원래 위치에는 영문을 두고, 한글 번역은 `docs/developer/<폴더>-<이름>.md`에 둡니다 (예: `docs/developer/frontend-blueprint.md`).
 - `CLAUDE.md` 파일에는 `@AGENTS.md` 한 줄만 둡니다. Claude Code가 같은 규칙을 읽게 하기 위한 파일이라 다른 내용을 넣지 않습니다.
 - 대상이 아닌 문서(한글로만 관리, 영문판 없음): `README.md` 파일들, `.github/` 템플릿
 - 링크는 각 문서 위치에서 동작하는 상대 경로로 씁니다.
@@ -133,5 +145,7 @@ PR 규칙:
 | `AGENTS.md` | `docs/developer/agent-guide.md` |
 | `docs/agent/git-convention.md` | `docs/developer/git-convention.md` |
 | `docs/agent/deployment.md` | `docs/developer/deployment.md` |
+| `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
+| `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |
 
 새 짝을 추가하면 이 표와 `AGENTS.md`의 표에 모두 한 줄씩 추가합니다.

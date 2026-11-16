@@ -129,6 +129,15 @@ Agents: the examples use `git add .` for brevity. Stage only the files related t
 
 Separate type and description with a colon (`:`) followed by exactly one space.
 
+Put one blank line under the subject, then the body. Every commit has a body.
+
+```
+<type>: <description>
+
+- what changed and why
+- one line per notable change
+```
+
 ### Types
 
 | Type | Purpose | Example |
@@ -144,6 +153,7 @@ Separate type and description with a colon (`:`) followed by exactly one space.
 - Keep the description short and clear. Write it in Korean.
 - One commit carries one main change.
 - Do not use vague descriptions such as `수정`, `작업`, or `update`.
+- Write the body as a Korean bullet list (`- `) of the changes and their reasons. Do not repeat the subject.
 - Do not add AI co-author trailers (`Co-Authored-By: Claude ...`) or `Generated with ...` bylines to commits or PR bodies. The `PR Attribution Check` CI fails on them.
 
 ### Examples
@@ -153,4 +163,13 @@ feat: 프로젝트 등록 기능 구현
 fix: 로그인 오류 수정
 chore: ESLint 설정 변경
 docs: Git Flow 문서 작성
+```
+
+With a body:
+
+```
+fix: 소비기한 D-day 계산 오류 수정
+
+- 자정 기준이 아니라 현재 시각 기준으로 계산해 하루씩 밀리던 문제 수정
+- dayjs startOf('day')로 날짜만 비교하도록 변경
 ```
