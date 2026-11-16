@@ -33,12 +33,15 @@ Korean translation for developers: [`docs/developer/frontend-agent-guide.md`](..
 - Build forms with React Hook Form + Zod (`@hookform/resolvers/zod`).
 - If a backend API does not exist yet, add an MSW handler in `mocks/handlers.ts` and develop against it.
 
-## Where code goes
+## Where code goes (colocation)
 
-- Keep routes (`app/**/page.tsx`) thin; put real UI and logic in `features/<feature>/`.
-- Code used by one feature stays in that feature folder; code used by two or more features moves up to `components`, `hooks`, or `lib`.
-- Do not import another feature's internal files; import through that feature's `index.ts`.
-- Use the `@/` alias for imports (`@/*` → `./*`).
+Full rules: `blueprint.md` §3.1.
+
+- Colocate: code used by one route lives in that route folder's private folders `_components/`, `_hooks/`, `_lib/` (`queries.ts`, `schema.ts`, `utils.ts`). Keep `page.tsx` thin.
+- One folder per component: `.tsx` + `.module.css` + any hook/util only that component uses.
+- A route may import colocated code from its own folder and ancestor route folders only — never from sibling or unrelated routes.
+- When two unrelated routes need the same code, promote it: UI → `components/<Name>/`, React hook → `hooks/`, query keys/hooks → `lib/queries/<domain>.ts`, other functions → `lib/`. Shared code must not know about a specific page.
+- Import colocated code with relative paths and shared code with the `@/` alias (`@/*` → `./*`). Never import from `@/app/...`.
 
 ## After changes
 
@@ -50,6 +53,6 @@ pnpm typecheck
 pnpm build
 ```
 
-- ESLint rules live in `eslint.config.mjs` (import sorting, type imports, no direct `dayjs` / `process.env`, no cross-feature internal imports, etc.). Use an `eslint-disable` comment only together with a stated reason.
+- ESLint rules live in `eslint.config.mjs` (import sorting, type imports, no direct `dayjs` / `process.env`, no imports from `@/app/...`, etc.). Use an `eslint-disable` comment only together with a stated reason.
 - Prettier handles formatting. Husky + lint-staged run automatically on commit. Never skip the hook with `--no-verify`.
 - Branches, commits, and PRs follow the Git convention in the root `AGENTS.md` (commit types: `feat`, `fix`, `chore`, `docs` only; every commit has a body).

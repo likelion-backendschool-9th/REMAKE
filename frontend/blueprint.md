@@ -37,16 +37,18 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 
 ```
 frontend/
-├─ app/                  # routes (screens). Keep page.tsx thin; compose components from features
+├─ app/                  # routes. Each route folder colocates the code only it uses (see §3.1)
+│  ├─ layout.tsx         # root layout, globals.css, home page.tsx
+│  ├─ fridge/            # example route — see §3.1
 │  ├─ sw.ts              # service worker (caching, push handling)
 │  ├─ serwist/[path]/    # service-worker serving route
 │  ├─ ~offline/          # offline fallback screen
 │  └─ manifest.ts        # PWA manifest
-├─ components/           # shared UI used by several features (Button, Input, BottomSheet ...)
-├─ features/             # code grouped by feature (see rules below)
-├─ hooks/                # shared hooks not tied to a feature
+├─ components/           # reusable UI shared by several routes, no domain knowledge (Button, Input, BottomSheet ...)
+├─ hooks/                # reusable React hooks shared by several routes, no domain knowledge (useDebounce ...)
 ├─ lib/
 │  ├─ api/               # client.ts (openapi-fetch), schema.d.ts (generated)
+│  ├─ queries/           # query keys + query hooks shared by several routes, one file per domain
 │  ├─ query-client.ts
 │  ├─ dayjs.ts           # dayjs with ko locale and plugins configured
 │  └─ env.ts             # the only place that reads environment variables
@@ -56,20 +58,42 @@ frontend/
 └─ public/               # static files, mockServiceWorker.js, (planned) .well-known/assetlinks.json, icons/
 ```
 
-### Feature folder rules
+### 3.1 Colocation rules
 
-One feature = one folder. Do not import another feature's internal files; use only what it exposes through `index.ts`.
+Code lives next to the page or component that uses it. Only code reused by several routes moves to the shared folders (`components/`, `hooks/`, `lib/`).
 
 ```
-features/fridge/
-├─ api.ts            # API call functions + queryKey + useQuery/useMutation hooks
-├─ schema.ts         # Zod schemas (form validation)
-├─ components/       # components for this feature only (*.tsx + *.module.css)
-├─ utils.ts          # pure functions for this feature only (e.g. expiry D-day calculation)
-└─ index.ts          # public API of the feature
+app/fridge/
+├─ page.tsx                     # thin: composes _components, calls _lib/queries
+├─ page.module.css
+├─ _components/                 # components used only by this route (and its child routes)
+│  └─ IngredientCard/
+│     ├─ IngredientCard.tsx
+│     ├─ IngredientCard.module.css
+│     └─ useIngredientCard.ts   # hook used only by this component
+├─ _hooks/                      # hooks used only by this route
+├─ _lib/
+│  ├─ queries.ts                # query keys + useQuery/useMutation for this route
+│  ├─ schema.ts                 # Zod schemas
+│  └─ utils.ts                  # pure functions (e.g. expiry D-day calculation)
+└─ [id]/
+   └─ page.tsx
 ```
 
-Planned feature folders: `auth`, `onboarding`, `fridge`, `receipt` (OCR), `recipe`, `meal-plan`, `notification`, `mypage`
+1. **Private folders.** Folders starting with `_` are Next.js private folders and are never routed. Put all non-route code of a route in `_components/`, `_hooks/`, `_lib/`. Never put `page.tsx` or `route.ts` inside them.
+2. **Isolate by route.** A route may import colocated code from its own folder and from ancestor route folders (e.g. `app/fridge/[id]` may use `app/fridge/_components`). Never import from a sibling or unrelated route.
+3. **Isolate by component.** Each component has its own folder with its `.tsx`, `.module.css`, and any hook or util only it uses. Do not import another component's CSS module or internal files.
+4. **Promote when shared.** When two unrelated routes need the same code, move it up — UI component → `components/<Name>/`, React hook → `hooks/`, query keys and query hooks → `lib/queries/<domain>.ts`, other functions → `lib/`. Shared code must not know about a specific page.
+5. **Import paths.** Import colocated code with relative paths (`./_components/...`, `../_lib/...`). Import shared code with `@/` (`@/components/Button`). Never import from `@/app/...` (enforced by ESLint).
+
+Shared component layout:
+
+```
+components/Button/
+├─ Button.tsx
+├─ Button.module.css
+└─ index.ts          # export { Button } from "./Button";
+```
 
 ## 4. Screens / routes (draft)
 
@@ -94,14 +118,14 @@ Planned feature folders: `auth`, `onboarding`, `fridge`, `receipt` (OCR), `recip
 ```
 Spring API ──(OpenAPI spec)──> pnpm gen:api ──> lib/api/schema.d.ts
                                                      │
-Screen (page.tsx) ─> features/*/components ─> features/*/api.ts (useQuery) ─> lib/api/client.ts ─> Spring API
+Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQuery) ─> lib/api/client.ts ─> Spring API
                                                      │
                               during development NEXT_PUBLIC_API_MOCKING=true ─> MSW dummy responses
 ```
 
 - **Server data** is managed entirely with TanStack Query. Do not copy server data into Zustand.
 - **Long-running jobs** (OCR, AI meal-plan generation): the backend returns a job ID and the frontend polls its status with `refetchInterval`. Stop polling when the job completes.
-- **queryKey**s live in each feature's `api.ts`. Example: `fridgeKeys.all`, `fridgeKeys.detail(id)`
+- **queryKey**s live next to their query hooks: the route's `_lib/queries.ts`, or `lib/queries/<domain>.ts` once shared. Example: `fridgeKeys.all`, `fridgeKeys.detail(id)`
 
 ## 6. Styling rules
 

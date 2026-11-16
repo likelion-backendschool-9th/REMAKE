@@ -46,11 +46,10 @@ pnpm dev                 # http://localhost:3000
 
 ```
 frontend/
-├─ app/                 # 라우트(화면). sw.ts = 서비스 워커, serwist/ = SW 서빙 라우트, ~offline = 오프라인 화면
-├─ components/          # 공용 UI 컴포넌트 (*.tsx + *.module.css)
-├─ features/            # 기능별 코드 (예: features/fridge, features/recipe, features/meal-plan)
-├─ hooks/               # 공용 훅
-├─ lib/                 # api 클라이언트, query-client, dayjs, env 등
+├─ app/                 # 라우트(화면). 각 라우트 폴더에 _components, _hooks, _lib를 함께 둠 (코로케이션)
+├─ components/          # 여러 라우트에서 재사용하는 UI (컴포넌트당 폴더 하나)
+├─ hooks/               # 여러 라우트에서 재사용하는 React 훅
+├─ lib/                 # api 클라이언트, 공용 queries, query-client, dayjs, env 등
 ├─ mocks/               # MSW 핸들러
 ├─ providers/           # 전역 Provider (TanStack Query, Serwist, MSW)
 ├─ stores/              # Zustand 스토어
