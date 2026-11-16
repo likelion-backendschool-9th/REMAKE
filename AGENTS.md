@@ -39,11 +39,22 @@ Full reference: [`docs/agent/git-convention.md`](docs/agent/git-convention.md)
 
 ## 2. Commits
 
-- Format: `<type>: <description>` — one space after the colon.
+- Format: a subject line, a blank line, then a body. **Every commit has a body.**
+
+  ```
+  <type>: <description>
+
+  - <what changed and why, in Korean>
+  - <one bullet per notable change>
+  ```
+
+- Subject line: `<type>: <description>` — one space after the colon.
 - `<type>` is exactly one of `feat`, `fix`, `chore`, `docs`. Do not use `refactor`, `style`, `test`, or any other type.
 - `<description>` is written **in Korean**, short and specific.
   - Good: `fix: 소비기한 D-day 계산 오류 수정`, `chore: Prettier 줄 길이 100자로 변경`
   - Bad (vague): `fix: 수정`, `chore: update`, `feat: 작업`
+- Body: Korean bullet list (`- `) describing what changed and why — files, behavior, and anything a reviewer must know. Do not repeat the subject line. Write it with `git commit -F <file>` or multiple `-m` flags.
+- Before pushing, check that every commit on the branch has a body: `git log --format='%h %s%n%b' origin/dev..HEAD`. If one is missing, add it (`git commit --amend` for the last commit, `git rebase --exec` for older ones) before pushing. If those commits were already pushed, rewriting them needs `git push --force-with-lease` — ask the user first.
 - One commit = one main change. If the working tree has changes of different kinds, stage files selectively and make several commits. Do not `git add .` unrelated files.
 - Before committing, check `git status` and `git diff --staged`.
 - Never commit `.env` files, secrets, API keys, or build output.
