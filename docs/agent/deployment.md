@@ -59,21 +59,28 @@ Deployment happens when `Backend CD` runs `deploy/deploy.sh` on the server. It c
 cd <DEPLOY_PATH>
 bash deploy/deploy.sh            # deploy (default)
 bash deploy/deploy.sh rollback   # switch back to the previous slot
-bash deploy/deploy.sh status     # active slot and container status
+bash deploy/deploy.sh status     # active slot and container status (works during a deploy)
 ```
 
 Deploy flow:
 
-1. Build and start the new version in the inactive slot, then wait until `/actuator/health/readiness` is healthy.
-2. When healthy, rewrite `proxy/upstream.conf` to point to the new slot, validate with `nginx -t`, and reload the proxy.
-3. Confirm that the proxy returns a response.
-4. Stop the previous slot after in-flight requests finish (up to 30 seconds). Its container and image are kept for rollback.
+1. Start `postgres` only if it is not running. If it is already running, leave it untouched.
+2. Build and start the new version in the inactive slot, then wait until `/actuator/health/readiness` is healthy.
+3. When healthy, rewrite `proxy/upstream.conf` to point to the new slot, validate with `nginx -t`, and reload the proxy.
+4. Confirm that the proxy actually routes requests to the new slot, and that the host port (`APP_PORT`) returns a response.
+5. Only after these checks pass, stop the previous slot. It waits for in-flight requests to finish (up to 30 seconds), and its container and image are kept for rollback.
 
-If the new slot does not become ready, or the check after switching fails, the script does not switch (or reverts) and stops; the previous version keeps serving. On the first deployment, `blue` is started first and then the proxy. Rollback is possible only to the immediately previous slot.
+If any step fails (new slot not ready, config validation failure, proxy start or reload failure, switch check failure), the script restores `upstream.conf` and the proxy to the previous state and stops. The previous slot is never stopped, so the previous version keeps serving. The cause (`nginx -t` output, recent logs of the new slot) is written to the deploy log. On the first deployment, `blue` is started first and then the proxy. Rollback is possible only to the immediately previous slot.
+
+In the rare case that the restore also fails (for example, reload with the previous config fails), the proxy may still point to the new slot. Stopping either slot could then cause an outage, so the script leaves both the new and the previous slot running and stops with a "manual check required" error. Check `bash deploy/deploy.sh status` and `proxy/upstream.conf`, run `docker compose --env-file .env -f compose.prod.yml exec proxy nginx -s reload` to make the proxy match `upstream.conf`, then stop the unused slot manually.
+
+The proxy re-resolves the slot names (`backend-blue`, `backend-green`) through Docker's internal DNS every 10 seconds. If the active slot container restarts or the server reboots and its IP changes, the proxy follows the new IP automatically without waiting for the next deployment.
 
 ## Verification
 
-Run `bash deploy/deploy.sh status` on the server to check the active slot and container status. The deploy job succeeds only when the new slot passes its readiness check. `/actuator` is not exposed externally by the proxy, so check it from inside the server.
+Run `bash deploy/deploy.sh status` on the server to check the active slot and container status. The deploy job succeeds only when the new slot passes its readiness check. `/actuator` is not exposed externally by the proxy, so check it from inside the server. The check path used by the deploy script, `/__remake/upstream`, can only be called from inside the proxy container and is blocked on the host port (403).
+
+Changing the `postgres` settings in `compose.prod.yml` is not applied by a deployment. This prevents the DB from being recreated during a deploy. If you change DB settings, pick a time when a brief DB restart is acceptable and run `docker compose --env-file .env -f compose.prod.yml up -d postgres` on the server manually.
 
 The production profile does not auto-alter the JPA schema and only runs `validate`, so apply DB migrations first when entities change. During a deployment the old and new versions briefly share the same DB, so make schema changes in backward-compatible steps.
 

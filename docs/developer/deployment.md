@@ -59,21 +59,28 @@
 cd <DEPLOY_PATH>
 bash deploy/deploy.sh            # 배포 (기본)
 bash deploy/deploy.sh rollback   # 이전 슬롯으로 되돌리기
-bash deploy/deploy.sh status     # 활성 슬롯과 컨테이너 상태
+bash deploy/deploy.sh status     # 활성 슬롯과 컨테이너 상태 (배포 중에도 실행 가능)
 ```
 
 배포 흐름은 다음과 같다.
 
-1. 비활성 슬롯에 새 버전을 빌드해서 띄우고, `/actuator/health/readiness`가 정상이 될 때까지 기다린다.
-2. 정상이면 `proxy/upstream.conf`를 새 슬롯으로 바꾸고 `nginx -t`로 검사한 뒤 프록시를 reload한다.
-3. 프록시를 통해 응답이 오는지 확인한다.
-4. 이전 슬롯은 처리 중인 요청이 끝나길 기다린 뒤(최대 30초) 종료한다. 롤백을 위해 컨테이너와 이미지는 남겨 둔다.
+1. `postgres`가 떠 있지 않을 때만 띄운다. 이미 떠 있으면 건드리지 않는다.
+2. 비활성 슬롯에 새 버전을 빌드해서 띄우고, `/actuator/health/readiness`가 정상이 될 때까지 기다린다.
+3. 정상이면 `proxy/upstream.conf`를 새 슬롯으로 바꾸고 `nginx -t`로 검사한 뒤 프록시를 reload한다.
+4. 프록시가 실제로 새 슬롯으로 요청을 보내는지, 호스트 포트(`APP_PORT`)로 응답이 오는지 확인한다.
+5. 확인이 끝난 뒤에만 이전 슬롯을 종료한다. 처리 중인 요청이 끝나길 기다리며(최대 30초), 롤백을 위해 컨테이너와 이미지는 남겨 둔다.
 
-새 슬롯이 준비되지 않거나 전환 후 확인에 실패하면 전환하지 않고 중단하며, 이전 버전이 계속 서비스된다. 처음 배포할 때는 `blue`가 먼저 올라가고 프록시가 시작된다. 롤백은 바로 직전 슬롯으로만 가능하다.
+어느 단계에서든 실패하면(새 슬롯 준비 실패, 설정 검사 실패, 프록시 시작이나 reload 실패, 전환 확인 실패) `upstream.conf`와 프록시를 이전 상태로 되돌리고 중단한다. 이전 슬롯은 종료하지 않으므로 이전 버전이 계속 서비스된다. 실패 원인(`nginx -t` 출력, 새 슬롯의 최근 로그)은 배포 로그에 남는다. 처음 배포할 때는 `blue`가 먼저 올라가고 프록시가 시작된다. 롤백은 바로 직전 슬롯으로만 가능하다.
+
+드물게 되돌리기까지 실패하면(예: 이전 설정으로 reload 실패) 프록시가 새 슬롯을 가리키고 있을 수 있다. 이때는 어느 슬롯을 꺼도 장애가 날 수 있으므로 새 슬롯과 이전 슬롯을 모두 그대로 두고 "수동 확인 필요" 오류로 중단한다. `bash deploy/deploy.sh status`와 `proxy/upstream.conf`를 확인하고, `docker compose --env-file .env -f compose.prod.yml exec proxy nginx -s reload`로 프록시를 `upstream.conf`에 맞춘 뒤, 쓰지 않는 슬롯을 직접 종료한다.
+
+프록시는 슬롯 이름(`backend-blue`, `backend-green`)을 도커 내부 DNS로 10초마다 다시 조회한다. 그래서 활성 슬롯 컨테이너가 재시작되거나 서버가 재부팅되어 IP가 바뀌어도, 다음 배포를 기다리지 않고 자동으로 새 IP를 따라간다.
 
 ## 확인
 
-서버에서 `bash deploy/deploy.sh status`를 실행해 활성 슬롯과 컨테이너 상태를 확인한다. 새 슬롯의 readiness가 통과해야 배포 작업이 성공한다. `/actuator`는 프록시에서 외부로 노출하지 않으므로, 서버 안에서 확인한다.
+서버에서 `bash deploy/deploy.sh status`를 실행해 활성 슬롯과 컨테이너 상태를 확인한다. 새 슬롯의 readiness가 통과해야 배포 작업이 성공한다. `/actuator`는 프록시에서 외부로 노출하지 않으므로, 서버 안에서 확인한다. 배포 스크립트가 쓰는 확인 경로 `/__remake/upstream`도 프록시 컨테이너 안에서만 호출할 수 있고, 호스트 포트로는 막혀 있다(403).
+
+`compose.prod.yml`의 `postgres` 설정을 바꿔도 배포만으로는 적용되지 않는다. 배포 중에 DB가 다시 만들어지는 일을 막기 위해서다. DB 설정을 바꿨다면 DB가 잠시 재시작되는 시간을 정해 서버에서 `docker compose --env-file .env -f compose.prod.yml up -d postgres`를 직접 실행한다.
 
 운영 프로필은 JPA 스키마를 자동 변경하지 않고 `validate`만 수행하므로, 엔티티 변경 시 DB 마이그레이션을 먼저 적용해야 한다. 배포 중에는 이전 버전과 새 버전이 잠시 같은 DB를 함께 쓰므로, 스키마 변경은 이전 버전과 호환되게 단계적으로 한다.
 
