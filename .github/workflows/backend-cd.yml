@@ -1,0 +1,119 @@
+# Resuit 방식: dev 검증 후 SSH로 서버에 동기화하고 Docker Compose로 재기동.
+# 서버가 준비되기 전에는 REMAKE_DEPLOY_ENABLED 변수가 없으므로 배포 작업을 건너뛴다.
+name: Backend CD
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'backend/**'
+      - 'compose.prod.yml'
+      - '.github/workflows/backend-cd.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: backend-cd-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: remake
+          POSTGRES_USER: remake
+          POSTGRES_PASSWORD: remake
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U remake"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_PORT: 5432
+      DB_NAME: remake
+      DB_USERNAME: remake
+      DB_PASSWORD: remake
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build and test
+        run: |
+          chmod +x gradlew
+          ./gradlew build --console=plain
+
+  deploy:
+    needs: verify
+    if: vars.REMAKE_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          for value in "$DEPLOY_HOST" "$DEPLOY_USER" "$DEPLOY_PATH" "$SSH_PRIVATE_KEY" "$SSH_KNOWN_HOSTS"; do
+            test -n "$value" || { echo '::error::A deployment secret is missing'; exit 1; }
+          done
+          [[ "$DEPLOY_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
+          [[ "$DEPLOY_USER" =~ ^[a-zA-Z0-9._-]+$ ]]
+          [[ "$DEPLOY_PATH" =~ ^/[a-zA-Z0-9._/-]+$ ]]
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$RUNNER_TEMP/deploy_key"
+          chmod 600 "$RUNNER_TEMP/deploy_key"
+      - name: Check server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "mkdir -p '$DEPLOY_PATH/backend' && test -f '$DEPLOY_PATH/.env' && docker compose version"
+      - name: Copy backend and Compose configuration
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            --exclude='.env' --exclude='.gradle/' --exclude='build/' \
+            -e "ssh -i $RUNNER_TEMP/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes" \
+            backend/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/backend/"
+          rsync -az \
+            -e "ssh -i $RUNNER_TEMP/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes" \
+            compose.prod.yml "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/compose.prod.yml"
+      - name: Build and start services
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$DEPLOY_PATH' && docker compose --env-file .env -f compose.prod.yml up -d --build --wait --remove-orphans && docker compose --env-file .env -f compose.prod.yml ps"

@@ -5,6 +5,7 @@
 
 # local-only folder (not shared)
 .local/
+.claude/settings.local.json
 
 # dependencies
 node_modules/
