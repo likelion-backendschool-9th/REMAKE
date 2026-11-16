@@ -177,6 +177,12 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 ## 7. PWA · 푸시 · TWA
 
 - 서비스 워커는 `pnpm build && pnpm start`에서만 켜집니다. 개발 모드와 MSW 사용 중에는 꺼집니다(같은 scope 충돌 방지).
+- 서비스 워커(`/serwist/sw.js`)는 빌드할 때 미리 생성되어야 합니다(`pnpm build` 결과에서 `●`). standalone 운영 서버에는 esbuild와 `app/sw.ts`가 없어서, 요청할 때 생성되는 `ƒ` 라우트가 되면 500 오류가 납니다.
+  - `cacheComponents`가 켜져 있어서 라우트 세그먼트 설정(`dynamic`, `revalidate`, `dynamicParams`)은 무시되거나 빌드 오류가 납니다. `createSerwistRoute`가 주는 이 값들을 다시 내보내지 않습니다.
+  - `app/serwist/[path]/route.ts`는 워커 번들링을 `"use cache"` 함수 안에서 합니다. 그래서 esbuild가 오래 걸려도 항상 미리 생성됩니다. 정적이어야 하는 다른 `GET` Route Handler도 같은 방식을 씁니다.
+  - 그 함수는 `cacheLife("max")`를 호출합니다. `sw.js`는 빌드할 때만 바뀌는데, 기본 프로필(15분마다 다시 생성)을 쓰면 운영 서버가 뒤에서 번들링을 다시 시도합니다. esbuild가 없어 실패하고, 시도할 때마다 에러 로그가 남습니다. 어느 경우든 기존 `sw.js`는 계속 응답됩니다.
+  - 그 결과 `sw.js`에는 `Cache-Control: s-maxage=2592000`(30일)이 붙습니다. 브라우저는 `s-maxage`를 무시하지만, 앱 앞에 공유 캐시(CDN이나 프록시 캐시)를 두면 배포 뒤에도 예전 서비스 워커가 나갈 수 있습니다. `/serwist/` 경로는 공유 캐시에서 제외합니다.
+  - 서비스 워커나 이 라우트를 바꾼 뒤에는 `pnpm build` 결과에 `/serwist/sw.js`가 `●`로 나오는지, `.next/server/app/serwist/sw.js.body` 파일이 있는지 확인합니다.
 - 푸시: 프론트가 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`로 구독을 만들어 백엔드에 저장하고, 백엔드가 발송합니다. 수신·클릭 처리는 `app/sw.ts`에서 합니다.
 - TWA 배포 전 준비물: 192/512 PNG 아이콘, `public/.well-known/assetlinks.json`(앱 서명 SHA-256), HTTPS 도메인
 
