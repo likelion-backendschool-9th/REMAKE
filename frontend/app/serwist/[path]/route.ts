@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
 
+import { cacheLife } from "next/cache";
+
 import { createSerwistRoute } from "@serwist/turbopack";
 
 // 배포마다 오프라인 페이지 캐시를 갱신하기 위한 revision
@@ -22,6 +24,9 @@ export const { generateStaticParams } = serwist;
 // 번들링을 "use cache" 함수 안에서 해서 항상 빌드 때 미리 생성되게 한다. (blueprint.md §7)
 async function getSerwistFile(path: string) {
   "use cache";
+  // sw.js 는 빌드마다만 바뀐다. 기본 프로필(15분)을 쓰면 운영 서버가 주기적으로 다시 번들링을
+  // 시도하다 esbuild 가 없어 실패 로그를 남기므로, 가장 긴 프로필로 다시 만들기를 사실상 막는다.
+  cacheLife("max");
   const res = await serwist.GET(new Request("http://localhost"), {
     params: Promise.resolve({ path }),
   });

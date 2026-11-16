@@ -180,6 +180,8 @@ Refer to the [Google SEO Starter Guide](https://developers.google.com/search/doc
 - The service worker (`/serwist/sw.js`) must be prerendered at build time (`●` in the `pnpm build` output). The standalone production server has no esbuild or `app/sw.ts`, so a request-time `ƒ` route returns 500.
   - Because `cacheComponents` is on, route segment configs (`dynamic`, `revalidate`, `dynamicParams`) are ignored or rejected. Do not re-export them from `createSerwistRoute`.
   - `app/serwist/[path]/route.ts` bundles the worker inside a `"use cache"` function, so the route stays prerendered no matter how long esbuild takes. Apply the same pattern to any `GET` Route Handler that must be static.
+  - That function calls `cacheLife("max")`. `sw.js` only changes per build; with the default profile (revalidate 15 minutes) the production server would retry bundling in the background, fail without esbuild, and log an error on every retry. The old `sw.js` keeps being served either way.
+  - As a result `sw.js` is sent with `Cache-Control: s-maxage=2592000` (30 days). Browsers ignore `s-maxage`, but a shared cache (CDN or proxy cache) in front of the app would keep an old service worker after a deploy. Exclude `/serwist/` from any shared cache.
   - After changing the service worker or this route, check that `pnpm build` lists `/serwist/sw.js` as `●` and that `.next/server/app/serwist/sw.js.body` exists.
 - Push: the frontend creates a subscription with `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and stores it on the backend; the backend sends notifications. Receiving and click handling live in `app/sw.ts`.
 - Needed before the TWA release: 192/512 PNG icons, `public/.well-known/assetlinks.json` (app signing SHA-256), an HTTPS domain.
