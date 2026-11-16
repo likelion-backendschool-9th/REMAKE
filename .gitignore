@@ -19,6 +19,13 @@ build/
 out/
 bin/
 
+# Frontend (Next.js + pnpm) — 자세한 항목은 frontend/.gitignore
+.next/
+.pnpm-store/
+*.tsbuildinfo
+next-env.d.ts
+coverage/
+
 # Gradle (Spring Boot)
 .gradle/
 !gradle/wrapper/gradle-wrapper.jar

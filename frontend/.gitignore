@@ -1,0 +1,41 @@
+# ===== Frontend (Next.js + pnpm) =====
+
+# dependencies
+/node_modules
+.pnpm-store/
+
+# next.js build output
+/.next/
+/out/
+/build
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# testing
+/coverage
+
+# env (.env.example만 커밋)
+.env
+.env.*
+!.env.example
+
+# debug logs
+npm-debug.log*
+.pnpm-debug.log*
+
+# certificates (로컬 HTTPS 테스트용)
+*.pem
+certificates/
+
+# PWA / TWA 패키징 산출물 (PWABuilder)
+*.apk
+*.aab
+*.keystore
+*.jks
+twa-manifest.json
+/android/
+
+# misc
+.DS_Store
