@@ -50,4 +50,4 @@ pnpm build
 
 - ESLint 규칙은 `eslint.config.mjs`에 있습니다 (import 정렬, type import, dayjs·process.env 직접 사용 금지, 다른 feature 내부 import 금지 등). 규칙을 끄는 `eslint-disable` 주석은 이유를 함께 적을 때만 씁니다.
 - 포맷은 Prettier가 담당합니다. 커밋 시 Husky + lint-staged가 자동으로 실행됩니다. `--no-verify`로 훅을 건너뛰지 않습니다.
-- 커밋 메시지는 레포 관례를 따릅니다: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:` + 한국어 설명.
+- 브랜치·커밋·PR은 루트 `AGENTS.md`의 Git 컨벤션을 따릅니다 (커밋 유형은 `feat`, `fix`, `chore`, `docs`만 사용).
