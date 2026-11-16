@@ -177,6 +177,10 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 ## 7. PWA · 푸시 · TWA
 
 - 서비스 워커는 `pnpm build && pnpm start`에서만 켜집니다. 개발 모드와 MSW 사용 중에는 꺼집니다(같은 scope 충돌 방지).
+- 서비스 워커(`/serwist/sw.js`)는 빌드할 때 미리 생성되어야 합니다(`pnpm build` 결과에서 `●`). standalone 운영 서버에는 esbuild와 `app/sw.ts`가 없어서, 요청할 때 생성되는 `ƒ` 라우트가 되면 500 오류가 납니다.
+  - `cacheComponents`가 켜져 있어서 라우트 세그먼트 설정(`dynamic`, `revalidate`, `dynamicParams`)은 무시되거나 빌드 오류가 납니다. `createSerwistRoute`가 주는 이 값들을 다시 내보내지 않습니다.
+  - `app/serwist/[path]/route.ts`는 워커 번들링을 `"use cache"` 함수 안에서 합니다. 그래서 esbuild가 오래 걸려도 항상 미리 생성됩니다. 정적이어야 하는 다른 `GET` Route Handler도 같은 방식을 씁니다.
+  - 서비스 워커나 이 라우트를 바꾼 뒤에는 `pnpm build` 결과에 `/serwist/sw.js`가 `●`로 나오는지, `.next/server/app/serwist/sw.js.body` 파일이 있는지 확인합니다.
 - 푸시: 프론트가 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`로 구독을 만들어 백엔드에 저장하고, 백엔드가 발송합니다. 수신·클릭 처리는 `app/sw.ts`에서 합니다.
 - TWA 배포 전 준비물: 192/512 PNG 아이콘, `public/.well-known/assetlinks.json`(앱 서명 SHA-256), HTTPS 도메인
 

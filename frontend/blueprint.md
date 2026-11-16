@@ -156,12 +156,12 @@ Refer to the [W3C page structure guide](https://www.w3.org/WAI/tutorials/page-st
 
 Prefer native HTML semantics and behavior. Add ARIA only for names, states, or change announcements that HTML alone cannot convey. Do not duplicate native roles or declare states that differ from the UI. ARIA attributes do not implement keyboard behavior. Follow the [W3C ARIA principles](https://www.w3.org/WAI/ARIA/apg/practices/read-me-first/).
 
-| Attribute | Rule and brief example |
-| --- | --- |
-| `aria-label` | Name icon-only buttons without visible names, such as “Close.” Prefer visible text or a `label` when available and include that wording in the accessible name. |
-| `aria-expanded` | Reflect the actual open/closed state on custom disclosure buttons. Use `aria-controls` to reference the target ID when needed. Example: `false` when collapsed, `true` when expanded. |
-| `aria-live` | Announce save results or loading completion without moving focus. Example: update a pre-existing `polite` region to “Saved.” Reserve `assertive` or `role="alert"` for urgent messages and avoid duplicate announcements. |
-| `aria-describedby` and `aria-invalid` | Associate help/error text with inputs and reflect validation errors. Example: preserve the input value while explaining that field's error. |
+| Attribute                             | Rule and brief example                                                                                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aria-label`                          | Name icon-only buttons without visible names, such as “Close.” Prefer visible text or a `label` when available and include that wording in the accessible name.                                                           |
+| `aria-expanded`                       | Reflect the actual open/closed state on custom disclosure buttons. Use `aria-controls` to reference the target ID when needed. Example: `false` when collapsed, `true` when expanded.                                     |
+| `aria-live`                           | Announce save results or loading completion without moving focus. Example: update a pre-existing `polite` region to “Saved.” Reserve `assertive` or `role="alert"` for urgent messages and avoid duplicate announcements. |
+| `aria-describedby` and `aria-invalid` | Associate help/error text with inputs and reflect validation errors. Example: preserve the input value while explaining that field's error.                                                                               |
 
 Follow the [W3C Disclosure pattern](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/) for expanded states and the [W3C status messages guide](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html) for dynamic announcements.
 
@@ -177,6 +177,10 @@ Refer to the [Google SEO Starter Guide](https://developers.google.com/search/doc
 ## 7. PWA · push · TWA
 
 - The service worker runs only with `pnpm build && pnpm start`. It is off in development mode and while MSW is in use (avoids a scope conflict).
+- The service worker (`/serwist/sw.js`) must be prerendered at build time (`●` in the `pnpm build` output). The standalone production server has no esbuild or `app/sw.ts`, so a request-time `ƒ` route returns 500.
+  - Because `cacheComponents` is on, route segment configs (`dynamic`, `revalidate`, `dynamicParams`) are ignored or rejected. Do not re-export them from `createSerwistRoute`.
+  - `app/serwist/[path]/route.ts` bundles the worker inside a `"use cache"` function, so the route stays prerendered no matter how long esbuild takes. Apply the same pattern to any `GET` Route Handler that must be static.
+  - After changing the service worker or this route, check that `pnpm build` lists `/serwist/sw.js` as `●` and that `.next/server/app/serwist/sw.js.body` exists.
 - Push: the frontend creates a subscription with `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and stores it on the backend; the backend sends notifications. Receiving and click handling live in `app/sw.ts`.
 - Needed before the TWA release: 192/512 PNG icons, `public/.well-known/assetlinks.json` (app signing SHA-256), an HTTPS domain.
 
