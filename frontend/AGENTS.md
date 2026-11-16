@@ -1,0 +1,53 @@
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+
+# REMAKE Frontend — Agent Guide
+
+AI 코딩 에이전트(Claude Code, Codex 등)가 이 폴더에서 작업할 때 따르는 규칙입니다.
+
+## 먼저 읽기
+
+- 작업 전에 [blueprint.md](./blueprint.md)를 읽고 기술 스택, 폴더 구조, 라우트, 데이터 흐름을 확인합니다.
+- blueprint.md와 다른 구조나 라이브러리가 필요하면 코드를 바꾸기 전에 사람에게 먼저 묻습니다.
+
+## 필수 규칙
+
+- 패키지 매니저는 **pnpm**만 씁니다. `npm`, `yarn`, `npx`를 쓰지 않습니다 (`pnpm dlx`, `pnpm exec` 사용).
+- 명령은 `frontend/` 폴더에서 실행합니다. git 루트는 한 단계 위(`REMAKE/`)입니다.
+- **Tailwind를 쓰지 않습니다.** 스타일은 CSS Modules(`*.module.css`)와 `src/app/globals.css`의 CSS 변수(디자인 토큰)로만 작성합니다. Tailwind, shadcn/ui, styled-components, emotion 같은 스타일 라이브러리를 추가하지 않습니다.
+- 서버 데이터는 TanStack Query로만 다룹니다. Zustand에는 로그인 정보 같은 최소한의 클라이언트 상태만 둡니다.
+- API 호출은 `src/lib/api/client.ts`(openapi-fetch)를 씁니다. `src/lib/api/schema.d.ts`는 `pnpm gen:api`로 생성하는 파일이므로 직접 수정하지 않습니다.
+- 백엔드 기능을 Next Route Handler나 Server Action으로 대신 구현하지 않습니다. 비즈니스 로직은 Spring 백엔드 담당입니다.
+- 환경 변수는 `src/lib/env.ts`에서만 읽습니다. 새 변수를 추가하면 `.env.example`에도 추가합니다.
+- 아이콘은 Solar(`@solar-icons/react/<스타일>`)만 씁니다. lucide 등 다른 아이콘 라이브러리를 추가하지 않습니다.
+- 날짜는 `src/lib/dayjs.ts`에서 export한 `dayjs`를 씁니다 (ko 로케일 설정됨).
+- 폼은 React Hook Form + Zod(`@hookform/resolvers/zod`)로 만듭니다.
+- 백엔드 API가 아직 없으면 `src/mocks/handlers.ts`에 MSW 핸들러를 추가해서 개발합니다.
+
+## 코드 위치
+
+- 라우트(`src/app/**/page.tsx`)는 얇게 두고, 실제 UI·로직은 `src/features/<기능>/`에 둡니다.
+- 한 기능에서만 쓰는 코드는 그 기능 폴더에, 두 기능 이상에서 쓰면 `src/components`·`src/hooks`·`src/lib`로 올립니다.
+- 다른 기능 폴더의 내부 파일을 직접 import하지 않고 그 기능의 `index.ts`를 통해 씁니다.
+- import 경로는 `@/` 별칭을 씁니다 (`@/*` → `src/*`).
+
+## 작업 후 확인
+
+변경 후 아래 명령이 모두 통과해야 합니다.
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm build
+```
+
+- ESLint 규칙은 `eslint.config.mjs`에 있습니다 (import 정렬, type import, dayjs·process.env 직접 사용 금지, 다른 feature 내부 import 금지 등). 규칙을 끄는 `eslint-disable` 주석은 이유를 함께 적을 때만 씁니다.
+- 포맷은 Prettier가 담당합니다. 커밋 시 Husky + lint-staged가 자동으로 실행됩니다. `--no-verify`로 훅을 건너뛰지 않습니다.
+- 커밋 메시지는 레포 관례를 따릅니다: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:` + 한국어 설명.
