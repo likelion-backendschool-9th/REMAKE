@@ -98,11 +98,11 @@ const eslintConfig = defineConfig([
 
   // 예외: 설정 파일 위치에서는 원래 패키지를 직접 써야 함
   {
-    files: ["src/lib/dayjs.ts"],
+    files: ["lib/dayjs.ts"],
     rules: { "no-restricted-imports": "off" },
   },
   {
-    files: ["src/lib/env.ts", "src/providers/**", "*.config.*"],
+    files: ["lib/env.ts", "providers/**", "*.config.*"],
     rules: { "no-restricted-properties": "off" },
   },
   // 포맷 관련 규칙은 끄고 Prettier에 맡김 (항상 마지막)
@@ -114,7 +114,7 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "public/mockServiceWorker.js",
-    "src/lib/api/schema.d.ts",
+    "lib/api/schema.d.ts",
   ]),
 ]);
 
