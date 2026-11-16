@@ -12,7 +12,7 @@
 - **프론트(Next.js)**: 화면과 사용자 상호작용만 담당합니다. 비즈니스 로직과 데이터 저장은 하지 않습니다.
 - **백엔드(Spring Boot)**: 인증, 데이터, OCR·AI 처리, 푸시 발송을 담당합니다.
 - 프론트는 Spring REST API만 호출합니다. Next의 Route Handler·Server Action으로 백엔드 기능을 대신 만들지 않습니다.
-  예외: 서비스 워커 서빙 라우트(`src/app/serwist/[path]`).
+  예외: 서비스 워커 서빙 라우트(`app/serwist/[path]`).
 
 ## 2. 기술 스택
 
@@ -37,40 +37,63 @@
 
 ```
 frontend/
-├─ public/                  # 정적 파일, mockServiceWorker.js, (예정) .well-known/assetlinks.json, icons/
-└─ src/
-   ├─ app/                  # 라우트(화면). page.tsx는 얇게 두고 features의 컴포넌트를 조합
-   │  ├─ sw.ts              # 서비스 워커 (캐싱, 푸시 수신)
-   │  ├─ serwist/[path]/    # 서비스 워커 서빙 라우트
-   │  ├─ ~offline/          # 오프라인 대체 화면
-   │  └─ manifest.ts        # PWA 매니페스트
-   ├─ components/           # 여러 기능에서 쓰는 공용 UI (Button, Input, BottomSheet ...)
-   ├─ features/             # 기능별 코드 묶음 (아래 규칙 참고)
-   ├─ hooks/                # 기능과 무관한 공용 훅
-   ├─ lib/
-   │  ├─ api/               # client.ts(openapi-fetch), schema.d.ts(자동 생성)
-   │  ├─ query-client.ts
-   │  ├─ dayjs.ts           # ko 로케일 + 플러그인 설정된 dayjs
-   │  └─ env.ts             # 환경 변수는 여기서만 읽는다
-   ├─ mocks/                # MSW 핸들러
-   ├─ providers/            # 전역 Provider (Serwist, TanStack Query, MSW)
-   └─ stores/               # Zustand 스토어
+├─ app/                  # 라우트. 각 라우트 폴더에 그 라우트만 쓰는 코드를 함께 둔다 (3.1 참고)
+│  ├─ layout.tsx         # 루트 레이아웃, globals.css, 홈 page.tsx
+│  ├─ fridge/            # 라우트 예시 — 3.1 참고
+│  ├─ sw.ts              # 서비스 워커 (캐싱, 푸시 수신)
+│  ├─ serwist/[path]/    # 서비스 워커 서빙 라우트
+│  ├─ ~offline/          # 오프라인 대체 화면
+│  └─ manifest.ts        # PWA 매니페스트
+├─ components/           # 여러 라우트에서 재사용하는 UI, 도메인을 모름 (Button, Input, BottomSheet ...)
+├─ hooks/                # 여러 라우트에서 재사용하는 React 훅, 도메인을 모름 (useDebounce ...)
+├─ lib/
+│  ├─ api/               # client.ts(openapi-fetch), schema.d.ts(자동 생성)
+│  ├─ queries/           # 여러 라우트가 함께 쓰는 queryKey + Query 훅, 도메인별 파일 하나
+│  ├─ query-client.ts
+│  ├─ dayjs.ts           # ko 로케일 + 플러그인 설정된 dayjs
+│  └─ env.ts             # 환경 변수는 여기서만 읽는다
+├─ mocks/                # MSW 핸들러
+├─ providers/            # 전역 Provider (Serwist, TanStack Query, MSW)
+├─ stores/               # Zustand 스토어
+└─ public/               # 정적 파일, mockServiceWorker.js, (예정) .well-known/assetlinks.json, icons/
 ```
 
-### features 폴더 규칙
+### 3.1 코로케이션 규칙
 
-기능 하나 = 폴더 하나. 다른 기능의 내부 파일을 직접 import하지 않고 `index.ts`로 공개한 것만 씁니다.
+코드는 그 코드를 쓰는 페이지나 컴포넌트 옆에 둡니다. 여러 라우트에서 재사용하는 코드만 공용 폴더(`components/`, `hooks/`, `lib/`)로 올립니다.
 
 ```
-features/fridge/
-├─ api.ts            # API 호출 함수 + queryKey + useQuery/useMutation 훅
-├─ schema.ts         # Zod 스키마 (폼 검증)
-├─ components/       # 이 기능 전용 컴포넌트 (*.tsx + *.module.css)
-├─ utils.ts          # 이 기능 전용 순수 함수 (예: 소비기한 D-day 계산)
-└─ index.ts          # 외부 공개 API
+app/fridge/
+├─ page.tsx                     # 얇게: _components를 조합하고 _lib/queries를 호출
+├─ page.module.css
+├─ _components/                 # 이 라우트(와 하위 라우트)에서만 쓰는 컴포넌트
+│  └─ IngredientCard/
+│     ├─ IngredientCard.tsx
+│     ├─ IngredientCard.module.css
+│     └─ useIngredientCard.ts   # 이 컴포넌트만 쓰는 훅
+├─ _hooks/                      # 이 라우트에서만 쓰는 훅
+├─ _lib/
+│  ├─ queries.ts                # 이 라우트의 queryKey + useQuery/useMutation
+│  ├─ schema.ts                 # Zod 스키마
+│  └─ utils.ts                  # 순수 함수 (예: 소비기한 D-day 계산)
+└─ [id]/
+   └─ page.tsx
 ```
 
-예정 기능 폴더: `auth`, `onboarding`, `fridge`, `receipt`(OCR), `recipe`, `meal-plan`, `notification`, `mypage`
+1. **private 폴더.** `_`로 시작하는 폴더는 Next.js private 폴더라서 라우트가 되지 않습니다. 라우트의 화면 외 코드는 모두 `_components/`, `_hooks/`, `_lib/`에 둡니다. 이 안에 `page.tsx`나 `route.ts`를 두지 않습니다.
+2. **라우트 단위 고립.** 라우트는 자기 폴더와 상위 라우트 폴더의 코로케이션 코드만 import할 수 있습니다 (예: `app/fridge/[id]`는 `app/fridge/_components`를 쓸 수 있음). 형제 라우트나 관련 없는 라우트의 코드는 import하지 않습니다.
+3. **컴포넌트 단위 고립.** 컴포넌트마다 폴더 하나를 두고 `.tsx`, `.module.css`, 그 컴포넌트만 쓰는 훅·유틸을 함께 둡니다. 다른 컴포넌트의 CSS Module이나 내부 파일을 import하지 않습니다.
+4. **공유되면 올리기.** 관련 없는 두 라우트가 같은 코드를 필요로 하면 위로 올립니다 — UI 컴포넌트 → `components/<이름>/`, React 훅 → `hooks/`, queryKey와 Query 훅 → `lib/queries/<도메인>.ts`, 그 밖의 함수 → `lib/`. 공용 코드는 특정 페이지를 알면 안 됩니다.
+5. **import 경로.** 코로케이션 코드는 상대 경로(`./_components/...`, `../_lib/...`)로, 공용 코드는 `@/`(`@/components/Button`)로 import합니다. `@/app/...`에서는 import하지 않습니다 (ESLint로 막음).
+
+공용 컴포넌트 구성:
+
+```
+components/Button/
+├─ Button.tsx
+├─ Button.module.css
+└─ index.ts          # export { Button } from "./Button";
+```
 
 ## 4. 화면 / 라우트 (초안)
 
@@ -93,16 +116,16 @@ features/fridge/
 ## 5. 데이터 흐름
 
 ```
-Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> src/lib/api/schema.d.ts
+Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.ts
                                                      │
-화면(page.tsx) ─> features/*/components ─> features/*/api.ts (useQuery) ─> lib/api/client.ts ─> Spring API
+화면(page.tsx) ─> _components ─> _lib/queries.ts 또는 @/lib/queries (useQuery) ─> lib/api/client.ts ─> Spring API
                                                      │
                               개발 중 NEXT_PUBLIC_API_MOCKING=true ─> MSW 더미 응답
 ```
 
 - **서버 데이터**는 전부 TanStack Query로 관리합니다. Zustand에 서버 데이터를 복사하지 않습니다.
 - **오래 걸리는 작업**(OCR, AI 식단 생성)은 백엔드가 작업 ID를 주고, 프론트는 `refetchInterval`로 상태를 polling합니다. 완료되면 polling을 멈춥니다.
-- **queryKey**는 기능별 `api.ts`에 모아 둡니다. 예: `fridgeKeys.all`, `fridgeKeys.detail(id)`
+- **queryKey**는 Query 훅과 같은 곳에 둡니다. 라우트의 `_lib/queries.ts`, 공유되면 `lib/queries/<도메인>.ts`. 예: `fridgeKeys.all`, `fridgeKeys.detail(id)`
 
 ## 6. 스타일 규칙
 
@@ -115,12 +138,12 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> src/lib/api/schema
 ## 7. PWA · 푸시 · TWA
 
 - 서비스 워커는 `pnpm build && pnpm start`에서만 켜집니다. 개발 모드와 MSW 사용 중에는 꺼집니다(같은 scope 충돌 방지).
-- 푸시: 프론트가 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`로 구독을 만들어 백엔드에 저장하고, 백엔드가 발송합니다. 수신·클릭 처리는 `src/app/sw.ts`에서 합니다.
+- 푸시: 프론트가 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`로 구독을 만들어 백엔드에 저장하고, 백엔드가 발송합니다. 수신·클릭 처리는 `app/sw.ts`에서 합니다.
 - TWA 배포 전 준비물: 192/512 PNG 아이콘, `public/.well-known/assetlinks.json`(앱 서명 SHA-256), HTTPS 도메인
 
 ## 8. 개발 흐름
 
-1. 백엔드 API가 없으면 `src/mocks/handlers.ts`에 더미 응답을 먼저 만들고 화면을 개발합니다.
+1. 백엔드 API가 없으면 `mocks/handlers.ts`에 더미 응답을 먼저 만들고 화면을 개발합니다.
 2. 백엔드 API가 나오면 `pnpm gen:api`로 타입을 다시 생성하고 MSW 핸들러를 실제 스펙에 맞춥니다.
 3. PR 전에 `pnpm lint && pnpm typecheck && pnpm build`가 통과해야 합니다.
 
