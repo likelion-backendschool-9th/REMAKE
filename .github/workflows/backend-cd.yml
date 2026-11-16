@@ -1,4 +1,4 @@
-# Resuit 방식: dev 검증 후 SSH로 서버에 동기화하고 Docker Compose로 재기동.
+# dev 검증 후 SSH로 서버에 동기화하고, deploy/deploy.sh 로 Blue/Green 무중단 배포를 한다.
 # 서버가 준비되기 전에는 REMAKE_DEPLOY_ENABLED 변수가 없으므로 배포 작업을 건너뛴다.
 name: Backend CD
 
@@ -8,6 +8,7 @@ on:
     paths:
       - 'backend/**'
       - 'compose.prod.yml'
+      - 'deploy/**'
       - '.github/workflows/backend-cd.yml'
   workflow_dispatch:
 
@@ -92,7 +93,7 @@ jobs:
           set -euo pipefail
           ssh -i "$RUNNER_TEMP/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "mkdir -p '$DEPLOY_PATH/backend' && test -f '$DEPLOY_PATH/.env' && docker compose version"
+            "mkdir -p '$DEPLOY_PATH/backend' '$DEPLOY_PATH/deploy' && test -f '$DEPLOY_PATH/.env' && grep -Eq '^APP_PORT=.+' '$DEPLOY_PATH/.env' && docker compose version"
       - name: Copy backend and Compose configuration
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -104,10 +105,14 @@ jobs:
             --exclude='.env' --exclude='.gradle/' --exclude='build/' \
             -e "ssh -i $RUNNER_TEMP/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes" \
             backend/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/backend/"
+          # deploy/ 에는 서버 전용 파일을 두지 않는다. (활성 슬롯 기록은 서버의 proxy/ 에 있어 덮어쓰이지 않는다)
+          rsync -az --delete \
+            -e "ssh -i $RUNNER_TEMP/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes" \
+            deploy/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy/"
           rsync -az \
             -e "ssh -i $RUNNER_TEMP/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes" \
             compose.prod.yml "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/compose.prod.yml"
-      - name: Build and start services
+      - name: Blue/Green deploy
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
@@ -116,4 +121,4 @@ jobs:
           set -euo pipefail
           ssh -i "$RUNNER_TEMP/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd '$DEPLOY_PATH' && docker compose --env-file .env -f compose.prod.yml up -d --build --wait --remove-orphans && docker compose --env-file .env -f compose.prod.yml ps"
+            "cd '$DEPLOY_PATH' && bash deploy/deploy.sh deploy && bash deploy/deploy.sh status"

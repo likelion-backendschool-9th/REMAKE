@@ -1,4 +1,7 @@
 spring:
+  lifecycle:
+    # 종료 시 진행 중인 요청을 기다리는 최대 시간. compose의 stop_grace_period보다 짧게 유지한다.
+    timeout-per-shutdown-phase: 30s
   datasource:
     url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME}
     username: ${DB_USERNAME}
@@ -8,7 +11,18 @@ spring:
       ddl-auto: validate
     show-sql: false
 
+server:
+  # 종료 신호를 받으면 새 요청은 거절하고, 처리 중인 요청이 끝날 때까지 기다린다.
+  shutdown: graceful
+  # Nginx 뒤에서 X-Forwarded-* 헤더를 신뢰해 원래 요청의 스킴과 호스트를 인식한다.
+  forward-headers-strategy: native
+
 management:
+  endpoint:
+    health:
+      probes:
+        # /actuator/health/liveness, /actuator/health/readiness 활성화
+        enabled: true
   endpoints:
     web:
       exposure:
