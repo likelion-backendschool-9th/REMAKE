@@ -39,7 +39,7 @@
 | Secret | `SSH_KNOWN_HOSTS` | 확인된 서버 호스트 키의 `known_hosts` 항목 |
 | Variable | `REMAKE_DEPLOY_ENABLED` | 준비가 끝난 뒤 `true` |
 
-배포 워크플로는 서버의 `.env`와 `proxy/`를 전송하거나 덮어쓰지 않는다. DB 데이터는 Docker named volume에 보존된다.
+배포 워크플로는 서버의 `.env`와 `proxy/`를 전송하거나 덮어쓰지 않는다. DB 데이터는 Docker named volume(`remake_postgres-data`)에 보존된다. `compose.prod.yml`에 프로젝트 이름을 `remake`로 고정해 두었으므로, 배포 디렉터리의 이름이나 위치와 관계없이 같은 볼륨을 쓴다. 이 이름을 바꾸면 빈 볼륨이 새로 만들어지므로 바꾸지 않는다.
 
 ## 호스트 Nginx 설정 (도메인 확정 후)
 

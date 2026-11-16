@@ -39,7 +39,7 @@ user → host Nginx (80/443, domain·TLS) → 127.0.0.1:APP_PORT → proxy conta
 | Secret | `SSH_KNOWN_HOSTS` | `known_hosts` entry of the verified server host key |
 | Variable | `REMAKE_DEPLOY_ENABLED` | `true` once setup is complete |
 
-The deploy workflow never transfers or overwrites the server's `.env` or `proxy/`. DB data is kept in a Docker named volume.
+The deploy workflow never transfers or overwrites the server's `.env` or `proxy/`. DB data is kept in the Docker named volume `remake_postgres-data`. `compose.prod.yml` pins the project name to `remake`, so the same volume is used regardless of the deploy directory's name or location. Do not change this name: a new, empty volume would be created.
 
 ## Host Nginx setup (after the domain is decided)
 
