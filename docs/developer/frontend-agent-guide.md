@@ -8,7 +8,7 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 `frontend/`에서 작업할 �
 
 ## 먼저 읽기
 
-- 작업 전에 [blueprint.md](../../frontend/blueprint.md)를 읽고 기술 스택, 폴더 구조, 라우트, 데이터 흐름을 확인합니다.
+- 작업 전에 [blueprint.md](../../frontend/blueprint.md)(한글판: [frontend-blueprint.md](frontend-blueprint.md))를 읽고 기술 스택, 폴더 구조, 라우트, 데이터 흐름을 확인합니다.
 - blueprint.md와 다른 구조나 라이브러리가 필요하면 코드를 바꾸기 전에 사람에게 먼저 묻습니다.
 
 ## 필수 규칙

@@ -1,130 +1,132 @@
 # REMAKE Frontend Blueprint
 
-냉장고 속 식재료를 관리하고, AI 맞춤 레시피와 소비기한 알림으로 식재료 낭비를 줄이는 서비스의 프론트엔드 설계 문서입니다.
-모바일 우선 PWA로 만들고, PWABuilder(TWA)로 안드로이드 앱으로 패키징합니다.
+Frontend design document for a service that manages fridge ingredients and reduces food waste with AI-tailored recipes and expiry-date alerts.
+It is built as a mobile-first PWA and packaged as an Android app with PWABuilder (TWA).
 
-> 화면 목록과 라우트는 초안입니다. 기획·디자인이 확정되면 이 문서를 먼저 고친 뒤 코드를 바꿉니다.
+Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../docs/developer/frontend-blueprint.md)
 
-## 1. 역할 분담
+> The screen list and routes are a draft. When planning and design are finalized, update this document first, then change the code.
 
-- **프론트(Next.js)**: 화면과 사용자 상호작용만 담당합니다. 비즈니스 로직과 데이터 저장은 하지 않습니다.
-- **백엔드(Spring Boot)**: 인증, 데이터, OCR·AI 처리, 푸시 발송을 담당합니다.
-- 프론트는 Spring REST API만 호출합니다. Next의 Route Handler·Server Action으로 백엔드 기능을 대신 만들지 않습니다.
-  예외: 서비스 워커 서빙 라우트(`src/app/serwist/[path]`).
+## 1. Responsibilities
 
-## 2. 기술 스택
+- **Frontend (Next.js)**: screens and user interaction only. No business logic or data storage.
+- **Backend (Spring Boot)**: authentication, data, OCR and AI processing, push delivery.
+- The frontend calls only the Spring REST API. Do not reimplement backend features with Next Route Handlers or Server Actions.
+  Exception: the service-worker serving route (`src/app/serwist/[path]`).
 
-| 영역            | 기술                                   | 쓰는 이유                                                   |
-| --------------- | -------------------------------------- | ----------------------------------------------------------- |
-| 프레임워크      | Next.js (App Router) + TypeScript      | 라우트별 화면 분리, 화면만 담당                             |
-| 패키지 매니저   | pnpm                                   | 빠른 설치, lockfile로 7명 의존성 버전 통일                  |
-| 스타일          | CSS Modules + CSS 변수                 | 별도 라이브러리 없이 컴포넌트 단위 스타일, 디자인 토큰 공유 |
-| 서버 데이터     | TanStack Query                         | 캐싱, OCR·식단표 진행 상태 polling                          |
-| 클라이언트 상태 | Zustand                                | 로그인 정보 등 최소한만                                     |
-| API 연동        | openapi-typescript + openapi-fetch     | Spring OpenAPI에서 타입 자동 생성, 타입 안전한 호출         |
-| 폼              | React Hook Form + Zod                  | 온보딩, 커스텀 레시피 입력, 재료 수정 검증                  |
-| 날짜            | dayjs                                  | 소비기한 계산, 식단표 주간 캘린더                           |
-| 아이콘          | @solar-icons/react (Solar)             | 트리 셰이킹되는 React 컴포넌트, 오프라인에서도 동작         |
-| PWA·푸시        | Serwist + Web Push                     | 서비스 워커, 오프라인 화면, 소비기한·재구매 알림            |
-| 스토어 배포     | PWABuilder (TWA)                       | 안드로이드 앱 패키지 생성                                   |
-| 웹 배포         | `output: "standalone"` + nginx         | Node 서버를 nginx 뒤에서 실행                               |
-| 코드 품질       | ESLint + Prettier, Husky + lint-staged | 7명 코드 스타일 통일, 커밋 전 자동 검사                     |
-| API 목업        | MSW                                    | 백엔드 완성 전 더미 응답으로 화면 개발                      |
+## 2. Tech stack
 
-## 3. 폴더 구조
+| Area            | Technology                             | Why                                                                           |
+| --------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
+| Framework       | Next.js (App Router) + TypeScript      | Screens split per route; frontend handles screens only                        |
+| Package manager | pnpm                                   | Fast installs; lockfile keeps dependency versions identical for all 7 members |
+| Styling         | CSS Modules + CSS variables            | Component-scoped styles without extra libraries; shared design tokens         |
+| Server data     | TanStack Query                         | Caching; polling the progress of OCR and meal-plan jobs                       |
+| Client state    | Zustand                                | Only the minimum, such as login info                                          |
+| API integration | openapi-typescript + openapi-fetch     | Types generated from Spring OpenAPI; type-safe calls                          |
+| Forms           | React Hook Form + Zod                  | Validation for onboarding, custom recipe input, ingredient edits              |
+| Dates           | dayjs                                  | Expiry-date calculation; weekly meal-plan calendar                            |
+| Icons           | @solar-icons/react (Solar)             | Tree-shakable React components; work offline                                  |
+| PWA & push      | Serwist + Web Push                     | Service worker, offline screen, expiry and repurchase alerts                  |
+| Store release   | PWABuilder (TWA)                       | Generates the Android app package                                             |
+| Web deploy      | `output: "standalone"` + nginx         | Node server running behind nginx                                              |
+| Code quality    | ESLint + Prettier, Husky + lint-staged | Unified code style for 7 people; automatic checks before commit               |
+| API mocking     | MSW                                    | Build screens against dummy responses before the backend is ready             |
+
+## 3. Folder structure
 
 ```
 frontend/
-├─ public/                  # 정적 파일, mockServiceWorker.js, (예정) .well-known/assetlinks.json, icons/
+├─ public/                  # static files, mockServiceWorker.js, (planned) .well-known/assetlinks.json, icons/
 └─ src/
-   ├─ app/                  # 라우트(화면). page.tsx는 얇게 두고 features의 컴포넌트를 조합
-   │  ├─ sw.ts              # 서비스 워커 (캐싱, 푸시 수신)
-   │  ├─ serwist/[path]/    # 서비스 워커 서빙 라우트
-   │  ├─ ~offline/          # 오프라인 대체 화면
-   │  └─ manifest.ts        # PWA 매니페스트
-   ├─ components/           # 여러 기능에서 쓰는 공용 UI (Button, Input, BottomSheet ...)
-   ├─ features/             # 기능별 코드 묶음 (아래 규칙 참고)
-   ├─ hooks/                # 기능과 무관한 공용 훅
+   ├─ app/                  # routes (screens). Keep page.tsx thin; compose components from features
+   │  ├─ sw.ts              # service worker (caching, push handling)
+   │  ├─ serwist/[path]/    # service-worker serving route
+   │  ├─ ~offline/          # offline fallback screen
+   │  └─ manifest.ts        # PWA manifest
+   ├─ components/           # shared UI used by several features (Button, Input, BottomSheet ...)
+   ├─ features/             # code grouped by feature (see rules below)
+   ├─ hooks/                # shared hooks not tied to a feature
    ├─ lib/
-   │  ├─ api/               # client.ts(openapi-fetch), schema.d.ts(자동 생성)
+   │  ├─ api/               # client.ts (openapi-fetch), schema.d.ts (generated)
    │  ├─ query-client.ts
-   │  ├─ dayjs.ts           # ko 로케일 + 플러그인 설정된 dayjs
-   │  └─ env.ts             # 환경 변수는 여기서만 읽는다
-   ├─ mocks/                # MSW 핸들러
-   ├─ providers/            # 전역 Provider (Serwist, TanStack Query, MSW)
-   └─ stores/               # Zustand 스토어
+   │  ├─ dayjs.ts           # dayjs with ko locale and plugins configured
+   │  └─ env.ts             # the only place that reads environment variables
+   ├─ mocks/                # MSW handlers
+   ├─ providers/            # global providers (Serwist, TanStack Query, MSW)
+   └─ stores/               # Zustand stores
 ```
 
-### features 폴더 규칙
+### Feature folder rules
 
-기능 하나 = 폴더 하나. 다른 기능의 내부 파일을 직접 import하지 않고 `index.ts`로 공개한 것만 씁니다.
+One feature = one folder. Do not import another feature's internal files; use only what it exposes through `index.ts`.
 
 ```
 features/fridge/
-├─ api.ts            # API 호출 함수 + queryKey + useQuery/useMutation 훅
-├─ schema.ts         # Zod 스키마 (폼 검증)
-├─ components/       # 이 기능 전용 컴포넌트 (*.tsx + *.module.css)
-├─ utils.ts          # 이 기능 전용 순수 함수 (예: 소비기한 D-day 계산)
-└─ index.ts          # 외부 공개 API
+├─ api.ts            # API call functions + queryKey + useQuery/useMutation hooks
+├─ schema.ts         # Zod schemas (form validation)
+├─ components/       # components for this feature only (*.tsx + *.module.css)
+├─ utils.ts          # pure functions for this feature only (e.g. expiry D-day calculation)
+└─ index.ts          # public API of the feature
 ```
 
-예정 기능 폴더: `auth`, `onboarding`, `fridge`, `receipt`(OCR), `recipe`, `meal-plan`, `notification`, `mypage`
+Planned feature folders: `auth`, `onboarding`, `fridge`, `receipt` (OCR), `recipe`, `meal-plan`, `notification`, `mypage`
 
-## 4. 화면 / 라우트 (초안)
+## 4. Screens / routes (draft)
 
-| 라우트           | 화면           | 주요 기능                                        |
-| ---------------- | -------------- | ------------------------------------------------ |
-| `/`              | 홈             | 소비기한 임박 재료, 추천 레시피 요약             |
-| `/login`         | 로그인         | 소셜 로그인                                      |
-| `/onboarding`    | 온보딩         | 가족 구성, 식습관·알레르기 입력 (RHF + Zod)      |
-| `/fridge`        | 내 냉장고      | 재료 목록, 보관 위치·소비기한 정렬               |
-| `/fridge/[id]`   | 재료 상세·수정 | 수량·소비기한 수정                               |
-| `/fridge/add`    | 재료 등록      | 직접 입력 / 영수증 촬영 선택                     |
-| `/receipt`       | 영수증 OCR     | 업로드 → 처리 상태 polling → 인식 결과 확인·수정 |
-| `/recipes`       | 레시피 추천    | 보유 재료 기반 AI 추천                           |
-| `/recipes/[id]`  | 레시피 상세    | 재료·조리 순서, 부족 재료                        |
-| `/recipes/new`   | 커스텀 레시피  | 레시피 직접 작성 (RHF + Zod)                     |
-| `/meal-plan`     | 식단표         | 주간 캘린더, AI 식단 생성 상태 polling           |
-| `/notifications` | 알림           | 소비기한·재구매 알림 목록, 푸시 권한 설정        |
-| `/mypage`        | 마이페이지     | 프로필, 설정                                     |
+| Route            | Screen                   | Main features                                                      |
+| ---------------- | ------------------------ | ------------------------------------------------------------------ |
+| `/`              | Home                     | Ingredients near expiry, recommended recipe summary                |
+| `/login`         | Login                    | Social login                                                       |
+| `/onboarding`    | Onboarding               | Household, eating habits and allergy input (RHF + Zod)             |
+| `/fridge`        | My fridge                | Ingredient list, sort by storage location / expiry date            |
+| `/fridge/[id]`   | Ingredient detail & edit | Edit quantity and expiry date                                      |
+| `/fridge/add`    | Add ingredient           | Choose manual entry or receipt photo                               |
+| `/receipt`       | Receipt OCR              | Upload → poll processing status → review and edit recognized items |
+| `/recipes`       | Recipe recommendations   | AI recommendations based on owned ingredients                      |
+| `/recipes/[id]`  | Recipe detail            | Ingredients, cooking steps, missing ingredients                    |
+| `/recipes/new`   | Custom recipe            | Write a recipe manually (RHF + Zod)                                |
+| `/meal-plan`     | Meal plan                | Weekly calendar, poll AI meal-plan generation status               |
+| `/notifications` | Notifications            | Expiry and repurchase alert list, push permission settings         |
+| `/mypage`        | My page                  | Profile, settings                                                  |
 
-## 5. 데이터 흐름
+## 5. Data flow
 
 ```
-Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> src/lib/api/schema.d.ts
+Spring API ──(OpenAPI spec)──> pnpm gen:api ──> src/lib/api/schema.d.ts
                                                      │
-화면(page.tsx) ─> features/*/components ─> features/*/api.ts (useQuery) ─> lib/api/client.ts ─> Spring API
+Screen (page.tsx) ─> features/*/components ─> features/*/api.ts (useQuery) ─> lib/api/client.ts ─> Spring API
                                                      │
-                              개발 중 NEXT_PUBLIC_API_MOCKING=true ─> MSW 더미 응답
+                              during development NEXT_PUBLIC_API_MOCKING=true ─> MSW dummy responses
 ```
 
-- **서버 데이터**는 전부 TanStack Query로 관리합니다. Zustand에 서버 데이터를 복사하지 않습니다.
-- **오래 걸리는 작업**(OCR, AI 식단 생성)은 백엔드가 작업 ID를 주고, 프론트는 `refetchInterval`로 상태를 polling합니다. 완료되면 polling을 멈춥니다.
-- **queryKey**는 기능별 `api.ts`에 모아 둡니다. 예: `fridgeKeys.all`, `fridgeKeys.detail(id)`
+- **Server data** is managed entirely with TanStack Query. Do not copy server data into Zustand.
+- **Long-running jobs** (OCR, AI meal-plan generation): the backend returns a job ID and the frontend polls its status with `refetchInterval`. Stop polling when the job completes.
+- **queryKey**s live in each feature's `api.ts`. Example: `fridgeKeys.all`, `fridgeKeys.detail(id)`
 
-## 6. 스타일 규칙
+## 6. Styling rules
 
-- Tailwind나 CSS-in-JS 라이브러리를 쓰지 않습니다. **CSS Modules(`*.module.css`) + `globals.css`의 CSS 변수**만 씁니다.
-- 아이콘은 `@solar-icons/react`의 스타일별 경로에서 import합니다. 예: `import { HomeIcon } from "@solar-icons/react/linear"`. 기본 크기·색·선 두께는 `globals.css`의 `--solar-*` 변수로 정합니다.
-- 색, 간격, 글자 크기, radius는 `globals.css`의 토큰(`--color-*`, `--space-*`, `--font-size-*`, `--radius-*`)을 씁니다. 하드코딩한 값을 새로 만들지 않습니다.
-- 모바일 우선입니다. 기본 레이아웃 최대 폭은 `--layout-max-width`(480px), 좌우 여백은 `--layout-gutter`입니다.
-- 스타일 파일은 컴포넌트와 같은 폴더에 같은 이름으로 둡니다. 예: `IngredientCard.tsx` + `IngredientCard.module.css`
+- No Tailwind or CSS-in-JS libraries. Use only **CSS Modules (`*.module.css`) + CSS variables in `globals.css`**.
+- Import icons from the per-style paths of `@solar-icons/react`. Example: `import { HomeIcon } from "@solar-icons/react/linear"`. Default size, color, and stroke width come from the `--solar-*` variables in `globals.css`.
+- Use the tokens in `globals.css` (`--color-*`, `--space-*`, `--font-size-*`, `--radius-*`) for color, spacing, font size, and radius. Do not introduce new hard-coded values.
+- Mobile first. The default max layout width is `--layout-max-width` (480px) and the side gutter is `--layout-gutter`.
+- Put a style file next to its component with the same name. Example: `IngredientCard.tsx` + `IngredientCard.module.css`
 
-## 7. PWA · 푸시 · TWA
+## 7. PWA · push · TWA
 
-- 서비스 워커는 `pnpm build && pnpm start`에서만 켜집니다. 개발 모드와 MSW 사용 중에는 꺼집니다(같은 scope 충돌 방지).
-- 푸시: 프론트가 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`로 구독을 만들어 백엔드에 저장하고, 백엔드가 발송합니다. 수신·클릭 처리는 `src/app/sw.ts`에서 합니다.
-- TWA 배포 전 준비물: 192/512 PNG 아이콘, `public/.well-known/assetlinks.json`(앱 서명 SHA-256), HTTPS 도메인
+- The service worker runs only with `pnpm build && pnpm start`. It is off in development mode and while MSW is in use (avoids a scope conflict).
+- Push: the frontend creates a subscription with `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and stores it on the backend; the backend sends notifications. Receiving and click handling live in `src/app/sw.ts`.
+- Needed before the TWA release: 192/512 PNG icons, `public/.well-known/assetlinks.json` (app signing SHA-256), an HTTPS domain.
 
-## 8. 개발 흐름
+## 8. Development flow
 
-1. 백엔드 API가 없으면 `src/mocks/handlers.ts`에 더미 응답을 먼저 만들고 화면을 개발합니다.
-2. 백엔드 API가 나오면 `pnpm gen:api`로 타입을 다시 생성하고 MSW 핸들러를 실제 스펙에 맞춥니다.
-3. PR 전에 `pnpm lint && pnpm typecheck && pnpm build`가 통과해야 합니다.
+1. If a backend API does not exist yet, write dummy responses in `src/mocks/handlers.ts` first and build the screen against them.
+2. When the backend API is ready, regenerate types with `pnpm gen:api` and align the MSW handlers with the real spec.
+3. Before a PR, `pnpm lint && pnpm typecheck && pnpm build` must pass.
 
-## 9. 남은 결정 사항
+## 9. Open decisions
 
-- [ ] 인증 방식 (쿠키 세션 / JWT)과 토큰 갱신 흐름
-- [ ] 공용 컴포넌트 목록과 디자인 토큰 확정 (디자인 시안 기준)
-- [ ] 프론트 CI (GitHub Actions: lint · typecheck · build)
-- [ ] 배포 환경 (nginx + Node 컨테이너 구성)
+- [ ] Authentication method (cookie session / JWT) and token refresh flow
+- [ ] Shared component list and final design tokens (based on the design mockups)
+- [ ] Frontend CI (GitHub Actions: lint · typecheck · build)
+- [ ] Deployment environment (nginx + Node container setup)

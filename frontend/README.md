@@ -1,7 +1,7 @@
 # REMAKE Frontend
 
 Next.js (App Router) + TypeScript 기반 PWA. 패키지 매니저는 **pnpm**만 사용합니다.
-설계는 [blueprint.md](./blueprint.md), AI 에이전트 규칙은 [AGENTS.md](./AGENTS.md)를 참고하세요.
+설계는 [blueprint.md](./blueprint.md) (한글판: [docs/developer/frontend-blueprint.md](../docs/developer/frontend-blueprint.md)), AI 에이전트 규칙은 [AGENTS.md](./AGENTS.md) (한글판: [docs/developer/frontend-agent-guide.md](../docs/developer/frontend-agent-guide.md))를 참고하세요.
 
 ## 시작하기
 
