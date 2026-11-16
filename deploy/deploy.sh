@@ -85,7 +85,8 @@ slot_ips() {
 }
 
 running() {
-  "${COMPOSE[@]}" ps --status running --services 2>/dev/null | grep -qx "$1"
+  # grep -q 는 먼저 끝나면서 앞 명령을 SIGPIPE 로 끝낼 수 있고, pipefail 때문에 실패로 판단될 수 있다.
+  "${COMPOSE[@]}" ps --status running --services 2>/dev/null | grep -x "$1" >/dev/null
 }
 
 # postgres 는 떠 있지 않을 때만 띄운다. 슬롯은 --no-deps 로 띄우므로
@@ -160,7 +161,10 @@ verify_public_port() {
   return 1
 }
 
-# 활성 슬롯을 $1 로 전환한다. 실패하면 upstream.conf 와 프록시를 이전 상태로 돌리고 1 을 반환한다.
+# 활성 슬롯을 $1 로 전환한다. 반환값:
+#   0  전환 완료
+#   1  전환하지 못했고, upstream.conf 와 프록시를 이전 상태로 되돌렸다. (새 슬롯을 종료해도 안전)
+#   2  되돌리기도 실패했다. 프록시가 새 슬롯을 가리키고 있을 수 있으므로 새 슬롯을 종료하면 안 된다.
 switch_to() {
   local target="$1" had_prev=0 was_running=0
   if [[ -f "$UPSTREAM_FILE" ]]; then
@@ -170,46 +174,68 @@ switch_to() {
   running proxy && was_running=1
 
   # 이전 상태로 되돌린다. 프록시가 이전 슬롯을 다시 가리키게 하는 것이 목적이다.
+  # 하나라도 실패하면 1 을 반환한다.
   undo_switch() {
     if [[ "$had_prev" == 1 ]]; then
-      mv "$UPSTREAM_FILE.prev" "$UPSTREAM_FILE" || warn "upstream.conf 복구 실패"
+      if ! mv "$UPSTREAM_FILE.prev" "$UPSTREAM_FILE"; then
+        warn "upstream.conf 를 이전 내용으로 복구하지 못했다."
+        return 1
+      fi
     else
       rm -f "$UPSTREAM_FILE"
     fi
     if [[ "$had_prev" == 0 ]]; then
-      "${COMPOSE[@]}" stop proxy >/dev/null 2>&1 || true
+      if ! "${COMPOSE[@]}" stop proxy >/dev/null 2>&1; then
+        warn "프록시를 멈추지 못했다."
+        return 1
+      fi
     elif running proxy; then
-      reload_proxy || warn "이전 설정으로 reload 하지 못했다. 프록시 상태를 직접 확인해야 한다."
+      if ! reload_proxy; then
+        warn "이전 설정으로 reload 하지 못했다."
+        return 1
+      fi
     else
-      "${COMPOSE[@]}" up -d --no-deps --wait proxy \
-        || warn "프록시를 이전 설정으로 다시 띄우지 못했다. 직접 확인해야 한다."
+      if ! "${COMPOSE[@]}" up -d --no-deps --wait proxy; then
+        warn "프록시를 이전 설정으로 다시 띄우지 못했다."
+        return 1
+      fi
     fi
   }
 
-  write_upstream "$target" || { warn "upstream.conf 를 쓰지 못했다"; undo_switch; return 1; }
+  # 되돌리고, 되돌리기 결과에 맞는 반환값(1 또는 2)을 낸다.
+  undo_or_report() {
+    if undo_switch; then return 1; fi
+    return 2
+  }
+
+  if ! write_upstream "$target"; then
+    warn "upstream.conf 를 쓰지 못했다."
+    undo_or_report
+    return
+  fi
 
   if ! validate_proxy; then
     warn "nginx 설정 검사에 실패했다. 전환하지 않는다."
-    undo_switch
-    return 1
+    undo_or_report
+    return
   fi
 
   # 설정이 바뀌지 않았다면 아무 일도 하지 않고, compose 정의가 바뀌었다면 프록시만 다시 만든다.
   if ! "${COMPOSE[@]}" up -d --no-deps --wait proxy; then
     warn "프록시를 띄우지 못했다. 이전 상태로 되돌린다."
-    undo_switch
-    return 1
+    undo_or_report
+    return
   fi
   if [[ "$was_running" == 1 ]] && ! reload_proxy; then
     warn "프록시 reload 에 실패했다. 이전 상태로 되돌린다."
-    undo_switch
-    return 1
+    undo_or_report
+    return
   fi
 
   if ! verify_routes_to "$target" || ! verify_public_port; then
     warn "전환 확인에 실패했다. 이전 상태로 되돌린다."
-    undo_switch
-    return 1
+    undo_or_report
+    return
   fi
 
   rm -f "$UPSTREAM_FILE.prev"
@@ -234,6 +260,13 @@ start_slot() {
   fi
 }
 
+# 전환도 되돌리기도 실패했을 때. 프록시가 어느 슬롯을 가리키는지 알 수 없으므로
+# 새 슬롯과 이전 슬롯을 모두 그대로 두고 멈춘다. (어느 쪽을 꺼도 장애가 날 수 있다)
+die_undo_failed() {
+  die "전환과 되돌리기가 모두 실패했다. backend-$1 와 이전 슬롯을 모두 종료하지 않았다. \
+수동 확인 필요: deploy/deploy.sh status 와 proxy/upstream.conf 를 확인하고, 프록시가 가리키는 슬롯이 응답하는지 확인한다."
+}
+
 # ---- 명령 ----------------------------------------------------------------------
 
 cmd_deploy() {
@@ -248,7 +281,10 @@ cmd_deploy() {
   start_slot "$target" --build \
     || die "새 슬롯이 준비되지 않아 중단한다. 이전 버전(${active:-없음})은 그대로다."
 
-  if ! switch_to "$target"; then
+  local rc=0
+  switch_to "$target" || rc=$?
+  if [[ "$rc" == 2 ]]; then die_undo_failed "$target"; fi
+  if [[ "$rc" != 0 ]]; then
     "${COMPOSE[@]}" stop "backend-$target" >/dev/null 2>&1 || true
     die "전환에 실패해 중단한다. 이전 버전(${active:-없음})은 그대로다."
   fi
@@ -271,7 +307,10 @@ cmd_rollback() {
   # 이미 만들어 둔 이미지로 다시 띄운다. 새로 빌드하지 않는다.
   start_slot "$target" --no-build \
     || die "롤백 대상이 준비되지 않았다. 현재 버전($active)은 그대로다."
-  if ! switch_to "$target"; then
+  local rc=0
+  switch_to "$target" || rc=$?
+  if [[ "$rc" == 2 ]]; then die_undo_failed "$target"; fi
+  if [[ "$rc" != 0 ]]; then
     "${COMPOSE[@]}" stop "backend-$target" >/dev/null 2>&1 || true
     die "롤백 전환에 실패했다. 현재 버전($active)은 그대로다."
   fi
