@@ -135,6 +135,45 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 - Mobile first. The default max layout width is `--layout-max-width` (480px) and the side gutter is `--layout-gutter`.
 - Put a style file next to its component with the same name. Example: `IngredientCard.tsx` + `IngredientCard.module.css`
 
+### 6.1 Semantic HTML
+
+- Choose elements by meaning and purpose, not appearance. Use `a` with `href` for navigation and `button` for actions such as saving; do not substitute clickable `div` elements. Example: a link opens details, a button saves changes.
+- Use `ul` or `ol` with `li` for lists, and `table` with header cells for tabular data. Use neutral containers for layout; do not turn every region into a `section`.
+- Use native form controls with associated `label` elements. Do not use placeholders as the only labels. Give informative images meaningful `alt` text and decorative images empty `alt` text.
+
+Follow the [W3C page structure guide](https://www.w3.org/WAI/tutorials/page-structure/) when expressing content relationships with appropriate elements.
+
+### 6.2 Landmarks and keyboard accessibility
+
+- Use `header` for the page-wide header, `nav` for major navigation, `main` for primary content, and `footer` for a page-wide footer when present. Keep one active `main`; do not duplicate it between layouts and pages. Distinguish article-level `header` and `footer` elements from page-wide landmarks. Give multiple navigation regions distinct names.
+- Provide a skip-to-main-content link. Keep DOM, reading, and focus order aligned. Avoid positive `tabindex` values and preserve visible focus indicators.
+- Make every action keyboard-operable. Example: navigate with Tab and Shift+Tab and activate native buttons with Enter or Space. Move focus into an opened modal, contain focus there, provide a close action and Escape handling, and return focus to its trigger on close.
+- Convey states and errors with text as well as color. Keep content and controls available at increased zoom and narrow viewport widths.
+
+Refer to the [W3C page structure guide](https://www.w3.org/WAI/tutorials/page-structure/) for landmarks and the [W3C keyboard accessibility guide](https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html) for keyboard interaction.
+
+### 6.3 WAI-ARIA usage
+
+Prefer native HTML semantics and behavior. Add ARIA only for names, states, or change announcements that HTML alone cannot convey. Do not duplicate native roles or declare states that differ from the UI. ARIA attributes do not implement keyboard behavior. Follow the [W3C ARIA principles](https://www.w3.org/WAI/ARIA/apg/practices/read-me-first/).
+
+| Attribute | Rule and brief example |
+| --- | --- |
+| `aria-label` | Name icon-only buttons without visible names, such as “Close.” Prefer visible text or a `label` when available and include that wording in the accessible name. |
+| `aria-expanded` | Reflect the actual open/closed state on custom disclosure buttons. Use `aria-controls` to reference the target ID when needed. Example: `false` when collapsed, `true` when expanded. |
+| `aria-live` | Announce save results or loading completion without moving focus. Example: update a pre-existing `polite` region to “Saved.” Reserve `assertive` or `role="alert"` for urgent messages and avoid duplicate announcements. |
+| `aria-describedby` and `aria-invalid` | Associate help/error text with inputs and reflect validation errors. Example: preserve the input value while explaining that field's error. |
+
+Follow the [W3C Disclosure pattern](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/) for expanded states and the [W3C status messages guide](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html) for dynamic announcements.
+
+### 6.4 Basic SEO
+
+- Provide a unique, concise `title` identifying each screen and a `meta description` summarizing its actual content. Example: `Screen name | REMAKE`. Exclude personal information from both.
+- As a project convention, use one `h1` for the page's primary heading and organize subordinate content logically with `h2` through `h6`. Do not choose or skip heading levels for visual sizing.
+- Write link text that describes its destination and image alternatives that convey meaning. Avoid repeating irrelevant keywords in titles and descriptions.
+- Decide search visibility when page policies are finalized. Protect private data with authentication and authorization; search exclusion settings are not access controls.
+
+Refer to the [Google SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide) for titles and descriptions and the [W3C page structure guide](https://www.w3.org/WAI/tutorials/page-structure/) for heading hierarchy.
+
 ## 7. PWA · push · TWA
 
 - The service worker runs only with `pnpm build && pnpm start`. It is off in development mode and while MSW is in use (avoids a scope conflict).

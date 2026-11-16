@@ -135,6 +135,45 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - 모바일 우선입니다. 기본 레이아웃 최대 폭은 `--layout-max-width`(480px), 좌우 여백은 `--layout-gutter`입니다.
 - 스타일 파일은 컴포넌트와 같은 폴더에 같은 이름으로 둡니다. 예: `IngredientCard.tsx` + `IngredientCard.module.css`
 
+### 6.1 시맨틱 HTML
+
+- 태그는 모양이 아니라 의미와 용도에 맞게 선택합니다. 이동에는 `href`가 있는 `a`, 실행·저장에는 `button`을 쓰고, 클릭 가능한 `div`로 대신하지 않습니다. 예: 상세 이동은 링크, 저장 동작은 버튼입니다.
+- 목록은 `ul`·`ol`과 `li`, 표 형태의 데이터는 제목 셀을 갖춘 `table`로 표현합니다. 단순 배치에는 의미 없는 컨테이너를 사용하고 모든 영역을 `section`으로 만들지 않습니다.
+- 입력은 기본 폼 요소와 연결된 `label`을 사용합니다. placeholder만으로 이름을 대신하지 않습니다. 정보 이미지에는 의미 있는 `alt`, 장식 이미지에는 빈 `alt`를 제공합니다.
+
+내용의 관계를 적절한 요소로 표현하는 기준은 [W3C 페이지 구조 가이드](https://www.w3.org/WAI/tutorials/page-structure/)를 따릅니다.
+
+### 6.2 랜드마크 및 키보드 접근성
+
+- 페이지 공통 머리말은 `header`, 주요 탐색은 `nav`, 본문은 `main`, 공통 꼬리말이 있으면 `footer`로 구분합니다. 활성 본문 `main`은 하나로 유지하고 레이아웃과 페이지에서 중복 생성하지 않습니다. 글 내부의 `header`·`footer`는 페이지 전체 랜드마크와 구분합니다. 같은 종류의 탐색 영역이 여러 개라면 이름으로 구별합니다.
+- 반복 탐색을 건너뛰는 ‘본문 바로가기’를 제공하고, DOM 순서와 읽기·포커스 순서를 일치시킵니다. 양수 `tabindex`로 순서를 강제하지 않고 포커스 표시가 보이도록 유지합니다.
+- 모든 조작을 키보드로 수행할 수 있게 합니다. 예: Tab·Shift+Tab으로 이동하고 기본 버튼은 Enter·Space로 실행합니다. 모달은 열릴 때 내부로 포커스를 옮기고 내부에서 순환시키며, 닫기 동작·Escape를 제공하고 닫힌 뒤 실행 요소로 복귀시킵니다.
+- 상태·오류를 색상만으로 구분하지 않고 문구도 제공합니다. 확대나 좁은 화면에서도 내용과 조작 요소가 가려지지 않게 합니다.
+
+랜드마크는 [W3C 페이지 구조 가이드](https://www.w3.org/WAI/tutorials/page-structure/), 키보드 조작은 [W3C 키보드 접근성 가이드](https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html)를 참고합니다.
+
+### 6.3 WAI-ARIA 사용 기준
+
+기본 HTML의 의미와 동작을 우선 사용하고, 이것만으로 전달하기 어려운 이름·상태·변경 알림에 ARIA를 보완합니다. 기본 역할을 중복 지정하거나 실제와 다른 상태를 선언하지 않습니다. ARIA를 붙이는 것만으로 키보드 동작이 생기지는 않습니다. [W3C ARIA 적용 원칙](https://www.w3.org/WAI/ARIA/apg/practices/read-me-first/)
+
+| 속성 | 적용 기준과 간단한 예시 |
+| --- | --- |
+| `aria-label` | 보이는 이름이 없는 아이콘 버튼 등에 ‘닫기’처럼 목적을 부여합니다. 보이는 텍스트나 `label`이 있으면 우선 사용하고 접근 가능한 이름에 해당 문구를 포함합니다. |
+| `aria-expanded` | 사용자 정의 펼침 버튼에 실제 열림·닫힘 상태를 반영합니다. 필요하면 `aria-controls`로 대상 ID를 연결합니다. 예: 접힌 상태는 `false`, 펼친 상태는 `true`. |
+| `aria-live` | 포커스를 옮기지 않는 저장 결과·로딩 완료 안내에 사용합니다. 예: 미리 마련한 `polite` 알림 영역의 문구를 ‘저장되었습니다’로 갱신합니다. 긴급한 알림에만 `assertive` 또는 `role="alert"`를 사용하고 같은 안내를 중복 낭독하지 않습니다. |
+| `aria-describedby`·`aria-invalid` | 입력의 도움말·오류 문구를 연결하고 검증 오류 상태를 반영합니다. 예: 입력값은 유지하면서 해당 필드의 오류 이유를 안내합니다. |
+
+펼침 상태는 [W3C Disclosure 패턴](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/), 동적 안내는 [W3C 상태 메시지 가이드](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html)를 따릅니다.
+
+### 6.4 기본 SEO
+
+- 화면 내용을 식별하는 고유하고 간결한 `title`과 실제 내용을 요약한 `meta description`을 제공합니다. 예: `화면 이름 | REMAKE`. 제목과 설명에 개인 정보는 넣지 않습니다.
+- 페이지 대표 제목은 프로젝트 기준으로 하나의 `h1`을 사용하고 하위 내용을 `h2`~`h6`로 논리적으로 구성합니다. 글자 크기를 맞추려고 제목 단계를 선택하거나 건너뛰지 않습니다.
+- 링크 문구는 목적지를 설명하고 이미지 대체 텍스트는 내용의 의미를 전달합니다. 제목·설명에 무관한 키워드를 반복하지 않습니다.
+- 검색 공개 여부는 페이지 정책이 확정되면 정합니다. 비공개 데이터 접근은 인증·권한으로 보호하며 검색 제외 설정을 접근 제어 수단으로 사용하지 않습니다.
+
+제목·설명 등 기본 검색 표현은 [Google SEO 기본 가이드](https://developers.google.com/search/docs/fundamentals/seo-starter-guide), 제목 계층은 [W3C 페이지 구조 가이드](https://www.w3.org/WAI/tutorials/page-structure/)를 참고합니다.
+
 ## 7. PWA · 푸시 · TWA
 
 - 서비스 워커는 `pnpm build && pnpm start`에서만 켜집니다. 개발 모드와 MSW 사용 중에는 꺼집니다(같은 scope 충돌 방지).
