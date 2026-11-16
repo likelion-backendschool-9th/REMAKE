@@ -14,6 +14,7 @@ user → host Nginx (80/443, domain·TLS) → 127.0.0.1:APP_PORT → proxy conta
 
 - `backend-blue` and `backend-green` are two slots running the same app. While one slot serves traffic, the new version is started in the other.
 - Only one host port (`APP_PORT`, the port assigned to the project) is used, and the `proxy` container listens on it. The slots and the DB are reachable only through the Docker internal network.
+- The server is shared by several teams, so each backend slot has a memory limit (`mem_limit: 2g`) and the Java heap may use up to 75% of it. During a deploy both slots run, so the backend can use up to 4GB. A changed limit takes effect on the next deploy, without downtime.
 - The active slot is the one referenced by `proxy/upstream.conf` on the server. The deploy script rewrites this file and reloads the proxy to switch. It is a server-only file and is never overwritten by the deploy file sync.
 
 ## Current state

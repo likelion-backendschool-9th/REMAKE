@@ -21,6 +21,11 @@ x-backend: &backend
     DB_USERNAME: ${DB_USERNAME:?DB_USERNAME must be set}
     DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
     TZ: Asia/Seoul
+    # 자바 힙을 컨테이너 메모리 상한의 75%까지 쓰게 한다. (기본 25%로는 상한 2g 에서 힙이 512MB 뿐이다)
+    JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
+  # 공유 서버라 다른 팀 앱에 영향을 주지 않도록 메모리 상한을 둔다. 앱 크기에 비해 넉넉하게 잡았다.
+  # 상한이 없으면 JVM 이 서버 전체 메모리의 1/4 까지 힙을 키울 수 있다. 바꾸면 다음 배포부터 적용된다.
+  mem_limit: 2g
   # 앱의 graceful shutdown 대기(30초)보다 길어야 도커가 먼저 강제 종료하지 않는다.
   stop_grace_period: 40s
   healthcheck:
