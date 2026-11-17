@@ -38,7 +38,7 @@ Create work branches by task type. Name format: `<type>/<task-description>`, whe
 - Every work branch opens its PR against `dev`.
 - Review and test changes before merging.
 - Delete work branches after they are merged.
-- No `release` or `hotfix` branches (2-week project).
+- No `release` or `hotfix` branches (short project, ends 2026-12-10).
 
 ## 4. Examples
 

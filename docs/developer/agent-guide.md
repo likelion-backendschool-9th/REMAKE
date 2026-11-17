@@ -30,7 +30,7 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 이 저장소에서 작업할 
   - `fix/` 버그 수정 (`fix/login-error`)
   - `chore/` 환경 설정·유지보수 (`chore/eslint-config`)
   - `docs/` 문서 작업 (`docs/git-convention`)
-- 2주 프로젝트이므로 `release`, `hotfix` 브랜치는 쓰지 않습니다.
+- 2026년 12월 10일에 끝나는 짧은 프로젝트이므로 `release`, `hotfix` 브랜치는 쓰지 않습니다.
 - **`main`, `dev`에 직접 커밋하지 않습니다.** 둘 중 하나에 있으면 먼저 작업 브랜치를 만듭니다.
 - 작업 브랜치는 항상 최신 `dev`에서 만듭니다: `git switch dev && git pull origin dev && git switch -c <유형>/<이름>`
 - 브랜치 하나에서는 주요 작업 하나만 합니다. 관련 없는 작업은 브랜치를 나눕니다.

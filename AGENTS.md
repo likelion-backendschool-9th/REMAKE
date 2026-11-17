@@ -30,7 +30,7 @@ Full reference: [`docs/agent/git-convention.md`](docs/agent/git-convention.md)
   - `fix/` bug fix (`fix/login-error`)
   - `chore/` config and maintenance (`chore/eslint-config`)
   - `docs/` documentation (`docs/git-convention`)
-- No `release` or `hotfix` branches (2-week project).
+- No `release` or `hotfix` branches (short project, ends 2026-12-10).
 - **Never commit to `main` or `dev` directly.** If you are on either, create a work branch first.
 - Always branch from the latest `dev`: `git switch dev && git pull origin dev && git switch -c <type>/<name>`.
 - One branch = one main task. Split unrelated work into separate branches.
