@@ -14,7 +14,7 @@
 - 프론트는 Spring REST API만 호출합니다. Next의 Route Handler·Server Action으로 백엔드 기능을 대신 만들지 않습니다.
   예외: 서비스 워커 서빙 라우트(`app/serwist/[path]`).
 - **`/api/`는 백엔드 경로입니다.** 운영에서는 프론트와 백엔드가 한 도메인을 같이 쓰고, 프록시가 `/api/`로 시작하는 요청을 경로 그대로 Spring으로 보냅니다. 나머지는 모두 Next.js로 갑니다([`deployment.md`](./deployment.md) 참고).
-  - `app/api/` 아래에 페이지, Route Handler 등 어떤 라우트도 만들지 않습니다. 운영에서 그 주소로 온 요청은 Next에 닿지 않습니다.
+  - 주소가 `/api/`로 시작하는 라우트(페이지, Route Handler 등)는 만들지 않습니다. 운영에서 그 주소로 온 요청은 Next에 닿지 않습니다. 폴더가 아니라 URL로 판단합니다. 라우트 그룹은 URL에 나타나지 않아서 `app/(group)/api/...`도 주소는 `/api/...`가 됩니다.
   - 나중에 만들 헬스체크(`/healthz`)처럼 프론트 전용 주소는 `/api/` 밖에 둡니다.
 
 ## 2. 기술 스택

@@ -19,7 +19,8 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 `frontend/`에서 작업할 �
 - 서버 데이터는 TanStack Query로만 다룹니다. Zustand에는 로그인 정보 같은 최소한의 클라이언트 상태만 둡니다.
 - API 호출은 `lib/api/client.ts`(openapi-fetch)를 씁니다. `lib/api/schema.d.ts`는 `pnpm gen:api`로 생성하는 파일이므로 직접 수정하지 않습니다.
 - 백엔드 기능을 Next Route Handler나 Server Action으로 대신 구현하지 않습니다. 비즈니스 로직은 Spring 백엔드 담당입니다.
-- `app/api/` 아래에 라우트를 만들지 않습니다. 운영에서는 프록시가 `/api/` 요청을 모두 백엔드로 보냅니다(blueprint.md §1). API는 Client Component에서만 호출합니다(blueprint.md §5).
+- 주소가 `/api/`로 시작하는 라우트는 만들지 않습니다. `app/(group)/api/`처럼 라우트 그룹을 거쳐도 마찬가지입니다. 운영에서는 프록시가 `/api/` 요청을 모두 백엔드로 보냅니다(blueprint.md §1).
+- API는 Client Component에서 호출합니다. Server Component에서 백엔드를 불러야 하면 먼저 사람에게 묻습니다. 서버용 주소가 따로 필요합니다(blueprint.md §5).
 - 환경 변수는 `lib/env.ts`에서만 읽습니다. 새 변수를 추가하면 `.env.example`에도 추가합니다.
 - 아이콘은 Solar(`@solar-icons/react/<스타일>`)만 씁니다. lucide 등 다른 아이콘 라이브러리를 추가하지 않습니다.
 - 날짜는 `lib/dayjs.ts`에서 export한 `dayjs`를 씁니다 (ko 로케일 설정됨).
