@@ -4,6 +4,10 @@
 #   활성 슬롯은 서버의 ./proxy/upstream.conf 가 가리키며, 배포 스크립트가 이 파일을 바꿔 전환한다.
 # - 슬롯 서비스는 항상 이름을 지정해서 실행한다. (이름 없이 `up -d`를 하면 두 슬롯이 모두 뜬다.)
 
+# 프로젝트 이름을 고정한다. 없으면 서버 배포 폴더 이름이 쓰여서, 폴더 이름이 바뀌면
+# DB 볼륨(remake_postgres-data)이 새로 만들어지고 같은 폴더 이름을 쓰는 다른 사이트와 섞일 수 있다.
+name: remake
+
 x-backend: &backend
   restart: unless-stopped
   depends_on:
@@ -17,6 +21,11 @@ x-backend: &backend
     DB_USERNAME: ${DB_USERNAME:?DB_USERNAME must be set}
     DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
     TZ: Asia/Seoul
+    # 자바 힙을 컨테이너 메모리 상한의 75%까지 쓰게 한다. (기본 25%로는 상한 2g 에서 힙이 512MB 뿐이다)
+    JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
+  # 공유 서버라 다른 팀 앱에 영향을 주지 않도록 메모리 상한을 둔다. 앱 크기에 비해 넉넉하게 잡았다.
+  # 상한이 없으면 JVM 이 서버 전체 메모리의 1/4 까지 힙을 키울 수 있다. 바꾸면 다음 배포부터 적용된다.
+  mem_limit: 2g
   # 앱의 graceful shutdown 대기(30초)보다 길어야 도커가 먼저 강제 종료하지 않는다.
   stop_grace_period: 40s
   healthcheck:

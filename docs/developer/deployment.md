@@ -14,6 +14,7 @@
 
 - `backend-blue`와 `backend-green`은 같은 앱을 실행하는 두 슬롯이다. 한쪽이 서비스하는 동안 다른 쪽에 새 버전을 띄운다.
 - 호스트 포트는 배정받은 포트 하나(`APP_PORT`)만 쓰고, 이를 `proxy` 컨테이너가 받는다. 슬롯과 DB는 도커 내부 네트워크로만 연결된다.
+- 서버를 여러 팀이 함께 쓰므로 백엔드 슬롯마다 메모리 상한(`mem_limit: 2g`)을 두고, 자바 힙은 그 75%까지 쓰게 한다. 배포 중에는 두 슬롯이 함께 떠 있어 최대 4GB가 된다. 상한을 바꾸면 다음 배포부터 적용되고, 무중단으로 바뀐다.
 - 어느 슬롯이 활성인지는 서버의 `proxy/upstream.conf`가 가리킨다. 배포 스크립트가 이 파일을 바꾸고 프록시를 reload해서 전환한다. 배포 파일 동기화로 덮어쓰이지 않는 서버 전용 파일이다.
 
 ## 지금 상태
@@ -39,7 +40,7 @@
 | Secret | `SSH_KNOWN_HOSTS` | 확인된 서버 호스트 키의 `known_hosts` 항목 |
 | Variable | `REMAKE_DEPLOY_ENABLED` | 준비가 끝난 뒤 `true` |
 
-배포 워크플로는 서버의 `.env`와 `proxy/`를 전송하거나 덮어쓰지 않는다. DB 데이터는 Docker named volume에 보존된다.
+배포 워크플로는 서버의 `.env`와 `proxy/`를 전송하거나 덮어쓰지 않는다. DB 데이터는 Docker named volume(`remake_postgres-data`)에 보존된다. `compose.prod.yml`에 프로젝트 이름을 `remake`로 고정해 두었으므로, 배포 디렉터리의 이름이나 위치와 관계없이 같은 볼륨을 쓴다. 이 이름을 바꾸면 빈 볼륨이 새로 만들어지므로 바꾸지 않는다.
 
 ## 호스트 Nginx 설정 (도메인 확정 후)
 
