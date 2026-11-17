@@ -24,7 +24,8 @@ user → host Nginx (80/443, domain·TLS) → 127.0.0.1:APP_PORT → proxy conta
 
 - When changes to `backend/` land on `dev`, `Backend CD` runs; changes to `frontend/` run `Frontend CD`. Changes to the shared deploy files (`compose.prod.yml`, `deploy/`) run both.
 - Each CD first runs its checks (backend `./gradlew build`; frontend `pnpm lint`, `pnpm typecheck`, `pnpm build`) and deploys to the server only if they pass.
-- Actual server deployment runs only after the repository variable `REMAKE_DEPLOY_ENABLED=true` is set. Until a server is chosen, the deploy job is skipped.
+- Development server: <https://remake.newlecture.com> (HTTP requests are redirected to HTTPS).
+- Server deployment has been enabled since 2026-11-17 (repository variable `REMAKE_DEPLOY_ENABLED=true`). When changes land on `dev`, the changed app is deployed to the development server automatically according to the rules above.
 - It can also be run manually via `workflow_dispatch`. The same variable decides whether the server deploy actually runs.
 
 ## Server preparation
@@ -49,14 +50,15 @@ The deploy workflows never transfer or overwrite the server's `.env` or `proxy/`
 
 Frontend `NEXT_PUBLIC_*` values are embedded in the bundle when the image is built, not at runtime. `frontend/Dockerfile` sets the defaults: the API base URL is a same-domain relative path (empty value) and MSW mocking is off. Only the per-server value `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (Web Push public key) goes in the server's `.env`. A changed value takes effect when the next frontend deploy rebuilds the image.
 
-## Host Nginx setup (after the domain is decided)
+## Host Nginx setup (one time)
 
-The server also hosts other sites, so do not touch existing configuration; only add a site file for REMAKE. Once the domain is decided:
+The server also hosts other sites, so do not touch existing configuration; only add a site file for REMAKE. The development server was set up with the following steps on 2026-11-17.
 
-1. Create `/etc/nginx/sites-available/remake` and link it into `sites-enabled`. Set `server_name` to the assigned domain and `proxy_pass` to `http://127.0.0.1:<APP_PORT>`. The port must match `APP_PORT` in `.env`. The inner proxy does the path routing, so the host Nginx forwards every path unchanged.
+1. Create `/etc/nginx/sites-available/remake` and link it into `sites-enabled`. Set `server_name` to the assigned domain and `proxy_pass` to `http://127.0.0.1:<APP_PORT>`. The port must match `APP_PORT` in `.env`. The inner proxy does the path routing, so the host Nginx forwards every path unchanged. Write only the HTTP (port 80) `server` block at first. certbot adds the 443 configuration and the HTTP-to-HTTPS redirect in step 5.
 2. Pass the `Host`, `X-Real-IP`, `X-Forwarded-For`, and `X-Forwarded-Proto` headers. The app needs them to recognize HTTPS requests correctly.
-3. Do not enable caching (`proxy_cache`). The service worker (`/serwist/sw.js`) carries `s-maxage` of 30 days; if a shared cache keeps it, the old service worker is still served after a deploy.
-4. Run `sudo nginx -t`, reload, then issue a certificate with `sudo certbot --nginx -d <domain>`. The domain's DNS must point to this server. PWA and Web Push work only over HTTPS.
+3. Set `proxy_buffering off`. The frontend (Next.js) streams pages in parts; if the host Nginx collects the response before sending it, streaming does not work. The inner proxy has the same setting on the frontend path.
+4. Do not enable caching (`proxy_cache`). The service worker (`/serwist/sw.js`) carries `s-maxage` of 30 days; if a shared cache keeps it, the old service worker is still served after a deploy.
+5. Reload only after `sudo nginx -t` passes. The Nginx is shared with other sites, so a configuration that fails validation also blocks their reloads. If it fails, remove the `sites-enabled/remake` link. Then issue a certificate with `sudo certbot --nginx -d <domain>`. The domain's DNS must point to this server. PWA and Web Push work only over HTTPS. The server's certbot timer renews the certificate automatically.
 
 Do this once. Later deployments never touch the host Nginx.
 
@@ -82,7 +84,7 @@ Deploy flow. Only the app being deployed changes; the other app's slots are neve
 
 There is only one proxy, so deploys and rollbacks run one at a time regardless of the app. If another deploy is in progress, the script waits for it to finish (up to 15 minutes) and then continues. So when a shared-file change starts both CD workflows at once, both apps are deployed in turn.
 
-If any step fails (new slot not ready, config validation failure, proxy start or reload failure, switch check failure), the script restores `proxy/<app>.conf` and the proxy to the previous state and stops. The previous slot is never stopped, so the previous version keeps serving. The proxy is never stopped, because the other app may be serving. The cause (`nginx -t` output, recent logs of the new slot) is written to the deploy log. On an app's first deployment, `blue` is started first. Rollback is possible only to the immediately previous slot.
+If any step fails (new slot not ready, config validation failure, proxy start or reload failure, switch check failure), the script restores `proxy/<app>.conf` and the proxy to the previous state and stops. The previous slot is never stopped, so the previous version keeps serving. The proxy is never stopped, because the other app may be serving. The cause (`nginx -t` output, recent logs of the new slot) is written to the deploy log. On an app's first deployment, `blue` is started first. Rollback is possible only to the immediately previous slot. Even after a rollback, the next run of that app's CD deploys the latest code on `dev`.
 
 In the rare case that the restore also fails (for example, reload with the previous config fails), the proxy may still point to the new slot. Stopping either slot could then cause an outage, so the script leaves both the new and the previous slot running and stops with a "manual check required" error. Check `bash deploy/deploy.sh status` and `proxy/<app>.conf`, run `docker compose --env-file .env -f compose.prod.yml exec proxy nginx -s reload` to make the proxy match the slot files, then stop the unused slot manually.
 
@@ -96,4 +98,18 @@ Changing the `postgres` settings in `compose.prod.yml` is not applied by a deplo
 
 The production profile does not auto-alter the JPA schema and only runs `validate`, so apply DB migrations first when entities change. During a deployment the old and new versions briefly share the same DB, so make schema changes in backward-compatible steps. The backend and the frontend are also deployed separately, so between the two deploys a new frontend may briefly run against the previous backend (or the reverse).
 
-If no server has been chosen yet, do not set `REMAKE_DEPLOY_ENABLED`. At this stage no public service address is created.
+To pause deployment (server maintenance, freezing the version for a demo, or waiting for a fix PR after a rollback), set `REMAKE_DEPLOY_ENABLED` to `false`. The CD workflows then only run their checks and skip the server deploy, and the server keeps running the last deployed version.
+
+## What the app needs because of the deployment setup
+
+These are not team rules; they are conditions that came from implementing the deployment. The app must meet them for the current deployment setup to work. The numeric limits (1MB, 60 seconds) are Nginx defaults left as they are; if you need more, tell the deployment owner so they can be adjusted.
+
+| Condition | Why | If not met | How |
+| --- | --- | --- | --- |
+| The health check path responds without authentication | The Docker health check and the switch check in `deploy/deploy.sh` call `/actuator/health/readiness` without credentials. Once Spring Security is added, every path requires authentication by default. | The new slot never becomes healthy and every deployment fails (the previous version keeps serving). | Permit `/actuator/health/**` without authentication in the Security configuration. External users cannot reach it because the proxy returns 404 for `/actuator`, and the production profile exposes only `health`. |
+| Add new environment variables to `compose.prod.yml` too | The server's `.env` is only used by compose to fill `${...}` in the configuration file. The container receives only the values listed under `environment` in `compose.prod.yml`. | The app works locally and fails to start only in production. | Add a new setting (token secret, external API key, etc.) to the backend `environment` and to `deploy/prod.env.example`, and tell the deployment owner to put the real value in the server's `.env`. |
+| Do not store files inside the container | Every deployment replaces the container. The request body size is limited to 1MB in both the proxy and the host Nginx. | Stored files are lost after a redeploy. Requests over 1MB get 413. | Keep files that must persist, such as uploads, in a volume or external storage (decide with the deployment owner when introducing them). |
+| Expect two versions to run together during a deployment | From the moment the new slot starts until the switch and the old slot stops, both versions usually run for a few tens of seconds. State kept only in server memory is lost at the switch. | Scheduled jobs such as `@Scheduled` can run twice. If login state is kept in an in-memory server session, every user is logged out on every deployment. | Make scheduled jobs safe to run twice or prevent duplicate runs. Do not keep login state in an in-memory server session. |
+| Each request finishes within 60 seconds | The proxy and the host Nginx wait up to 60 seconds for a response. During a deployment the old version waits at most 30 seconds for in-flight requests before stopping. | Long requests are cut off with 504 or interrupted by a deployment. | For long-running work such as OCR, do not wait for completion inside the request; accept the job and let the client poll its status. |
+| Register the development server domain with external services | The app runs behind `https://remake.newlecture.com`. It recognizes that the original request was HTTPS from the headers passed by the host Nginx (`server.forward-headers-strategy: native`). | External integrations such as social login fail only in production. | Register social login redirect URIs and similar addresses as `https://remake.newlecture.com/...`. |
+| Write logs to the console (standard output) | `docker logs` and the log size limit (10MB × 3) apply only to console output. | Log files pile up inside the container without a size limit and are lost on redeploy. | Keep Spring's default (console output) and do not add a log file configuration. |
