@@ -1,0 +1,65 @@
+name: Notify Campfire
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+
+    steps:
+      - name: Send PR notification to Campfire
+        env:
+          WEBHOOK_URL: ${{ secrets.CAMPFIRE_WEBHOOK_URL }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          AVATAR: ${{ github.event.pull_request.user.avatar_url }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          EVENT_ACTION: ${{ github.event.action }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "CAMPFIRE_WEBHOOK_URL secret is missing."
+            exit 1
+          fi
+
+          case "$EVENT_ACTION" in
+            opened) STATUS="PR 생성" ;;
+            reopened) STATUS="PR 다시 열림" ;;
+            ready_for_review) STATUS="PR 리뷰 준비 완료" ;;
+          esac
+
+          TEXT=$(printf '작성자: %s\n브랜치: %s → %s' \
+            "$AUTHOR" "$HEAD_BRANCH" "$BASE_BRANCH")
+
+          PAYLOAD=$(jq -n \
+            --arg title "[$REPO] $STATUS #$PR_NUMBER: $PR_TITLE" \
+            --arg link "$PR_URL" \
+            --arg author "$AUTHOR" \
+            --arg icon "$AVATAR" \
+            --arg text "$TEXT" \
+            '{
+              attachments: [{
+                color: "#0969da",
+                author_name: $author,
+                author_icon: $icon,
+                title: $title,
+                title_link: $link,
+                text: $text
+              }]
+            }')
+
+          curl --silent --show-error --fail-with-body \
+            --connect-timeout 10 --max-time 30 \
+            -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            --data "$PAYLOAD"
