@@ -27,7 +27,10 @@ ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
     NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm build
+# 서비스 워커(/serwist/sw.js)가 빌드 때 미리 생성됐는지 확인한다. (blueprint.md §7)
+# 요청할 때 생성되는 라우트로 빌드되면 운영 이미지에서 500 이 나므로, 그런 이미지는 여기서 빌드를 멈춘다.
+RUN pnpm build \
+ && test -f .next/server/app/serwist/sw.js.body
 
 # ---- 실행 ---------------------------------------------------------------------
 FROM node:22-alpine AS runner
