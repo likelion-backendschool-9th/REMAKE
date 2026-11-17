@@ -1,19 +1,53 @@
-# 백엔드 CI: dev/main으로 향하는 PR에서 backend 코드가 바뀌었을 때만 빌드·테스트 실행
+# 백엔드 CI: 모든 PR에 검사 결과를 보고하고, 백엔드 변경 시에만 빌드한다.
 name: Backend CI
 
 on:
   pull_request:
     branches: [dev, main]
+  push:
+    branches: [dev]
     paths:
       - 'backend/**'
       - '.github/workflows/backend-ci.yml'
 
 concurrency:
-  group: backend-ci-${{ github.event.pull_request.number }}
+  group: backend-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
+  changes:
+    name: Backend change detection
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.detect.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+      - name: Detect backend changes
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = push ]; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -Eq '^(backend/|\.github/workflows/backend-ci\.yml$)'; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    name: Backend build and test
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -61,3 +95,50 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew build --console=plain
+
+  docker-build:
+    name: Backend Docker build
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build backend image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          push: false
+          cache-from: type=gha,scope=backend
+          cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=max,scope=backend' || '' }}
+
+  required:
+    name: Backend CI required
+    needs: [changes, build, docker-build]
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      EVENT_NAME: ${{ github.event_name }}
+      CHANGED: ${{ needs.changes.outputs.changed }}
+      DETECT_RESULT: ${{ needs.changes.result }}
+      BUILD_RESULT: ${{ needs.build.result }}
+      DOCKER_RESULT: ${{ needs.docker-build.result }}
+    steps:
+      - name: Verify backend checks
+        run: |
+          if [ "$DETECT_RESULT" != success ]; then
+            echo '::error::Backend change detection failed'
+            exit 1
+          fi
+          if [ "$CHANGED" = true ]; then
+            if [ "$EVENT_NAME" = pull_request ] && [ "$BUILD_RESULT" != success ]; then
+              echo '::error::Backend build and test did not pass'
+              exit 1
+            fi
+            if [ "$DOCKER_RESULT" != success ]; then
+              echo '::error::Backend Docker build did not pass'
+              exit 1
+            fi
+          fi
