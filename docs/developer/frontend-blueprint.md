@@ -13,6 +13,9 @@
 - **백엔드(Spring Boot)**: 인증, 데이터, OCR·AI 처리, 푸시 발송을 담당합니다.
 - 프론트는 Spring REST API만 호출합니다. Next의 Route Handler·Server Action으로 백엔드 기능을 대신 만들지 않습니다.
   예외: 서비스 워커 서빙 라우트(`app/serwist/[path]`).
+- **`/api/`는 백엔드 경로입니다.** 운영에서는 프론트와 백엔드가 한 도메인을 같이 쓰고, 프록시가 `/api/`로 시작하는 요청을 경로 그대로 Spring으로 보냅니다. 나머지는 모두 Next.js로 갑니다([`deployment.md`](./deployment.md) 참고).
+  - `app/api/` 아래에 페이지, Route Handler 등 어떤 라우트도 만들지 않습니다. 운영에서 그 주소로 온 요청은 Next에 닿지 않습니다.
+  - 나중에 만들 헬스체크(`/healthz`)처럼 프론트 전용 주소는 `/api/` 밖에 둡니다.
 
 ## 2. 기술 스택
 
@@ -123,6 +126,8 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
                               개발 중 NEXT_PUBLIC_API_MOCKING=true ─> MSW 더미 응답
 ```
 
+- **API 주소**: 운영 이미지는 `NEXT_PUBLIC_API_BASE_URL`을 빈 값으로 빌드합니다. 그래서 `lib/api/client.ts`가 같은 도메인의 상대 경로(`/api/...`)로 호출하고, 프록시가 Spring으로 넘깁니다. 로그인 쿠키도 CORS 설정 없이 동작합니다. 로컬 개발에서는 기본값 `http://localhost:8080`을 씁니다(출처가 달라서 백엔드에 CORS 설정이 필요합니다).
+  - 상대 경로는 브라우저에서만 동작합니다. API는 Client Component(TanStack Query)에서 호출합니다. Server Component에서 백엔드를 불러야 하면 먼저 물어봅니다. 실행할 때 넘기는 서버용 주소가 따로 필요합니다.
 - **서버 데이터**는 전부 TanStack Query로 관리합니다. Zustand에 서버 데이터를 복사하지 않습니다.
 - **오래 걸리는 작업**(OCR, AI 식단 생성)은 백엔드가 작업 ID를 주고, 프론트는 `refetchInterval`로 상태를 polling합니다. 완료되면 polling을 멈춥니다.
 - **queryKey**는 Query 훅과 같은 곳에 둡니다. 라우트의 `_lib/queries.ts`, 공유되면 `lib/queries/<도메인>.ts`. 예: `fridgeKeys.all`, `fridgeKeys.detail(id)`
