@@ -13,6 +13,9 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 - **Backend (Spring Boot)**: authentication, data, OCR and AI processing, push delivery.
 - The frontend calls only the Spring REST API. Do not reimplement backend features with Next Route Handlers or Server Actions.
   Exception: the service-worker serving route (`app/serwist/[path]`).
+- **`/api/` belongs to the backend.** In production the frontend and backend share one domain, and the proxy sends every path starting with `/api/` to Spring unchanged. Everything else goes to Next.js (see [`docs/agent/deployment.md`](../docs/agent/deployment.md)).
+  - Do not create pages, Route Handlers, or any other route under `app/api/`. Requests to them never reach Next in production.
+  - Frontend-only endpoints such as a future health check (`/healthz`) go outside `/api/`.
 
 ## 2. Tech stack
 
@@ -123,6 +126,8 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
                               during development NEXT_PUBLIC_API_MOCKING=true ─> MSW dummy responses
 ```
 
+- **API address**: production images are built with an empty `NEXT_PUBLIC_API_BASE_URL`, so `lib/api/client.ts` calls the same domain with relative paths (`/api/...`) and the proxy forwards them to Spring. Login cookies work without CORS. In local development it defaults to `http://localhost:8080` (a different origin, so the backend needs CORS).
+  - Relative paths only work in the browser. Call the API from Client Components (TanStack Query). If a Server Component must call the backend, ask first: it needs a separate server-side address set at runtime.
 - **Server data** is managed entirely with TanStack Query. Do not copy server data into Zustand.
 - **Long-running jobs** (OCR, AI meal-plan generation): the backend returns a job ID and the frontend polls its status with `refetchInterval`. Stop polling when the job completes.
 - **queryKey**s live next to their query hooks: the route's `_lib/queries.ts`, or `lib/queries/<domain>.ts` once shared. Example: `fridgeKeys.all`, `fridgeKeys.detail(id)`
