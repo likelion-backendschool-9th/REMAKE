@@ -18,6 +18,8 @@ Korean translation for developers: [`docs/developer/agent-guide.md`](docs/develo
 
 If a subfolder has its own `AGENTS.md`, follow it together with this file when working there.
 
+When working in `backend/` or `frontend/`, also check [What the app needs because of the deployment setup](docs/agent/deployment.md#what-the-app-needs-because-of-the-deployment-setup). It lists conditions that come from the deployment setup, not team rules (e.g. permit the health check path without authentication when adding Spring Security, add new environment variables to `compose.prod.yml`).
+
 ---
 
 ## 1. Branches
