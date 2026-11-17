@@ -25,7 +25,7 @@ com.remake
 │       │   └── scheduler       Scheduled jobs (only where needed)
 │       └── out
 │           ├── persistence     JPA entities, repositories, Port implementations
-│           └── ai / ocr / oauth / storage  External service calls (only where needed)
+│           └── ai / ocr / oauth / filestorage  External service calls (only where needed)
 │
 └── global                      Shared by all features
     ├── error                   ErrorCode, BusinessException, GlobalExceptionHandler
@@ -57,12 +57,13 @@ When a feature needs a connection other than `adapter/in/web` and `adapter/out/p
 | AI (recipe generation, category estimation) | `adapter/out/ai` | `recipe/adapter/out/ai` |
 | OCR (reading receipt text) | `adapter/out/ocr` | `receipt/adapter/out/ocr` |
 | Social login | `adapter/out/oauth` | `auth/adapter/out/oauth` |
-| File storage (receipt photos) | `adapter/out/storage` | `receipt/adapter/out/storage` |
+| File storage (receipt photos) | `adapter/out/filestorage` | `receipt/adapter/out/filestorage` |
 
 - Schedulers call only `UseCase` interfaces, like controllers.
 - Services never call external services directly; they call `port/out` interfaces only. External call code implements those interfaces in the adapter folders above.
 - Keep external service config shared by several features (API keys, HTTP clients) in one place in `global/config`.
 - If you need a connection not in the table, choose a name and add it to this table first.
+- The file storage folder is `filestorage`, not `storage`. `storage` means an ingredient's storage location (fridge, freezer, pantry), so keep the two apart.
 
 ### Class name examples (ingredient feature)
 
@@ -89,6 +90,14 @@ Use the same word in code, DB, and API.
 | 레시피 (recipe) | `recipe` |
 | 알림 (notification) | `notification` |
 
+## API paths
+
+- Every controller path starts with `/api/v1/`, written directly on the controller. Example: `@RequestMapping("/api/v1/ingredients")`
+- In production the proxy sends only requests starting with `/api/` to the backend and everything else to the frontend. Breaking this rule works locally but returns 404 in production.
+- Do not add the prefix with `server.servlet.context-path` or a global path setting (`addPathPrefix`). `context-path` also moves the health check (`/actuator/health/readiness`) and breaks deployment; a global prefix turns a controller that also writes `/api` into `/api/api/...`.
+- Use the full `/api/v1/...` path in Security `requestMatchers` too.
+- If you need a path outside `/api/` (WebSocket, file download, etc.), tell the deployment owner before building it. The proxy needs a new rule.
+
 ## Responses and errors
 
 On success, return the Response DTO as-is without a wrapper. Distinguish success and failure by HTTP status code: 201 for creation, 204 for deletion without a body, 200 for other successes. On failure, every API returns this shape:
@@ -105,3 +114,4 @@ On success, return the Response DTO as-is without a wrapper. Distinguish success
 - Never return domain objects or JPA entities directly; convert them to Response DTOs.
 - Services only throw `BusinessException(ErrorCode.XXX)`. `GlobalExceptionHandler` in `global/error` builds every error response in one place. Do not build error responses with try-catch in controllers or services.
 - Keep all error codes in the single `global/error/ErrorCode`.
+- 401 (login required) and 403 (forbidden) are rejected in the Security filter chain and never reach `GlobalExceptionHandler`. Return the same `{code, message}` shape from `AuthenticationEntryPoint` (401) and `AccessDeniedHandler` (403) in `global/security`.

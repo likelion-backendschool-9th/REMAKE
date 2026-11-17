@@ -25,7 +25,7 @@ com.remake
 │       │   └── scheduler       예약 작업 (필요한 기능만)
 │       └── out
 │           ├── persistence     JPA Entity, Repository, Port 구현
-│           └── ai / ocr / oauth / storage  외부 서비스 호출 (필요한 기능만)
+│           └── ai / ocr / oauth / filestorage  외부 서비스 호출 (필요한 기능만)
 │
 └── global                      모든 기능이 같이 쓰는 것
     ├── error                   ErrorCode, BusinessException, GlobalExceptionHandler
@@ -57,12 +57,13 @@ com.remake
 | AI (레시피 생성, 카테고리 추정) | `adapter/out/ai` | `recipe/adapter/out/ai` |
 | OCR (영수증 글자 읽기) | `adapter/out/ocr` | `receipt/adapter/out/ocr` |
 | 소셜 로그인 | `adapter/out/oauth` | `auth/adapter/out/oauth` |
-| 파일 저장 (영수증 사진) | `adapter/out/storage` | `receipt/adapter/out/storage` |
+| 파일 저장 (영수증 사진) | `adapter/out/filestorage` | `receipt/adapter/out/filestorage` |
 
 - 스케줄러는 Controller처럼 `UseCase`만 부릅니다.
 - Service는 외부 서비스를 직접 부르지 않고 `port/out` 인터페이스만 부릅니다. 외부 서비스 호출 코드는 위 adapter 폴더에서 그 인터페이스를 구현합니다.
 - 여러 기능이 같이 쓰는 외부 서비스 설정(API 키, HTTP 클라이언트)은 `global/config`에 하나만 둡니다.
 - 표에 없는 연결이 필요하면 이름을 정해서 이 표에 먼저 추가합니다.
+- 파일 저장 폴더는 `storage`가 아니라 `filestorage`입니다. `storage`는 재료의 보관 위치(냉장·냉동·실온)를 뜻하는 단어라 겹치지 않게 합니다.
 
 ### 클래스 이름 예시 (재료 기능)
 
@@ -89,6 +90,14 @@ com.remake
 | 레시피 | `recipe` |
 | 알림 | `notification` |
 
+## API 주소
+
+- 모든 Controller 주소는 `/api/v1/`로 시작하고, Controller에 직접 씁니다. 예: `@RequestMapping("/api/v1/ingredients")`
+- 운영 서버는 `/api/`로 시작하는 요청만 백엔드로 보내고 나머지는 프론트로 보냅니다. 이 규칙을 어기면 로컬에서는 동작하지만 운영에서는 404가 납니다.
+- `server.servlet.context-path`나 전역 경로 설정(`addPathPrefix`)으로 앞부분을 붙이지 않습니다. `context-path`는 헬스체크 주소(`/actuator/health/readiness`)까지 바꿔서 배포가 실패하고, 전역 설정은 Controller에 `/api`를 또 쓰면 `/api/api/...`가 됩니다.
+- Security 설정의 `requestMatchers`에도 `/api/v1/...` 전체 주소를 씁니다.
+- `/api/` 밖에 둬야 하는 주소(WebSocket, 파일 다운로드 등)가 필요하면 만들기 전에 배포 담당자에게 알립니다. 프록시 규칙을 추가해야 합니다.
+
 ## 응답과 에러
 
 성공하면 Response DTO를 감싸지 않고 그대로 돌려줍니다. 성공과 실패는 HTTP 상태 코드로 구분합니다. 생성은 201, 본문 없는 삭제는 204, 나머지 성공은 200입니다. 실패하면 모든 API가 아래 모양으로 돌려줍니다.
@@ -105,3 +114,4 @@ com.remake
 - 도메인 객체나 JPA Entity를 그대로 응답으로 내보내지 않고 Response DTO로 바꿔서 줍니다.
 - 에러는 Service에서 `BusinessException(ErrorCode.XXX)`로 던지기만 합니다. 응답은 `global/error`의 `GlobalExceptionHandler`가 한 곳에서 만듭니다. Controller와 Service에서 try-catch로 에러 응답을 만들지 않습니다.
 - 에러 코드는 `global/error/ErrorCode` 하나에 모읍니다.
+- 로그인이 필요함(401)과 권한 없음(403)은 Security 필터 단계에서 막혀 `GlobalExceptionHandler`를 거치지 않습니다. `global/security`의 `AuthenticationEntryPoint`(401)와 `AccessDeniedHandler`(403)에서도 같은 `{code, message}` 모양으로 응답합니다.
