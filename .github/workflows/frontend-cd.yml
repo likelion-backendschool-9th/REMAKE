@@ -1,0 +1,119 @@
+# dev 검증 후 SSH로 서버에 동기화하고, deploy/deploy.sh 로 프론트를 Blue/Green 무중단 배포한다.
+# 서버가 준비되기 전에는 REMAKE_DEPLOY_ENABLED 변수가 없으므로 배포 작업을 건너뛴다.
+# 공용 배포 파일(compose.prod.yml, deploy/)이 바뀌면 Backend CD 도 함께 실행된다.
+# 두 배포가 겹치면 서버의 deploy.sh 가 앞 배포가 끝날 때까지 기다렸다가 이어서 한다.
+name: Frontend CD
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'frontend/**'
+      - 'compose.prod.yml'
+      - 'deploy/**'
+      - '.github/workflows/frontend-cd.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: frontend-cd-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # 머지된 dev 코드를 검사한다. 실패하면 서버에 보내지 않는다.
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      HUSKY: '0'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Find pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # Frontend CI 가 저장한 의존성 캐시를 같은 키로 읽기만 한다.
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build
+
+  deploy:
+    needs: verify
+    if: vars.REMAKE_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          for value in "$DEPLOY_HOST" "$DEPLOY_USER" "$DEPLOY_PATH" "$SSH_PRIVATE_KEY" "$SSH_KNOWN_HOSTS"; do
+            test -n "$value" || { echo '::error::A deployment secret is missing'; exit 1; }
+          done
+          [[ "$DEPLOY_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
+          [[ "$DEPLOY_USER" =~ ^[a-zA-Z0-9._-]+$ ]]
+          [[ "$DEPLOY_PATH" =~ ^/[a-zA-Z0-9._/-]+$ ]]
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$RUNNER_TEMP/deploy_key"
+          chmod 600 "$RUNNER_TEMP/deploy_key"
+      - name: Check server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "mkdir -p '$DEPLOY_PATH/frontend' '$DEPLOY_PATH/deploy' && test -f '$DEPLOY_PATH/.env' && grep -Eq '^APP_PORT=.+' '$DEPLOY_PATH/.env' && docker compose version"
+      - name: Copy frontend and Compose configuration
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            --exclude='.env' --exclude='.env.local' --exclude='node_modules/' --exclude='.next/' \
+            -e "ssh -i $RUNNER_TEMP/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes" \
+            frontend/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/frontend/"
+          # deploy/ 에는 서버 전용 파일을 두지 않는다. (활성 슬롯 기록은 서버의 proxy/ 에 있어 덮어쓰이지 않는다)
+          rsync -az --delete \
+            -e "ssh -i $RUNNER_TEMP/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes" \
+            deploy/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/deploy/"
+          rsync -az \
+            -e "ssh -i $RUNNER_TEMP/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes" \
+            compose.prod.yml "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/compose.prod.yml"
+      - name: Blue/Green deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          ssh -i "$RUNNER_TEMP/deploy_key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd '$DEPLOY_PATH' && bash deploy/deploy.sh frontend deploy && bash deploy/deploy.sh status"
