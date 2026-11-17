@@ -24,7 +24,8 @@
 
 - `dev`에 `backend/` 변경이 들어오면 `Backend CD`, `frontend/` 변경이 들어오면 `Frontend CD`가 실행된다. 공용 배포 파일(`compose.prod.yml`, `deploy/`)이 바뀌면 둘 다 실행된다.
 - 각 CD는 먼저 검사(백엔드 `./gradlew build`, 프론트 `pnpm lint`, `pnpm typecheck`, `pnpm build`)를 하고, 통과해야 서버에 배포한다.
-- 실제 서버 배포는 저장소 변수 `REMAKE_DEPLOY_ENABLED=true`를 설정한 뒤부터 실행된다. 서버가 정해지기 전에는 배포 작업이 건너뛰어진다.
+- 개발 서버: <https://remake.newlecture.com> (HTTP로 접속하면 HTTPS로 이동한다).
+- 2026-11-17부터 서버 배포가 켜져 있다(저장소 변수 `REMAKE_DEPLOY_ENABLED=true`). `dev`에 머지되면 위 규칙에 따라 바뀐 앱이 개발 서버에 자동으로 반영된다.
 - `workflow_dispatch`로 수동 실행할 수도 있다. 실제 서버 배포 여부에는 같은 변수가 적용된다.
 
 ## 서버 준비
@@ -49,14 +50,15 @@
 
 프론트의 `NEXT_PUBLIC_*` 값은 실행할 때가 아니라 이미지를 빌드할 때 번들에 들어간다. API 주소는 같은 도메인의 상대 경로(빈 값)로, MSW 목업은 꺼진 상태로 `frontend/Dockerfile`에 기본값이 정해져 있다. 서버마다 다른 값인 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`(Web Push 공개 키)만 서버의 `.env`에 적는다. 값을 바꾸면 다음 프론트 배포 때 다시 빌드되어 적용된다.
 
-## 호스트 Nginx 설정 (도메인 확정 후)
+## 호스트 Nginx 설정 (최초 1회)
 
-서버에는 다른 사이트가 함께 운영되므로 기존 설정은 건드리지 않고 REMAKE용 사이트 파일만 추가한다. 도메인이 정해지면 다음을 진행한다.
+서버에는 다른 사이트가 함께 운영되므로 기존 설정은 건드리지 않고 REMAKE용 사이트 파일만 추가한다. 개발 서버는 2026-11-17에 다음 절차로 설정했다.
 
-1. `/etc/nginx/sites-available/remake`를 만들고 `sites-enabled`에 링크한다. `server_name`은 배정받은 도메인으로, `proxy_pass`는 `http://127.0.0.1:<APP_PORT>`로 지정한다. 포트는 `.env`의 `APP_PORT`와 같아야 한다. 경로 분기는 안쪽 프록시가 하므로 호스트 Nginx는 모든 경로를 그대로 넘긴다.
+1. `/etc/nginx/sites-available/remake`를 만들고 `sites-enabled`에 링크한다. `server_name`은 배정받은 도메인으로, `proxy_pass`는 `http://127.0.0.1:<APP_PORT>`로 지정한다. 포트는 `.env`의 `APP_PORT`와 같아야 한다. 경로 분기는 안쪽 프록시가 하므로 호스트 Nginx는 모든 경로를 그대로 넘긴다. 처음에는 HTTP(80) `server` 블록만 작성한다. 443 설정과 HTTP→HTTPS 리다이렉트는 5번에서 certbot이 추가한다.
 2. `Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto` 헤더를 넘긴다. 앱이 HTTPS 요청을 올바르게 인식하는 데 필요하다.
-3. 캐시(`proxy_cache`)를 켜지 않는다. 서비스 워커(`/serwist/sw.js`)에는 `s-maxage` 30일이 붙어 있어서, 공유 캐시에 남으면 배포한 뒤에도 예전 서비스 워커가 나간다.
-4. `sudo nginx -t` 후 reload하고, `sudo certbot --nginx -d <도메인>`으로 인증서를 발급한다. 도메인의 DNS가 이 서버를 가리켜야 한다. PWA와 Web Push는 HTTPS에서만 동작한다.
+3. `proxy_buffering off`를 지정한다. 프론트(Next.js)는 화면을 나눠 스트리밍으로 보내는데, 호스트 Nginx가 응답을 모았다가 보내면 스트리밍이 동작하지 않는다. 안쪽 프록시도 프론트 경로에 같은 설정을 둔다.
+4. 캐시(`proxy_cache`)를 켜지 않는다. 서비스 워커(`/serwist/sw.js`)에는 `s-maxage` 30일이 붙어 있어서, 공유 캐시에 남으면 배포한 뒤에도 예전 서비스 워커가 나간다.
+5. `sudo nginx -t`가 통과한 뒤에만 reload한다. 다른 사이트와 같은 Nginx를 쓰므로, 검사에 실패한 설정을 남겨 두면 다른 사이트의 reload까지 막힌다. 실패하면 `sites-enabled/remake` 링크를 지운다. 그다음 `sudo certbot --nginx -d <도메인>`으로 인증서를 발급한다. 도메인의 DNS가 이 서버를 가리켜야 한다. PWA와 Web Push는 HTTPS에서만 동작한다. 인증서는 서버의 certbot 타이머가 자동으로 갱신한다.
 
 이 설정은 최초 한 번만 하며, 이후 배포에서는 호스트 Nginx를 건드리지 않는다.
 
@@ -82,7 +84,7 @@ bash deploy/deploy.sh status              # 앱별 활성 슬롯과 컨테이너
 
 프록시가 하나라서 배포와 롤백은 앱과 관계없이 한 번에 하나씩만 한다. 다른 배포가 진행 중이면 끝날 때까지 기다렸다가(최대 15분) 이어서 한다. 그래서 공용 파일이 바뀌어 두 CD가 동시에 시작해도 둘 다 차례로 배포된다.
 
-어느 단계에서든 실패하면(새 슬롯 준비 실패, 설정 검사 실패, 프록시 시작이나 reload 실패, 전환 확인 실패) `proxy/<앱>.conf`와 프록시를 이전 상태로 되돌리고 중단한다. 이전 슬롯은 종료하지 않으므로 이전 버전이 계속 서비스된다. 다른 앱이 서비스 중일 수 있으므로 프록시는 멈추지 않는다. 실패 원인(`nginx -t` 출력, 새 슬롯의 최근 로그)은 배포 로그에 남는다. 그 앱을 처음 배포할 때는 `blue`가 먼저 올라간다. 롤백은 바로 직전 슬롯으로만 가능하다.
+어느 단계에서든 실패하면(새 슬롯 준비 실패, 설정 검사 실패, 프록시 시작이나 reload 실패, 전환 확인 실패) `proxy/<앱>.conf`와 프록시를 이전 상태로 되돌리고 중단한다. 이전 슬롯은 종료하지 않으므로 이전 버전이 계속 서비스된다. 다른 앱이 서비스 중일 수 있으므로 프록시는 멈추지 않는다. 실패 원인(`nginx -t` 출력, 새 슬롯의 최근 로그)은 배포 로그에 남는다. 그 앱을 처음 배포할 때는 `blue`가 먼저 올라간다. 롤백은 바로 직전 슬롯으로만 가능하다. 롤백한 뒤에도 그 앱의 CD가 다시 실행되면 `dev`의 최신 코드가 배포된다.
 
 드물게 되돌리기까지 실패하면(예: 이전 설정으로 reload 실패) 프록시가 새 슬롯을 가리키고 있을 수 있다. 이때는 어느 슬롯을 꺼도 장애가 날 수 있으므로 새 슬롯과 이전 슬롯을 모두 그대로 두고 "수동 확인 필요" 오류로 중단한다. `bash deploy/deploy.sh status`와 `proxy/<앱>.conf`를 확인하고, `docker compose --env-file .env -f compose.prod.yml exec proxy nginx -s reload`로 프록시를 기록 파일에 맞춘 뒤, 쓰지 않는 슬롯을 직접 종료한다.
 
@@ -96,4 +98,4 @@ bash deploy/deploy.sh status              # 앱별 활성 슬롯과 컨테이너
 
 운영 프로필은 JPA 스키마를 자동 변경하지 않고 `validate`만 수행하므로, 엔티티 변경 시 DB 마이그레이션을 먼저 적용해야 한다. 배포 중에는 이전 버전과 새 버전이 잠시 같은 DB를 함께 쓰므로, 스키마 변경은 이전 버전과 호환되게 단계적으로 한다. 백엔드와 프론트도 따로 배포되므로, 두 배포 사이에는 잠시 새 프론트와 이전 백엔드(또는 그 반대)가 함께 동작할 수 있다.
 
-서버가 아직 정해지지 않았다면 `REMAKE_DEPLOY_ENABLED`를 설정하지 않는다. 이 단계에서는 실제 서비스 주소가 생성되지 않는다.
+배포를 잠시 멈춰야 할 때(서버 작업, 시연 버전 고정, 롤백 후 수정 PR을 기다릴 때)는 `REMAKE_DEPLOY_ENABLED`를 `false`로 바꾼다. CD는 검사만 하고 서버 배포를 건너뛰며, 서버는 마지막으로 배포된 버전 그대로 동작한다.

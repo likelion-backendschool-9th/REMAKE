@@ -24,7 +24,8 @@ user → host Nginx (80/443, domain·TLS) → 127.0.0.1:APP_PORT → proxy conta
 
 - When changes to `backend/` land on `dev`, `Backend CD` runs; changes to `frontend/` run `Frontend CD`. Changes to the shared deploy files (`compose.prod.yml`, `deploy/`) run both.
 - Each CD first runs its checks (backend `./gradlew build`; frontend `pnpm lint`, `pnpm typecheck`, `pnpm build`) and deploys to the server only if they pass.
-- Actual server deployment runs only after the repository variable `REMAKE_DEPLOY_ENABLED=true` is set. Until a server is chosen, the deploy job is skipped.
+- Development server: <https://remake.newlecture.com> (HTTP requests are redirected to HTTPS).
+- Server deployment has been enabled since 2026-11-17 (repository variable `REMAKE_DEPLOY_ENABLED=true`). When changes land on `dev`, the changed app is deployed to the development server automatically according to the rules above.
 - It can also be run manually via `workflow_dispatch`. The same variable decides whether the server deploy actually runs.
 
 ## Server preparation
@@ -49,14 +50,15 @@ The deploy workflows never transfer or overwrite the server's `.env` or `proxy/`
 
 Frontend `NEXT_PUBLIC_*` values are embedded in the bundle when the image is built, not at runtime. `frontend/Dockerfile` sets the defaults: the API base URL is a same-domain relative path (empty value) and MSW mocking is off. Only the per-server value `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (Web Push public key) goes in the server's `.env`. A changed value takes effect when the next frontend deploy rebuilds the image.
 
-## Host Nginx setup (after the domain is decided)
+## Host Nginx setup (one time)
 
-The server also hosts other sites, so do not touch existing configuration; only add a site file for REMAKE. Once the domain is decided:
+The server also hosts other sites, so do not touch existing configuration; only add a site file for REMAKE. The development server was set up with the following steps on 2026-11-17.
 
-1. Create `/etc/nginx/sites-available/remake` and link it into `sites-enabled`. Set `server_name` to the assigned domain and `proxy_pass` to `http://127.0.0.1:<APP_PORT>`. The port must match `APP_PORT` in `.env`. The inner proxy does the path routing, so the host Nginx forwards every path unchanged.
+1. Create `/etc/nginx/sites-available/remake` and link it into `sites-enabled`. Set `server_name` to the assigned domain and `proxy_pass` to `http://127.0.0.1:<APP_PORT>`. The port must match `APP_PORT` in `.env`. The inner proxy does the path routing, so the host Nginx forwards every path unchanged. Write only the HTTP (port 80) `server` block at first. certbot adds the 443 configuration and the HTTP-to-HTTPS redirect in step 5.
 2. Pass the `Host`, `X-Real-IP`, `X-Forwarded-For`, and `X-Forwarded-Proto` headers. The app needs them to recognize HTTPS requests correctly.
-3. Do not enable caching (`proxy_cache`). The service worker (`/serwist/sw.js`) carries `s-maxage` of 30 days; if a shared cache keeps it, the old service worker is still served after a deploy.
-4. Run `sudo nginx -t`, reload, then issue a certificate with `sudo certbot --nginx -d <domain>`. The domain's DNS must point to this server. PWA and Web Push work only over HTTPS.
+3. Set `proxy_buffering off`. The frontend (Next.js) streams pages in parts; if the host Nginx collects the response before sending it, streaming does not work. The inner proxy has the same setting on the frontend path.
+4. Do not enable caching (`proxy_cache`). The service worker (`/serwist/sw.js`) carries `s-maxage` of 30 days; if a shared cache keeps it, the old service worker is still served after a deploy.
+5. Reload only after `sudo nginx -t` passes. The Nginx is shared with other sites, so a configuration that fails validation also blocks their reloads. If it fails, remove the `sites-enabled/remake` link. Then issue a certificate with `sudo certbot --nginx -d <domain>`. The domain's DNS must point to this server. PWA and Web Push work only over HTTPS. The server's certbot timer renews the certificate automatically.
 
 Do this once. Later deployments never touch the host Nginx.
 
@@ -82,7 +84,7 @@ Deploy flow. Only the app being deployed changes; the other app's slots are neve
 
 There is only one proxy, so deploys and rollbacks run one at a time regardless of the app. If another deploy is in progress, the script waits for it to finish (up to 15 minutes) and then continues. So when a shared-file change starts both CD workflows at once, both apps are deployed in turn.
 
-If any step fails (new slot not ready, config validation failure, proxy start or reload failure, switch check failure), the script restores `proxy/<app>.conf` and the proxy to the previous state and stops. The previous slot is never stopped, so the previous version keeps serving. The proxy is never stopped, because the other app may be serving. The cause (`nginx -t` output, recent logs of the new slot) is written to the deploy log. On an app's first deployment, `blue` is started first. Rollback is possible only to the immediately previous slot.
+If any step fails (new slot not ready, config validation failure, proxy start or reload failure, switch check failure), the script restores `proxy/<app>.conf` and the proxy to the previous state and stops. The previous slot is never stopped, so the previous version keeps serving. The proxy is never stopped, because the other app may be serving. The cause (`nginx -t` output, recent logs of the new slot) is written to the deploy log. On an app's first deployment, `blue` is started first. Rollback is possible only to the immediately previous slot. Even after a rollback, the next run of that app's CD deploys the latest code on `dev`.
 
 In the rare case that the restore also fails (for example, reload with the previous config fails), the proxy may still point to the new slot. Stopping either slot could then cause an outage, so the script leaves both the new and the previous slot running and stops with a "manual check required" error. Check `bash deploy/deploy.sh status` and `proxy/<app>.conf`, run `docker compose --env-file .env -f compose.prod.yml exec proxy nginx -s reload` to make the proxy match the slot files, then stop the unused slot manually.
 
@@ -96,4 +98,4 @@ Changing the `postgres` settings in `compose.prod.yml` is not applied by a deplo
 
 The production profile does not auto-alter the JPA schema and only runs `validate`, so apply DB migrations first when entities change. During a deployment the old and new versions briefly share the same DB, so make schema changes in backward-compatible steps. The backend and the frontend are also deployed separately, so between the two deploys a new frontend may briefly run against the previous backend (or the reverse).
 
-If no server has been chosen yet, do not set `REMAKE_DEPLOY_ENABLED`. At this stage no public service address is created.
+To pause deployment (server maintenance, freezing the version for a demo, or waiting for a fix PR after a rollback), set `REMAKE_DEPLOY_ENABLED` to `false`. The CD workflows then only run their checks and skip the server deploy, and the server keeps running the last deployed version.
