@@ -99,3 +99,9 @@ Changing the `postgres` settings in `compose.prod.yml` is not applied by a deplo
 The production profile does not auto-alter the JPA schema and only runs `validate`, so apply DB migrations first when entities change. During a deployment the old and new versions briefly share the same DB, so make schema changes in backward-compatible steps. The backend and the frontend are also deployed separately, so between the two deploys a new frontend may briefly run against the previous backend (or the reverse).
 
 To pause deployment (server maintenance, freezing the version for a demo, or waiting for a fix PR after a rollback), set `REMAKE_DEPLOY_ENABLED` to `false`. The CD workflows then only run their checks and skip the server deploy, and the server keeps running the last deployed version.
+
+## What the app needs because of the deployment setup
+
+These are not team rules; they are conditions that came from implementing the deployment. The app must meet them for the current deployment setup to work.
+
+- **The health check path must respond without authentication.** The Docker health check and the switch check in `deploy/deploy.sh` call the backend's `/actuator/health/readiness` without credentials. Once Spring Security is added, every path requires authentication by default, so these requests get 401. The new slot then never becomes healthy and every deployment fails (the previous version keeps serving). Permit `/actuator/health/**` without authentication in the Security configuration. External users cannot reach it because the proxy returns 404 for `/actuator`, and the production profile exposes no actuator endpoint other than `health`.
