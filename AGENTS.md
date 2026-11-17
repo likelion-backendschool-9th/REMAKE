@@ -9,7 +9,7 @@ Korean translation for developers: [`docs/developer/agent-guide.md`](docs/develo
 
 | Path | Contents | More rules |
 | --- | --- | --- |
-| `backend/` | Spring Boot API server | — |
+| `backend/` | Spring Boot API server | [`docs/agent/backend-convention.md`](docs/agent/backend-convention.md) |
 | `frontend/` | Next.js PWA | `frontend/AGENTS.md` (if present) |
 | `deploy/`, `compose.prod.yml` | Deployment config | [`docs/agent/deployment.md`](docs/agent/deployment.md) |
 | `docs/agent/` | Docs for AI agents (English) | see §5 |
@@ -145,6 +145,7 @@ Current pairs:
 | `AGENTS.md` | `docs/developer/agent-guide.md` |
 | `docs/agent/git-convention.md` | `docs/developer/git-convention.md` |
 | `docs/agent/deployment.md` | `docs/developer/deployment.md` |
+| `docs/agent/backend-convention.md` | `docs/developer/backend-convention.md` |
 | `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
 | `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |
 
