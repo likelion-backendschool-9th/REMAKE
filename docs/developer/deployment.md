@@ -32,16 +32,17 @@
 2. REMAKE만 사용하는 디렉터리를 정하고 그 안에 `.env`를 만든다. [`deploy/prod.env.example`](../../deploy/prod.env.example)을 참고해 DB 비밀번호를 채우고 파일 권한을 `600`으로 제한한다. 이 디렉터리의 `backend/`, `frontend/`, `deploy/`는 배포 시 소스가 동기화되므로 다른 파일을 두지 않는다.
 3. 서버에서 배정받은 호스트 포트를 `.env`의 `APP_PORT`에 입력한다. 값이 없으면 compose가 실행되지 않고, 배포 워크플로도 서버 확인 단계에서 멈춘다.
 4. GitHub Actions 전용 SSH 키를 준비하고, 공개 키를 배포 계정의 `authorized_keys`에 등록한다. 서버 호스트 키 지문을 별도로 확인한 뒤 `known_hosts` 항목을 저장한다.
-5. 저장소 **Settings → Secrets and variables → Actions**에 다음을 설정한다. 두 CD가 같은 값을 쓴다.
+5. 저장소 **Settings → Environments**에 `production` 환경을 만들고, **Deployment branches**를 `dev` 브랜치 하나로 제한한다.
+6. 다음 값을 설정한다. 두 CD가 같은 값을 쓴다. 배포 Secret은 저장소 전체가 아니라 `production` 환경의 Secret으로 둔다. 두 CD의 배포 작업만 이 환경을 쓰므로, 다른 브랜치나 다른 워크플로에서는 서버 접속 키를 꺼낼 수 없다. `REMAKE_DEPLOY_ENABLED`는 배포 작업의 실행 조건(`if`)에서 읽는데, 이 조건은 환경 값을 읽기 전에 계산되므로 저장소 변수(**Settings → Secrets and variables → Actions**)로 둔다.
 
-| 종류 | 이름 | 값 |
-| --- | --- | --- |
-| Secret | `DEPLOY_HOST` | 서버의 도메인 또는 IPv4 주소 |
-| Secret | `DEPLOY_USER` | SSH 배포 계정 |
-| Secret | `DEPLOY_PATH` | 서버의 배포 디렉터리 절대 경로. 공백 없이 지정 |
-| Secret | `SSH_PRIVATE_KEY` | Actions 전용 개인 키 전체 내용 |
-| Secret | `SSH_KNOWN_HOSTS` | 확인된 서버 호스트 키의 `known_hosts` 항목 |
-| Variable | `REMAKE_DEPLOY_ENABLED` | 준비가 끝난 뒤 `true` |
+| 종류 | 위치 | 이름 | 값 |
+| --- | --- | --- | --- |
+| Secret | `production` 환경 | `DEPLOY_HOST` | 서버의 도메인 또는 IPv4 주소 |
+| Secret | `production` 환경 | `DEPLOY_USER` | SSH 배포 계정 |
+| Secret | `production` 환경 | `DEPLOY_PATH` | 서버의 배포 디렉터리 절대 경로. 공백 없이 지정 |
+| Secret | `production` 환경 | `SSH_PRIVATE_KEY` | Actions 전용 개인 키 전체 내용 |
+| Secret | `production` 환경 | `SSH_KNOWN_HOSTS` | 확인된 서버 호스트 키의 `known_hosts` 항목 |
+| Variable | 저장소 | `REMAKE_DEPLOY_ENABLED` | 준비가 끝난 뒤 `true` |
 
 배포 워크플로는 서버의 `.env`와 `proxy/`를 전송하거나 덮어쓰지 않는다. DB 데이터는 Docker named volume(`remake_postgres-data`)에 보존된다. `compose.prod.yml`에 프로젝트 이름을 `remake`로 고정해 두었으므로, 배포 디렉터리의 이름이나 위치와 관계없이 같은 볼륨을 쓴다. 이 이름을 바꾸면 빈 볼륨이 새로 만들어지므로 바꾸지 않는다.
 

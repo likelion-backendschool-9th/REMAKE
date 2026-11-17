@@ -32,16 +32,17 @@ user → host Nginx (80/443, domain·TLS) → 127.0.0.1:APP_PORT → proxy conta
 2. Choose a directory used only by REMAKE and create `.env` inside it. Fill in the DB password using [`deploy/prod.env.example`](../../deploy/prod.env.example) as a reference and restrict the file permission to `600`. The `backend/`, `frontend/`, and `deploy/` folders in this directory are overwritten by source sync on every deploy, so do not put other files there.
 3. Enter the assigned host port as `APP_PORT` in `.env`. Without it, compose does not run and the deploy workflow stops at the server check step.
 4. Prepare an SSH key dedicated to GitHub Actions and add its public key to the deploy account's `authorized_keys`. Verify the server host key fingerprint separately, then save the `known_hosts` entry.
-5. Under repository **Settings → Secrets and variables → Actions**, set the following. Both CD workflows use the same values.
+5. Under repository **Settings → Environments**, create the `production` environment and restrict its **Deployment branches** to the `dev` branch only.
+6. Set the following. Both CD workflows use the same values. Store the deploy secrets as secrets of the `production` environment, not as repository secrets. Only the deploy jobs of the two CD workflows use this environment, so other branches and other workflows cannot read the server access key. `REMAKE_DEPLOY_ENABLED` is read in the deploy job's `if` condition, which is evaluated before environment values are available, so keep it as a repository variable (**Settings → Secrets and variables → Actions**).
 
-| Kind | Name | Value |
-| --- | --- | --- |
-| Secret | `DEPLOY_HOST` | Server domain or IPv4 address |
-| Secret | `DEPLOY_USER` | SSH deploy account |
-| Secret | `DEPLOY_PATH` | Absolute path of the deploy directory on the server, no spaces |
-| Secret | `SSH_PRIVATE_KEY` | Full contents of the Actions-only private key |
-| Secret | `SSH_KNOWN_HOSTS` | `known_hosts` entry of the verified server host key |
-| Variable | `REMAKE_DEPLOY_ENABLED` | `true` once setup is complete |
+| Kind | Location | Name | Value |
+| --- | --- | --- | --- |
+| Secret | `production` environment | `DEPLOY_HOST` | Server domain or IPv4 address |
+| Secret | `production` environment | `DEPLOY_USER` | SSH deploy account |
+| Secret | `production` environment | `DEPLOY_PATH` | Absolute path of the deploy directory on the server, no spaces |
+| Secret | `production` environment | `SSH_PRIVATE_KEY` | Full contents of the Actions-only private key |
+| Secret | `production` environment | `SSH_KNOWN_HOSTS` | `known_hosts` entry of the verified server host key |
+| Variable | Repository | `REMAKE_DEPLOY_ENABLED` | `true` once setup is complete |
 
 The deploy workflows never transfer or overwrite the server's `.env` or `proxy/`. DB data is kept in the Docker named volume `remake_postgres-data`. `compose.prod.yml` pins the project name to `remake`, so the same volume is used regardless of the deploy directory's name or location. Do not change this name: a new, empty volume would be created.
 
