@@ -107,6 +107,8 @@ git push -u origin docs/git-convention
 - 모든 작업 브랜치는 `dev`를 대상으로 PR을 생성한다.
 - PR 제목은 커밋 컨벤션과 동일한 유형을 사용한다.
 - PR 내용에는 작업 목적, 주요 변경 사항 및 테스트 결과를 작성한다. 본문은 [PR 템플릿](../../.github/pull_request_template.md)의 항목(변경 내용, 관련 이슈, 테스트, 리뷰 요청)을 모두 채운다.
+- `dev` 또는 `main` 대상 PR은 병합 전에 `Backend CI required`와 `Frontend CI required` 검사를 통과해야 한다.
+- 두 검사는 모든 PR에 결과를 보고한다. 해당 영역에 변경이 없으면 백엔드 또는 프론트엔드 빌드 잡은 건너뛰므로, 브랜치 룰셋에는 개별 빌드 잡을 필수 검사로 등록하지 않는다.
 - 팀원 리뷰 및 확인이 완료되면 Merge한다.
 - Merge가 완료되면 원격 및 로컬 작업 브랜치를 삭제한다.
 
