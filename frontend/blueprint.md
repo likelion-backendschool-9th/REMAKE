@@ -14,7 +14,7 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 - The frontend calls only the Spring REST API. Do not reimplement backend features with Next Route Handlers or Server Actions.
   Exception: the service-worker serving route (`app/serwist/[path]`).
 - **`/api/` belongs to the backend.** In production the frontend and backend share one domain, and the proxy sends every path starting with `/api/` to Spring unchanged. Everything else goes to Next.js (see [`docs/agent/deployment.md`](../docs/agent/deployment.md)).
-  - Do not create pages, Route Handlers, or any other route under `app/api/`. Requests to them never reach Next in production.
+  - Do not create any route (page, Route Handler, etc.) whose URL starts with `/api/`. Requests to them never reach Next in production. Judge by the URL, not the folder: route groups do not appear in the URL, so `app/(group)/api/...` is also served at `/api/...`.
   - Frontend-only endpoints such as a future health check (`/healthz`) go outside `/api/`.
 
 ## 2. Tech stack
