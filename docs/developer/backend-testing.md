@@ -10,10 +10,10 @@
 | --- | --- |
 | `backend/src/test/java/com/remake/support/IntegrationTestSupport.java` | 모든 통합 테스트의 부모 클래스. `test` 프로필로 앱을 한 번 띄우고 PostgreSQL 컨테이너, MockMvc, 시험용 시계를 준비하며, 테스트가 끝날 때마다 정리한다 |
 | `backend/src/test/java/com/remake/support/TestDatabase.java` | 앱이 뜬 직후 테이블을 검사한다. 테스트가 끝날 때마다 기준 데이터 테이블을 뺀 모든 테이블을 비운다 |
-| `backend/src/test/java/com/remake/support/MutableClock.java` | 시험용 시계. 기본은 한국 시간 2026-03-04 10:00. `clock.setNow(...)`로 바꾸고, 테스트가 끝나면 기본값으로 돌아간다 |
+| `backend/src/test/java/com/remake/support/MutableClock.java` | 시험용 시계. 기본은 한국 시간 2026-03-04 10:00. 스스로 움직이지 않는다. `clock.setNow(...)`로 바꾸거나 `clock.advance(...)`로 앞으로 옮기고, 테스트가 끝나면 기본값으로 돌아간다 |
 | `backend/src/test/resources/application-test.yml` | `test` 프로필 설정 |
 | `backend/src/test/java/com/remake/RemakeApplicationTests.java` | 앱이 뜨는지(마이그레이션, 엔티티 검사, Bean 연결) 확인한다 |
-| `backend/src/test/java/com/remake/ScheduledSettingsTest.java` | 모든 `@Scheduled` 설정(cron, 시간대, 지연·간격 값, 설정 값 참조)을 Spring의 검사기로 검사한다. 작업은 실행하지 않는다. 테스트에서는 스케줄러를 꺼 두므로 앱이 뜰 때 Spring이 검사하지 않는다 |
+| `backend/src/test/java/com/remake/ScheduledSettingsTest.java` | 모든 `@Scheduled` 설정(cron, 시간대, 지연·간격 값, `${...}` 설정 값 참조, `#{...}` SpEL 식)을 Spring의 검사기로 검사한다. 값은 앱이 뜰 때 Spring이 푸는 방식 그대로 푼다. 작업은 실행하지 않는다. 테스트에서는 스케줄러를 꺼 두므로 앱이 뜰 때 Spring이 검사하지 않는다 |
 
 ## 테스트 실행
 
@@ -47,7 +47,7 @@
 3. 통합 테스트에는 `@Transactional`을 붙이지 않는다. 데이터가 운영처럼 실제로 커밋되므로, 커밋할 때만 드러나는 버그를 테스트가 잡는다. 서비스에서 빠뜨린 `@Transactional`, 커밋할 때 나는 제약 위반, `@TransactionalEventListener` 코드가 그렇다. 테스트가 끝날 때마다 `TestDatabase`가 테이블을 비운다.
 4. 테스트 데이터는 각 테스트 안이나 `@BeforeEach`에서 만든다. `@BeforeAll`에서 만든 데이터는 첫 테스트가 끝나면 지워진다. id를 숫자로 적지 않는다. 만든 행의 id를 쓰고, 기준 데이터는 code나 name 같은 유일 키로 찾는다.
 5. 테스트에서 기준 데이터를 바꾸지 않는다. 바꾸면 그 테스트가 실패한다.
-6. 시간은 부모의 `clock`으로 정한다: `clock.setNow(ZonedDateTime.of(..., MutableClock.ZONE))`.
+6. 시간은 부모의 `clock`으로 정한다: `clock.setNow(ZonedDateTime.of(..., MutableClock.ZONE))`. 시계는 스스로 움직이지 않으므로, 한 테스트에서 저장한 행은 `createdAt`과 `updatedAt`이 모두 같다. 시간 순서나 바뀐 수정 시각을 확인하는 테스트는 저장 사이에 시계를 옮긴다: `clock.advance(Duration.ofMinutes(1))`. 옮기지 않으면 정렬할 기준이 없어 PostgreSQL이 저장한 순서대로 나온다. 그래서 최신순 테스트는 실패하고, 오래된순 테스트는 `ORDER BY`가 없어도 통과한다.
 7. `IntegrationTestSupport`가 띄우는 PostgreSQL 컨테이너를 쓴다. 테스트 클래스에서 컨테이너를 띄우거나 DB 설정을 넣지 않는다.
 8. JUnit 병렬 실행을 켜지 않는다. 테스트마다 테이블을 비우므로, 동시에 돌면 서로의 데이터를 지운다.
 9. 테스트에서 `static` 값을 바꾸지 않는다. 모든 테스트가 같이 쓰고, 아무것도 되돌리지 않는다.

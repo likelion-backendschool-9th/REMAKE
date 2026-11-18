@@ -10,10 +10,10 @@ Support code:
 | --- | --- |
 | `backend/src/test/java/com/remake/support/IntegrationTestSupport.java` | Base class of every integration test. Starts the application once with the `test` profile, a PostgreSQL container, MockMvc, and the test clock, and cleans up after each test |
 | `backend/src/test/java/com/remake/support/TestDatabase.java` | Checks the tables right after startup. Truncates every table except the reference tables after each test |
-| `backend/src/test/java/com/remake/support/MutableClock.java` | Test clock. Default 2026-03-04 10:00 Asia/Seoul. Change it with `clock.setNow(...)`; it resets after each test |
+| `backend/src/test/java/com/remake/support/MutableClock.java` | Test clock. Default 2026-03-04 10:00 Asia/Seoul. It does not move by itself. Change it with `clock.setNow(...)` or move it forward with `clock.advance(...)`; it resets after each test |
 | `backend/src/test/resources/application-test.yml` | Settings of the `test` profile |
 | `backend/src/test/java/com/remake/RemakeApplicationTests.java` | Checks that the application starts (migrations, entity validation, bean wiring) |
-| `backend/src/test/java/com/remake/ScheduledSettingsTest.java` | Checks every `@Scheduled` setting (cron, zone, delay and rate values, placeholders) with Spring's own checker, without running the jobs. Tests turn scheduling off, so Spring does not check them at startup |
+| `backend/src/test/java/com/remake/ScheduledSettingsTest.java` | Checks every `@Scheduled` setting (cron, zone, delay and rate values, `${...}` placeholders, `#{...}` SpEL expressions) with Spring's own checker, resolving values the same way Spring does at startup, without running the jobs. Tests turn scheduling off, so Spring does not check them at startup |
 
 ## Running the tests
 
@@ -47,7 +47,7 @@ Choose the lightest type that can actually verify what you test. Do not replace 
 3. Do not add `@Transactional` to integration tests. Data is committed as in production, so tests catch bugs that appear only on commit: a missing `@Transactional` in a service, constraint violations raised at commit, and `@TransactionalEventListener` code. `TestDatabase` truncates the tables after each test.
 4. Create test data in each test or in `@BeforeEach`. Data created in `@BeforeAll` is deleted after the first test. Do not hardcode IDs: use the IDs of the rows you created, and find reference data by a unique key (code or name).
 5. Do not change reference data in tests. The test fails.
-6. Use the parent's `clock` for time: `clock.setNow(ZonedDateTime.of(..., MutableClock.ZONE))`.
+6. Use the parent's `clock` for time: `clock.setNow(ZonedDateTime.of(..., MutableClock.ZONE))`. The clock does not move by itself, so rows saved in one test get the same `createdAt` and `updatedAt`. When a test checks order by time or a changed update time, move the clock between saves: `clock.advance(Duration.ofMinutes(1))`. Otherwise there is nothing to sort by and rows come back in the order PostgreSQL stored them: a newest-first test fails, and an oldest-first test passes even without `ORDER BY`.
 7. Use the PostgreSQL container that `IntegrationTestSupport` starts. Do not start containers or set DB properties in test classes.
 8. Do not enable JUnit parallel execution. Every test truncates the tables, so parallel tests delete each other's data.
 9. Do not change `static` values in tests. Every test in the run shares them, and nothing resets them.
