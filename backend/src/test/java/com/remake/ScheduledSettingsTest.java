@@ -7,7 +7,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
+import org.springframework.beans.factory.config.EmbeddedValueResolver;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.annotation.ScheduledAnnotationBeanPostProcessor;
 
 import com.remake.support.IntegrationTestSupport;
@@ -17,12 +18,13 @@ import com.remake.support.IntegrationTestSupport;
 class ScheduledSettingsTest extends IntegrationTestSupport {
 
 	@Autowired
-	ApplicationContext context;
+	ConfigurableApplicationContext context;
 
 	@Test
 	void 모든_Scheduled_설정이_올바르다() {
 		ScheduledAnnotationBeanPostProcessor checker = new ScheduledAnnotationBeanPostProcessor();
-		checker.setEmbeddedValueResolver(context.getEnvironment()::resolveRequiredPlaceholders);
+		// 앱이 뜰 때 Spring이 쓰는 것과 같은 방식으로 값을 푼다(${...} 설정 값과 #{...} SpEL).
+		checker.setEmbeddedValueResolver(new EmbeddedValueResolver(context.getBeanFactory()));
 		List<String> errors = new ArrayList<>();
 		try {
 			for (String name : context.getBeanDefinitionNames()) {
