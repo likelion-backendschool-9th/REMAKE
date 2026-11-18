@@ -1,5 +1,7 @@
-# 배포 파일 CI: 모든 PR에 검사 결과를 보고하고, 배포 파일(compose.prod.yml, deploy/)이 바뀐 PR만 검사한다.
-# 이 검사가 없으면 배포 파일의 실수는 dev 에 머지된 뒤 CD 에서야 드러나고, 고칠 때까지 자동 배포가 막힌다.
+# 배포·CI 설정 파일 검사: 모든 PR에 검사 결과를 보고하고, 해당 파일이 바뀐 PR만 검사한다.
+# - 배포 파일(compose.prod.yml, deploy/): 셸 스크립트, Compose, 프록시 Nginx 설정
+# - 워크플로 파일(.github/workflows/): actionlint
+# 이 검사가 없으면 이 파일들의 실수는 dev 에 머지된 뒤 CD 에서야 드러나고, 고칠 때까지 자동 배포가 막힌다.
 name: Deploy CI
 
 on:
@@ -18,28 +20,35 @@ jobs:
     name: Deploy change detection
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.detect.outputs.changed }}
+      deploy: ${{ steps.detect.outputs.deploy }}
+      workflows: ${{ steps.detect.outputs.workflows }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Detect deploy file changes
+      - name: Detect deploy and workflow file changes
         id: detect
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          if git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -Eq '^(deploy/|compose\.prod\.yml$|\.github/workflows/deploy-ci\.yml$)'; then
-            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          changed_files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
+          if grep -Eq '^(deploy/|compose\.prod\.yml$|\.github/workflows/deploy-ci\.yml$)' <<<"$changed_files"; then
+            echo 'deploy=true' >> "$GITHUB_OUTPUT"
           else
-            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            echo 'deploy=false' >> "$GITHUB_OUTPUT"
+          fi
+          if grep -Eq '^\.github/workflows/' <<<"$changed_files"; then
+            echo 'workflows=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'workflows=false' >> "$GITHUB_OUTPUT"
           fi
 
   check:
     name: Deploy config check
     needs: changes
-    if: needs.changes.outputs.changed == 'true'
+    if: needs.changes.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -88,15 +97,30 @@ jobs:
             "${compose[@]}" run --rm --no-deps -T --entrypoint nginx proxy -t
           done
 
+  # 워크플로 파일은 GitHub이 실행할 때가 되어서야 오류를 알려 준다. 문법, 그 자리에서 쓸 수 없는 값,
+  # 없는 작업을 가리키는 needs, run 스크립트(shellcheck 포함), 외부 입력을 스크립트에 그대로 넣는 위험을 머지 전에 검사한다.
+  workflow-lint:
+    name: Workflow lint
+    needs: changes
+    if: needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run actionlint
+        run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.12 -color .github/workflows/*.yml
+
   required:
     name: Deploy CI required
-    needs: [changes, check]
+    needs: [changes, check, workflow-lint]
     if: always()
     runs-on: ubuntu-latest
     env:
-      CHANGED: ${{ needs.changes.outputs.changed }}
+      DEPLOY_CHANGED: ${{ needs.changes.outputs.deploy }}
+      WORKFLOWS_CHANGED: ${{ needs.changes.outputs.workflows }}
       DETECT_RESULT: ${{ needs.changes.result }}
       CHECK_RESULT: ${{ needs.check.result }}
+      LINT_RESULT: ${{ needs.workflow-lint.result }}
     steps:
       - name: Verify deploy checks
         run: |
@@ -104,7 +128,11 @@ jobs:
             echo '::error::Deploy change detection failed'
             exit 1
           fi
-          if [ "$CHANGED" = true ] && [ "$CHECK_RESULT" != success ]; then
+          if [ "$DEPLOY_CHANGED" = true ] && [ "$CHECK_RESULT" != success ]; then
             echo '::error::Deploy config check did not pass'
+            exit 1
+          fi
+          if [ "$WORKFLOWS_CHANGED" = true ] && [ "$LINT_RESULT" != success ]; then
+            echo '::error::Workflow lint did not pass'
             exit 1
           fi
