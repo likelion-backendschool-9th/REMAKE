@@ -1,0 +1,110 @@
+# 배포 파일 CI: 모든 PR에 검사 결과를 보고하고, 배포 파일(compose.prod.yml, deploy/)이 바뀐 PR만 검사한다.
+# 이 검사가 없으면 배포 파일의 실수는 dev 에 머지된 뒤 CD 에서야 드러나고, 고칠 때까지 자동 배포가 막힌다.
+name: Deploy CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: deploy-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Deploy change detection
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.detect.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Detect deploy file changes
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -Eq '^(deploy/|compose\.prod\.yml$|\.github/workflows/deploy-ci\.yml$)'; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          fi
+
+  check:
+    name: Deploy config check
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check shell scripts
+        run: |
+          set -euo pipefail
+          mapfile -t scripts < <(find deploy -name '*.sh' -type f | sort)
+          for script in "${scripts[@]}"; do
+            bash -n "$script"
+          done
+          shellcheck "${scripts[@]}"
+
+      # 서버 .env 의 예시(prod.env.example)에서 빈 값만 임시 값으로 채워 검사한다.
+      # compose 에 필수 변수(${VAR:?})를 새로 넣고 예시 파일에 빠뜨리면 여기서 실패한다.
+      - name: Check Compose configuration
+        run: |
+          set -euo pipefail
+          env_file="$RUNNER_TEMP/ci.env"
+          sed -E 's/^([A-Za-z_][A-Za-z0-9_]*)=$/\1=ci-only-value/' deploy/prod.env.example > "$env_file"
+          # APP_PORT 는 포트 번호여야 compose 가 해석할 수 있다.
+          sed -i -E 's/^APP_PORT=.*/APP_PORT=18080/' "$env_file"
+          docker compose --env-file "$env_file" -f compose.prod.yml config --quiet
+
+      # 서버에서 deploy.sh 가 전환 전에 하는 검사와 같은 명령으로 프록시 설정을 검사한다.
+      # proxy/<앱>.conf 는 서버에만 있으므로, deploy.sh 의 write_upstream_file 이 쓰는 두 가지 모양을 만들어 각각 검사한다.
+      - name: Check proxy Nginx configuration
+        run: |
+          set -euo pipefail
+          # 앞 단계에서 만든 임시 env 파일을 그대로 쓴다.
+          compose=(docker compose --env-file "$RUNNER_TEMP/ci.env" -f compose.prod.yml)
+          mkdir -p proxy
+          for variant in slot placeholder; do
+            for app in backend frontend; do
+              case "$app" in backend) port=8080 ;; frontend) port=3000 ;; esac
+              if [[ "$variant" == slot ]]; then
+                server="server $app-blue:$port resolve;"
+              else
+                server="server 127.0.0.1:8081;"
+              fi
+              printf 'upstream remake_%s {\n    zone remake_%s 64k;\n    %s\n}\n' "$app" "$app" "$server" > "proxy/$app.conf"
+            done
+            echo "== $variant"
+            "${compose[@]}" run --rm --no-deps -T --entrypoint nginx proxy -t
+          done
+
+  required:
+    name: Deploy CI required
+    needs: [changes, check]
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      CHANGED: ${{ needs.changes.outputs.changed }}
+      DETECT_RESULT: ${{ needs.changes.result }}
+      CHECK_RESULT: ${{ needs.check.result }}
+    steps:
+      - name: Verify deploy checks
+        run: |
+          if [ "$DETECT_RESULT" != success ]; then
+            echo '::error::Deploy change detection failed'
+            exit 1
+          fi
+          if [ "$CHANGED" = true ] && [ "$CHECK_RESULT" != success ]; then
+            echo '::error::Deploy config check did not pass'
+            exit 1
+          fi

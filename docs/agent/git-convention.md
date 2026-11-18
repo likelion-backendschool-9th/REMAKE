@@ -109,8 +109,8 @@ Agents: the examples use `git add .` for brevity. Stage only the files related t
 - Every work branch opens its PR against `dev`.
 - The PR title uses the same type format as commits.
 - The PR body states the purpose, the main changes, and the test results. Fill every section of the [PR template](../../.github/pull_request_template.md) (변경 내용, 관련 이슈, 테스트, 리뷰 요청).
-- PRs into `dev` or `main` must pass the `Backend CI required` and `Frontend CI required` checks before merging.
-- These checks report a result on every PR. The backend or frontend build jobs are skipped when that area is unchanged; do not require those individual jobs in branch rulesets.
+- PRs into `dev` or `main` must pass the `Backend CI required`, `Frontend CI required`, and `Deploy CI required` checks before merging.
+- These checks report a result on every PR. The backend, frontend, or deploy config check jobs are skipped when that area is unchanged; do not require those individual jobs in branch rulesets.
 - Merge after team review and confirmation.
 - After merging, delete the work branch both remotely and locally.
 
