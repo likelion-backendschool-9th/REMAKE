@@ -115,6 +115,9 @@ PR 규칙:
 | --- | --- |
 | `frontend/` | `pnpm lint`, `pnpm typecheck`, `pnpm build` |
 | `backend/` | `./gradlew build` |
+| `.github/workflows/` | `docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.12 -color .github/workflows/*.yml` (저장소 루트에서) |
+
+PR에서 CI가 무엇을 검사하고 결과를 어떻게 보는지는 [`docs/developer/ci.md`](ci.md)를 봅니다.
 
 실행하지 못한 검사가 있으면 사용자에게 알리고, PR의 `## 테스트`에 적습니다.
 
@@ -147,6 +150,7 @@ PR 규칙:
 | `AGENTS.md` | `docs/developer/agent-guide.md` |
 | `docs/agent/git-convention.md` | `docs/developer/git-convention.md` |
 | `docs/agent/deployment.md` | `docs/developer/deployment.md` |
+| `docs/agent/ci.md` | `docs/developer/ci.md` |
 | `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
 | `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |
 

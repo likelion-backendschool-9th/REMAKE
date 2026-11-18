@@ -24,7 +24,7 @@
 
 - `dev`에 `backend/` 변경이 들어오면 `Backend CD`, `frontend/` 변경이 들어오면 `Frontend CD`가 실행된다. 공용 배포 파일(`compose.prod.yml`, `deploy/`)이 바뀌면 둘 다 실행된다.
 - 각 CD는 먼저 검사(백엔드 `./gradlew build`, 프론트 `pnpm lint`, `pnpm typecheck`, `pnpm build`)를 하고, 통과해야 서버에 배포한다.
-- 배포 파일(`compose.prod.yml`, `deploy/`)을 바꾼 PR은 머지 전에 `Deploy CI`가 검사한다. `deploy/`의 셸 스크립트(`bash -n`, `shellcheck`), `deploy/prod.env.example`의 빈 값을 채워 넣은 `compose.prod.yml`(`docker compose config`), 그리고 `deploy/deploy.sh`가 서버에서 하는 것과 같은 방식의 `nginx -t`로 프록시 Nginx 설정을 검사한다. `compose.prod.yml`에 필수 변수(`${VAR:?...}`)를 추가하고 `deploy/prod.env.example`에 빠뜨리면 이 검사가 실패한다.
+- 배포 파일(`compose.prod.yml`, `deploy/`)을 바꾼 PR은 머지 전에 `Deploy CI`가 검사한다. `deploy/`의 셸 스크립트(`bash -n`, `shellcheck`), `deploy/prod.env.example`의 빈 값을 채워 넣은 `compose.prod.yml`(`docker compose config`), 그리고 `deploy/deploy.sh`가 서버에서 하는 것과 같은 방식의 `nginx -t`로 프록시 Nginx 설정을 검사한다. `compose.prod.yml`에 필수 변수(`${VAR:?...}`)를 추가하고 `deploy/prod.env.example`에 빠뜨리면 이 검사가 실패한다. 자세한 내용은 [`ci.md`](ci.md#배포-파일워크플로-검사-deploy-ci)를 본다.
 - 개발 서버: <https://remake.newlecture.com> (HTTP로 접속하면 HTTPS로 이동한다).
 - 2026-11-17부터 서버 배포가 켜져 있다(저장소 변수 `REMAKE_DEPLOY_ENABLED=true`). `dev`에 머지되면 위 규칙에 따라 바뀐 앱이 개발 서버에 자동으로 반영된다.
 - `workflow_dispatch`로 수동 실행할 수도 있다. 실제 서버 배포 여부에는 같은 변수가 적용된다.
