@@ -14,10 +14,12 @@ Support code:
 | `backend/src/test/resources/application-test.yml` | Settings of the `test` profile |
 | `backend/src/test/java/com/remake/RemakeApplicationTests.java` | Checks that the application starts (migrations, entity validation, bean wiring) |
 | `backend/src/test/java/com/remake/ScheduledSettingsTest.java` | Checks every `@Scheduled` setting (cron, zone, delay and rate values, `${...}` placeholders, `#{...}` SpEL expressions) with Spring's own checker, resolving values the same way Spring does at startup, without running the jobs. Tests turn scheduling off, so Spring does not check them at startup |
+| `backend/src/test/java/com/remake/support/TestDatabaseTest.java` | Checks that the `TestDatabase` checks work, using temporary tables: changing reference data fails, user data is truncated, a user data table with rows at startup fails, and truncating fails without `CASCADE` when a reference table references user data. If a change to `TestDatabase` makes these tests fail, do not change the tests; stop and ask the user |
 
 ## Running the tests
 
 - Run `./gradlew test` or `./gradlew build` in `backend/`. Docker must be running: `IntegrationTestSupport` starts PostgreSQL in a container. Tests do not need the local DB (`docker compose up`).
+- If Docker is not running, every integration test fails. In the console, the last `Caused by` line of the first failure is `java.lang.IllegalStateException at DockerClientProviderStrategy.java:...`. The test report (`backend/build/reports/tests/test/index.html`) shows `Could not find a valid Docker environment` for that test and `ApplicationContext failure threshold (1) exceeded` for the others. Start Docker (Docker Desktop on Windows and macOS) and run the tests again.
 - If Docker is not available, do not change the test setup to work around it. Tell the user and write it under `## 테스트` in the PR.
 
 ## Choose the test type
@@ -105,5 +107,6 @@ class IngredientApiTest extends IntegrationTestSupport {
 | Do not insert fixed rows into user data tables (rows that exist even on an empty DB: constant `INSERT`s in migrations, startup code). Backfill migrations (`INSERT ... SELECT`) are fine. Mark withdrawn users with `users.deleted_at`. The deployment owner makes the first admin with SQL on the server | `TestDatabase` stops the tests at startup when a user data table has rows |
 | Put `@EnableScheduling` only on `global/config/SchedulingConfig.java` | Tests turn scheduling off with `remake.scheduling.enabled: false`. Otherwise jobs run during tests and overlap with the cleanup |
 | Keep `@Scheduled` values (cron, zone, delays) in code or `application.yml`. Do not set or override them only in `application-prod.yml` | `ScheduledSettingsTest` checks the values that the `test` profile reads. Values only in the `prod` profile are not checked |
+| Write `zone` in cron schedules: `@Scheduled(cron = "0 0 9 * * *", zone = "Asia/Seoul")` | Without `zone`, a cron follows the scheduler's default time zone, which comes from the server (JVM) settings. The production containers set `TZ: Asia/Seoul`, so it is correct now, but a change in the server settings would move every job without `zone`. `ScheduledSettingsTest` also checks the `zone` you write |
 | A scheduled job must give the same result when it runs twice. Prevent concurrent duplicates with DB unique keys and skip duplicates | During a deployment both versions run and can start the same job at the same time ([deployment document](deployment.md)) |
 | An external service adapter receives its `RestClient` (or `RestClient.Builder`) through its constructor and does not create it | The adapter test passes a client bound to `MockRestServiceServer` |

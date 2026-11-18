@@ -14,10 +14,12 @@
 | `backend/src/test/resources/application-test.yml` | `test` 프로필 설정 |
 | `backend/src/test/java/com/remake/RemakeApplicationTests.java` | 앱이 뜨는지(마이그레이션, 엔티티 검사, Bean 연결) 확인한다 |
 | `backend/src/test/java/com/remake/ScheduledSettingsTest.java` | 모든 `@Scheduled` 설정(cron, 시간대, 지연·간격 값, `${...}` 설정 값 참조, `#{...}` SpEL 식)을 Spring의 검사기로 검사한다. 값은 앱이 뜰 때 Spring이 푸는 방식 그대로 푼다. 작업은 실행하지 않는다. 테스트에서는 스케줄러를 꺼 두므로 앱이 뜰 때 Spring이 검사하지 않는다 |
+| `backend/src/test/java/com/remake/support/TestDatabaseTest.java` | 임시 테이블로 `TestDatabase`의 검사가 동작하는지 확인한다. 기준 데이터를 바꾸면 실패, 사용자 데이터는 비움, 앱이 뜬 직후 사용자 데이터 테이블에 행이 있으면 실패, 기준 데이터 테이블이 사용자 데이터를 참조하면 `CASCADE` 없이 비우기가 실패. `TestDatabase`를 고쳤더니 이 테스트가 실패하면 테스트를 고치지 말고 먼저 상의한다(에이전트는 멈추고 사용자에게 묻는다) |
 
 ## 테스트 실행
 
 - `backend/`에서 `./gradlew test`나 `./gradlew build`를 실행한다. `IntegrationTestSupport`가 PostgreSQL을 컨테이너로 띄우므로 Docker가 켜져 있어야 한다. 테스트에는 로컬 DB(`docker compose up`)가 필요 없다.
+- Docker가 꺼져 있으면 통합 테스트가 모두 실패한다. 콘솔에서는 첫 실패의 마지막 `Caused by` 줄이 `java.lang.IllegalStateException at DockerClientProviderStrategy.java:...`이다. 테스트 리포트(`backend/build/reports/tests/test/index.html`)에는 그 테스트에 `Could not find a valid Docker environment`, 나머지 테스트에 `ApplicationContext failure threshold (1) exceeded`가 나온다. Docker(Windows와 macOS는 Docker Desktop)를 켜고 다시 실행한다.
 - Docker를 쓸 수 없으면 테스트 설정을 바꿔 피해 가지 않는다. 돌리지 못했다고 알리고(에이전트는 사용자에게) PR의 `## 테스트`에 적는다.
 
 ## 테스트 종류 고르기
@@ -105,5 +107,6 @@ class IngredientApiTest extends IntegrationTestSupport {
 | 사용자 데이터 테이블에 고정 행(빈 DB에서도 생기는 행: 마이그레이션의 상수 `INSERT`, 앱 시작 코드)을 넣지 않는다. 기존 데이터로 채우는 마이그레이션(`INSERT ... SELECT`)은 괜찮다. 탈퇴한 사용자는 `users.deleted_at`으로 표시한다. 첫 관리자는 배포 담당이 서버에서 SQL로 만든다 | 사용자 데이터 테이블에 행이 있으면 `TestDatabase`가 앱이 뜰 때 테스트를 멈춘다 |
 | `@EnableScheduling`은 `global/config/SchedulingConfig.java`에만 둔다 | 테스트는 `remake.scheduling.enabled: false`로 스케줄러를 끈다. 그러지 않으면 테스트 중에 작업이 돌아 정리와 겹친다 |
 | `@Scheduled` 값(cron, 시간대, 지연 시간)은 코드나 `application.yml`에 둔다. `application-prod.yml`에서만 정하거나 바꾸지 않는다 | `ScheduledSettingsTest`는 `test` 프로필이 읽는 값을 검사한다. `prod` 프로필에만 있는 값은 검사되지 않는다 |
+| cron에는 시간대를 적는다: `@Scheduled(cron = "0 0 9 * * *", zone = "Asia/Seoul")` | 시간대를 적지 않으면 cron은 스케줄러의 기본 시간대, 즉 서버(JVM) 설정을 따른다. 운영 컨테이너는 `TZ: Asia/Seoul`이라 지금은 맞지만, 서버 설정이 바뀌면 시간대를 적지 않은 작업의 시각이 모두 바뀐다. 적어 둔 시간대는 `ScheduledSettingsTest`가 검사한다 |
 | 스케줄 작업은 두 번 돌아도 결과가 같아야 한다. 동시에 도는 중복은 DB 유니크 키로 막고, 중복이면 건너뛴다 | 배포 중에는 두 버전이 함께 떠서 같은 작업을 같은 시각에 시작할 수 있다([배포 문서](deployment.md)) |
 | 외부 서비스 어댑터는 `RestClient`(또는 `RestClient.Builder`)를 생성자로 받고, 안에서 만들지 않는다 | 어댑터 테스트가 `MockRestServiceServer`를 붙인 클라이언트를 넘긴다 |
