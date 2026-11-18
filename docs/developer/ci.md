@@ -8,7 +8,7 @@
 
 | 워크플로 | 검사하는 PR | 하는 일 | 필수 검사 |
 | --- | --- | --- | --- |
-| Backend CI | `backend/`, `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`가 바뀐 PR | 테스트용 PostgreSQL을 띄워 `./gradlew build`(컴파일, 테스트, jar), 테스트 요약, 백엔드 Docker 이미지 빌드 | `Backend CI required` |
+| Backend CI | `backend/`, `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`가 바뀐 PR | `./gradlew build`(컴파일, 테스트, jar. 테스트가 PostgreSQL 컨테이너를 직접 띄움), 테스트 요약, 백엔드 Docker 이미지 빌드 | `Backend CI required` |
 | Frontend CI | `frontend/`, `.github/workflows/frontend-ci.yml`이 바뀐 PR | `pnpm lint`, `pnpm typecheck`, `pnpm build`, 프론트 Docker 이미지 빌드 | `Frontend CI required` |
 | Deploy CI | 배포 파일(`compose.prod.yml`, `deploy/`) 또는 워크플로 파일(`.github/workflows/`)이 바뀐 PR | 배포 파일: 셸 스크립트, Compose, 프록시 Nginx 설정 검사. 워크플로 파일: actionlint | `Deploy CI required` |
 | PR Attribution Check | 모든 PR | 커밋과 PR 본문의 AI 자동 표기 검사 | — |
@@ -34,9 +34,9 @@ Backend CI는 테스트가 끝나면 테스트 시간과 Spring 앱 기동 횟�
 
 Spring은 설정이 같은 테스트 클래스끼리 한 번 띄운 앱을 재사용한다. 클래스마다 설정이 다르면(예: 클래스마다 다른 `@MockitoBean`, `@TestPropertySource`, 테스트 컨테이너) 앱을 매번 새로 띄우고, 테스트 클래스가 늘수록 CI가 그만큼 느려진다. Spring 앱 기동 횟수는 이것을 일찍 알아채기 위한 숫자다.
 
-- **노란 경고**: Spring 앱 기동이 3회를 넘거나 테스트 전체 시간이 180초를 넘으면 PR 화면에 노란 경고가 뜬다. 머지는 막지 않는다.
+- **노란 경고**: Spring 앱 기동이 1회를 넘거나(통합 테스트는 앱 하나를 같이 쓴다. [백엔드 테스트 문서](backend-testing.md)) 테스트 전체 시간이 180초를 넘으면 PR 화면에 노란 경고가 뜬다. 머지는 막지 않는다.
 - **경고가 뜨면**: 느린 테스트 클래스 표에서 Spring 기동이 1인 클래스들을 보고, 그 클래스의 테스트 설정이 다른 클래스와 왜 다른지 확인한다. 설정을 맞추면 앱을 재사용한다.
-- **기준 바꾸기**: `.github/workflows/backend-ci.yml`의 `--max-spring-boots`, `--max-test-seconds` 값을 바꾼다.
+- **기준 바꾸기**: `.github/workflows/backend-ci.yml`의 `--max-spring-boots`, `--max-test-seconds` 값을 바꾼다. 새 테스트 부모 클래스를 만드는 PR은 같은 PR에서 `--max-spring-boots`를 올린다.
 - 요약 단계는 보조 기능이라, 요약 스크립트에 문제가 생겨도 CI를 실패시키지 않는다. 테스트가 실패하면 CI는 그대로 실패한다.
 - **테스트가 실패하면**: 실행 화면 아래 **Artifacts**에서 `backend-test-report`를 내려받아 압축을 풀고 `index.html`을 열면 실패한 테스트와 출력을 볼 수 있다. 7일간 보관한다.
 
