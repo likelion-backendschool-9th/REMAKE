@@ -3,6 +3,3 @@ spring:
     name: remake
   profiles:
     active: local
-  config:
-    # backend/.env 파일이 있으면 그 안의 값(DB 비밀번호 등)을 읽어 옴
-    import: optional:file:.env[.properties]
