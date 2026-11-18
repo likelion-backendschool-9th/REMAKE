@@ -28,25 +28,7 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_DB: remake
-          POSTGRES_USER: remake
-          POSTGRES_PASSWORD: remake
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U remake"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      DB_PORT: 5432
-      DB_NAME: remake
-      DB_USERNAME: remake
-      DB_PASSWORD: remake
+    # 테스트용 PostgreSQL은 테스트가 Testcontainers로 직접 띄운다(러너에 Docker가 있음). docs/agent/backend-testing.md
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
