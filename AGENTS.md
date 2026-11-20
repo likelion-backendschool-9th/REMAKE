@@ -9,7 +9,7 @@ Korean translation for developers: [`docs/developer/agent-guide.md`](docs/develo
 
 | Path | Contents | More rules |
 | --- | --- | --- |
-| `backend/` | Spring Boot API server | — |
+| `backend/` | Spring Boot API server | `docs/agent/backend-testing.md` (tests) |
 | `frontend/` | Next.js PWA | `frontend/AGENTS.md` (if present) |
 | `deploy/`, `compose.prod.yml` | Deployment config | [`docs/agent/deployment.md`](docs/agent/deployment.md) |
 | `docs/agent/` | Docs for AI agents (English) | see §5 |
@@ -114,7 +114,7 @@ Run the checks for the area you changed, from that folder:
 | Area | Commands |
 | --- | --- |
 | `frontend/` | `pnpm lint`, `pnpm typecheck`, `pnpm build` |
-| `backend/` | `./gradlew build` |
+| `backend/` | `./gradlew build` (Docker must be running: the tests start PostgreSQL in a container) |
 | `.github/workflows/` | `docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.12 -color .github/workflows/*.yml` (from the repository root) |
 
 What CI runs on PRs and how to read its results: [`docs/agent/ci.md`](docs/agent/ci.md).
@@ -151,6 +151,7 @@ Current pairs:
 | `docs/agent/git-convention.md` | `docs/developer/git-convention.md` |
 | `docs/agent/deployment.md` | `docs/developer/deployment.md` |
 | `docs/agent/ci.md` | `docs/developer/ci.md` |
+| `docs/agent/backend-testing.md` | `docs/developer/backend-testing.md` |
 | `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
 | `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |
 
