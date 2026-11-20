@@ -30,6 +30,7 @@
 | 11/20 decision | `generation_quota_grants.expires_at` added (one month after the grant) | Weekly rewards must be used within one month |
 | 11/20 decision | OCR counting in `usage_logs` removed from the remaining-count rule | Receipt scans have no limit. OCR rows are kept for monitoring. Decide again if AI is added to OCR |
 | 11/20 decision | `shared_recipes.save_count` is the cumulative count for the detail screen; weekly popularity counts `saved_recipes.saved_at` | The ranking is "saves this week" |
+| 11/20 decision | `cart_items.meal_plan_slot_id` added (nullable FK, `ON DELETE SET NULL`; [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46)) | Identify items by source slot so meal-plan overwrite removes only replaced slots' cart items and preserves those from untouched slots |
 
 ## Common rules
 
