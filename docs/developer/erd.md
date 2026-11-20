@@ -31,6 +31,7 @@
 | 11/20 결정 | 남은 횟수 계산에서 `usage_logs`로 OCR 횟수를 세는 부분 삭제 | 영수증 스캔은 횟수 제한 없음. OCR 기록은 모니터링용으로만 남김. OCR에 AI를 붙이면 다시 정함 |
 | 11/20 결정 | `shared_recipes.save_count`는 상세 화면용 누적값, 주간 인기순은 `saved_recipes.saved_at`으로 셈 | 랭킹은 "이번 주 저장 수" 기준 |
 | 11/20 결정 | `cart_items.meal_plan_slot_id` 추가(nullable FK, `ON DELETE SET NULL`; [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46)) | 식단표 덮어쓰기 시 출처 칸으로 항목을 구분해 교체되는 칸의 장바구니 항목만 삭제하고 유지되는 칸의 항목은 보존 |
+| 11/20 결정 | 계정 삭제는 항상 이메일 6자리 인증. 제공자가 이메일을 안 주면 탈퇴 시 `POST /user/account/deletion-codes` 본문 `{ email }`로 대체 이메일을 받아 `users.email`에 저장한 뒤 코드를 보냄 ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) A) | 운영 수동 삭제 경로 없음. 코드 규칙(5분·재전송 30초·5회 잠금)은 모든 계정 동일 |
 
 ## 공통 규칙
 
@@ -643,7 +644,7 @@ erDiagram
 | id | bigint | PK | | 아니오 | | 고유 번호 |
 | provider | varchar | | | 아니오 | | NAVER/KAKAO/GOOGLE |
 | provider_user_id | varchar | UK | | 예 | | 소셜 고유 ID. UK(provider+이 값). **탈퇴하면 null** |
-| email | varchar | | | 예 | | 계정 삭제 인증번호 발송용. 제공자가 안 주면 null. 탈퇴하면 null |
+| email | varchar | | | 예 | | 계정 삭제 인증번호 발송용. 제공자가 안 주면 null이었다가, 탈퇴 때 대체 이메일을 받으면 저장([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). 탈퇴 완료 후 null |
 | role | varchar | | | 아니오 | USER | USER/ADMIN |
 | status | varchar | | | 아니오 | ACTIVE | ACTIVE/SUSPENDED |
 | plan | varchar | | | 아니오 | BASIC | BASIC/PREMIUM. 1차는 BASIC 한도만 적용(프리미엄 화면은 UI만) |

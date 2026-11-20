@@ -25,7 +25,7 @@ p1-로그인, p1-로그인-최근 로그인, 스플래쉬, p1.1-가구원 수(+�
 | GET·PUT | `/api/v1/user/profile` | 가구원 수·온보딩 완료·마지막 식단 목적 |
 | GET·PATCH | `/api/v1/user/settings` | `recipeSupplementEnabled`, `notificationEnabled`, `provider` |
 | GET·PUT | `/api/v1/user/excluded-ingredients` | PUT은 `{ catalogIds }`로 통째 교체 |
-| POST | `/api/v1/user/account/deletion-codes` | 이메일로 인증번호 6자리 발송(재전송 겸용) |
+| POST | `/api/v1/user/account/deletion-codes` | 이메일로 인증번호 6자리 발송(재전송 겸용). `users.email`이 있으면 그 주소로 발송(본문 `{}` 가능). 없으면 본문 `{ email }` 필수 → `users.email`에 저장 후 발송. 이메일도 없으면 `ACCOUNT_EMAIL_MISSING` |
 | POST | `/api/v1/user/account/deletion-codes/verify` | `{ code }`, 맞으면 계정 삭제 204 |
 
 ## 테이블
@@ -36,8 +36,8 @@ p1-로그인, p1-로그인-최근 로그인, 스플래쉬, p1.1-가구원 수(+�
 
 - JWT([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) A): 액세스·리프레시 **모두** HttpOnly 쿠키. 액세스 30분, 리프레시 14일(`Secure; SameSite=Lax`). 응답 본문에 `accessToken`을 넣지 않고, 프론트는 `Authorization: Bearer`를 쓰지 않는다. 리프레시는 DB에 해시로만 저장하고 로그아웃·삭제 때 폐기(로테이션 여부는 구현 때 확정).
 - `/api/v1/admin/**`는 ADMIN role만 통과. 서버 보안 설정에서 막고 UI는 보조일 뿐입니다.
-- 계정 삭제: 인증번호 6자리, 유효 5분, 재전송 30초 간격, 5회 틀리면 잠금(새 번호를 받으면 해제). 삭제하면 `provider_user_id`·`email`을 비우고 행은 유지(공유 레시피와 이벤트 통계가 남도록), 영수증 이미지와 개인 데이터는 삭제. `events.user_id`에는 FK를 걸지 않습니다.
-- 소셜이 이메일을 주지 않으면 `ACCOUNT_EMAIL_MISSING`(대체 방법은 미결 #25).
+- 계정 삭제([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) A): **이메일 6자리 인증번호로만** 탈퇴한다(운영 수동 삭제 경로 없음). 인증번호 유효 5분, 재전송 30초 간격, 5회 틀리면 잠금(새 번호를 받으면 해제). 삭제하면 `provider_user_id`·`email`을 비우고 행은 유지(공유 레시피와 이벤트 통계가 남도록), 영수증 이미지와 개인 데이터는 삭제. `events.user_id`에는 FK를 걸지 않습니다.
+- 소셜이 이메일을 주지 않은 계정: 탈퇴 화면에서 **대체 이메일을 받아** `POST /user/account/deletion-codes` 본문 `{ email }`로 넘긴다. 서버는 형식 검증 후 `users.email`에 저장하고 그 주소로 6자리 코드를 보낸다. 이메일이 없고 본문에도 없으면 `ACCOUNT_EMAIL_MISSING`. 이미 `users.email`이 있으면 본문 이메일 없이 재전송·발송한다.
 - 알레르기 같은 설정 값은 본인만 조회, 건강 상태(질환) 정보는 수집하지 않습니다. 제외 재료 이름은 이벤트에 넣지 않고 개수만.
 - 설정의 프리미엄 구독 화면은 UI만 만들고 기능은 없습니다.
 
@@ -54,5 +54,5 @@ p1-로그인, p1-로그인-최근 로그인, 스플래쉬, p1.1-가구원 수(+�
 - [ ] 3개 제공자 로그인·가입·재로그인, 토큰 재발급, 로그아웃
 - [ ] 비로그인 접근 차단과 로그인 후 원래 주소 복귀
 - [ ] 온보딩 건너뛰기, 설정에서 수정 → 이후 AI 생성에 반영
-- [ ] 계정 삭제 3단계(인증번호 입력·타이머·재전송·잠금)
+- [ ] 계정 삭제(이메일 있음·없음 모두): 대체 이메일 입력 → 인증번호·타이머·재전송·잠금 → 삭제
 - [ ] admin API 403 테스트

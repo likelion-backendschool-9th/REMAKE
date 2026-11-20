@@ -21,7 +21,7 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 | GET/PUT | `/user/profile` | `provider, householdSize, onboardingCompleted, lastMealPurpose, excludedCount`; PUT `{ householdSize, onboardingCompleted }` (skip allowed). Event: onboarding_completed |
 | GET/PATCH | `/user/settings` | `{ recipeSupplementEnabled, notificationEnabled, provider }` |
 | GET/PUT | `/user/excluded-ingredients` | PUT replaces all: `{ catalogIds: [] }` |
-| POST | `/user/account/deletion-codes` | Send 6-digit email code (resend = same call). Event: account_deletion_requested |
+| POST | `/user/account/deletion-codes` | Send 6-digit email code (resend = same call). If `users.email` is set, send there (body `{}` ok). If null, body `{ email }` is required: validate, save to `users.email`, then send. Missing both -> `ACCOUNT_EMAIL_MISSING` ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) A). Event: account_deletion_requested |
 | POST | `/user/account/deletion-codes/verify` | `{ code }`; correct code deletes account (204). Event: account_deleted |
 
 ## 2. Fridge (owner: 김재연)

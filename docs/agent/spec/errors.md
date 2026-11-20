@@ -66,7 +66,7 @@ Code-only rows are in `global/error/ErrorCode` but not in the planning sheet: 4 
 | `OAUTH_PROVIDER_UNSUPPORTED` | 400 | WARN | provider not kakao/naver/google |
 | `REFRESH_TOKEN_INVALID` | 401 | INFO | Refresh token expired/revoked/forged -> login |
 | `CATALOG_ITEM_NOT_FOUND` | 404 | WARN | Excluded-ingredient catalog id does not exist |
-| `ACCOUNT_EMAIL_MISSING` | 422 | WARN | Provider gave no email so no code can be sent (open policy #25) |
+| `ACCOUNT_EMAIL_MISSING` | 422 | WARN | No `users.email` and deletion-codes body omitted `email`. Client must collect an alternate email and retry with `{ email }` ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) A) |
 | `DELETION_CODE_RESEND_TOO_SOON` | 429 | INFO | Resend within 30 s |
 | `DELETION_CODE_INVALID` | 400 | INFO | Wrong code (details.remaining attempts) |
 | `DELETION_CODE_EXPIRED` | 400 | INFO | Code older than 5 min |
