@@ -214,3 +214,4 @@ Create issues from the templates in `.github/ISSUE_TEMPLATE/`. Blank issues are 
 | Status | `needs-decision`, `blocked` | Only while it applies. Remove it when resolved |
 
 - Give the PR the same type, area, and part labels as its issue.
+- A small but urgent correction caused by a document change uses type `fix`, not `docs`: for example code or another document that no longer matches a changed rule, a wrong path, code, or number, or a broken link. Use the 버그 template, the `fix` label, a `fix/` branch, and `fix:` commits. `docs` is for planned documentation work.
