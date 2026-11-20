@@ -89,8 +89,9 @@ class ClockUsageTest {
 			"'\\s*(now|today|tomorrow|yesterday)\\s*'", Pattern.CASE_INSENSITIVE);
 
 	// 문자열('...', 안의 ''는 따옴표 한 개)을 먼저 알아봐야 문자열 안의 --를 주석으로 잘못 보지 않는다.
+	// 문자열 부분은 점유 반복(*+)으로 쓴다. (?:[^']|'')* 처럼 쓰면 글자마다 재귀해서 긴 문자열에서 StackOverflowError가 난다.
 	private static final Pattern SQL_TOKEN = Pattern.compile(
-			"(?<string>'(?:[^']|'')*')|(?<comment>--[^\\n]*|/\\*.*?\\*/)", Pattern.DOTALL);
+			"(?<string>'[^']*+(?:''[^']*+)*+')|(?<comment>--[^\\n]*|/\\*.*?\\*/)", Pattern.DOTALL);
 
 	@Test
 	void 마이그레이션_SQL은_DB의_현재_시각_함수를_쓰지_않는다() throws IOException {
