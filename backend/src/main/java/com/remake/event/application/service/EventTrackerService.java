@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * 서버 EventTracker. CLIENT 이벤트·필터 거절은 조용히 무시한다.
  * 활성 트랜잭션이 있으면 커밋 뒤에만 적재해 롤백된 행동이 남지 않게 한다.
+ * afterCommit·비동기 제출 실패도 삼켜서 호출 API(예: 영수증 등록) 성공 응답을 유지한다.
  */
 @Slf4j
 @Service
@@ -62,15 +63,30 @@ public class EventTrackerService implements EventTracker {
 	}
 
 	private void scheduleSave(EventRecord record) {
-		if (TransactionSynchronizationManager.isSynchronizationActive()) {
-			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-				@Override
-				public void afterCommit() {
-					eventWriteService.saveAsync(record);
-				}
-			});
-			return;
+		try {
+			if (TransactionSynchronizationManager.isSynchronizationActive()) {
+				TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+					@Override
+					public void afterCommit() {
+						submitSave(record);
+					}
+				});
+				return;
+			}
+			submitSave(record);
 		}
-		eventWriteService.saveAsync(record);
+		catch (Exception e) {
+			log.warn("이벤트 적재 예약 실패 name={}", record.eventName().getWireName(), e);
+		}
+	}
+
+	/** 프록시를 통해 @Async 제출. 큐 거부 등 제출 예외는 여기서 삼킨다. */
+	private void submitSave(EventRecord record) {
+		try {
+			eventWriteService.saveAsync(record);
+		}
+		catch (Exception e) {
+			log.warn("이벤트 적재 제출 실패 name={}", record.eventName().getWireName(), e);
+		}
 	}
 }

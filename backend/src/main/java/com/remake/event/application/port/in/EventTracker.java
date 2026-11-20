@@ -13,7 +13,8 @@ import com.remake.event.domain.Screen;
  *     "ocr_item_count", ocrItemCount),
  *     EventTrackCommand.ofUser(userId));
  * </pre>
- * 트랜잭션 커밋 뒤 비동기로 적재하고, 실패해도 호출한 API를 깨뜨리지 않는다.
+ * 트랜잭션 커밋 뒤 비동기로 적재하고, 제출·적재 실패해도 호출한 API를 깨뜨리지 않는다.
+ * 실패 이벤트는 로그만 남기며 자동 재시도하지 않는다.
  */
 public interface EventTracker {
 

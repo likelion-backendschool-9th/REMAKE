@@ -45,29 +45,34 @@ public class ClientEventIngestService implements IngestClientEventsUseCase {
 		int rejected = 0;
 		LocalDateTime now = LocalDateTime.now(clock);
 		for (ClientEventCommand event : events) {
-			var resolved = EventName.fromWireName(event.name());
-			if (resolved.isEmpty() || resolved.get().getSource() != EventSource.CLIENT) {
-				rejected++;
-				continue;
+			try {
+				var resolved = EventName.fromWireName(event.name());
+				if (resolved.isEmpty() || resolved.get().getSource() != EventSource.CLIENT) {
+					rejected++;
+					continue;
+				}
+				EventName name = resolved.get();
+				var filtered = EventPropertyFilter.filter(name, event.properties());
+				if (filtered.isEmpty()) {
+					rejected++;
+					continue;
+				}
+				LocalDateTime occurredAt = event.occurredAt() != null ? event.occurredAt() : now;
+				accepted.add(new EventRecord(
+						name,
+						userId,
+						event.sessionId(),
+						EventSource.CLIENT,
+						blankToNull(event.screen()),
+						filtered.get(),
+						platform,
+						appVersion,
+						false,
+						occurredAt));
 			}
-			EventName name = resolved.get();
-			var filtered = EventPropertyFilter.filter(name, event.properties());
-			if (filtered.isEmpty()) {
+			catch (RuntimeException ex) {
 				rejected++;
-				continue;
 			}
-			LocalDateTime occurredAt = event.occurredAt() != null ? event.occurredAt() : now;
-			accepted.add(new EventRecord(
-					name,
-					userId,
-					event.sessionId(),
-					EventSource.CLIENT,
-					blankToNull(event.screen()),
-					filtered.get(),
-					platform,
-					appVersion,
-					false,
-					occurredAt));
 		}
 		if (!accepted.isEmpty()) {
 			saveEventPort.saveAll(accepted);

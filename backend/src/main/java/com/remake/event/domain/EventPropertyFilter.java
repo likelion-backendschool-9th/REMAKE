@@ -8,8 +8,9 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * 이벤트 속성 필터. 허용 목록 밖·금지 키는 버리고, 25개 초과·중첩·비허용 타입은 이벤트 전체를 거절한다.
- * 개인정보·자유 입력(이메일, 이름, 재료명 등)이 실수로 들어오지 않게 막는다.
+ * 이벤트 속성 필터. 허용 목록 밖·금지 키는 버리고, null·25개 초과·중첩·비허용 타입·허용되지 않은
+ * 문자열 값은 이벤트 전체를 거절한다. 개인정보·자유 입력(이메일, 이름, 재료명 등)이 실수로
+ * 들어오지 않게 막는다.
  */
 public final class EventPropertyFilter {
 
@@ -61,7 +62,7 @@ public final class EventPropertyFilter {
 			if (!eventName.getAllowedProperties().contains(normalized)) {
 				continue;
 			}
-			if (!isAllowedValue(value)) {
+			if (!isAllowedValue(normalized, value)) {
 				return Optional.empty();
 			}
 			cleaned.put(normalized, value);
@@ -80,13 +81,19 @@ public final class EventPropertyFilter {
 		return lower.contains("email") || lower.endsWith("_token") || lower.contains("password");
 	}
 
-	private static boolean isAllowedValue(Object value) {
+	private static boolean isAllowedValue(String property, Object value) {
 		if (value == null) {
-			return true;
+			return false;
 		}
 		if (value instanceof Map<?, ?> || value instanceof Collection<?> || value.getClass().isArray()) {
 			return false;
 		}
-		return value instanceof String || value instanceof Number || value instanceof Boolean;
+		if (value instanceof Boolean || value instanceof Number) {
+			return true;
+		}
+		if (value instanceof String stringValue) {
+			return EventPropertyValues.isAllowedString(property, stringValue);
+		}
+		return false;
 	}
 }
