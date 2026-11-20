@@ -1,6 +1,6 @@
 # API summary
 
-Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the repo). Base `/api/v1/{public|user|admin}`. All `user` and `admin` calls need a logged-in session. The frontend calls the same domain with relative `/api/...` paths and an HttpOnly cookie; the final token flow is an open decision (`frontend/blueprint.md` §9), so do not add `Authorization: Bearer` handling on your own. Error codes are in `errors.md`. "Events" lists the events the endpoint publishes (see `events.md`). Owner = feature-area owner.
+Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the repo). Base `/api/v1/{public|user|admin}`. All `user` and `admin` calls need a logged-in session. Auth is JWT in HttpOnly cookies for both access and refresh ([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) option A). The frontend calls the same domain with relative `/api/...` paths and `credentials: 'include'`; do not send `Authorization: Bearer` or put tokens in JS-readable storage. Error codes are in `errors.md`. "Events" lists the events the endpoint publishes (see `events.md`). Owner = feature-area owner.
 
 ## Common
 
@@ -15,9 +15,9 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/public/auth/oauth/{provider}` | provider `kakao`/`naver`/`google`. Body `{ code, redirectUri }` -> `{ accessToken, onboardingCompleted }`, refresh token in HttpOnly cookie. Events: login_succeeded, login_failed, signup_completed |
-| POST | `/public/auth/refresh` | Reissue access token from refresh cookie |
-| POST | `/user/auth/logout` | Revoke refresh token |
+| POST | `/public/auth/oauth/{provider}` | provider `kakao`/`naver`/`google`. Body `{ code, redirectUri }` -> `{ onboardingCompleted }`. Sets access (30 min) and refresh (14 d) as HttpOnly cookies (`Secure; SameSite=Lax`). Events: login_succeeded, login_failed, signup_completed |
+| POST | `/public/auth/refresh` | Reissue access cookie from refresh cookie (body empty / 204). Invalid refresh -> `REFRESH_TOKEN_INVALID` |
+| POST | `/user/auth/logout` | Revoke refresh token and clear both cookies |
 | GET/PUT | `/user/profile` | `provider, householdSize, onboardingCompleted, lastMealPurpose, excludedCount`; PUT `{ householdSize, onboardingCompleted }` (skip allowed). Event: onboarding_completed |
 | GET/PATCH | `/user/settings` | `{ recipeSupplementEnabled, notificationEnabled, provider }` |
 | GET/PUT | `/user/excluded-ingredients` | PUT replaces all: `{ catalogIds: [] }` |

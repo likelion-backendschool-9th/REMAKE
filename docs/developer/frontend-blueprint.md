@@ -200,7 +200,7 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 
 ## 9. 남은 결정 사항
 
-- [ ] 인증 방식 (쿠키 세션 / JWT)과 토큰 갱신 흐름
+- [x] 인증 방식과 토큰 갱신 흐름 — **[#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) A 확정**: 액세스(30분)·리프레시(14일) JWT를 모두 HttpOnly 쿠키(`Secure; SameSite=Lax`)로 둡니다. 로그인·재발급 응답에 `accessToken`을 넣지 않습니다. `/api/...` 호출은 `credentials: 'include'`, `Authorization: Bearer`와 JS에서 읽을 수 있는 토큰 저장은 쓰지 않습니다. 로컬(출처가 다름)에서는 백엔드가 credentials CORS를 허용해야 합니다.
 - [ ] 공용 컴포넌트 목록과 디자인 토큰 확정 (디자인 시안 기준)
 - [ ] 프론트 CI (GitHub Actions: lint · typecheck · build)
 - [ ] 배포 환경 (nginx + Node 컨테이너 구성)
