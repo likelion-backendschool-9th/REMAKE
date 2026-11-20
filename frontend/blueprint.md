@@ -254,7 +254,7 @@ TypeScript runs in `strict` mode, and `any` is not allowed (enforced by ESLint).
 
 ## 9. Open decisions
 
-- [ ] Authentication method (cookie session / JWT) and token refresh flow
+- [x] Authentication method and token refresh flow — **decided in [#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) option A**: access (30 min) and refresh (14 d) are both JWT in HttpOnly cookies (`Secure; SameSite=Lax`). Login/refresh responses do not include `accessToken`. Call `/api/...` with `credentials: 'include'`; do not use `Authorization: Bearer` or store tokens in JS-readable storage. Locally (different origin) the backend must allow CORS with credentials.
 - [ ] Shared component list (based on the design mockups)
 - [ ] Frontend CI (GitHub Actions: lint · typecheck · build)
 - [ ] Deployment environment (nginx + Node container setup)
