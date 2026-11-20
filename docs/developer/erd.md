@@ -23,6 +23,7 @@
 | 11/20 결정 | `users.plan`(BASIC/PREMIUM) 추가 | 요금제별 한도가 다름. 1차는 BASIC만 적용(프리미엄은 UI만) |
 | 11/20 결정 | `receipts.status`(SCANNED/CONFIRMED) 삭제. 확정한 영수증만 저장, `receipts.image_key` NOT NULL | 스캔 API는 분석만 하고 저장하지 않음. 확정 API가 영수증·품목·냉장고 재료를 한 트랜잭션으로 저장 |
 | 11/20 결정 | `receipts.store_code` 추가 | 마트 아이콘(15개 코드, 못 맞추면 `ETC`) |
+| 11/20 결정 | `receipts.total_price` 삭제. `receipts`·`receipt_items`는 `updated_at`을 지우고 `BaseCreatedEntity`로 변경(`updated_at`이 있는 테이블은 이제 5개) | 식비는 항상 식재료 품목 합계라 영수증에 적힌 총액을 쓰지 않음. 확정한 영수증은 수정하지 않음 |
 | 11/20 결정 | 영수증 보관: 구매일 기준 6개월(날짜가 없으면 저장일), 지나면 이미지·품목과 함께 삭제. 미확정 7일 정리·이미지 1년 보관 삭제 | 식비 비교가 최근 6개월 기준. 미확정은 저장하지 않음 |
 | 11/20 결정 | `receipt_items`는 식재료만 저장, `category_id` NOT NULL | OCR이 식재료만 돌려줌(비식재료는 걸러짐) |
 | 11/20 결정 | `notifications.receipt_id`와 `RECEIPT_DONE` 종류 삭제(EXPIRY_SOON/EXPIRED만) | OCR이 동기라 "분석 완료" 알림이 없음 |
@@ -238,10 +239,8 @@ erDiagram
     date purchased_on "구매일(월 집계·6개월 보관 기준)"
     string store_name "판매처"
     string store_code "마트 아이콘 코드(15개, 못 맞추면 ETC)"
-    bigint total_price "영수증에 적힌 총액(참고용. 식비는 품목 합계)"
     string image_key "저장소 경로. 영수증과 함께 삭제"
     timestamp created_at "저장(확정) 시각. 구매일이 없으면 보관 기준"
-    timestamp updated_at "수정 시각"
   }
   receipt_items {
     bigint id PK "고유 번호"
@@ -255,7 +254,11 @@ erDiagram
     date expiration_date "소비기한"
     boolean is_expiration_estimated "추정값인지"
     timestamp created_at "만든 시각"
-    timestamp updated_at "수정 시각(확인 화면·금액 수정)"
+>>>
+<<<
+구매일 기준 6개월 보관 | receipt | BaseTimeEntity | 9 |
+===
+구매일 기준 6개월 보관 | receipt | BaseCreatedEntity | 7 |
   }
 ```
 
@@ -547,7 +550,7 @@ erDiagram
 | 7 | ingredients | 냉장고 재료 | 냉장고의 재료 한 줄. 다 쓰면 FINISHED로 남김 | ingredient | BaseTimeEntity | 16 |
 | 8 | ingredient_logs | 재료 사용·폐기 이력 | 사용했어요·버렸어요 기록. 버린 금액 통계의 원본 | ingredient | BaseCreatedEntity | 8 |
 | 9 | receipts | 영수증 | 확정한 영수증 한 장(확정 전 OCR 결과는 저장하지 않음). 구매일 기준 6개월 보관 | receipt | BaseTimeEntity | 9 |
-| 10 | receipt_items | 영수증 품목 | 확정한 영수증의 식재료 한 줄(비식재료는 저장하지 않음) | receipt | BaseTimeEntity | 12 |
+| 10 | receipt_items | 영수증 품목 | 확정한 영수증의 식재료 한 줄(비식재료는 저장하지 않음) | receipt | BaseCreatedEntity | 11 |
 | 11 | recipes | 레시피 | AI가 만든 레시피 본체와 공유 레시피 사본. 한 번 만들면 수정하지 않음 | recipe | BaseCreatedEntity | 11 |
 | 12 | recipe_ingredients | 레시피 재료 | 레시피에 들어가는 재료와 수량 | recipe | BaseCreatedEntity | 8 |
 | 13 | recipe_steps | 레시피 조리 단계 | 레시피의 조리 순서 | recipe | BaseCreatedEntity | 5 |
@@ -753,11 +756,9 @@ erDiagram
 | user_id | bigint | FK | users | 아니오 | | 회원 |
 | purchased_on | date | | | 예 | | 구매일(월 집계·6개월 보관 기준) |
 | store_name | varchar | | | 예 | | 판매처 |
-| store_code | varchar | | | 예 | | 마트 아이콘 코드(15개: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). 못 맞추면 `ETC` |
-| total_price | bigint | | | 예 | | 영수증에 적힌 총액(참고용. 식비는 품목 합계) |
+| store_code | varchar | | | 예 | | 마트 아이콘 코드(15개: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). 못 맞추면 `ETC`이고, 화면은 기본 아이콘과 `store_name`(OCR이 읽은 이름)을 보여 줌 |
 | image_key | varchar | | | 아니오 | | 저장소 경로. 영수증과 함께 삭제 |
 | created_at | timestamp | | | 아니오 | | 저장(확정) 시각. `purchased_on`이 없으면 보관 기준 |
-| updated_at | timestamp | | | 아니오 | | 수정 시각 |
 
 - 확정한 영수증만 저장합니다. `POST /receipts/scan`은 분석만 하고 저장하지 않으며, `POST /receipts`가 영수증·품목·등록할 냉장고 재료를 한 트랜잭션으로 저장합니다. 확정한 영수증은 수정할 수 없고 삭제만 됩니다.
 - 보관: `purchased_on`(없으면 `created_at`)부터 6개월. 매일 작업이 지난 영수증을 이미지·품목과 함께 삭제합니다. 6개월보다 오래된 구매일은 등록할 수 없습니다(`INVALID_INPUT`). 식비 조회용 인덱스 `(user_id, purchased_on)`.
@@ -777,7 +778,12 @@ erDiagram
 | expiration_date | date | | | 예 | | 소비기한 |
 | is_expiration_estimated | boolean | | | 아니오 | false | 추정값인지 |
 | created_at | timestamp | | | 아니오 | | 만든 시각 |
-| updated_at | timestamp | | | 아니오 | | 수정 시각(확인 화면·금액 수정) |
+>>>
+<<<
+- 확정한 영수증만 저장합니다.
+===
+- 식비 금액은 영수증에 적힌 총액이 아니라 항상 식재료 품목 합계(`receipt_items.price`)입니다.
+- 확정한 영수증만 저장합니다.
 
 ### 11. recipes (레시피)
 

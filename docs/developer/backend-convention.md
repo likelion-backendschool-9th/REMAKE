@@ -58,7 +58,7 @@ com.remake
 - Controller는 `UseCase` 인터페이스만 부릅니다.
 - Service는 자기 기능의 `Port` 인터페이스와 다른 기능의 `UseCase` 인터페이스만 부릅니다.
 - 공통 클래스는 JPA Entity만 상속합니다. domain 객체는 상속하지 않습니다.
-  - 값이 수정되는 테이블(users, ingredients, receipts, receipt_items, meal_plan_slots, cart_items, shared_recipes)은 `BaseTimeEntity`(`created_at` + `updated_at`)를 상속합니다.
+  - 값이 수정되는 테이블(users, ingredients, meal_plan_slots, cart_items, shared_recipes)은 `BaseTimeEntity`(`created_at` + `updated_at`)를 상속합니다. 확정한 영수증은 수정하지 않으므로 `receipts`, `receipt_items`는 `BaseCreatedEntity`를 상속합니다.
   - 나머지 테이블은 `BaseCreatedEntity`(`created_at`)를 상속합니다.
   - 연결 테이블, 기준 데이터, 일별 집계, `events`는 상속하지 않습니다.
 

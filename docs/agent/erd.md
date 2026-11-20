@@ -23,6 +23,7 @@
 | 11/20 decision | `users.plan` (BASIC/PREMIUM) added | Limits differ by plan. Release 1 applies BASIC only (premium is UI only) |
 | 11/20 decision | `receipts.status` (SCANNED/CONFIRMED) removed. Only confirmed receipts are stored; `receipts.image_key` NOT NULL | The scan API only analyzes and stores nothing. The confirm API saves the receipt, items, and fridge ingredients in one transaction |
 | 11/20 decision | `receipts.store_code` added | Store icon (15 codes, `ETC` fallback) |
+| 11/20 decision | `receipts.total_price` removed; `receipts` and `receipt_items` drop `updated_at` and extend `BaseCreatedEntity` (5 tables now have `updated_at`) | Spending is always the sum of food items, so the printed total is never used. A confirmed receipt is never edited |
 | 11/20 decision | Receipt retention: 6 months by purchase date (saved date if none), then deleted with images and items. The 7-day unconfirmed cleanup and 1-year image retention are removed | Spending comparison uses the last 6 months. Nothing unconfirmed is stored |
 | 11/20 decision | `receipt_items` stores food items only; `category_id` NOT NULL | OCR returns food items only (non-food lines are filtered out) |
 | 11/20 decision | `notifications.receipt_id` and type `RECEIPT_DONE` removed (EXPIRY_SOON/EXPIRED only) | OCR is synchronous, so there is no "analysis finished" notification |
@@ -238,10 +239,8 @@ erDiagram
     date purchased_on "Purchase date (basis of the monthly total…"
     string store_name "Store"
     string store_code "Store icon code (15 codes, ETC fallback)"
-    bigint total_price "Total printed on the receipt (reference o…"
     string image_key "Storage path. Deleted with the receipt"
     timestamp created_at "Save (confirm) time. Retention basis if n…"
-    timestamp updated_at "Update time"
   }
   receipt_items {
     bigint id PK "ID"
@@ -255,7 +254,11 @@ erDiagram
     date expiration_date "Expiration date"
     boolean is_expiration_estimated "Whether the date is an estimate"
     timestamp created_at "Creation time"
-    timestamp updated_at "Update time (confirmation screen, price e…"
+>>>
+<<<
+Kept 6 months by purchase date | receipt | BaseTimeEntity | 9 |
+===
+Kept 6 months by purchase date | receipt | BaseCreatedEntity | 7 |
   }
 ```
 
@@ -547,7 +550,7 @@ Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
 | 7 | ingredients | 냉장고 재료 | One ingredient line in the fridge. Kept as FINISHED when used up | ingredient | BaseTimeEntity | 16 |
 | 8 | ingredient_logs | 재료 사용·폐기 이력 | "Used" and "Discarded" records. Source of the wasted-money statistics | ingredient | BaseCreatedEntity | 8 |
 | 9 | receipts | 영수증 | One confirmed receipt (unconfirmed OCR results are never stored). Kept 6 months by purchase date | receipt | BaseTimeEntity | 9 |
-| 10 | receipt_items | 영수증 품목 | One food line of a confirmed receipt (non-food lines are not stored) | receipt | BaseTimeEntity | 12 |
+| 10 | receipt_items | 영수증 품목 | One food line of a confirmed receipt (non-food lines are not stored) | receipt | BaseCreatedEntity | 11 |
 | 11 | recipes | 레시피 | AI-generated recipes and copies of shared recipes. Never edited after creation | recipe | BaseCreatedEntity | 11 |
 | 12 | recipe_ingredients | 레시피 재료 | Ingredients and amounts in a recipe | recipe | BaseCreatedEntity | 8 |
 | 13 | recipe_steps | 레시피 조리 단계 | Cooking steps of a recipe | recipe | BaseCreatedEntity | 5 |
@@ -753,11 +756,9 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | user_id | bigint | FK | users | No | | Member |
 | purchased_on | date | | | Yes | | Purchase date (basis of the monthly total and the 6-month retention) |
 | store_name | varchar | | | Yes | | Store |
-| store_code | varchar | | | Yes | | Store icon code (15 codes: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). `ETC` if not matched |
-| total_price | bigint | | | Yes | | Total printed on the receipt (reference only; spending is the sum of items) |
+| store_code | varchar | | | Yes | | Store icon code (15 codes: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). `ETC` if not matched; the screen then shows `store_name` (the name OCR read) with the default icon |
 | image_key | varchar | | | No | | Storage path. Deleted together with the receipt |
 | created_at | timestamp | | | No | | Save (confirm) time. Retention basis when `purchased_on` is null |
-| updated_at | timestamp | | | No | | Update time |
 
 - Only confirmed receipts are stored. `POST /receipts/scan` analyzes and stores nothing; `POST /receipts` saves the receipt, its items, and the registered fridge ingredients in one transaction. A confirmed receipt cannot be edited, only deleted.
 - Retention: 6 months from `purchased_on` (or `created_at` if null). A daily job deletes older receipts with their images and items. A purchase date older than 6 months cannot be registered (`INVALID_INPUT`). Index `(user_id, purchased_on)` for spending queries.
@@ -777,7 +778,12 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | expiration_date | date | | | Yes | | Expiration date |
 | is_expiration_estimated | boolean | | | No | false | Whether the date is an estimate |
 | created_at | timestamp | | | No | | Creation time |
-| updated_at | timestamp | | | No | | Update time (confirmation screen, price edits) |
+>>>
+<<<
+- Only confirmed receipts are stored.
+===
+- Spending amounts are always the sum of food items (`receipt_items.price`), not the total printed on the receipt.
+- Only confirmed receipts are stored.
 
 ### 11. recipes (Recipes)
 

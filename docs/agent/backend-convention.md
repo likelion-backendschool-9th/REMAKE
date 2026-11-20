@@ -58,7 +58,7 @@ Rules:
 - Controllers call only `UseCase` interfaces.
 - Services call only their own feature's `Port` interfaces and other features' `UseCase` interfaces.
 - Only JPA entities extend the shared base classes. Domain objects do not.
-  - Tables whose values are updated (users, ingredients, receipts, receipt_items, meal_plan_slots, cart_items, shared_recipes) extend `BaseTimeEntity` (`created_at` + `updated_at`).
+  - Tables whose values are updated (users, ingredients, meal_plan_slots, cart_items, shared_recipes) extend `BaseTimeEntity` (`created_at` + `updated_at`). Confirmed receipts are never edited, so `receipts` and `receipt_items` extend `BaseCreatedEntity`.
   - All other tables extend `BaseCreatedEntity` (`created_at`).
   - Join tables, reference data, daily aggregates, and `events` extend neither.
 
