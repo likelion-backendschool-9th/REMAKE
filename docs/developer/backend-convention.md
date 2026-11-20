@@ -183,7 +183,7 @@ com.remake
 - 에러 코드는 `global/error/ErrorCode` 하나에 모읍니다. 이름은 API 정의서·에러 정의서의 코드와 같게 씁니다.
 - 로그인이 필요함(401)과 권한 없음(403)은 Security 필터 단계에서 막혀 `GlobalExceptionHandler`를 거치지 않습니다. `global/security`의 `AuthenticationEntryPoint`(401)와 `AccessDeniedHandler`(403)에서도 같은 모양으로 응답합니다.
 - 생성·차감·확정 POST(레시피 생성, 요리했어요, 영수증 확정 등)는 `Idempotency-Key` 헤더를 받습니다. 같은 키로 다시 오면 처리하지 않고 처음 응답을 그대로 돌려줍니다(24시간, `idempotency_keys` 테이블). 처리는 기능마다 만들지 않고 `global/common`의 공통 필터 하나가 맡습니다.
-- 로그인이 필요한 API는 `Authorization: Bearer <accessToken>` 헤더로 인증합니다. 리프레시 토큰은 HttpOnly 쿠키로 주고받습니다.
+- 인증 방식(토큰을 보내는 방법, 토큰 흐름)은 [#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42)에서 정합니다. 결정 전에는 인증 규칙을 따로 추가하지 않습니다.
 
 ### 예시 API
 

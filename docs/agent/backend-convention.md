@@ -183,7 +183,7 @@ On failure, every API returns this shape. Include `fieldErrors` only for input v
 - Keep all error codes in the single `global/error/ErrorCode`. Use the same names as the API and error definition documents.
 - 401 (login required) and 403 (forbidden) are rejected in the Security filter chain and never reach `GlobalExceptionHandler`. Return the same shape from `AuthenticationEntryPoint` (401) and `AccessDeniedHandler` (403) in `global/security`.
 - Create, deduct, and confirm POSTs (recipe generation, cook, receipt confirm, etc.) accept an `Idempotency-Key` header. When the same key arrives again, do not process it; return the first response (24 hours, `idempotency_keys` table). One shared filter in `global/common` handles this, not each feature.
-- APIs that need login authenticate with the `Authorization: Bearer <accessToken>` header. The refresh token is sent and received as an HttpOnly cookie.
+- The authentication method (how the token is sent, the token flow) is decided in [#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42). Do not add an authentication rule before that decision.
 
 ### Example API
 
