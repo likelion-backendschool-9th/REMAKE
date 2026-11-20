@@ -86,7 +86,7 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 이 저장소에서 작업할 
 `PR Attribution Check` 워크플로(`scripts/check_pr_attribution.py`)는 아래 내용이 있으면 PR을 실패시킵니다.
 
 - 커밋 메시지에 AI 에이전트(Claude, Codex, Copilot, ChatGPT, Gemini, Cursor 등)를 적은 `Co-Authored-By:` 줄
-- PR 본문의 `🤖 Generated with ...`나 `Made with ...`(예: `Made with Cursor`) 문구, `claude-session:` 링크
+- PR 본문이나 커밋 메시지의 `🤖 Generated with ...`나 `Made with ...`(예: `Made with Cursor`) 문구, `claude-session:` 링크
 
 커밋 작성자는 사용자 본인의 로컬 git 설정을 그대로 쓰고, 에이전트 기본 설정이 넣으라고 해도 이런 줄은 넣지 않습니다.
 

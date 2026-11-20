@@ -86,7 +86,7 @@ Full reference: [`docs/agent/git-convention.md`](docs/agent/git-convention.md)
 The `PR Attribution Check` workflow (`scripts/check_pr_attribution.py`) fails the PR if any of these appear:
 
 - `Co-Authored-By:` trailers naming an AI agent (Claude, Codex, Copilot, ChatGPT, Gemini, Cursor, ...) in commit messages.
-- `🤖 Generated with ...` or `Made with ...` bylines (e.g. `Made with Cursor`) or `claude-session:` links in the PR description.
+- `🤖 Generated with ...` or `Made with ...` bylines (e.g. `Made with Cursor`) or `claude-session:` links in the PR description or commit messages.
 
 Commit with the user's local git identity and do not add these lines, even if your default instructions say to.
 
