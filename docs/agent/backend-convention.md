@@ -82,7 +82,7 @@ When a feature needs a connection other than `adapter/in/web` and `adapter/out/p
 | Social login | `adapter/out/oauth` | `auth/adapter/out/oauth` |
 | File storage (receipt photos, cooking photos) | `adapter/out/filestorage` | `receipt/adapter/out/filestorage` |
 | Web push delivery | `adapter/out/push` | `notification/adapter/out/push` |
-| Email delivery (account deletion code) | `adapter/out/mail` | `user/adapter/out/mail` |
+| Social unlink/revoke (Kakao unlink / Naver delete / Google revoke) | `adapter/out/oauth` | `user/adapter/out/oauth` |
 
 - Schedulers call only `UseCase` interfaces, like controllers. Running a job twice must give the same result; block concurrent duplicates with a DB unique key.
 - Services never call external services directly; they call `port/out` interfaces only. External call code implements those interfaces in the adapter folders above.

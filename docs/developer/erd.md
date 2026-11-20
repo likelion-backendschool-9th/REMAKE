@@ -31,7 +31,7 @@
 | 11/20 결정 | 남은 횟수 계산에서 `usage_logs`로 OCR 횟수를 세는 부분 삭제 | 영수증 스캔은 횟수 제한 없음. OCR 기록은 모니터링용으로만 남김. OCR에 AI를 붙이면 다시 정함 |
 | 11/20 결정 | `shared_recipes.save_count`는 상세 화면용 누적값, 주간 인기순은 `saved_recipes.saved_at`으로 셈 | 랭킹은 "이번 주 저장 수" 기준 |
 | 11/20 결정 | `cart_items.meal_plan_slot_id` 추가(nullable FK, `ON DELETE SET NULL`; [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46)) | 식단표 덮어쓰기 시 출처 칸으로 항목을 구분해 교체되는 칸의 장바구니 항목만 삭제하고 유지되는 칸의 항목은 보존 |
-| 11/20 결정 | 계정 삭제는 항상 이메일 6자리 인증. 제공자가 이메일을 안 주면 탈퇴 시 `POST /user/account/deletion-codes` 본문 `{ email }`로 대체 이메일을 받아 `users.email`에 저장한 뒤 코드를 보냄 ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) A) | 운영 수동 삭제 경로 없음. 코드 규칙(5분·재전송 30초·5회 잠금)은 모든 계정 동일 |
+| 11/20 결정 | 계정 삭제는 **소셜 재인증**(OAuth 콜백 재사용, 식별은 `(provider, provider_user_id)`만). 이메일 인증번호 탈퇴는 폐기 ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). 소프트 삭제(`deleted_at`, 개인정보 비움)는 동일. 재인증 토큰으로 제공자 unlink/revoke, 실패해도 서비스 탈퇴는 진행 | 카카오·네이버·구글이 이메일을 보장하지 않음. 가이드는 탈퇴 시 연결 끊기를 요구 |
 
 ## 공통 규칙
 
@@ -644,7 +644,7 @@ erDiagram
 | id | bigint | PK | | 아니오 | | 고유 번호 |
 | provider | varchar | | | 아니오 | | NAVER/KAKAO/GOOGLE |
 | provider_user_id | varchar | UK | | 예 | | 소셜 고유 ID. UK(provider+이 값). **탈퇴하면 null** |
-| email | varchar | | | 예 | | 계정 삭제 인증번호 발송용. 제공자가 안 주면 null이었다가, 탈퇴 때 대체 이메일을 받으면 저장([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). 탈퇴 완료 후 null |
+| email | varchar | | | 예 | | 제공자가 주면 저장하는 선택 프로필. 계정 식별·탈퇴 인증에는 쓰지 않음([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). 탈퇴하면 null |
 | role | varchar | | | 아니오 | USER | USER/ADMIN |
 | status | varchar | | | 아니오 | ACTIVE | ACTIVE/SUSPENDED |
 | plan | varchar | | | 아니오 | BASIC | BASIC/PREMIUM. 1차는 BASIC 한도만 적용(프리미엄 화면은 UI만) |
@@ -677,7 +677,9 @@ erDiagram
 | revoked_at | timestamp | | | 예 | | 로그아웃 시각 |
 | created_at | timestamp | | | 아니오 | | 발급 시각 |
 
-### 4. account_deletion_requests (계정 삭제 인증)
+### 4. account_deletion_requests (계정 삭제 인증) — [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) 이후 미사용
+
+탈퇴는 이메일 OTP를 쓰지 않는다. 이 테이블은 이후 마이그레이션에서 제거할 수 있다.
 
 | 컬럼명 | 타입 | PK/FK | 참조 테이블 | NULL 허용 | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |

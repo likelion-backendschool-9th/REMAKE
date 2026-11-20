@@ -31,7 +31,7 @@
 | 11/20 decision | OCR counting in `usage_logs` removed from the remaining-count rule | Receipt scans have no limit. OCR rows are kept for monitoring. Decide again if AI is added to OCR |
 | 11/20 decision | `shared_recipes.save_count` is the cumulative count for the detail screen; weekly popularity counts `saved_recipes.saved_at` | The ranking is "saves this week" |
 | 11/20 decision | `cart_items.meal_plan_slot_id` added (nullable FK, `ON DELETE SET NULL`; [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46)) | Identify items by source slot so meal-plan overwrite removes only replaced slots' cart items and preserves those from untouched slots |
-| 11/20 decision | Account deletion always uses a 6-digit email code; if the provider gave no email, the client supplies `{ email }` on `POST /user/account/deletion-codes`, which is saved to `users.email` then used for the code ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) A) | No ops-only deletion path. Same code rules (5 min / 30 s resend / 5 locks) for every account |
+| 11/20 decision | Account deletion uses **social re-authentication** (reuse OAuth callback; identify by `(provider, provider_user_id)` only). Email OTP deletion is abandoned ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). Soft-delete unchanged (`deleted_at`, clear PII). Provider unlink/revoke after re-auth; unlink failure does not block service deletion | Kakao/Naver/Google do not guarantee email. Guides require unlink/revoke on withdrawal |
 
 ## Common rules
 
@@ -644,7 +644,7 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | id | bigint | PK | | No | | ID |
 | provider | varchar | | | No | | NAVER/KAKAO/GOOGLE |
 | provider_user_id | varchar | UK | | Yes | | Social provider user ID. UK(provider + this). **Set to null on withdrawal** |
-| email | varchar | | | Yes | | For sending the account deletion code. Null if the provider gives none until the user supplies an alternate email at deletion ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). Set to null on withdrawal |
+| email | varchar | | | Yes | | Optional profile email from the provider when granted. Not used to identify or delete the account ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). Set to null on withdrawal |
 | role | varchar | | | No | USER | USER/ADMIN |
 | status | varchar | | | No | ACTIVE | ACTIVE/SUSPENDED |
 | plan | varchar | | | No | BASIC | BASIC/PREMIUM. Release 1 applies BASIC limits only (the premium screen is UI only) |
@@ -677,7 +677,9 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | revoked_at | timestamp | | | Yes | | Logout time |
 | created_at | timestamp | | | No | | Issue time |
 
-### 4. account_deletion_requests (Account deletion codes)
+### 4. account_deletion_requests (Account deletion codes) — unused after [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)
+
+Withdrawal no longer uses email OTP. This table may be dropped in a later migration. Kept in the ERD until then.
 
 | Column | Type | PK/FK | References | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |

@@ -66,11 +66,8 @@ Code-only rows are in `global/error/ErrorCode` but not in the planning sheet: 4 
 | `OAUTH_PROVIDER_UNSUPPORTED` | 400 | WARN | provider not kakao/naver/google |
 | `REFRESH_TOKEN_INVALID` | 401 | INFO | Refresh token expired/revoked/forged -> login |
 | `CATALOG_ITEM_NOT_FOUND` | 404 | WARN | Excluded-ingredient catalog id does not exist |
-| `ACCOUNT_EMAIL_MISSING` | 422 | WARN | No `users.email` and deletion-codes body omitted `email`. Client must collect an alternate email and retry with `{ email }` ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) A) |
-| `DELETION_CODE_RESEND_TOO_SOON` | 429 | INFO | Resend within 30 s |
-| `DELETION_CODE_INVALID` | 400 | INFO | Wrong code (details.remaining attempts) |
-| `DELETION_CODE_EXPIRED` | 400 | INFO | Code older than 5 min |
-| `DELETION_CODE_LOCKED` | 429 | WARN | 5 wrong attempts; request a new code |
+| `OAUTH_STATE_INVALID` | 400 | WARN | OAuth `state` missing, mismatched, reused, or expired (login or withdrawal re-auth) |
+| `ACCOUNT_PROVIDER_MISMATCH` | 403 | WARN | Withdrawal re-auth profile `(provider, id)` does not match the logged-in user ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)) |
 | `INGREDIENT_NOT_FOUND` | 404 | INFO | Missing or not owned |
 | `INSUFFICIENT_QUANTITY` | 400 | INFO | Removing more than owned |
 | `INVALID_UNIT` | 400 | INFO | Unit not in the 14-unit list or not allowed for the item |

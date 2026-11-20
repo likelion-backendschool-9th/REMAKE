@@ -82,7 +82,7 @@ com.remake
 | 소셜 로그인 | `adapter/out/oauth` | `auth/adapter/out/oauth` |
 | 파일 저장 (영수증 사진, 조리 사진) | `adapter/out/filestorage` | `receipt/adapter/out/filestorage` |
 | 웹 푸시 발송 | `adapter/out/push` | `notification/adapter/out/push` |
-| 메일 발송 (계정 삭제 인증번호) | `adapter/out/mail` | `user/adapter/out/mail` |
+| 소셜 연결 끊기 (카카오 unlink / 네이버 revoke / 구글 revoke) | `adapter/out/oauth` | `user/adapter/out/oauth` |
 
 - 스케줄러는 Controller처럼 `UseCase`만 부릅니다. 두 번 돌아도 결과가 같게 만들고, 동시에 도는 중복은 DB 유니크 키로 막습니다.
 - Service는 외부 서비스를 직접 부르지 않고 `port/out` 인터페이스만 부릅니다. 외부 서비스 호출 코드는 위 adapter 폴더에서 그 인터페이스를 구현합니다.

@@ -15,14 +15,13 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/public/auth/oauth/{provider}` | provider `kakao`/`naver`/`google`. Body `{ code, redirectUri }` -> `{ onboardingCompleted }`. Sets access (30 min) and refresh (14 d) as HttpOnly cookies (`Secure; SameSite=Lax`). Events: login_succeeded, login_failed, signup_completed |
+| POST | `/public/auth/oauth/{provider}` | provider `kakao`/`naver`/`google`. Body `{ code, redirectUri, state }`. Shared callback for **login** and **withdrawal re-auth**; branch on server-stored OAuth `state.purpose` (`withdraw` vs login). Login -> `{ onboardingCompleted }` + access/refresh HttpOnly cookies. Withdrawal -> unlink provider, soft-delete user, clear cookies. Events: login_succeeded / login_failed / signup_completed, or account_deleted |
 | POST | `/public/auth/refresh` | Reissue access cookie from refresh cookie (body empty / 204). Invalid refresh -> `REFRESH_TOKEN_INVALID` |
 | POST | `/user/auth/logout` | Revoke refresh token and clear both cookies |
 | GET/PUT | `/user/profile` | `provider, householdSize, onboardingCompleted, lastMealPurpose, excludedCount`; PUT `{ householdSize, onboardingCompleted }` (skip allowed). Event: onboarding_completed |
 | GET/PATCH | `/user/settings` | `{ recipeSupplementEnabled, notificationEnabled, provider }` |
 | GET/PUT | `/user/excluded-ingredients` | PUT replaces all: `{ catalogIds: [] }` |
-| POST | `/user/account/deletion-codes` | Send 6-digit email code (resend = same call). If `users.email` is set, send there (body `{}` ok). If null, body `{ email }` is required: validate, save to `users.email`, then send. Missing both -> `ACCOUNT_EMAIL_MISSING` ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) A). Event: account_deletion_requested |
-| POST | `/user/account/deletion-codes/verify` | `{ code }`; correct code deletes account (204). Event: account_deleted |
+| POST | `/user/account/withdrawal/start` | Logged-in only. Store OAuth `state` server-side (`purpose=withdraw`, userId, provider, 5 min TTL; never put purpose in the query) and return the provider authorize URL (re-auth params: Kakao `prompt=login`, Naver `auth_type=reauthenticate`, Google `max_age=0` + `prompt=select_account`). Event: account_deletion_requested |
 
 ## 2. Fridge (owner: 김재연)
 
