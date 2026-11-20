@@ -159,6 +159,7 @@ Rules:
 - Other docs that live outside `docs/` because agents read them in place (e.g. `frontend/blueprint.md`) follow the same pattern: English in place, Korean translation at `docs/developer/<folder>-<name>.md` (e.g. `docs/developer/frontend-blueprint.md`).
 - `CLAUDE.md` files contain only `@AGENTS.md` so Claude Code loads the same rules. Do not put content in them.
 - Out of scope (Korean only, no English copy): `README.md` files and `.github/` templates.
+- Exception (Korean only, no English copy): `docs/developer/guide/`. Per-area implementation guides for developers; agents use `docs/agent/spec/` for the same policy.
 - Exception (English only, no Korean copy): `docs/agent/spec/`. These files summarize the Korean planning documents (PRD, policy, API, ERD, error, and event definitions kept in Notion and Google Sheets) for agents. Developers read the originals.
 - Use relative links that work from each document's location.
 

@@ -159,6 +159,7 @@ PR에서 CI가 무엇을 검사하고 결과를 어떻게 보는지는 [`docs/de
 - 에이전트가 제자리에서 읽어야 해서 `docs/` 밖에 있는 문서(예: `frontend/blueprint.md`)도 같은 방식입니다. 원래 위치에는 영문을 두고, 한글 번역은 `docs/developer/<폴더>-<이름>.md`에 둡니다 (예: `docs/developer/frontend-blueprint.md`).
 - `CLAUDE.md` 파일에는 `@AGENTS.md` 한 줄만 둡니다. Claude Code가 같은 규칙을 읽게 하기 위한 파일이라 다른 내용을 넣지 않습니다.
 - 대상이 아닌 문서(한글로만 관리, 영문판 없음): `README.md` 파일들, `.github/` 템플릿
+- 예외(한글만, 영문판 없음): `docs/developer/guide/`. 개발자용 영역별 구현 가이드이고, 에이전트는 같은 정책을 `docs/agent/spec/`에서 읽습니다.
 - 예외(영문만, 한글판 없음): `docs/agent/spec/`. 노션과 구글 시트에 있는 한글 기획 문서(PRD, 정책, API, ERD, 에러, 이벤트 정의서)를 에이전트용으로 요약한 문서입니다. 개발자는 원본을 봅니다.
 - 링크는 각 문서 위치에서 동작하는 상대 경로로 씁니다.
 
