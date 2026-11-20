@@ -8,7 +8,7 @@ When a PR targets `dev` or `main`, GitHub Actions checks the changed areas. A PR
 
 | Workflow | PRs it checks | What it does | Required check |
 | --- | --- | --- | --- |
-| Backend CI | PRs that change `backend/`, `.github/workflows/backend-ci.yml`, or `scripts/backend_test_summary.py` | Starts a test PostgreSQL and runs `./gradlew build` (compile, tests, jar), writes the test summary, builds the backend Docker image | `Backend CI required` |
+| Backend CI | PRs that change `backend/`, `.github/workflows/backend-ci.yml`, or `scripts/backend_test_summary.py` | Runs `./gradlew build` (compile, tests, jar; the tests start their own PostgreSQL container), writes the test summary, builds the backend Docker image | `Backend CI required` |
 | Frontend CI | PRs that change `frontend/` or `.github/workflows/frontend-ci.yml` | `pnpm lint`, `pnpm typecheck`, `pnpm build`, builds the frontend Docker image | `Frontend CI required` |
 | Deploy CI | PRs that change the deploy files (`compose.prod.yml`, `deploy/`) or the workflow files (`.github/workflows/`) | Deploy files: checks the shell scripts, Compose, and the proxy Nginx configuration. Workflow files: actionlint | `Deploy CI required` |
 | PR Attribution Check | Every PR | Checks commits and the PR description for automatic AI attribution | — |
@@ -34,9 +34,9 @@ After the tests, Backend CI writes a table with the test time and the number of 
 
 Spring reuses a started application for test classes with the same configuration. When classes have different configurations (for example a different `@MockitoBean`, `@TestPropertySource`, or test container per class), the application is started again for each of them, and CI gets slower with every new test class. The Spring application start count is there to notice this early.
 
-- **Yellow warning**: when Spring application starts exceed 3 or the total test time exceeds 180 seconds, a yellow warning appears on the PR. It does not block the merge.
+- **Yellow warning**: when Spring application starts exceed 1 (integration tests share one application; see the [backend testing document](backend-testing.md)) or the total test time exceeds 180 seconds, a yellow warning appears on the PR. It does not block the merge.
 - **When the warning appears**: in the slowest test classes table, look at the classes whose Spring start count is 1 and check why their test configuration differs from the other classes. Aligning the configuration lets them reuse the application.
-- **Changing the thresholds**: change `--max-spring-boots` and `--max-test-seconds` in `.github/workflows/backend-ci.yml`.
+- **Changing the thresholds**: change `--max-spring-boots` and `--max-test-seconds` in `.github/workflows/backend-ci.yml`. A PR that adds a new test base class raises `--max-spring-boots` in the same PR.
 - The summary step is auxiliary: a problem in the summary script does not fail CI. A failing test still fails CI.
 - **When a test fails**: download `backend-test-report` from **Artifacts** at the bottom of the run page, unzip it, and open `index.html` to see the failed tests and their output. It is kept for 7 days.
 

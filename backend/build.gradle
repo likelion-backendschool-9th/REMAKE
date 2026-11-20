@@ -31,6 +31,8 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
@@ -38,6 +40,8 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// 운영 컨테이너(TZ: Asia/Seoul)와 같은 시간대. CI(UTC)에서도 날짜 계산과 DB 세션 시간대가 운영과 같아진다.
+	systemProperty 'user.timezone', 'Asia/Seoul'
 }
 
 tasks.named('bootJar') {

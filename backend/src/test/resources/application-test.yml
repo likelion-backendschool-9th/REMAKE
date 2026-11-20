@@ -1,0 +1,14 @@
+# 통합 테스트 설정. IntegrationTestSupport가 test 프로필을 켠다. (local 프로필 대신)
+# backend/.env는 local 프로필에서만 읽으므로 테스트는 읽지 않는다. 테스트에 필요한 값은 여기에 둔다.
+spring:
+  jpa:
+    hibernate:
+      # 운영과 같이 검사만 한다. 마이그레이션 SQL과 엔티티가 맞지 않으면 테스트가 실패한다.
+      ddl-auto: validate
+
+remake:
+  scheduling:
+    # 테스트 중 @Scheduled 작업이 저절로 돌지 않게 한다. @Scheduled 설정은 ScheduledSettingsTest가 따로 검사한다.
+    enabled: false
+# 외부 서비스 키·주소는 연동이 생길 때 여기에 가짜 값으로 추가한다. 주소는 접속되지 않는 주소(http://localhost:1)로 둔다.
+# 빠뜨리면 셸이나 IDE에 설정된 환경 변수의 진짜 키가 쓰일 수 있다.

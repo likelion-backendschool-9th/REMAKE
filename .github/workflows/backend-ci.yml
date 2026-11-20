@@ -55,29 +55,7 @@ jobs:
       run:
         working-directory: backend
 
-    # 테스트용 일회용 PostgreSQL (검사가 끝나면 사라짐)
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_DB: remake
-          POSTGRES_USER: remake
-          POSTGRES_PASSWORD: remake
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U remake"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    # application-local.yml이 읽는 값 (CI 전용 임시 값)
-    env:
-      DB_PORT: 5432
-      DB_NAME: remake
-      DB_USERNAME: remake
-      DB_PASSWORD: remake
-
+    # 테스트용 PostgreSQL은 테스트가 Testcontainers로 직접 띄운다(러너에 Docker가 있음). docs/agent/backend-testing.md
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -99,11 +77,12 @@ jobs:
 
       # 테스트 시간과 Spring 앱 기동 횟수를 작업 요약에 표로 남긴다. 기준을 넘으면 노란 경고만 띄우고 실패시키지 않는다.
       # 기동 횟수가 테스트 클래스 수에 가까워지면 통합 테스트가 앱을 재사용하지 못해 CI가 점점 느려진다.
+      # 기동 기준은 테스트 부모 클래스 수(지금 1)다. 새 부모 클래스를 만드는 PR에서 같이 올린다.
       - name: Test summary
         if: always() && steps.build.outcome != 'skipped'
         # 요약은 보조 기능이다. 스크립트에 문제가 생겨도 작업을 실패시키지 않는다. (테스트 실패는 위 단계에서 그대로 실패한다)
         continue-on-error: true
-        run: python3 ../scripts/backend_test_summary.py build/test-results/test --max-spring-boots 3 --max-test-seconds 180
+        run: python3 ../scripts/backend_test_summary.py build/test-results/test --max-spring-boots 1 --max-test-seconds 180
 
       # 테스트가 실패하면 HTML 리포트를 올린다. 실행 화면의 Artifacts 에서 받아 build/reports 의 index.html 을 연다.
       - name: Upload test report
