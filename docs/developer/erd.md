@@ -2,7 +2,7 @@
 
 > 에이전트용 영문판: [`docs/agent/erd.md`](../agent/erd.md)
 
-2026-11-19 · 김종수
+2026-11-19 · 김종수 (2026-11-20 정책 v3.1 반영: 아래 표의 "11/20 결정" 줄)
 
 ## v2에서 바뀐 점
 
@@ -19,6 +19,17 @@
 | 컬럼 삭제 | `recipes.description`, `recipes.difficulty` | 피그마·API에 없음 |
 | NULL·기본값 | `recipes.mode`·`receipts.image_key` NULL 허용, `meal_plan_slots.menu_name` NOT NULL, `notification_enabled` 기본 true, `ingredients.unit` 기본 EA | 상세·사본 레시피엔 mode 없음, 1년 뒤 이미지 삭제, 가입 직후에도 알림 |
 | 이벤트 | `events.user_id` 외래 키 없음, 탈퇴해도 유지 | 지난 통계 유지. 개인 식별값은 `users`에서 비움 |
+| 11/20 결정 | 테이블 추가 `shared_recipe_weekly_ranks`(32개) | 랭킹에 지난주 대비 순위 변동(`rankChange`)을 보여 주려면 주간 작업이 지난주 최종 TOP 100을 남겨 둬야 함 |
+| 11/20 결정 | `users.plan`(BASIC/PREMIUM) 추가 | 요금제별 한도가 다름. 1차는 BASIC만 적용(프리미엄은 UI만) |
+| 11/20 결정 | `receipts.status`(SCANNED/CONFIRMED) 삭제. 확정한 영수증만 저장, `receipts.image_key` NOT NULL | 스캔 API는 분석만 하고 저장하지 않음. 확정 API가 영수증·품목·냉장고 재료를 한 트랜잭션으로 저장 |
+| 11/20 결정 | `receipts.store_code` 추가 | 마트 아이콘(15개 코드, 못 맞추면 `ETC`) |
+| 11/20 결정 | `receipts.total_price` 삭제. `receipts`·`receipt_items`는 `updated_at`을 지우고 `BaseCreatedEntity`로 변경(`updated_at`이 있는 테이블은 이제 5개) | 식비는 항상 식재료 품목 합계라 영수증에 적힌 총액을 쓰지 않음. 확정한 영수증은 수정하지 않음 |
+| 11/20 결정 | 영수증 보관: 구매일 기준 6개월(날짜가 없으면 저장일), 지나면 이미지·품목과 함께 삭제. 미확정 7일 정리·이미지 1년 보관 삭제 | 식비 비교가 최근 6개월 기준. 미확정은 저장하지 않음 |
+| 11/20 결정 | `receipt_items`는 식재료만 저장, `category_id` NOT NULL | OCR이 식재료만 돌려줌(비식재료는 걸러짐) |
+| 11/20 결정 | `notifications.receipt_id`와 `RECEIPT_DONE` 종류 삭제(EXPIRY_SOON/EXPIRED만) | OCR이 동기라 "분석 완료" 알림이 없음 |
+| 11/20 결정 | `generation_quota_grants.expires_at` 추가(지급 후 한 달) | 주간 보상은 한 달 안에 써야 함 |
+| 11/20 결정 | 남은 횟수 계산에서 `usage_logs`로 OCR 횟수를 세는 부분 삭제 | 영수증 스캔은 횟수 제한 없음. OCR 기록은 모니터링용으로만 남김. OCR에 AI를 붙이면 다시 정함 |
+| 11/20 결정 | `shared_recipes.save_count`는 상세 화면용 누적값, 주간 인기순은 `saved_recipes.saved_at`으로 셈 | 랭킹은 "이번 주 저장 수" 기준 |
 
 ## 공통 규칙
 
@@ -46,7 +57,7 @@ erDiagram
   recipe_cook_logs |o--o{ ingredient_logs : ""
   users ||--o{ receipts : ""
   receipts ||--o{ receipt_items : ""
-  ingredient_categories |o--o{ receipt_items : ""
+  ingredient_categories ||--o{ receipt_items : ""
   users ||--o{ recipes : ""
   recipes ||--o{ recipe_ingredients : ""
   ingredients |o--o{ recipe_ingredients : ""
@@ -70,6 +81,7 @@ erDiagram
   recipes ||--o| shared_recipes : ""
   shared_recipes ||--o{ shared_recipe_photos : ""
   shared_recipes ||--o{ shared_recipe_reports : ""
+  shared_recipes ||--o{ shared_recipe_weekly_ranks : ""
   users ||--o{ shared_recipe_reports : "신고자"
   users |o--o{ shared_recipe_reports : "처리"
   users ||--o{ generation_quota_grants : "받음"
@@ -79,7 +91,6 @@ erDiagram
   generation_quota_grants |o--o{ usage_logs : ""
   users ||--o{ notifications : ""
   ingredients |o--o{ notifications : ""
-  receipts |o--o{ notifications : ""
   users ||--o{ push_subscriptions : ""
   users ||--o{ admin_audit_logs : ""
   users ||--o{ idempotency_keys : ""
@@ -91,7 +102,7 @@ erDiagram
   }
 ```
 
-포함 테이블: 31개 테이블 전체 관계(컬럼 생략)
+포함 테이블: 32개 테이블 전체 관계(컬럼 생략)
 
 ### 회원·설정
 
@@ -125,6 +136,7 @@ erDiagram
     string email "계정 삭제 인증번호 발송용. 제공자가 안 주면 null. 탈퇴하면 null"
     string role "USER/ADMIN"
     string status "ACTIVE/SUSPENDED"
+    string plan "BASIC/PREMIUM. 1차는 BASIC만 적용"
     int household_size "가구원 수. 건너뛰면 null"
     boolean onboarding_completed "온보딩을 마치거나 건너뛰었는지"
     boolean recipe_supplement_enabled "레시피 재료 보충(설정). ON이면 냉장고에 없는 재료도 포함"
@@ -172,12 +184,11 @@ erDiagram
   recipe_cook_logs |o--o{ ingredient_logs : ""
   users ||--o{ receipts : ""
   receipts ||--o{ receipt_items : ""
-  ingredient_categories |o--o{ receipt_items : ""
+  ingredient_categories ||--o{ receipt_items : ""
   ingredients |o--o{ recipe_ingredients : ""
   ingredient_catalog ||--o{ recipe_catalog_items : ""
   ingredients |o--o{ meal_plan_slot_ingredients : ""
   ingredients |o--o{ notifications : ""
-  receipts |o--o{ notifications : ""
   ingredient_categories {
     bigint id PK "고유 번호"
     string code UK "MEAT 등 12개(부록 B)"
@@ -225,18 +236,16 @@ erDiagram
   receipts {
     bigint id PK "고유 번호"
     bigint user_id FK "회원"
-    date purchased_on "구매일(월 집계 기준)"
+    date purchased_on "구매일(월 집계·6개월 보관 기준)"
     string store_name "판매처"
-    bigint total_price "영수증에 적힌 총액(참고용. 식비는 품목 합계)"
-    string status "SCANNED/CONFIRMED. 집계는 CONFIRMED만"
-    string image_key "저장소 경로. 1년 보관 후 이미지를 지우면 null"
-    timestamp created_at "스캔 시각(7일 미확정 정리·1년 보관 기준)"
-    timestamp updated_at "수정 시각"
+    string store_code "마트 아이콘 코드(15개, 못 맞추면 ETC)"
+    string image_key "저장소 경로. 영수증과 함께 삭제"
+    timestamp created_at "저장(확정) 시각. 구매일이 없으면 보관 기준"
   }
   receipt_items {
     bigint id PK "고유 번호"
     bigint receipt_id FK "영수증. 영수증 삭제 시 같이 삭제"
-    bigint category_id FK "null이면 식재료 아님(냉장고·식비 제외)"
+    bigint category_id FK "카테고리(식재료만 저장)"
     string name "품목명"
     decimal amount "수량. 모르면 1"
     string unit "냉장고 단위 9개"
@@ -245,7 +254,6 @@ erDiagram
     date expiration_date "소비기한"
     boolean is_expiration_estimated "추정값인지"
     timestamp created_at "만든 시각"
-    timestamp updated_at "수정 시각(확인 화면·금액 수정)"
   }
 ```
 
@@ -382,6 +390,7 @@ erDiagram
   recipes ||--o| shared_recipes : ""
   shared_recipes ||--o{ shared_recipe_photos : ""
   shared_recipes ||--o{ shared_recipe_reports : ""
+  shared_recipes ||--o{ shared_recipe_weekly_ranks : ""
   users ||--o{ shared_recipe_reports : "신고자"
   users |o--o{ shared_recipe_reports : "처리"
   users ||--o{ generation_quota_grants : "받음"
@@ -391,14 +400,13 @@ erDiagram
   generation_quota_grants |o--o{ usage_logs : ""
   users ||--o{ notifications : ""
   ingredients |o--o{ notifications : ""
-  receipts |o--o{ notifications : ""
   users ||--o{ push_subscriptions : ""
   shared_recipes {
     bigint id PK "고유 번호"
     bigint recipe_id FK, UK "공유한 원본 레시피. 한 레시피는 한 번만. RECIPE_GEN·MEAL_…"
     string title "공유 제목(필수)"
     string status "VISIBLE/HIDDEN/DELETED"
-    int save_count "저장 수 집계값(랭킹·인기순 정렬용)"
+    int save_count "누적 저장 수(상세 화면용)"
     timestamp created_at "공유 시각"
     timestamp updated_at "상태·저장 수 변경 시각"
   }
@@ -421,11 +429,20 @@ erDiagram
     timestamp handled_at "처리 시각"
     timestamp created_at "신고 시각"
   }
+  shared_recipe_weekly_ranks {
+    bigint id PK "고유 번호"
+    date week_start "랭킹 주(월요일). UK(week_start+rank_no)"
+    bigint shared_recipe_id FK "공유 레시피"
+    int rank_no "순위 1~100"
+    int save_count "그 주의 저장 수"
+    timestamp created_at "저장 시각(주간 작업)"
+  }
   generation_quota_grants {
     bigint id PK "고유 번호"
     bigint user_id FK "받은 회원"
     int amount "지급 횟수(어드민 감소는 음수)"
     int remaining "남은 횟수"
+    timestamp expires_at "만료 시각(지급 + 한 달)"
     string reason "WEEKLY_REWARD/ADMIN"
     date week_start "보상 주"
     int rank_no UK "1~3. UK(week_start+rank_no), 보상 작업이 두 번 돌…"
@@ -448,8 +465,7 @@ erDiagram
     bigint id PK "고유 번호"
     bigint user_id FK "회원"
     bigint ingredient_id FK "임박 알림의 재료. 재료 삭제 시 null(누르면 냉장고로)"
-    bigint receipt_id FK "분석 완료 알림의 영수증. 영수증 삭제 시 null"
-    string type "EXPIRY_SOON/EXPIRED/RECEIPT_DONE"
+    string type "EXPIRY_SOON/EXPIRED"
     string dedupe_key UK "UK(user_id+이 값). 예: EXPIRY_SOON:501:2026-…"
     string title "제목"
     string body "본문"
@@ -466,7 +482,7 @@ erDiagram
   }
 ```
 
-포함 테이블: shared_recipes, shared_recipe_photos, shared_recipe_reports, generation_quota_grants, usage_logs, notifications, push_subscriptions
+포함 테이블: shared_recipes, shared_recipe_photos, shared_recipe_reports, shared_recipe_weekly_ranks, generation_quota_grants, usage_logs, notifications, push_subscriptions
 
 ### 이벤트·어드민·공통
 
@@ -520,7 +536,7 @@ erDiagram
 
 | 번호 | 테이블명 | 한글명 | 설명 | 기능 폴더 | 공통 클래스 | 컬럼 수 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | users | 회원 | 소셜 로그인 회원. 어드민도 role로 구분. 설정 화면 값(가구원 수·알림·재료 보충)을 함께 가짐 | user | BaseTimeEntity | 14 |
+| 1 | users | 회원 | 소셜 로그인 회원. 어드민도 role로 구분. 설정 화면 값(가구원 수·알림·재료 보충)과 요금제(BASIC/PREMIUM)를 함께 가짐 | user | BaseTimeEntity | 15 |
 | 2 | user_excluded_ingredients | 제외 재료(알레르기) | 온보딩·설정의 "레시피에서 제외할 재료"(회원과 재료 사전의 N:N) | user | 없음 | 2 |
 | 3 | refresh_tokens | 리프레시 토큰 | 로그인 갱신 토큰(해시 저장), 로그아웃 시 폐기 | auth | BaseCreatedEntity | 6 |
 | 4 | account_deletion_requests | 계정 삭제 인증 | 이메일로 보낸 인증번호 6자리(5분, 재전송, 5회 잠금) | user | BaseCreatedEntity | 7 |
@@ -528,8 +544,8 @@ erDiagram
 | 6 | ingredient_catalog | 재료 사전 | 자동완성·카테고리 추정·제외 재료 목록(기준 데이터) | ingredient | 없음 | 5 |
 | 7 | ingredients | 냉장고 재료 | 냉장고의 재료 한 줄. 다 쓰면 FINISHED로 남김 | ingredient | BaseTimeEntity | 16 |
 | 8 | ingredient_logs | 재료 사용·폐기 이력 | 사용했어요·버렸어요 기록. 버린 금액 통계의 원본 | ingredient | BaseCreatedEntity | 8 |
-| 9 | receipts | 영수증 | 촬영한 영수증 한 장. 확인 완료(CONFIRMED)만 식비 집계 | receipt | BaseTimeEntity | 9 |
-| 10 | receipt_items | 영수증 품목 | 영수증의 품목 한 줄. 카테고리가 없으면 식재료 아님 | receipt | BaseTimeEntity | 12 |
+| 9 | receipts | 영수증 | 확정한 영수증 한 장(확정 전 OCR 결과는 저장하지 않음). 구매일 기준 6개월 보관 | receipt | BaseCreatedEntity | 7 |
+| 10 | receipt_items | 영수증 품목 | 확정한 영수증의 식재료 한 줄(비식재료는 저장하지 않음) | receipt | BaseCreatedEntity | 11 |
 | 11 | recipes | 레시피 | AI가 만든 레시피 본체와 공유 레시피 사본. 한 번 만들면 수정하지 않음 | recipe | BaseCreatedEntity | 11 |
 | 12 | recipe_ingredients | 레시피 재료 | 레시피에 들어가는 재료와 수량 | recipe | BaseCreatedEntity | 8 |
 | 13 | recipe_steps | 레시피 조리 단계 | 레시피의 조리 순서 | recipe | BaseCreatedEntity | 5 |
@@ -543,14 +559,15 @@ erDiagram
 | 21 | shared_recipes | 공유 레시피 | 공유 공간에 올린 레시피(완전 익명) | share | BaseTimeEntity | 7 |
 | 22 | shared_recipe_photos | 공유 조리 사진 | 공유할 때 올린 조리 사진(1장 이상) | share | BaseCreatedEntity | 5 |
 | 23 | shared_recipe_reports | 공유 레시피 신고 | 신고와 어드민 처리 결과 | share | BaseCreatedEntity | 10 |
-| 24 | generation_quota_grants | 생성 횟수 지급 | 금주의 레시피 보상·어드민 조정으로 준 추가 레시피 생성 횟수 | quota | BaseCreatedEntity | 11 |
-| 25 | usage_logs | 호출 이력 | AI·OCR 호출 기록. 남은 횟수 계산과 어드민 호출 집계의 원본 | quota | BaseCreatedEntity | 8 |
-| 26 | notifications | 알림 | 회원에게 만든 알림 한 건 | notification | BaseCreatedEntity | 10 |
-| 27 | push_subscriptions | 푸시 구독 | 웹 푸시 구독 정보(기기별) | notification | BaseCreatedEntity | 6 |
-| 28 | events | 이벤트 | 사용자 행동 이벤트 원본(프론트·서버) | event | 직접(`occurred_at`, `created_at`) | 12 |
-| 29 | event_daily_stats | 이벤트 일별 집계 | events를 하루 단위로 센 표(대시보드용) | event | 없음 | 5 |
-| 30 | admin_audit_logs | 어드민 조치 이력 | 신고 처리·횟수 조정·계정 제한 등 | admin | BaseCreatedEntity | 7 |
-| 31 | idempotency_keys | 중복 요청 방지 키 | 생성·차감·확정 POST의 `Idempotency-Key`와 처음 응답(24시간 보관) | global | 직접(`created_at`) | 6 |
+| 24 | shared_recipe_weekly_ranks | 주간 랭킹 기록 | 월요일 작업이 남기는 지난주 최종 TOP 100(`rankChange` 계산용) | share | BaseCreatedEntity | 6 |
+| 25 | generation_quota_grants | 생성 횟수 지급 | 금주의 레시피 보상·어드민 조정으로 준 추가 레시피 생성 횟수(한 달 유효) | quota | BaseCreatedEntity | 12 |
+| 26 | usage_logs | 호출 이력 | AI·OCR 호출 기록. 남은 횟수 계산과 어드민 호출 집계의 원본 | quota | BaseCreatedEntity | 8 |
+| 27 | notifications | 알림 | 회원에게 만든 알림 한 건 | notification | BaseCreatedEntity | 9 |
+| 28 | push_subscriptions | 푸시 구독 | 웹 푸시 구독 정보(기기별) | notification | BaseCreatedEntity | 6 |
+| 29 | events | 이벤트 | 사용자 행동 이벤트 원본(프론트·서버) | event | 직접(`occurred_at`, `created_at`) | 12 |
+| 30 | event_daily_stats | 이벤트 일별 집계 | events를 하루 단위로 센 표(대시보드용) | event | 없음 | 5 |
+| 31 | admin_audit_logs | 어드민 조치 이력 | 신고 처리·횟수 조정·계정 제한 등 | admin | BaseCreatedEntity | 7 |
+| 32 | idempotency_keys | 중복 요청 방지 키 | 생성·차감·확정 POST의 `Idempotency-Key`와 처음 응답(24시간 보관) | global | 직접(`created_at`) | 6 |
 
 ## 관계 목록
 
@@ -570,7 +587,7 @@ erDiagram
 | recipe_cook_logs | ingredient_logs | 1:N | 요리 차감 / 없을 수 있음 | cook_log_id | |
 | users | receipts | 1:N | 촬영 | user_id | |
 | receipts | receipt_items | 1:N | 품목 | receipt_id | CASCADE |
-| ingredient_categories | receipt_items | 1:N | 분류 / 비식재료면 없음 | category_id | |
+| ingredient_categories | receipt_items | 1:N | 분류 | category_id | |
 | users | recipes | 1:N | 생성 | creator_id | |
 | recipes | recipe_ingredients | 1:N | | recipe_id | |
 | ingredients | recipe_ingredients | 1:N | 쓰려던 냉장고 재료 / 없을 수 있음 | ingredient_id | SET NULL |
@@ -594,6 +611,7 @@ erDiagram
 | recipes | shared_recipes | 1:0..1 | 공유 | recipe_id | |
 | shared_recipes | shared_recipe_photos | 1:N | 조리 사진 | shared_recipe_id | CASCADE |
 | shared_recipes | shared_recipe_reports | 1:N | 신고 | shared_recipe_id | |
+| shared_recipes | shared_recipe_weekly_ranks | 1:N | 지난주 순위 | shared_recipe_id | |
 | users | shared_recipe_reports | 1:N | 신고자 | reporter_id | |
 | users | shared_recipe_reports | 1:N | 처리 어드민 / 없을 수 있음 | handled_by | |
 | users | generation_quota_grants | 1:N | 받은 회원 | user_id | |
@@ -603,7 +621,6 @@ erDiagram
 | generation_quota_grants | usage_logs | 1:N | 보상 횟수 사용 / 없을 수 있음 | grant_id | |
 | users | notifications | 1:N | | user_id | |
 | ingredients | notifications | 1:N | 임박 재료 / 없을 수 있음 | ingredient_id | SET NULL |
-| receipts | notifications | 1:N | 분석 완료 / 없을 수 있음 | receipt_id | SET NULL |
 | users | push_subscriptions | 1:N | | user_id | |
 | users | admin_audit_logs | 1:N | 어드민 조치 | admin_id | |
 | users | idempotency_keys | 1:N | 중복 요청 방지 | user_id | |
@@ -624,6 +641,7 @@ erDiagram
 | email | varchar | | | 예 | | 계정 삭제 인증번호 발송용. 제공자가 안 주면 null. 탈퇴하면 null |
 | role | varchar | | | 아니오 | USER | USER/ADMIN |
 | status | varchar | | | 아니오 | ACTIVE | ACTIVE/SUSPENDED |
+| plan | varchar | | | 아니오 | BASIC | BASIC/PREMIUM. 1차는 BASIC 한도만 적용(프리미엄 화면은 UI만) |
 | household_size | int | | | 예 | | 가구원 수. 건너뛰면 null |
 | onboarding_completed | boolean | | | 아니오 | false | 온보딩을 마치거나 건너뛰었는지 |
 | recipe_supplement_enabled | boolean | | | 아니오 | false | 레시피 재료 보충(설정). ON이면 냉장고에 없는 재료도 포함 |
@@ -731,13 +749,15 @@ erDiagram
 | --- | --- | --- | --- | --- | --- | --- |
 | id | bigint | PK | | 아니오 | | 고유 번호 |
 | user_id | bigint | FK | users | 아니오 | | 회원 |
-| purchased_on | date | | | 예 | | 구매일(월 집계 기준) |
+| purchased_on | date | | | 예 | | 구매일(월 집계·6개월 보관 기준) |
 | store_name | varchar | | | 예 | | 판매처 |
-| total_price | bigint | | | 예 | | 영수증에 적힌 총액(참고용. 식비는 품목 합계) |
-| status | varchar | | | 아니오 | SCANNED | SCANNED/CONFIRMED. 집계는 CONFIRMED만 |
-| image_key | varchar | | | 예 | | 저장소 경로. 1년 보관 후 이미지를 지우면 null |
-| created_at | timestamp | | | 아니오 | | 스캔 시각(7일 미확정 정리·1년 보관 기준) |
-| updated_at | timestamp | | | 아니오 | | 수정 시각 |
+| store_code | varchar | | | 예 | | 마트 아이콘 코드(15개: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). 못 맞추면 `ETC`이고, 화면은 기본 아이콘과 `store_name`(OCR이 읽은 이름)을 보여 줌 |
+| image_key | varchar | | | 아니오 | | 저장소 경로. 영수증과 함께 삭제 |
+| created_at | timestamp | | | 아니오 | | 저장(확정) 시각. `purchased_on`이 없으면 보관 기준 |
+
+- 식비 금액은 영수증에 적힌 총액이 아니라 항상 식재료 품목 합계(`receipt_items.price`)입니다.
+- 확정한 영수증만 저장합니다. `POST /receipts/scan`은 분석만 하고 저장하지 않으며, `POST /receipts`가 영수증·품목·등록할 냉장고 재료를 한 트랜잭션으로 저장합니다. 확정한 영수증은 수정할 수 없고 삭제만 됩니다.
+- 보관: `purchased_on`(없으면 `created_at`)부터 6개월. 매일 작업이 지난 영수증을 이미지·품목과 함께 삭제합니다. 6개월보다 오래된 구매일은 등록할 수 없습니다(`INVALID_INPUT`). 식비 조회용 인덱스 `(user_id, purchased_on)`.
 
 ### 10. receipt_items (영수증 품목)
 
@@ -745,7 +765,7 @@ erDiagram
 | --- | --- | --- | --- | --- | --- | --- |
 | id | bigint | PK | | 아니오 | | 고유 번호 |
 | receipt_id | bigint | FK | receipts | 아니오 | | 영수증. 영수증 삭제 시 같이 삭제 |
-| category_id | bigint | FK | ingredient_categories | 예 | | null이면 식재료 아님(냉장고·식비 제외) |
+| category_id | bigint | FK | ingredient_categories | 아니오 | | 카테고리. 식재료만 저장(OCR이 비식재료를 걸러 냄) |
 | name | varchar | | | 아니오 | | 품목명 |
 | amount | numeric(10,3) | | | 아니오 | 1 | 수량. 모르면 1 |
 | unit | varchar | | | 아니오 | EA | 냉장고 단위 9개 |
@@ -754,7 +774,6 @@ erDiagram
 | expiration_date | date | | | 예 | | 소비기한 |
 | is_expiration_estimated | boolean | | | 아니오 | false | 추정값인지 |
 | created_at | timestamp | | | 아니오 | | 만든 시각 |
-| updated_at | timestamp | | | 아니오 | | 수정 시각(확인 화면·금액 수정) |
 
 ### 11. recipes (레시피)
 
@@ -904,7 +923,7 @@ erDiagram
 | recipe_id | bigint | FK,UK | recipes | 아니오 | | 공유한 원본 레시피. 한 레시피는 한 번만. RECIPE_GEN·MEAL_DETAIL만(사본은 공유 불가) |
 | title | varchar | | | 아니오 | | 공유 제목(필수) |
 | status | varchar | | | 아니오 | VISIBLE | VISIBLE/HIDDEN/DELETED |
-| save_count | int | | | 아니오 | 0 | 저장 수 집계값(랭킹·인기순 정렬용) |
+| save_count | int | | | 아니오 | 0 | 누적 저장 수(상세 화면용). 주간 인기순은 `saved_recipes.saved_at`으로 셈 |
 | created_at | timestamp | | | 아니오 | | 공유 시각 |
 | updated_at | timestamp | | | 아니오 | | 상태·저장 수 변경 시각 |
 
@@ -936,7 +955,23 @@ erDiagram
 | handled_at | timestamp | | | 예 | | 처리 시각 |
 | created_at | timestamp | | | 아니오 | | 신고 시각 |
 
-### 24. generation_quota_grants (생성 횟수 지급)
+### 24. shared_recipe_weekly_ranks (주간 랭킹 기록)
+
+| 컬럼명 | 타입 | PK/FK | 참조 테이블 | NULL 허용 | 기본값 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| id | bigint | PK | | 아니오 | | 고유 번호 |
+| week_start | date | | | 아니오 | | 랭킹 주(월요일). UK(week_start+rank_no) |
+| shared_recipe_id | bigint | FK | shared_recipes | 아니오 | | 공유 레시피 |
+| rank_no | int | | | 아니오 | | 순위(1~100) |
+| save_count | int | | | 아니오 | | 그 주의 저장 수 |
+| created_at | timestamp | | | 아니오 | | 저장 시각(주간 작업) |
+
+- **집계가 리셋 기준입니다.** 매주 월요일 0시, 한 주가 끝나자마자 주간 작업이 지난주 순위를 확정합니다. `saved_at`이 지난주이고 작업이 돌 때까지 남아 있는 `saved_recipes` 행을 세고(작업 전에 저장을 취소하면 세지 않음), TOP 100을 여기에 저장합니다. 같은 시점에 새 주의 순위는 0부터 다시 셉니다.
+- **집계가 먼저입니다.** 집계, 순위 저장, 보상 지급(`generation_quota_grants`, 상위 레시피 3개의 작성자에게)을 한 트랜잭션에서 같은 시점의 데이터로 처리합니다(예: `REPEATABLE READ`). 작업이 도는 동안 생긴 저장·저장 취소는 결과를 바꾸지 않고 새 주에 들어갑니다.
+- `UK(week_start + rank_no)`는 같은 주·같은 순위가 두 번 기록되는 것을 막습니다. 그 주 순위가 이미 있으면 다시 실행해도 새로 세지 않고, 저장된 순위로 빠진 보상만 지급합니다(`generation_quota_grants`에도 같은 UK가 있음).
+- `rankChange` = 지난주 순위 − 이번 주 순위(지난주 순위가 없거나 같으면 null).
+
+### 25. generation_quota_grants (생성 횟수 지급)
 
 | 컬럼명 | 타입 | PK/FK | 참조 테이블 | NULL 허용 | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -944,6 +979,7 @@ erDiagram
 | user_id | bigint | FK | users | 아니오 | | 받은 회원 |
 | amount | int | | | 아니오 | | 지급 횟수(어드민 감소는 음수) |
 | remaining | int | | | 아니오 | | 남은 횟수 |
+| expires_at | timestamp | | | 아니오 | | 만료 시각(지급 + 한 달). 지나면 쓰지 않음 |
 | reason | varchar | | | 아니오 | | WEEKLY_REWARD/ADMIN |
 | week_start | date | | | 예 | | 보상 주 |
 | rank_no | int | UK | | 예 | | 1~3. UK(week_start+rank_no), 보상 작업이 두 번 돌아도 중복 지급 안 됨 |
@@ -952,9 +988,9 @@ erDiagram
 | memo | varchar | | | 예 | | 조정 사유 |
 | created_at | timestamp | | | 아니오 | | 지급 시각 |
 
-- 보상·조정으로 받은 횟수는 **유효기간이 없습니다.** 하루 기본 2회를 다 쓴 뒤 `remaining`이 다 떨어질 때까지 계속 쓸 수 있습니다(보상이므로 사라지지 않게 함).
+- 보상·조정으로 받은 횟수는 **지급 후 한 달** 동안 유효합니다(`expires_at`). 하루 기본 2회를 다 쓴 뒤 만료되지 않은 지급분을 `remaining`이 다 떨어질 때까지 씁니다.
 
-### 25. usage_logs (호출 이력)
+### 26. usage_logs (호출 이력)
 
 | 컬럼명 | 타입 | PK/FK | 참조 테이블 | NULL 허용 | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -967,24 +1003,24 @@ erDiagram
 | grant_id | bigint | FK | generation_quota_grants | 예 | | 보상·조정 횟수를 썼다면 그 지급분 |
 | created_at | timestamp | | | 아니오 | | 호출 시작 시각 |
 
-- 남은 횟수는 저장하지 않고 계산: 레시피는 오늘(한국 시간) SUCCESS+PENDING인 RECIPE 수가 2 미만이면 기본, 아니면 지급분(오래된 것부터). 식단표는 이번 달 MEAL_PLAN 수, OCR은 오늘 OCR 수. MEAL_DETAIL은 세지 않음(제안).
+- 남은 횟수는 저장하지 않고 계산: 레시피는 오늘(한국 시간) SUCCESS+PENDING인 RECIPE 수가 2 미만이면 기본, 아니면 만료되지 않은 지급분(오래된 것부터). 식단표는 이번 달 MEAL_PLAN 수. MEAL_DETAIL은 세지 않음(제안).
+- OCR 기록은 비용·성공률 모니터링용으로만 남깁니다. 영수증 스캔은 횟수 제한이 없습니다(OCR에 AI를 붙이면 다시 정함).
 
-### 26. notifications (알림)
+### 27. notifications (알림)
 
 | 컬럼명 | 타입 | PK/FK | 참조 테이블 | NULL 허용 | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |
 | id | bigint | PK | | 아니오 | | 고유 번호 |
 | user_id | bigint | FK | users | 아니오 | | 회원 |
 | ingredient_id | bigint | FK | ingredients | 예 | | 임박 알림의 재료. 재료 삭제 시 null(누르면 냉장고로) |
-| receipt_id | bigint | FK | receipts | 예 | | 분석 완료 알림의 영수증. 영수증 삭제 시 null |
-| type | varchar | | | 아니오 | | EXPIRY_SOON/EXPIRED/RECEIPT_DONE |
+| type | varchar | | | 아니오 | | EXPIRY_SOON/EXPIRED("영수증 분석 완료" 알림은 없음) |
 | dedupe_key | varchar | UK | | 아니오 | | UK(user_id+이 값). 예: `EXPIRY_SOON:501:2026-11-20`, `EXPIRED:2026-11-19` |
 | title | varchar | | | 아니오 | | 제목 |
 | body | varchar | | | 아니오 | | 본문 |
 | read_at | timestamp | | | 예 | | 읽은 시각 |
 | created_at | timestamp | | | 아니오 | | 알림 시각(오늘·N일 전 묶음, 30일 보관) |
 
-### 27. push_subscriptions (푸시 구독)
+### 28. push_subscriptions (푸시 구독)
 
 | 컬럼명 | 타입 | PK/FK | 참조 테이블 | NULL 허용 | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -995,7 +1031,7 @@ erDiagram
 | auth_key | varchar | | | 아니오 | | 푸시 인증 키 |
 | created_at | timestamp | | | 아니오 | | 구독 시각 |
 
-### 28. events (이벤트)
+### 29. events (이벤트)
 
 | 컬럼명 | 타입 | PK/FK | 참조 테이블 | NULL 허용 | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1014,7 +1050,7 @@ erDiagram
 
 - 인덱스: (event_name, occurred_at), (user_id, occurred_at). 180일 지난 원본은 매일 새벽 삭제.
 
-### 29. event_daily_stats (이벤트 일별 집계)
+### 30. event_daily_stats (이벤트 일별 집계)
 
 | 컬럼명 | 타입 | PK/FK | 참조 테이블 | NULL 허용 | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1024,7 +1060,7 @@ erDiagram
 | event_count | bigint | | | 아니오 | | 발생 횟수 |
 | user_count | int | | | 아니오 | | 발생시킨 사용자 수 |
 
-### 30. admin_audit_logs (어드민 조치 이력)
+### 31. admin_audit_logs (어드민 조치 이력)
 
 | 컬럼명 | 타입 | PK/FK | 참조 테이블 | NULL 허용 | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1036,7 +1072,7 @@ erDiagram
 | detail | jsonb | | | 예 | | 사유·변경 전후 값 |
 | created_at | timestamp | | | 아니오 | | 조치 시각 |
 
-### 31. idempotency_keys (중복 요청 방지 키)
+### 32. idempotency_keys (중복 요청 방지 키)
 
 같은 요청이 실수로 두 번 와도 한 번만 처리하기 위한 표. API 정의서 공통 규칙 "생성·차감·확정류 POST는 `Idempotency-Key` 헤더를 받는다(같은 키는 같은 응답을 돌려줌, 24시간)"의 저장소.
 
@@ -1067,4 +1103,4 @@ ERD는 그대로 두고 코드에서 지키는 규칙입니다.
 | 생성 횟수 | 지급분은 `UPDATE ... SET remaining = remaining - 1 WHERE id = ? AND remaining > 0`로 줄이고, 바뀐 행이 0이면 다음 지급분 | 동시 생성 시 같은 지급분 중복 사용 방지 |
 | 공유 공간 | 저장·저장 취소와 `save_count` 변경을 같은 트랜잭션에서 | 저장 수가 따로 놀지 않게 |
 | 공유 공간 | 숨김·삭제는 공유글만 바꾸고 사본은 그대로 | 사본은 식단 칸·요리 기록에 쓰였을 수 있음 |
-| 정리 작업 | 매일 새벽: 미확정 영수증(7일), 영수증 이미지(1년), 알림(30일), 이벤트 원본(180일), 인증번호(하루 지난 것), 중복 요청 키(24시간) | 계속 쌓이는 테이블 |
+| 정리 작업 | 매일 새벽: 구매일(없으면 저장일) 기준 6개월 지난 영수증과 그 이미지·품목, 알림(30일), 이벤트 원본(180일), 인증번호(하루 지난 것), 중복 요청 키(24시간) | 계속 쌓이는 테이블 |

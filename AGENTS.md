@@ -20,6 +20,24 @@ If a subfolder has its own `AGENTS.md`, follow it together with this file when w
 
 When working in `backend/` or `frontend/`, also check [What the app needs because of the deployment setup](docs/agent/deployment.md#what-the-app-needs-because-of-the-deployment-setup). It lists conditions that come from the deployment setup, not team rules (e.g. permit the health check path without authentication when adding Spring Security, add new environment variables to `compose.prod.yml`).
 
+## Product rules (backend and frontend)
+
+Policy and data (tables, limits, units, error codes, events) come from the team's planning documents. Agents read the English summaries in `docs/agent/spec/`. If code and spec disagree, ask the user; do not guess.
+
+| File | Content |
+| --- | --- |
+| [`docs/agent/spec/domain-rules.md`](docs/agent/spec/domain-rules.md) | Business rules, limits, units, categories, expiry states |
+| [`docs/agent/spec/api-summary.md`](docs/agent/spec/api-summary.md) | Every endpoint by domain, with the events each one publishes |
+| [`docs/agent/erd.md`](docs/agent/erd.md) | The 32 tables: columns, defaults, relationships, implementation rules (the only table document) |
+| [`docs/agent/spec/errors.md`](docs/agent/spec/errors.md) | Error codes |
+| [`docs/agent/spec/events.md`](docs/agent/spec/events.md) | Event tracking contract |
+
+Hard rules:
+
+1. **API paths**: `/api/v1/{public|user|admin}/{resource}[/{id}[/{action}]]`. Resources are plural kebab-case nouns; actions are trailing verbs (`generate`, `cook`, `scan`). `public` = login and token refresh only. `user` = the logged-in user, always scoped to the token owner. `admin` = ADMIN role only, checked on the server. No `me` in paths: `/user/profile`, not `/users/me`.
+2. **No free-text input into AI.** Recipe and meal-plan generation accept only selected options (ids and enums). Never put text the user typed into a prompt.
+3. **No personal data in events.** Never record email, name, social ID, allergy or excluded-ingredient names, typed ingredient names, recipe content, or any free text. Use `category_code`, counts, and enums. `user_id` is the internal numeric ID only.
+
 ---
 
 ## 1. Branches
@@ -144,6 +162,8 @@ Rules:
 - Other docs that live outside `docs/` because agents read them in place (e.g. `frontend/blueprint.md`) follow the same pattern: English in place, Korean translation at `docs/developer/<folder>-<name>.md` (e.g. `docs/developer/frontend-blueprint.md`).
 - `CLAUDE.md` files contain only `@AGENTS.md` so Claude Code loads the same rules. Do not put content in them.
 - Out of scope (Korean only, no English copy): `README.md` files and `.github/` templates.
+- Exception (Korean only, no English copy): `docs/developer/guide/`. Per-area implementation guides for developers; agents use `docs/agent/spec/` for the same policy.
+- Exception (English only, no Korean copy): `docs/agent/spec/`. These files summarize the Korean planning documents (PRD, policy, API, ERD, error, and event definitions kept in Notion and Google Sheets) for agents. Developers read the originals.
 - Use relative links that work from each document's location.
 
 Current pairs:

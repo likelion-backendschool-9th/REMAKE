@@ -46,7 +46,7 @@ Feature folders and tables (ERD v3):
 | `recipe` | recipes, recipe_ingredients, recipe_steps, recipe_catalog_items, saved_recipes, recipe_cook_logs |
 | `mealplan` | meal_plans, meal_plan_slots, meal_plan_slot_ingredients |
 | `cart` | cart_items |
-| `share` | shared_recipes, shared_recipe_photos, shared_recipe_reports |
+| `share` | shared_recipes, shared_recipe_photos, shared_recipe_reports, shared_recipe_weekly_ranks |
 | `quota` | usage_logs, generation_quota_grants |
 | `notification` | notifications, push_subscriptions |
 | `event` | events, event_daily_stats |
@@ -59,7 +59,7 @@ Rules:
 - Controllers call only `UseCase` interfaces.
 - Services call only their own feature's `Port` interfaces and other features' `UseCase` interfaces.
 - Only JPA entities extend the shared base classes. Domain objects do not.
-  - Tables whose values are updated (users, ingredients, receipts, receipt_items, meal_plan_slots, cart_items, shared_recipes) extend `BaseTimeEntity` (`created_at` + `updated_at`).
+  - Tables whose values are updated (users, ingredients, meal_plan_slots, cart_items, shared_recipes) extend `BaseTimeEntity` (`created_at` + `updated_at`). Confirmed receipts are never edited, so `receipts` and `receipt_items` extend `BaseCreatedEntity`.
   - All other tables extend `BaseCreatedEntity` (`created_at`).
   - Join tables, reference data, daily aggregates, and `events` extend neither.
 
@@ -141,7 +141,7 @@ Use the same word in code, DB, and API.
   - `public`: APIs called before login (social login, token refresh)
   - `user`: a logged-in user. Most APIs. They handle only the token owner's data
   - `admin`: an admin (role=ADMIN)
-- Write resources as plural kebab-case (`saved-recipes`, `cart-items`). Put actions as a verb after the resource (`/recipes/generate`, `/receipts/{id}/confirm`).
+- Write resources as plural kebab-case (`saved-recipes`, `cart-items`). Put actions as a verb after the resource (`/recipes/generate`, `/receipts/scan`). Do not use `me` in paths (`/user/profile`, not `/users/me`). The full endpoint list is [`spec/api-summary.md`](spec/api-summary.md).
 - In production the proxy sends only requests starting with `/api/` to the backend and everything else to the frontend. Breaking this rule works locally but returns 404 in production.
 - Do not add the prefix with `server.servlet.context-path` or a global path setting (`addPathPrefix`). `context-path` also moves the health check (`/actuator/health/readiness`) and breaks deployment; a global prefix turns a controller that also writes `/api` into `/api/api/...`.
 - Use full paths in Security `requestMatchers` too.
@@ -161,7 +161,7 @@ Paginate growing lists in this shape (`?page=0&size=20`, `PageResponse.from(page
 { "content": [], "page": 0, "size": 20, "totalElements": 0, "hasNext": false }
 ```
 
-On failure, every API returns this shape. Include `fieldErrors` only for input validation failures.
+On failure, every API returns this shape. Include `fieldErrors` (`{ field, message }` items) only for input validation failures (`INVALID_INPUT`). Include `details` only when the screen needs extra values, such as the remaining count and reset time for `GENERATION_LIMIT_EXCEEDED` (`"details": { "remaining": 0, "resetsAt": "2026-11-21T00:00:00+09:00" }`). `details` is not in `ErrorResponse` yet ([#45](https://github.com/likelion-backendschool-9th/REMAKE/issues/45)). The error code list is [`spec/errors.md`](spec/errors.md).
 
 ```json
 {
@@ -184,6 +184,7 @@ On failure, every API returns this shape. Include `fieldErrors` only for input v
 - Keep all error codes in the single `global/error/ErrorCode`. Use the same names as the API and error definition documents.
 - 401 (login required) and 403 (forbidden) are rejected in the Security filter chain and never reach `GlobalExceptionHandler`. Return the same shape from `AuthenticationEntryPoint` (401) and `AccessDeniedHandler` (403) in `global/security`.
 - Create, deduct, and confirm POSTs (recipe generation, cook, receipt confirm, etc.) accept an `Idempotency-Key` header. When the same key arrives again, do not process it; return the first response (24 hours, `idempotency_keys` table). One shared filter in `global/common` handles this, not each feature.
+  - Endpoints: `POST /user/recipes/generate`, `/user/meal-plans/generate`, `/user/receipts`, `/user/ingredients/{id}/consume`, `/user/recipes/{id}/cook`. The frontend creates one key per user action and reuses it on retry.
 - The authentication method (how the token is sent, the token flow) is decided in [#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42). Do not add an authentication rule before that decision.
 
 ### Example API
@@ -200,3 +201,49 @@ Build new APIs by following the ingredient category list (`GET /api/v1/user/ingr
 | adapter/in/web | `IngredientCategoryController`, `IngredientCategoryResponse` |
 | adapter/out/persistence | `IngredientCategoryJpaEntity`, `IngredientCategoryJpaRepository`, `IngredientCategoryPersistenceAdapter` |
 | Tests | `src/test/.../ingredient/IngredientCategoryApiTest` |
+
+## Data access and request handling
+
+- Scope every query to the token owner. Another user's resource returns 404 (`*_NOT_FOUND`), not 403, so its existence is not leaked.
+- Generate a `traceId` per request, put it in the MDC log context, and return it in error responses. Never return stack traces, SQL, or provider error text.
+- Time limits: normal requests 10 s, OCR 30 s, AI generation 60 s. Convert upstream timeouts to `OCR_TIMEOUT` / `AI_TIMEOUT` and provider errors to `OCR_UPSTREAM_ERROR` / `AI_UPSTREAM_ERROR`.
+- Business rules (limits, units, expiry states, receipt retention) are in [`spec/domain-rules.md`](spec/domain-rules.md). Table-level rules (optimistic lock, deletion, retention) are in the [ERD](erd.md).
+
+## AI generation
+
+- Call the LLM through one `port/out` interface implemented in `adapter/out/ai`. Its input is IDs and enums from the request plus DB data (fridge ingredients, excluded catalog IDs). **Never put text the user typed into a prompt.**
+- Ask for structured JSON and validate it: schema, unit codes from the 14-unit list, non-empty steps. Invalid output → `AI_INVALID_RESPONSE`; do not store it and do not count it toward the quota.
+- With the "recipe supplement" setting ON, recipes may use ingredients that are not in the fridge. Request without excluded (allergy) ingredients; if the result still contains one, set `allergenWarning`.
+- Meal plans: first generate menu names and per-slot ingredients (`meal_plan_slot_ingredients`), compute shortages with SQL `SUM`, generate only as many days as the ingredients allow (max 5 for BASIC, 7 for PREMIUM; release 1 applies BASIC), then add the shortages to the cart. Generate a slot's detail recipe only when the user opens the slot.
+- Only successful generations count toward the quota. Limits are in [`spec/domain-rules.md`](spec/domain-rules.md).
+
+## Scheduled jobs (Korea time)
+
+| Job | When | What |
+| --- | --- | --- |
+| Expiry notifications | Daily 09:00 | `EXPIRY_SOON` (3 days or less, one per ingredient) and `EXPIRED` (one per day) with web push. Skip users with notifications off. Emit `ingredient_expired` and `notification_sent` |
+| Weekly ranking and reward | Monday 00:00 | Fix last week's TOP 100 in `shared_recipe_weekly_ranks` and give the authors of the top 3 recipes +10/+6/+3 recipe generations (valid one month), in one transaction. Rules in the [ERD](erd.md) §24. Emit `weekly_reward_granted` |
+| Receipt cleanup | Daily early morning | Delete receipts older than 6 months by purchase date, with images and items |
+| Event aggregation | Daily early morning | `events` → `event_daily_stats`; delete raw events older than 180 days |
+
+- Daily and monthly quota resets need no job: remaining counts are computed from `usage_logs`. Other cleanups are listed in the ERD implementation rules.
+
+## Event publishing (`EventTracker`)
+
+The event contract is [`spec/events.md`](spec/events.md). Each API's events are in the "Events" column of [`spec/api-summary.md`](spec/api-summary.md).
+
+- The `event` feature owns one tracker. Other features call it only through the `event` feature's UseCase (proposed: `eventTracker.track(EventName.RECEIPT_SAVED, Screen.RECEIPT_RESULT, props)`; the event owner decides the final signature).
+- Emit at the end of the API, on success, failure, and rejection, exactly as the spec says. Record one user action once, as either a CLIENT or a SERVER event.
+- Write asynchronously after the transaction commits. Tracking never blocks or fails the request; swallow and log its errors.
+- Keep event names and properties in an enum or constants class that matches the event sheet. Do not type event names as string literals.
+- The tracker filters personal data: it drops keys not in the event's allowed property list and rejects more than 25 keys or nested objects. Properties are flat strings, numbers, and booleans.
+- It sets the common fields: `user_id` (internal ID), `session_id`, `source` (CLIENT/SERVER), `screen`, `platform`, `app_version`, `is_seed`, `occurred_at`.
+- `POST /api/v1/user/events` accepts up to 50 client events, drops unknown names, and returns 202 `{ accepted, rejected }`. More than 50 → `EVENT_BATCH_TOO_LARGE`.
+
+## Required tests
+
+How to write tests: [backend testing](backend-testing.md).
+
+- Unit tests for business rules: quota counting (success only, concurrent `PENDING`), unit conversion (same kind only; TBSP 15 ml, TSP 5 ml, CUP 200 ml; PINCH and TO_TASTE never deducted), expiry status, meal-plan ingredient allocation and shortage, ranking and `rankChange`, receipt retention.
+- Mock the OCR and LLM adapters and cover the timeout and invalid-response cases.
+- Admin endpoints: test 403 for non-admins and that every admin action writes `admin_audit_logs`.

@@ -24,13 +24,13 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 | Framework       | Next.js (App Router) + TypeScript      | Screens split per route; frontend handles screens only                        |
 | Package manager | pnpm                                   | Fast installs; lockfile keeps dependency versions identical for all 7 members |
 | Styling         | CSS Modules + CSS variables            | Component-scoped styles without extra libraries; shared design tokens         |
-| Server data     | TanStack Query                         | Caching; polling the progress of OCR and meal-plan jobs                       |
+| Server data     | TanStack Query                         | Caching and refetching server data                                            |
 | Client state    | Zustand                                | Only the minimum, such as login info                                          |
 | API integration | openapi-typescript + openapi-fetch     | Types generated from Spring OpenAPI; type-safe calls                          |
 | Forms           | React Hook Form + Zod                  | Validation for onboarding, custom recipe input, ingredient edits              |
 | Dates           | dayjs                                  | Expiry-date calculation; weekly meal-plan calendar                            |
 | Icons           | @solar-icons/react (Solar)             | Tree-shakable React components; work offline                                  |
-| PWA & push      | Serwist + Web Push                     | Service worker, offline screen, expiry and repurchase alerts                  |
+| PWA & push      | Serwist + Web Push                     | Service worker, offline screen, expiry alerts                                 |
 | Store release   | PWABuilder (TWA)                       | Generates the Android app package                                             |
 | Web deploy      | `output: "standalone"` + nginx         | Node server running behind nginx                                              |
 | Code quality    | ESLint + Prettier, Husky + lint-staged | Unified code style for 7 people; automatic checks before commit               |
@@ -52,6 +52,7 @@ frontend/
 ├─ lib/
 │  ├─ api/               # client.ts (openapi-fetch), schema.d.ts (generated)
 │  ├─ queries/           # query keys + query hooks shared by several routes, one file per domain
+│  ├─ events/            # (planned) analytics tracker and screen-code constants (see §11)
 │  ├─ query-client.ts
 │  ├─ dayjs.ts           # dayjs with ko locale and plugins configured
 │  └─ env.ts             # the only place that reads environment variables
@@ -100,21 +101,21 @@ components/Button/
 
 ## 4. Screens / routes (draft)
 
-| Route            | Screen                   | Main features                                                      |
-| ---------------- | ------------------------ | ------------------------------------------------------------------ |
-| `/`              | Home                     | Ingredients near expiry, recommended recipe summary                |
-| `/login`         | Login                    | Social login                                                       |
-| `/onboarding`    | Onboarding               | Household, eating habits and allergy input (RHF + Zod)             |
-| `/fridge`        | My fridge                | Ingredient list, sort by storage location / expiry date            |
-| `/fridge/[id]`   | Ingredient detail & edit | Edit quantity and expiry date                                      |
-| `/fridge/add`    | Add ingredient           | Choose manual entry or receipt photo                               |
-| `/receipt`       | Receipt OCR              | Upload → poll processing status → review and edit recognized items |
-| `/recipes`       | Recipe recommendations   | AI recommendations based on owned ingredients                      |
-| `/recipes/[id]`  | Recipe detail            | Ingredients, cooking steps, missing ingredients                    |
-| `/recipes/new`   | Custom recipe            | Write a recipe manually (RHF + Zod)                                |
-| `/meal-plan`     | Meal plan                | Weekly calendar, poll AI meal-plan generation status               |
-| `/notifications` | Notifications            | Expiry and repurchase alert list, push permission settings         |
-| `/mypage`        | My page                  | Profile, settings                                                  |
+| Route            | Screen                   | Main features                                                  |
+| ---------------- | ------------------------ | -------------------------------------------------------------- |
+| `/`              | Home                     | Ingredients near expiry, recommended recipe summary            |
+| `/login`         | Login                    | Social login                                                   |
+| `/onboarding`    | Onboarding               | Household size, then allergies (each step can be skipped)      |
+| `/fridge`        | My fridge                | Ingredient list, sort by storage location / expiry date        |
+| `/fridge/[id]`   | Ingredient detail & edit | Edit quantity and expiry date                                  |
+| `/fridge/add`    | Add ingredient           | Choose manual entry or receipt photo                           |
+| `/receipt`       | Receipt OCR              | Scan → loading (one request) → review and edit items → confirm |
+| `/recipes`       | Recipe recommendations   | AI recommendations based on owned ingredients                  |
+| `/recipes/[id]`  | Recipe detail            | Ingredients, cooking steps, missing ingredients                |
+| `/recipes/new`   | Custom recipe            | Generate a recipe from selected options (no free text)         |
+| `/meal-plan`     | Meal plan                | Monthly calendar, AI meal-plan generation                      |
+| `/notifications` | Notifications            | Expiry alert list, push permission settings                    |
+| `/mypage`        | My page                  | Profile, settings                                              |
 
 ## 5. Data flow
 
@@ -129,7 +130,7 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 - **API address**: production images are built with an empty `NEXT_PUBLIC_API_BASE_URL`, so `lib/api/client.ts` calls the same domain with relative paths (`/api/...`) and the proxy forwards them to Spring. Login cookies work without CORS. In local development it defaults to `http://localhost:8080` (a different origin, so the backend needs CORS).
   - Relative paths only work in the browser. Call the API from Client Components (TanStack Query). If a Server Component must call the backend, ask first: it needs a separate server-side address set at runtime.
 - **Server data** is managed entirely with TanStack Query. Do not copy server data into Zustand.
-- **Long-running jobs** (OCR, AI meal-plan generation): the backend returns a job ID and the frontend polls its status with `refetchInterval`. Stop polling when the job completes.
+- **OCR and AI generation** are one synchronous request each; the response carries the result. Show a loading screen while waiting (time limits: OCR 30 s, AI 60 s). There is no job ID, polling, or streaming.
 - **queryKey**s live next to their query hooks: the route's `_lib/queries.ts`, or `lib/queries/<domain>.ts` once shared. Example: `fridgeKeys.all`, `fridgeKeys.detail(id)`
 
 ## 6. Styling rules
@@ -203,3 +204,32 @@ Refer to the [Google SEO Starter Guide](https://developers.google.com/search/doc
 - [ ] Shared component list and final design tokens (based on the design mockups)
 - [ ] Frontend CI (GitHub Actions: lint · typecheck · build)
 - [ ] Deployment environment (nginx + Node container setup)
+
+## 10. UI rules from the product policy
+
+Source: [`docs/agent/spec/domain-rules.md`](../docs/agent/spec/domain-rules.md). Screens follow Figma.
+
+- **No free-text input for AI.** Recipe customization (ingredients, taste, time, tools, method, cuisine, excluded allergens) and meal-plan settings (start date, purpose, meals, servings) are selections only. Send IDs and enums.
+- **Expiry state**: show the `status` and `dDay` the server returns (DANGER = expired or D-DAY, SOON = D-1 to D-3, OK = later). Do not recompute them with the device clock.
+- **Labels**: show "AI가 생성한 레시피" on AI recipe details and shared recipe details. Show "참고용" wording on meal plans.
+- **Receipt flow**: scan → loading screen (synchronous wait) → result and confirm screen → save. Nothing is saved until the user confirms. Leaving the result screen discards the OCR result and sends `receipt_result_abandoned`. A confirmed receipt cannot be edited, only deleted; fix ingredient data later in the fridge.
+- **Quantity input**: stepper steps are g and ml 50, kg and L 0.5, EA/PACK/BUNCH/PIECE/SHEET 1. Typed input accepts numbers and decimals only, no fractions. The fridge uses 9 units (G, KG, ML, L, EA, PACK, BUNCH, PIECE, SHEET); recipes use all 14, and recipe amounts may be shown as 1/2, 1/3, or 1/4.
+- **Sharing**: a title and at least one cooking photo are required, with a confirm modal first. Never show author information.
+- **Meal plan**: monthly calendar; tapping a slot opens the recipe detail. Adding a meal puts a saved recipe into an empty slot. There is no delete and no slot regeneration. Show "남은 N회" from `GET /api/v1/user/usage-quotas`.
+- **Cart**: grouped by recipe. Items are added automatically (meal-plan generation, saving a recipe); users can only change amounts and delete selected items. No checkout or external links.
+- **Notifications**: only `EXPIRY_SOON` and `EXPIRED`. There is no "receipt analysis finished" notification.
+- **Premium**: the subscription screen in settings is UI only.
+- **Errors**: choose the message and behavior by `code` ([`docs/agent/spec/errors.md`](../docs/agent/spec/errors.md)), never by `message`. Unknown codes fall back to the `INTERNAL_ERROR` screen. Show `traceId` only in a "contact" detail, never as the main message.
+- **Display formats**: the API sends dates as `2026-11-19`, timestamps as ISO 8601 with `+09:00`, and money as an integer in won. Format dates with `@/lib/dayjs`. User-facing copy is Korean.
+
+## 11. Event tracking
+
+Contract: [`docs/agent/spec/events.md`](../docs/agent/spec/events.md). Backend side: `docs/agent/backend-convention.md` §Event publishing.
+
+- Use one shared tracker (planned at `lib/events/`). Components never call `POST /api/v1/user/events` directly.
+- API: `track(eventName, properties?)`. The tracker adds `screen`, `sessionId` (a new session after 30 minutes idle), and `occurredAt`; batches up to 50 events; and flushes on an interval, on `visibilitychange`/`pagehide` (with `navigator.sendBeacon`), and on logout.
+- Send only events whose source is CLIENT in the event sheet. The backend emits SERVER events; never record the same action from both sides.
+- Swallow tracking failures silently: no toast, at most a small bounded retry.
+- No personal data or free text in properties. Send codes, counts, and booleans (`category_code`, `item_count`). Properties are flat, at most 25 keys.
+- Screen codes (`fridge_list`, `receipt_result`, `recipe_detail`, `meal_plan_calendar`, ...) come from the event sheet's screen-code tab. Keep them as constants in `lib/events/screens.ts`.
+- Send `screen_viewed` from one shared layout hook, not by hand on each page.

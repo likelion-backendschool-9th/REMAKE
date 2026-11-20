@@ -24,13 +24,13 @@
 | 프레임워크      | Next.js (App Router) + TypeScript      | 라우트별 화면 분리, 화면만 담당                             |
 | 패키지 매니저   | pnpm                                   | 빠른 설치, lockfile로 7명 의존성 버전 통일                  |
 | 스타일          | CSS Modules + CSS 변수                 | 별도 라이브러리 없이 컴포넌트 단위 스타일, 디자인 토큰 공유 |
-| 서버 데이터     | TanStack Query                         | 캐싱, OCR·식단표 진행 상태 polling                          |
+| 서버 데이터     | TanStack Query                         | 서버 데이터 캐싱·다시 불러오기                              |
 | 클라이언트 상태 | Zustand                                | 로그인 정보 등 최소한만                                     |
 | API 연동        | openapi-typescript + openapi-fetch     | Spring OpenAPI에서 타입 자동 생성, 타입 안전한 호출         |
 | 폼              | React Hook Form + Zod                  | 온보딩, 커스텀 레시피 입력, 재료 수정 검증                  |
 | 날짜            | dayjs                                  | 소비기한 계산, 식단표 주간 캘린더                           |
 | 아이콘          | @solar-icons/react (Solar)             | 트리 셰이킹되는 React 컴포넌트, 오프라인에서도 동작         |
-| PWA·푸시        | Serwist + Web Push                     | 서비스 워커, 오프라인 화면, 소비기한·재구매 알림            |
+| PWA·푸시        | Serwist + Web Push                     | 서비스 워커, 오프라인 화면, 소비기한 알림                   |
 | 스토어 배포     | PWABuilder (TWA)                       | 안드로이드 앱 패키지 생성                                   |
 | 웹 배포         | `output: "standalone"` + nginx         | Node 서버를 nginx 뒤에서 실행                               |
 | 코드 품질       | ESLint + Prettier, Husky + lint-staged | 7명 코드 스타일 통일, 커밋 전 자동 검사                     |
@@ -52,6 +52,7 @@ frontend/
 ├─ lib/
 │  ├─ api/               # client.ts(openapi-fetch), schema.d.ts(자동 생성)
 │  ├─ queries/           # 여러 라우트가 함께 쓰는 queryKey + Query 훅, 도메인별 파일 하나
+│  ├─ events/            # (예정) 분석 이벤트 트래커와 화면 코드 상수 (§11 참고)
 │  ├─ query-client.ts
 │  ├─ dayjs.ts           # ko 로케일 + 플러그인 설정된 dayjs
 │  └─ env.ts             # 환경 변수는 여기서만 읽는다
@@ -104,16 +105,16 @@ components/Button/
 | ---------------- | -------------- | ------------------------------------------------ |
 | `/`              | 홈             | 소비기한 임박 재료, 추천 레시피 요약             |
 | `/login`         | 로그인         | 소셜 로그인                                      |
-| `/onboarding`    | 온보딩         | 가족 구성, 식습관·알레르기 입력 (RHF + Zod)      |
+| `/onboarding`    | 온보딩         | 가구원 수 → 알레르기 (단계마다 건너뛰기 가능)    |
 | `/fridge`        | 내 냉장고      | 재료 목록, 보관 위치·소비기한 정렬               |
 | `/fridge/[id]`   | 재료 상세·수정 | 수량·소비기한 수정                               |
 | `/fridge/add`    | 재료 등록      | 직접 입력 / 영수증 촬영 선택                     |
-| `/receipt`       | 영수증 OCR     | 업로드 → 처리 상태 polling → 인식 결과 확인·수정 |
+| `/receipt`       | 영수증 OCR     | 촬영 → 로딩(요청 한 번) → 품목 확인·수정 → 확정  |
 | `/recipes`       | 레시피 추천    | 보유 재료 기반 AI 추천                           |
 | `/recipes/[id]`  | 레시피 상세    | 재료·조리 순서, 부족 재료                        |
-| `/recipes/new`   | 커스텀 레시피  | 레시피 직접 작성 (RHF + Zod)                     |
-| `/meal-plan`     | 식단표         | 주간 캘린더, AI 식단 생성 상태 polling           |
-| `/notifications` | 알림           | 소비기한·재구매 알림 목록, 푸시 권한 설정        |
+| `/recipes/new`   | 커스텀 레시피  | 고른 옵션으로 레시피 생성 (자유 입력 없음)       |
+| `/meal-plan`     | 식단표         | 월간 달력, AI 식단표 생성                        |
+| `/notifications` | 알림           | 소비기한 알림 목록, 푸시 권한 설정               |
 | `/mypage`        | 마이페이지     | 프로필, 설정                                     |
 
 ## 5. 데이터 흐름
@@ -129,7 +130,7 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - **API 주소**: 운영 이미지는 `NEXT_PUBLIC_API_BASE_URL`을 빈 값으로 빌드합니다. 그래서 `lib/api/client.ts`가 같은 도메인의 상대 경로(`/api/...`)로 호출하고, 프록시가 Spring으로 넘깁니다. 로그인 쿠키도 CORS 설정 없이 동작합니다. 로컬 개발에서는 기본값 `http://localhost:8080`을 씁니다(출처가 달라서 백엔드에 CORS 설정이 필요합니다).
   - 상대 경로는 브라우저에서만 동작합니다. API는 Client Component(TanStack Query)에서 호출합니다. Server Component에서 백엔드를 불러야 하면 먼저 물어봅니다. 실행할 때 넘기는 서버용 주소가 따로 필요합니다.
 - **서버 데이터**는 전부 TanStack Query로 관리합니다. Zustand에 서버 데이터를 복사하지 않습니다.
-- **오래 걸리는 작업**(OCR, AI 식단 생성)은 백엔드가 작업 ID를 주고, 프론트는 `refetchInterval`로 상태를 polling합니다. 완료되면 polling을 멈춥니다.
+- **OCR과 AI 생성**은 각각 동기 요청 한 번이고, 응답에 결과가 담깁니다. 기다리는 동안 로딩 화면을 보여 줍니다(시간 제한: OCR 30초, AI 60초). 작업 ID, polling, 스트리밍은 없습니다.
 - **queryKey**는 Query 훅과 같은 곳에 둡니다. 라우트의 `_lib/queries.ts`, 공유되면 `lib/queries/<도메인>.ts`. 예: `fridgeKeys.all`, `fridgeKeys.detail(id)`
 
 ## 6. 스타일 규칙
@@ -203,3 +204,32 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - [ ] 공용 컴포넌트 목록과 디자인 토큰 확정 (디자인 시안 기준)
 - [ ] 프론트 CI (GitHub Actions: lint · typecheck · build)
 - [ ] 배포 환경 (nginx + Node 컨테이너 구성)
+
+## 10. 제품 정책에서 온 UI 규칙
+
+출처: [`docs/agent/spec/domain-rules.md`](../agent/spec/domain-rules.md)(영문). 화면은 피그마를 따릅니다.
+
+- **AI에 자유 입력 금지.** 레시피 커스텀(재료, 맛, 조리 시간, 도구, 방식, 요리 유형, 제외 알레르기)과 식단표 설정(시작일, 목적, 끼니, 인원)은 모두 선택식입니다. ID와 enum을 보냅니다.
+- **소비기한 상태**: 서버가 준 `status`와 `dDay`를 보여 줍니다(DANGER = 지났거나 D-DAY, SOON = D-1~D-3, OK = 그 이후). 기기 시계로 다시 계산하지 않습니다.
+- **문구**: AI 레시피 상세와 공유 레시피 상세에 "AI가 생성한 레시피"를, 식단표에 "참고용" 문구를 보여 줍니다.
+- **영수증 흐름**: 촬영 → 로딩 화면(동기 대기) → 결과·확인 화면 → 저장. 사용자가 확정하기 전에는 아무것도 저장하지 않습니다. 결과 화면을 나가면 OCR 결과를 버리고 `receipt_result_abandoned`를 보냅니다. 확정한 영수증은 수정할 수 없고 삭제만 됩니다. 재료 정보는 나중에 냉장고에서 고칩니다.
+- **수량 입력**: 수량 버튼 간격은 g·ml 50, kg·L 0.5, EA/PACK/BUNCH/PIECE/SHEET 1. 직접 입력은 숫자와 소수만 받고 분수는 받지 않습니다. 냉장고는 단위 9개(G, KG, ML, L, EA, PACK, BUNCH, PIECE, SHEET)만, 레시피는 14개 모두 쓰고 레시피 수량은 1/2, 1/3, 1/4로 보여 줄 수 있습니다.
+- **공유**: 제목과 조리 사진 1장 이상이 필수이고, 먼저 확인 모달을 띄웁니다. 작성자 정보는 어디에도 보여 주지 않습니다.
+- **식단표**: 월간 달력, 칸을 누르면 레시피 상세. 식단 추가는 저장한 레시피를 빈 칸에 넣는 것입니다. 삭제와 칸 재생성은 없습니다. "남은 N회"는 `GET /api/v1/user/usage-quotas` 값으로 보여 줍니다.
+- **장바구니**: 레시피별로 묶습니다. 항목은 자동으로만 담기고(식단표 생성, 레시피 저장), 사용자는 수량 변경과 선택 삭제만 할 수 있습니다. 결제나 외부 링크는 없습니다.
+- **알림**: `EXPIRY_SOON`, `EXPIRED`만 있습니다. "영수증 분석 완료" 알림은 없습니다.
+- **프리미엄**: 설정의 구독 화면은 UI만 만듭니다.
+- **에러**: 메시지와 동작은 `message`가 아니라 `code`([`docs/agent/spec/errors.md`](../agent/spec/errors.md), 영문)로 정합니다. 모르는 코드는 `INTERNAL_ERROR` 화면으로 처리합니다. `traceId`는 "문의하기" 상세에만 보여 주고 주 메시지로 쓰지 않습니다.
+- **표기 형식**: API는 날짜를 `2026-11-19`, 시각을 `+09:00`이 붙은 ISO 8601, 금액을 원 단위 정수로 보냅니다. 날짜는 `@/lib/dayjs`로 표시합니다. 사용자에게 보이는 문구는 한국어입니다.
+
+## 11. 이벤트 트래킹
+
+계약: [`docs/agent/spec/events.md`](../agent/spec/events.md)(영문). 백엔드 쪽: [`backend-convention.md`](backend-convention.md) §이벤트 발행.
+
+- 공용 트래커 하나를 씁니다(`lib/events/`에 만들 예정). 컴포넌트에서 `POST /api/v1/user/events`를 직접 부르지 않습니다.
+- API: `track(eventName, properties?)`. 트래커가 `screen`, `sessionId`(30분 동안 아무 동작이 없으면 새 세션), `occurredAt`을 붙이고, 최대 50개씩 모아서 일정 주기, `visibilitychange`/`pagehide`(`navigator.sendBeacon` 사용), 로그아웃 때 보냅니다.
+- 이벤트 정의서에서 출처가 CLIENT인 이벤트만 보냅니다. SERVER 이벤트는 백엔드가 발행하고, 같은 행동을 양쪽에서 기록하지 않습니다.
+- 트래킹 실패는 조용히 넘깁니다. 토스트를 띄우지 않고, 재시도는 작은 횟수까지만 합니다.
+- 속성에 개인정보나 자유 텍스트를 넣지 않습니다. 코드, 개수, 참거짓(`category_code`, `item_count`)을 보냅니다. 속성은 평평하게, 25개 이하로 둡니다.
+- 화면 코드(`fridge_list`, `receipt_result`, `recipe_detail`, `meal_plan_calendar` 등)는 이벤트 정의서의 화면 코드 탭을 따르고, `lib/events/screens.ts`에 상수로 둡니다.
+- `screen_viewed`는 페이지마다 직접 넣지 않고 공용 레이아웃 훅 한 곳에서 보냅니다.

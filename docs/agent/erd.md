@@ -2,7 +2,7 @@
 
 > Korean version for developers: [`docs/developer/erd.md`](../developer/erd.md)
 
-2026-11-19 · Kim Jongsu
+2026-11-19 · Kim Jongsu (updated 2026-11-20 to policy v3.1: see the "11/20 decision" rows below)
 
 ## Changes from v2
 
@@ -19,6 +19,17 @@
 | Removed columns | `recipes.description`, `recipes.difficulty` | Not in Figma or the API |
 | NULL and defaults | `recipes.mode` and `receipts.image_key` nullable, `meal_plan_slots.menu_name` NOT NULL, `notification_enabled` default true, `ingredients.unit` default EA | Detail and copied recipes have no mode, images are deleted after one year, alerts work right after signup |
 | Events | `events.user_id` has no foreign key and stays after withdrawal | Keeps past statistics. Personal identifiers are cleared in `users` |
+| 11/20 decision | New table `shared_recipe_weekly_ranks` (32 tables) | The ranking shows the change from last week (`rankChange`), so the weekly job keeps last week's final TOP 100 |
+| 11/20 decision | `users.plan` (BASIC/PREMIUM) added | Limits differ by plan. Release 1 applies BASIC only (premium is UI only) |
+| 11/20 decision | `receipts.status` (SCANNED/CONFIRMED) removed. Only confirmed receipts are stored; `receipts.image_key` NOT NULL | The scan API only analyzes and stores nothing. The confirm API saves the receipt, items, and fridge ingredients in one transaction |
+| 11/20 decision | `receipts.store_code` added | Store icon (15 codes, `ETC` fallback) |
+| 11/20 decision | `receipts.total_price` removed; `receipts` and `receipt_items` drop `updated_at` and extend `BaseCreatedEntity` (5 tables now have `updated_at`) | Spending is always the sum of food items, so the printed total is never used. A confirmed receipt is never edited |
+| 11/20 decision | Receipt retention: 6 months by purchase date (saved date if none), then deleted with images and items. The 7-day unconfirmed cleanup and 1-year image retention are removed | Spending comparison uses the last 6 months. Nothing unconfirmed is stored |
+| 11/20 decision | `receipt_items` stores food items only; `category_id` NOT NULL | OCR returns food items only (non-food lines are filtered out) |
+| 11/20 decision | `notifications.receipt_id` and type `RECEIPT_DONE` removed (EXPIRY_SOON/EXPIRED only) | OCR is synchronous, so there is no "analysis finished" notification |
+| 11/20 decision | `generation_quota_grants.expires_at` added (one month after the grant) | Weekly rewards must be used within one month |
+| 11/20 decision | OCR counting in `usage_logs` removed from the remaining-count rule | Receipt scans have no limit. OCR rows are kept for monitoring. Decide again if AI is added to OCR |
+| 11/20 decision | `shared_recipes.save_count` is the cumulative count for the detail screen; weekly popularity counts `saved_recipes.saved_at` | The ranking is "saves this week" |
 
 ## Common rules
 
@@ -46,7 +57,7 @@ erDiagram
   recipe_cook_logs |o--o{ ingredient_logs : ""
   users ||--o{ receipts : ""
   receipts ||--o{ receipt_items : ""
-  ingredient_categories |o--o{ receipt_items : ""
+  ingredient_categories ||--o{ receipt_items : ""
   users ||--o{ recipes : ""
   recipes ||--o{ recipe_ingredients : ""
   ingredients |o--o{ recipe_ingredients : ""
@@ -70,6 +81,7 @@ erDiagram
   recipes ||--o| shared_recipes : ""
   shared_recipes ||--o{ shared_recipe_photos : ""
   shared_recipes ||--o{ shared_recipe_reports : ""
+  shared_recipes ||--o{ shared_recipe_weekly_ranks : ""
   users ||--o{ shared_recipe_reports : "신고자"
   users |o--o{ shared_recipe_reports : "처리"
   users ||--o{ generation_quota_grants : "받음"
@@ -79,7 +91,6 @@ erDiagram
   generation_quota_grants |o--o{ usage_logs : ""
   users ||--o{ notifications : ""
   ingredients |o--o{ notifications : ""
-  receipts |o--o{ notifications : ""
   users ||--o{ push_subscriptions : ""
   users ||--o{ admin_audit_logs : ""
   users ||--o{ idempotency_keys : ""
@@ -91,7 +102,7 @@ erDiagram
   }
 ```
 
-Tables: relationships of all 31 tables (columns omitted)
+Tables: relationships of all 32 tables (columns omitted)
 
 ### Members and settings
 
@@ -125,6 +136,7 @@ erDiagram
     string email "For sending the account deletion code. Nu…"
     string role "USER/ADMIN"
     string status "ACTIVE/SUSPENDED"
+    string plan "BASIC/PREMIUM. Release 1 applies BASIC…"
     int household_size "Household size. Null if skipped"
     boolean onboarding_completed "Whether onboarding was finished or skipped"
     boolean recipe_supplement_enabled "Recipe ingredient supplement (setting). W…"
@@ -172,12 +184,11 @@ erDiagram
   recipe_cook_logs |o--o{ ingredient_logs : ""
   users ||--o{ receipts : ""
   receipts ||--o{ receipt_items : ""
-  ingredient_categories |o--o{ receipt_items : ""
+  ingredient_categories ||--o{ receipt_items : ""
   ingredients |o--o{ recipe_ingredients : ""
   ingredient_catalog ||--o{ recipe_catalog_items : ""
   ingredients |o--o{ meal_plan_slot_ingredients : ""
   ingredients |o--o{ notifications : ""
-  receipts |o--o{ notifications : ""
   ingredient_categories {
     bigint id PK "ID"
     string code UK "12 codes such as MEAT (Appendix B)"
@@ -225,18 +236,16 @@ erDiagram
   receipts {
     bigint id PK "ID"
     bigint user_id FK "Member"
-    date purchased_on "Purchase date (basis of the monthly total)"
+    date purchased_on "Purchase date (basis of the monthly total…"
     string store_name "Store"
-    bigint total_price "Total printed on the receipt (reference o…"
-    string status "SCANNED/CONFIRMED. Only CONFIRMED counts"
-    string image_key "Storage path. Null after the image is del…"
-    timestamp created_at "Scan time (basis of the 7-day unconfirmed…"
-    timestamp updated_at "Update time"
+    string store_code "Store icon code (15 codes, ETC fallback)"
+    string image_key "Storage path. Deleted with the receipt"
+    timestamp created_at "Save (confirm) time. Retention basis if n…"
   }
   receipt_items {
     bigint id PK "ID"
     bigint receipt_id FK "Receipt. Deleted together with the receipt"
-    bigint category_id FK "Null means not food (excluded from the fr…"
+    bigint category_id FK "Category (food items only)"
     string name "Item name"
     decimal amount "Amount. 1 if unknown"
     string unit "One of the 9 fridge units"
@@ -245,7 +254,6 @@ erDiagram
     date expiration_date "Expiration date"
     boolean is_expiration_estimated "Whether the date is an estimate"
     timestamp created_at "Creation time"
-    timestamp updated_at "Update time (confirmation screen, price e…"
   }
 ```
 
@@ -382,6 +390,7 @@ erDiagram
   recipes ||--o| shared_recipes : ""
   shared_recipes ||--o{ shared_recipe_photos : ""
   shared_recipes ||--o{ shared_recipe_reports : ""
+  shared_recipes ||--o{ shared_recipe_weekly_ranks : ""
   users ||--o{ shared_recipe_reports : "신고자"
   users |o--o{ shared_recipe_reports : "처리"
   users ||--o{ generation_quota_grants : "받음"
@@ -391,14 +400,13 @@ erDiagram
   generation_quota_grants |o--o{ usage_logs : ""
   users ||--o{ notifications : ""
   ingredients |o--o{ notifications : ""
-  receipts |o--o{ notifications : ""
   users ||--o{ push_subscriptions : ""
   shared_recipes {
     bigint id PK "ID"
     bigint recipe_id FK, UK "Original shared recipe. A recipe can be s…"
     string title "Shared title (required)"
     string status "VISIBLE/HIDDEN/DELETED"
-    int save_count "Save count aggregate (for ranking and pop…"
+    int save_count "Cumulative save count (detail screen)"
     timestamp created_at "Share time"
     timestamp updated_at "Status or save count change time"
   }
@@ -421,11 +429,20 @@ erDiagram
     timestamp handled_at "Handling time"
     timestamp created_at "Report time"
   }
+  shared_recipe_weekly_ranks {
+    bigint id PK "ID"
+    date week_start "Ranking week (Monday). UK(week_start + r…"
+    bigint shared_recipe_id FK "Shared recipe"
+    int rank_no "Rank 1–100"
+    int save_count "Saves in that week"
+    timestamp created_at "Save time (weekly job)"
+  }
   generation_quota_grants {
     bigint id PK "ID"
     bigint user_id FK "Recipient"
     int amount "Granted count (negative when an admin red…"
     int remaining "Remaining count"
+    timestamp expires_at "Expiry (grant time + 1 month)"
     string reason "WEEKLY_REWARD/ADMIN"
     date week_start "Reward week"
     int rank_no UK "1–3. UK(week_start + rank_no), so a rerun…"
@@ -448,8 +465,7 @@ erDiagram
     bigint id PK "ID"
     bigint user_id FK "Member"
     bigint ingredient_id FK "Ingredient of an expiring alert. Null aft…"
-    bigint receipt_id FK "Receipt of an analysis-done alert. Null a…"
-    string type "EXPIRY_SOON/EXPIRED/RECEIPT_DONE"
+    string type "EXPIRY_SOON/EXPIRED"
     string dedupe_key UK "UK(user_id + this). Example: EXPIRY_SOON:…"
     string title "Title"
     string body "Body"
@@ -466,7 +482,7 @@ erDiagram
   }
 ```
 
-Tables: shared_recipes, shared_recipe_photos, shared_recipe_reports, generation_quota_grants, usage_logs, notifications, push_subscriptions
+Tables: shared_recipes, shared_recipe_photos, shared_recipe_reports, shared_recipe_weekly_ranks, generation_quota_grants, usage_logs, notifications, push_subscriptions
 
 ### Events, admin, common
 
@@ -520,7 +536,7 @@ Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
 
 | No. | Table | Korean name | Description | Feature folder | Base class | Columns |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | users | 회원 | Social-login members. Admins are told apart by role. Also holds settings screen values (household size, notifications, ingredient supplement) | user | BaseTimeEntity | 14 |
+| 1 | users | 회원 | Social-login members. Admins are told apart by role. Also holds settings screen values (household size, notifications, ingredient supplement) and the plan (BASIC/PREMIUM) | user | BaseTimeEntity | 15 |
 | 2 | user_excluded_ingredients | 제외 재료(알레르기) | "Ingredients to exclude from recipes" chosen in onboarding and settings (N:N between members and the ingredient dictionary) | user | none | 2 |
 | 3 | refresh_tokens | 리프레시 토큰 | Login refresh tokens (stored as hashes), revoked on logout | auth | BaseCreatedEntity | 6 |
 | 4 | account_deletion_requests | 계정 삭제 인증 | 6-digit code sent by email (5 minutes, resend, lock after 5 tries) | user | BaseCreatedEntity | 7 |
@@ -528,8 +544,8 @@ Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
 | 6 | ingredient_catalog | 재료 사전 | Autocomplete, category estimation, excluded-ingredient list (reference data) | ingredient | none | 5 |
 | 7 | ingredients | 냉장고 재료 | One ingredient line in the fridge. Kept as FINISHED when used up | ingredient | BaseTimeEntity | 16 |
 | 8 | ingredient_logs | 재료 사용·폐기 이력 | "Used" and "Discarded" records. Source of the wasted-money statistics | ingredient | BaseCreatedEntity | 8 |
-| 9 | receipts | 영수증 | One scanned receipt. Only CONFIRMED receipts count toward food spending | receipt | BaseTimeEntity | 9 |
-| 10 | receipt_items | 영수증 품목 | One line on a receipt. No category means not a food item | receipt | BaseTimeEntity | 12 |
+| 9 | receipts | 영수증 | One confirmed receipt (unconfirmed OCR results are never stored). Kept 6 months by purchase date | receipt | BaseCreatedEntity | 7 |
+| 10 | receipt_items | 영수증 품목 | One food line of a confirmed receipt (non-food lines are not stored) | receipt | BaseCreatedEntity | 11 |
 | 11 | recipes | 레시피 | AI-generated recipes and copies of shared recipes. Never edited after creation | recipe | BaseCreatedEntity | 11 |
 | 12 | recipe_ingredients | 레시피 재료 | Ingredients and amounts in a recipe | recipe | BaseCreatedEntity | 8 |
 | 13 | recipe_steps | 레시피 조리 단계 | Cooking steps of a recipe | recipe | BaseCreatedEntity | 5 |
@@ -543,14 +559,15 @@ Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
 | 21 | shared_recipes | 공유 레시피 | Recipes posted to the shared space (fully anonymous) | share | BaseTimeEntity | 7 |
 | 22 | shared_recipe_photos | 공유 조리 사진 | Cooking photos uploaded when sharing (one or more) | share | BaseCreatedEntity | 5 |
 | 23 | shared_recipe_reports | 공유 레시피 신고 | Reports and the admin's handling result | share | BaseCreatedEntity | 10 |
-| 24 | generation_quota_grants | 생성 횟수 지급 | Extra recipe generations granted by the weekly recipe reward or by admins | quota | BaseCreatedEntity | 11 |
-| 25 | usage_logs | 호출 이력 | AI and OCR call records. Source of remaining-count calculation and admin call statistics | quota | BaseCreatedEntity | 8 |
-| 26 | notifications | 알림 | One notification sent to a member | notification | BaseCreatedEntity | 10 |
-| 27 | push_subscriptions | 푸시 구독 | Web push subscription per device | notification | BaseCreatedEntity | 6 |
-| 28 | events | 이벤트 | Raw user behavior events (frontend and server) | event | direct (`occurred_at`, `created_at`) | 12 |
-| 29 | event_daily_stats | 이벤트 일별 집계 | Events counted per day (for the dashboard) | event | none | 5 |
-| 30 | admin_audit_logs | 어드민 조치 이력 | Admin actions such as handling reports, adjusting quota, suspending accounts | admin | BaseCreatedEntity | 7 |
-| 31 | idempotency_keys | 중복 요청 방지 키 | `Idempotency-Key` of create, deduct, and confirm POSTs with the first response (kept 24 hours) | global | direct (`created_at`) | 6 |
+| 24 | shared_recipe_weekly_ranks | 주간 랭킹 기록 | Last week's final TOP 100 saved by the Monday job (source of `rankChange`) | share | BaseCreatedEntity | 6 |
+| 25 | generation_quota_grants | 생성 횟수 지급 | Extra recipe generations granted by the weekly recipe reward or by admins (valid one month) | quota | BaseCreatedEntity | 12 |
+| 26 | usage_logs | 호출 이력 | AI and OCR call records. Source of remaining-count calculation and admin call statistics | quota | BaseCreatedEntity | 8 |
+| 27 | notifications | 알림 | One notification sent to a member | notification | BaseCreatedEntity | 9 |
+| 28 | push_subscriptions | 푸시 구독 | Web push subscription per device | notification | BaseCreatedEntity | 6 |
+| 29 | events | 이벤트 | Raw user behavior events (frontend and server) | event | direct (`occurred_at`, `created_at`) | 12 |
+| 30 | event_daily_stats | 이벤트 일별 집계 | Events counted per day (for the dashboard) | event | none | 5 |
+| 31 | admin_audit_logs | 어드민 조치 이력 | Admin actions such as handling reports, adjusting quota, suspending accounts | admin | BaseCreatedEntity | 7 |
+| 32 | idempotency_keys | 중복 요청 방지 키 | `Idempotency-Key` of create, deduct, and confirm POSTs with the first response (kept 24 hours) | global | direct (`created_at`) | 6 |
 
 ## Relationships
 
@@ -570,7 +587,7 @@ Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
 | recipe_cook_logs | ingredient_logs | 1:N | Cooking deduction / may be empty | cook_log_id | |
 | users | receipts | 1:N | Scanned | user_id | |
 | receipts | receipt_items | 1:N | Items | receipt_id | CASCADE |
-| ingredient_categories | receipt_items | 1:N | Category / none for non-food items | category_id | |
+| ingredient_categories | receipt_items | 1:N | Category | category_id | |
 | users | recipes | 1:N | Created | creator_id | |
 | recipes | recipe_ingredients | 1:N | | recipe_id | |
 | ingredients | recipe_ingredients | 1:N | Planned fridge ingredient / may be empty | ingredient_id | SET NULL |
@@ -594,6 +611,7 @@ Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
 | recipes | shared_recipes | 1:0..1 | Shared | recipe_id | |
 | shared_recipes | shared_recipe_photos | 1:N | Cooking photos | shared_recipe_id | CASCADE |
 | shared_recipes | shared_recipe_reports | 1:N | Reports | shared_recipe_id | |
+| shared_recipes | shared_recipe_weekly_ranks | 1:N | Last week's rank | shared_recipe_id | |
 | users | shared_recipe_reports | 1:N | Reporter | reporter_id | |
 | users | shared_recipe_reports | 1:N | Handling admin / may be empty | handled_by | |
 | users | generation_quota_grants | 1:N | Recipient | user_id | |
@@ -603,7 +621,6 @@ Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
 | generation_quota_grants | usage_logs | 1:N | Reward count used / may be empty | grant_id | |
 | users | notifications | 1:N | | user_id | |
 | ingredients | notifications | 1:N | Expiring ingredient / may be empty | ingredient_id | SET NULL |
-| receipts | notifications | 1:N | Analysis done / may be empty | receipt_id | SET NULL |
 | users | push_subscriptions | 1:N | | user_id | |
 | users | admin_audit_logs | 1:N | Admin action | admin_id | |
 | users | idempotency_keys | 1:N | Duplicate request prevention | user_id | |
@@ -624,6 +641,7 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | email | varchar | | | Yes | | For sending the account deletion code. Null if the provider gives none. Set to null on withdrawal |
 | role | varchar | | | No | USER | USER/ADMIN |
 | status | varchar | | | No | ACTIVE | ACTIVE/SUSPENDED |
+| plan | varchar | | | No | BASIC | BASIC/PREMIUM. Release 1 applies BASIC limits only (the premium screen is UI only) |
 | household_size | int | | | Yes | | Household size. Null if skipped |
 | onboarding_completed | boolean | | | No | false | Whether onboarding was finished or skipped |
 | recipe_supplement_enabled | boolean | | | No | false | Recipe ingredient supplement (setting). When ON, recipes may include ingredients not in the fridge |
@@ -731,13 +749,15 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | --- | --- | --- | --- | --- | --- | --- |
 | id | bigint | PK | | No | | ID |
 | user_id | bigint | FK | users | No | | Member |
-| purchased_on | date | | | Yes | | Purchase date (basis of the monthly total) |
+| purchased_on | date | | | Yes | | Purchase date (basis of the monthly total and the 6-month retention) |
 | store_name | varchar | | | Yes | | Store |
-| total_price | bigint | | | Yes | | Total printed on the receipt (reference only; spending is the sum of items) |
-| status | varchar | | | No | SCANNED | SCANNED/CONFIRMED. Only CONFIRMED counts |
-| image_key | varchar | | | Yes | | Storage path. Null after the image is deleted at one year |
-| created_at | timestamp | | | No | | Scan time (basis of the 7-day unconfirmed cleanup and 1-year retention) |
-| updated_at | timestamp | | | No | | Update time |
+| store_code | varchar | | | Yes | | Store icon code (15 codes: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). `ETC` if not matched; the screen then shows `store_name` (the name OCR read) with the default icon |
+| image_key | varchar | | | No | | Storage path. Deleted together with the receipt |
+| created_at | timestamp | | | No | | Save (confirm) time. Retention basis when `purchased_on` is null |
+
+- Spending amounts are always the sum of food items (`receipt_items.price`), not the total printed on the receipt.
+- Only confirmed receipts are stored. `POST /receipts/scan` analyzes and stores nothing; `POST /receipts` saves the receipt, its items, and the registered fridge ingredients in one transaction. A confirmed receipt cannot be edited, only deleted.
+- Retention: 6 months from `purchased_on` (or `created_at` if null). A daily job deletes older receipts with their images and items. A purchase date older than 6 months cannot be registered (`INVALID_INPUT`). Index `(user_id, purchased_on)` for spending queries.
 
 ### 10. receipt_items (Receipt items)
 
@@ -745,7 +765,7 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | --- | --- | --- | --- | --- | --- | --- |
 | id | bigint | PK | | No | | ID |
 | receipt_id | bigint | FK | receipts | No | | Receipt. Deleted together with the receipt |
-| category_id | bigint | FK | ingredient_categories | Yes | | Null means not food (excluded from the fridge and spending) |
+| category_id | bigint | FK | ingredient_categories | No | | Category. Only food items are stored (OCR filters out non-food lines) |
 | name | varchar | | | No | | Item name |
 | amount | numeric(10,3) | | | No | 1 | Amount. 1 if unknown |
 | unit | varchar | | | No | EA | One of the 9 fridge units |
@@ -754,7 +774,6 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | expiration_date | date | | | Yes | | Expiration date |
 | is_expiration_estimated | boolean | | | No | false | Whether the date is an estimate |
 | created_at | timestamp | | | No | | Creation time |
-| updated_at | timestamp | | | No | | Update time (confirmation screen, price edits) |
 
 ### 11. recipes (Recipes)
 
@@ -904,7 +923,7 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | recipe_id | bigint | FK,UK | recipes | No | | Original shared recipe. A recipe can be shared once. Only RECIPE_GEN and MEAL_DETAIL (copies cannot be shared) |
 | title | varchar | | | No | | Shared title (required) |
 | status | varchar | | | No | VISIBLE | VISIBLE/HIDDEN/DELETED |
-| save_count | int | | | No | 0 | Save count aggregate (for ranking and popular order) |
+| save_count | int | | | No | 0 | Cumulative save count (detail screen). Weekly popularity counts `saved_recipes.saved_at` |
 | created_at | timestamp | | | No | | Share time |
 | updated_at | timestamp | | | No | | Status or save count change time |
 
@@ -936,7 +955,23 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | handled_at | timestamp | | | Yes | | Handling time |
 | created_at | timestamp | | | No | | Report time |
 
-### 24. generation_quota_grants (Generation quota grants)
+### 24. shared_recipe_weekly_ranks (Weekly ranking records)
+
+| Column | Type | PK/FK | References | Nullable | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| id | bigint | PK | | No | | ID |
+| week_start | date | | | No | | Ranking week (Monday). UK(week_start + rank_no) |
+| shared_recipe_id | bigint | FK | shared_recipes | No | | Shared recipe |
+| rank_no | int | | | No | | Rank (1–100) |
+| save_count | int | | | No | | Saves in that week |
+| created_at | timestamp | | | No | | Save time (weekly job) |
+
+- **Aggregation is the reset point.** Every Monday at 00:00, right after the week ends, the weekly job fixes last week's ranking. It counts `saved_recipes` rows whose `saved_at` is in last week and that still exist when the job runs (a save cancelled before the job is not counted), and saves the TOP 100 here. The new week's ranking starts from zero at the same moment.
+- **Aggregation comes first.** Count, save the ranks, and grant the rewards (`generation_quota_grants`, to the authors of the top 3 recipes) in one transaction that reads one consistent snapshot (for example `REPEATABLE READ`). Saves and cancellations made while the job runs do not change the result; they belong to the new week.
+- `UK(week_start + rank_no)` prevents recording the same week and rank twice. If the week's ranks already exist, a rerun does not recount; it uses the saved ranks and grants only the rewards that are missing (`generation_quota_grants` has the same UK).
+- `rankChange` = last week's rank − this week's rank (null if there is no rank last week or it is the same).
+
+### 25. generation_quota_grants (Generation quota grants)
 
 | Column | Type | PK/FK | References | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -944,6 +979,7 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | user_id | bigint | FK | users | No | | Recipient |
 | amount | int | | | No | | Granted count (negative when an admin reduces it) |
 | remaining | int | | | No | | Remaining count |
+| expires_at | timestamp | | | No | | Expiry (grant time + 1 month). Expired grants are not used |
 | reason | varchar | | | No | | WEEKLY_REWARD/ADMIN |
 | week_start | date | | | Yes | | Reward week |
 | rank_no | int | UK | | Yes | | 1–3. UK(week_start + rank_no), so a rerun of the reward job never grants twice |
@@ -952,9 +988,9 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | memo | varchar | | | Yes | | Adjustment reason |
 | created_at | timestamp | | | No | | Grant time |
 
-- Counts granted as rewards or adjustments **never expire**. After the 2 daily base generations are used, they are used until `remaining` runs out (they are rewards, so they do not disappear).
+- Counts granted as rewards or adjustments are valid for **one month** (`expires_at`). After the 2 daily base generations are used, unexpired grants are used until `remaining` runs out.
 
-### 25. usage_logs (Call logs)
+### 26. usage_logs (Call logs)
 
 | Column | Type | PK/FK | References | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -967,24 +1003,24 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | grant_id | bigint | FK | generation_quota_grants | Yes | | The grant used, if a reward or adjustment count was spent |
 | created_at | timestamp | | | No | | Call start time |
 
-- Remaining counts are computed, not stored: for recipes, base count if today's (Korea time) RECIPE rows with SUCCESS+PENDING are fewer than 2, otherwise grants (oldest first). Meal plans use this month's MEAL_PLAN rows; OCR uses today's OCR rows. MEAL_DETAIL is not counted (proposal).
+- Remaining counts are computed, not stored: for recipes, base count if today's (Korea time) RECIPE rows with SUCCESS+PENDING are fewer than 2, otherwise unexpired grants (oldest first). Meal plans use this month's MEAL_PLAN rows. MEAL_DETAIL is not counted (proposal).
+- OCR rows are recorded for cost and success-rate monitoring only. Receipt scans have no limit (decide again if AI is added to OCR).
 
-### 26. notifications (Notifications)
+### 27. notifications (Notifications)
 
 | Column | Type | PK/FK | References | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
 | id | bigint | PK | | No | | ID |
 | user_id | bigint | FK | users | No | | Member |
 | ingredient_id | bigint | FK | ingredients | Yes | | Ingredient of an expiring alert. Null after the ingredient is deleted (tapping opens the fridge) |
-| receipt_id | bigint | FK | receipts | Yes | | Receipt of an analysis-done alert. Null after the receipt is deleted |
-| type | varchar | | | No | | EXPIRY_SOON/EXPIRED/RECEIPT_DONE |
+| type | varchar | | | No | | EXPIRY_SOON/EXPIRED (there is no "receipt analysis finished" notification) |
 | dedupe_key | varchar | UK | | No | | UK(user_id + this). Example: `EXPIRY_SOON:501:2026-11-20`, `EXPIRED:2026-11-19` |
 | title | varchar | | | No | | Title |
 | body | varchar | | | No | | Body |
 | read_at | timestamp | | | Yes | | Read time |
 | created_at | timestamp | | | No | | Notification time (today / N days ago grouping, kept 30 days) |
 
-### 27. push_subscriptions (Push subscriptions)
+### 28. push_subscriptions (Push subscriptions)
 
 | Column | Type | PK/FK | References | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -995,7 +1031,7 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | auth_key | varchar | | | No | | Push auth key |
 | created_at | timestamp | | | No | | Subscription time |
 
-### 28. events (Events)
+### 29. events (Events)
 
 | Column | Type | PK/FK | References | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1014,7 +1050,7 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 
 - Indexes: (event_name, occurred_at), (user_id, occurred_at). Raw events older than 180 days are deleted every early morning.
 
-### 29. event_daily_stats (Daily event aggregates)
+### 30. event_daily_stats (Daily event aggregates)
 
 | Column | Type | PK/FK | References | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1024,7 +1060,7 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | event_count | bigint | | | No | | Event count |
 | user_count | int | | | No | | Number of users |
 
-### 30. admin_audit_logs (Admin action logs)
+### 31. admin_audit_logs (Admin action logs)
 
 | Column | Type | PK/FK | References | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -1036,7 +1072,7 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | detail | jsonb | | | Yes | | Reason and before/after values |
 | created_at | timestamp | | | No | | Action time |
 
-### 31. idempotency_keys (Duplicate request keys)
+### 32. idempotency_keys (Duplicate request keys)
 
 Table that makes a request processed only once even if it arrives twice by mistake. Storage for the API common rule "create, deduct, and confirm POSTs accept an `Idempotency-Key` header (the same key returns the same response, 24 hours)".
 
@@ -1067,4 +1103,4 @@ Rules kept in code while the ERD stays as is.
 | Quota | Reduce a grant with `UPDATE ... SET remaining = remaining - 1 WHERE id = ? AND remaining > 0`; if no row changed, use the next grant | Prevents two concurrent generations from spending the same grant |
 | Shared space | Change `save_count` in the same transaction as save and unsave | Keeps the save count consistent |
 | Shared space | Hiding or deleting changes only the shared post; copies stay | Copies may already be used in meal plan slots or cook logs |
-| Cleanup jobs | Every early morning: unconfirmed receipts (7 days), receipt images (1 year), notifications (30 days), raw events (180 days), deletion codes (older than a day), duplicate request keys (24 hours) | Tables that keep growing |
+| Cleanup jobs | Every early morning: receipts older than 6 months by purchase date (saved date if none) with images and items, notifications (30 days), raw events (180 days), deletion codes (older than a day), duplicate request keys (24 hours) | Tables that keep growing |
