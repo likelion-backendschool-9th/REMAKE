@@ -12,6 +12,7 @@ Korean translation for developers: [`docs/developer/agent-guide.md`](docs/develo
 | `backend/` | Spring Boot API server | [`docs/agent/backend-convention.md`](docs/agent/backend-convention.md) (conventions), [`docs/agent/erd.md`](docs/agent/erd.md) (ERD), [`docs/agent/backend-testing.md`](docs/agent/backend-testing.md) (tests) |
 | `frontend/` | Next.js PWA | `frontend/AGENTS.md` (if present) |
 | `deploy/`, `compose.prod.yml` | Deployment config | [`docs/agent/deployment.md`](docs/agent/deployment.md) |
+| `design/tokens/` | Design token generator (`build_tokens.py`) and its output | [`docs/agent/design-tokens.md`](docs/agent/design-tokens.md) |
 | `docs/agent/` | Docs for AI agents (English) | see §5 |
 | `docs/developer/` | Docs for developers (Korean) | see §5 |
 | `.github/` | CI workflows, PR / issue templates | — |
@@ -179,5 +180,6 @@ Current pairs:
 | `docs/agent/backend-testing.md` | `docs/developer/backend-testing.md` |
 | `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
 | `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |
+| `docs/agent/design-tokens.md` | `docs/developer/design-tokens.md` |
 
 When you add a new pair, add a row to this table and to the matching table in `docs/developer/agent-guide.md`.
