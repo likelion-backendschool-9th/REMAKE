@@ -60,7 +60,7 @@ The backend tests start from an empty DB and apply every migration in order, so 
 | Changed files | Check |
 | --- | --- |
 | Shell scripts in `deploy/` | `bash -n` (syntax), `shellcheck` (common mistakes) |
-| `compose.prod.yml` | `docker compose config` with the empty values of `deploy/prod.env.example` filled with placeholder values. Adding a required variable (`${VAR:?...}`) to `compose.prod.yml` without adding it to `deploy/prod.env.example` fails this check |
+| `compose.prod.yml` | `docker compose config` with the empty values of `deploy/prod.env.example` filled with placeholder values. Adding a required variable (`${VAR:?...}`) to `compose.prod.yml` without adding it to `deploy/prod.env.example` fails this check. A variable that is new in `compose.prod.yml` raises a yellow warning on that line and is listed in the run summary (required or not): the deployment owner must put it in the server's `.env` before merging (see the [deployment document](deployment.md#what-the-app-needs-because-of-the-deployment-setup)). The warning does not block the merge |
 | `deploy/nginx/` | `nginx -t`, run the same way `deploy/deploy.sh` runs it on the server |
 | `.github/workflows/` | actionlint: syntax, values not available in that context, `needs` pointing to a missing job, `run` scripts (shellcheck), and external input (such as the PR title) placed directly in a script |
 
