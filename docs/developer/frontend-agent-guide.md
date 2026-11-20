@@ -15,7 +15,7 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 `frontend/`에서 작업할 �
 
 - 패키지 매니저는 **pnpm**만 씁니다. `npm`, `yarn`, `npx`를 쓰지 않습니다 (`pnpm dlx`, `pnpm exec` 사용).
 - 명령은 `frontend/` 폴더에서 실행합니다. git 루트는 한 단계 위(`REMAKE/`)입니다.
-- **Tailwind를 쓰지 않습니다.** 스타일은 CSS Modules(`*.module.css`)와 `app/globals.css`의 CSS 변수(디자인 토큰)로만 작성합니다. Tailwind, shadcn/ui, styled-components, emotion 같은 스타일 라이브러리를 추가하지 않습니다.
+- **Tailwind를 쓰지 않습니다.** 스타일은 CSS Modules(`*.module.css`)와 `app/globals.css`의 CSS 변수로만 작성합니다. 디자인 토큰은 `design/tokens/build_tokens.py`가 만든 `app/tokens.css`에 있고 손으로 고치지 않습니다([`design-tokens.md`](./design-tokens.md)). Tailwind, shadcn/ui, styled-components, emotion 같은 스타일 라이브러리를 추가하지 않습니다.
 - 서버 데이터는 TanStack Query로만 다룹니다. Zustand에는 로그인 정보 같은 최소한의 클라이언트 상태만 둡니다.
 - API 호출은 `lib/api/client.ts`(openapi-fetch)를 씁니다. `lib/api/schema.d.ts`는 `pnpm gen:api`로 생성하는 파일이므로 직접 수정하지 않습니다.
 - 백엔드 기능을 Next Route Handler나 Server Action으로 대신 구현하지 않습니다. 비즈니스 로직은 Spring 백엔드 담당입니다.

@@ -57,7 +57,8 @@ VEGETABLE 7d, FRUIT 7d, MEAT 3d, SEAFOOD 2d, DAIRY_EGG 10d, GRAIN 30d, BEAN_TOFU
 
 - Flow: scan (analysis only) -> confirm screen (edit, add, remove, choose which to register) -> save. Unconfirmed OCR is not stored; abandonment is measured only via event `receipt_result_abandoned`.
 - Confirmed receipts cannot be edited; delete only. Deleting removes it from spending stats but keeps registered fridge ingredients.
-- Retention 6 months from the purchase date on the receipt (fallback saved date); average-spending comparison also uses the last 6 months. Older receipts cannot be registered.
+- OCR may leave the purchase date and store name unset. The user enters missing values before confirming the receipt.
+- Retention 6 months from the purchase date on the receipt; average-spending comparison also uses the last 6 months. Older receipts cannot be registered.
 - Monthly total = food items of confirmed receipts. Selecting a month changes the total and the list together.
 - Discarded ingredients stay in spending (counted as purchased spending); they are not subtracted from the monthly total. The monthly analysis shows the discarded amount separately (sum of `ingredient_logs.cost_amount`); its Figma screen will be added.
 - Store icon: 15 codes (CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC).

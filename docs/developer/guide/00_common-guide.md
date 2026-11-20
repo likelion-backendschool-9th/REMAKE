@@ -52,7 +52,7 @@ remake/
 - 생성·차감·확정 POST는 `Idempotency-Key` 헤더(프론트가 행동마다 UUID 생성, 재시도 때 같은 값). 서버는 `idempotency_keys`에 24시간 보관하고 같은 키에는 처음 응답을 돌려줍니다.
 - 시간 제한: 일반 10초, OCR 30초, AI 생성 60초.
 - 모든 요청에 `X-Client-Platform`(PWA/TWA/WEB), `X-App-Version` 헤더.
-- 인증: 운영은 프론트와 백엔드가 같은 도메인이라 프론트가 상대 경로(`/api/...`)로 호출하고 HttpOnly 쿠키를 씁니다. 토큰 수명과 갱신 흐름은 [`../frontend-blueprint.md`](../frontend-blueprint.md) §9 "남은 결정 사항"에서 정합니다.
+- 인증([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) A): 액세스·리프레시 JWT를 모두 HttpOnly 쿠키로 둡니다. 운영은 같은 도메인 상대 경로(`/api/...`) + `credentials: 'include'`. 프론트는 토큰을 JS에 두지 않고 `Authorization: Bearer`도 붙이지 않습니다. 자세한 흐름은 [`01_auth-onboarding.md`](01_auth-onboarding.md)·[`../frontend-blueprint.md`](../frontend-blueprint.md) §9.
 
 ## 5. 에러 공통 규칙
 

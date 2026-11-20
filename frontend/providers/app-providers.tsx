@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { SerwistProvider } from "@serwist/turbopack/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 import { env } from "@/lib/env";
 import { getQueryClient } from "@/lib/query-client";
@@ -21,7 +22,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
       disable={process.env.NODE_ENV === "development" || env.apiMocking}
     >
       <QueryClientProvider client={queryClient}>
-        <MswProvider>{children}</MswProvider>
+        <NuqsAdapter>
+          <MswProvider>{children}</MswProvider>
+        </NuqsAdapter>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
     </SerwistProvider>

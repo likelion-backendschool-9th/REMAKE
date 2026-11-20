@@ -23,12 +23,14 @@ p3-영수증(+스켈레톤, 최대 스크롤), p3.1-카메라, p3.3-ocr 결과(+
 - 수량을 못 읽으면 1개(EA). 단위는 부록 A의 코드로 정규화(포장 단위는 PACK, 낱개는 EA).
 - 영수증 스캔은 **횟수 제한이 없고** 횟수 표시도 없습니다. 호출은 비용·성공률 모니터링을 위해 `usage_logs`(type=OCR)와 이벤트로만 기록합니다.
 
+- OCR이 구매일이나 판매처 이름을 읽지 못하면 스캔 응답의 해당 값은 비워 둡니다. 확인 화면에서 사용자가 누락값을 채운 뒤 등록합니다.
+
 ## API
 
 | 메서드 | 경로 | 비고 |
 |---|---|---|
 | POST | `/api/v1/user/receipts/scan` | multipart `image`(10MB, jpg·png·heic). `items[]`, `purchasedOn`, `storeName`, `storeCode`, `duplicateSuspected` |
-| POST | `/api/v1/user/receipts` | multipart `image` + `payload` JSON. `items[].register`가 true인 것만 냉장고에 등록, 수량 소수 셋째 자리까지. 응답 `{ receiptId, registeredCount }` |
+| POST | `/api/v1/user/receipts` | multipart `image` + `payload` JSON. 구매일과 공백이 아닌 판매처 이름 필수. `items[].register`가 true인 것만 냉장고에 등록, 수량 소수 셋째 자리까지. 응답 `{ receiptId, registeredCount }` |
 | GET | `/api/v1/user/receipts` | `?month=YYYY-MM`(최근 6개월). 항목 `id, storeName, storeCode, purchasedOn, foodItemCount, foodAmount` |
 | GET | `/api/v1/user/receipts/{id}` | 품목, 총 금액(식재료 합계), 이미지 서명 URL |
 | DELETE | `/api/v1/user/receipts/{id}` | 이미지·품목 삭제, 등록된 재료는 유지 |
@@ -43,7 +45,7 @@ p3-영수증(+스켈레톤, 최대 스크롤), p3.1-카메라, p3.3-ocr 결과(+
 
 ## 구현 규칙
 
-- **보관 6개월**: 영수증에 찍힌 구매일 기준(없으면 저장일). 매일 새벽 배치가 6개월이 지난 영수증을 이미지·품목과 함께 삭제. 6개월보다 오래된 구매일은 등록 불가(`INVALID_INPUT`). 화면 문구도 6개월입니다(피그마의 "1년 동안 보관"은 고칠 예정).
+- **보관 6개월**: 영수증에 찍힌 구매일 기준. 매일 새벽 배치가 6개월이 지난 영수증을 이미지·품목과 함께 삭제. 6개월보다 오래된 구매일은 등록 불가(`INVALID_INPUT`). 화면 문구도 6개월입니다(피그마의 "1년 동안 보관"은 고칠 예정).
 - 금액 집계는 확정 영수증의 **식재료 품목만**, 구매일 기준. 영수증을 삭제하면 식비·소비 패턴에서도 빠집니다.
 - 월을 고르면 월 합계와 영수증 목록이 같은 달로 바뀝니다(`month` 파라미터 공유). 최근 6개월 밖·미래 달은 `INVALID_INPUT`, 영수증이 없는 달은 0원·빈 배열 200.
 - 평균 비교는 내 최근 6개월 월평균. 과거 데이터가 없으면 `comparison: null`(문구 숨김). 화면 "내 평균보다 N원 더 썼어요"는 `diffAmount`.
