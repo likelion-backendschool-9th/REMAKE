@@ -18,6 +18,8 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 이 저장소에서 작업할 
 
 하위 폴더에 `AGENTS.md`가 있으면 그 폴더에서 작업할 때 이 문서와 함께 따릅니다.
 
+`backend/`나 `frontend/`에서 작업할 때는 [배포 구성 때문에 앱에 필요한 것](deployment.md#배포-구성-때문에-앱에-필요한-것)도 확인합니다. 팀 규칙이 아니라 배포 구성에서 나온 조건을 모아 둔 표입니다(예: Spring Security를 추가할 때 헬스체크 경로를 인증 없이 허용, 새 환경 변수는 `compose.prod.yml`에도 추가).
+
 ---
 
 ## 1. 브랜치
@@ -113,6 +115,9 @@ PR 규칙:
 | --- | --- |
 | `frontend/` | `pnpm lint`, `pnpm typecheck`, `pnpm build` |
 | `backend/` | `./gradlew build` |
+| `.github/workflows/` | `docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.12 -color .github/workflows/*.yml` (저장소 루트에서) |
+
+PR에서 CI가 무엇을 검사하고 결과를 어떻게 보는지는 [`docs/developer/ci.md`](ci.md)를 봅니다.
 
 실행하지 못한 검사가 있으면 사용자에게 알리고, PR의 `## 테스트`에 적습니다.
 
@@ -145,6 +150,7 @@ PR 규칙:
 | `AGENTS.md` | `docs/developer/agent-guide.md` |
 | `docs/agent/git-convention.md` | `docs/developer/git-convention.md` |
 | `docs/agent/deployment.md` | `docs/developer/deployment.md` |
+| `docs/agent/ci.md` | `docs/developer/ci.md` |
 | `docs/agent/backend-convention.md` | `docs/developer/backend-convention.md` |
 | `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
 | `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |

@@ -18,6 +18,8 @@ Korean translation for developers: [`docs/developer/agent-guide.md`](docs/develo
 
 If a subfolder has its own `AGENTS.md`, follow it together with this file when working there.
 
+When working in `backend/` or `frontend/`, also check [What the app needs because of the deployment setup](docs/agent/deployment.md#what-the-app-needs-because-of-the-deployment-setup). It lists conditions that come from the deployment setup, not team rules (e.g. permit the health check path without authentication when adding Spring Security, add new environment variables to `compose.prod.yml`).
+
 ---
 
 ## 1. Branches
@@ -113,6 +115,9 @@ Run the checks for the area you changed, from that folder:
 | --- | --- |
 | `frontend/` | `pnpm lint`, `pnpm typecheck`, `pnpm build` |
 | `backend/` | `./gradlew build` |
+| `.github/workflows/` | `docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.12 -color .github/workflows/*.yml` (from the repository root) |
+
+What CI runs on PRs and how to read its results: [`docs/agent/ci.md`](docs/agent/ci.md).
 
 If you could not run a check, tell the user and write it under `## 테스트` in the PR.
 
@@ -145,6 +150,7 @@ Current pairs:
 | `AGENTS.md` | `docs/developer/agent-guide.md` |
 | `docs/agent/git-convention.md` | `docs/developer/git-convention.md` |
 | `docs/agent/deployment.md` | `docs/developer/deployment.md` |
+| `docs/agent/ci.md` | `docs/developer/ci.md` |
 | `docs/agent/backend-convention.md` | `docs/developer/backend-convention.md` |
 | `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
 | `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |
