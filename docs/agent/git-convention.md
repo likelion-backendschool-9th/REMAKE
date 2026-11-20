@@ -8,7 +8,7 @@
 - `dev`: integrates and tests the team's work.
 - Work branches: features, bug fixes, configuration, and documentation.
 
-Create work branches by task type. Name format: `<type>/<task-description>`, where the description is short lowercase kebab-case English.
+Create work branches by task type. Name format: `<type>/<task-description>`, where the description is short lowercase kebab-case English. If the work has an issue, put the issue number first: `<type>/<issue-number>-<task-description>` (for example `feat/12-fridge-list`), so the branch list shows which issue each branch belongs to. Small `chore` or `docs` work without an issue has no number.
 
 | Type | Purpose | Example |
 | --- | --- | --- |
@@ -39,6 +39,7 @@ Create work branches by task type. Name format: `<type>/<task-description>`, whe
 - Review and test changes before merging.
 - Delete work branches after they are merged.
 - No `release` or `hotfix` branches (short project, ends 2026-12-10).
+- Before starting a feature or bug fix, register it as an issue (see §7). One issue = one branch = one PR.
 
 ## 4. Examples
 
@@ -102,7 +103,7 @@ git commit -m "docs: Git 컨벤션 작성"
 git push -u origin docs/git-convention
 ```
 
-Agents: the examples use `git add .` for brevity. Stage only the files related to the change (see `AGENTS.md` §2).
+Agents: the examples use `git add .` for brevity. Stage only the files related to the change (see `AGENTS.md` §2). The Korean version tells developers the same.
 
 ## 5. PR and merge rules
 
@@ -120,6 +121,8 @@ Agents: the examples use `git add .` for brevity. Stage only the files related t
 | `fix/*` | `dev` |
 | `chore/*` | `dev` |
 | `docs/*` | `dev` |
+
+- If the work has an issue, write `Closes #<number>` under 관련 이슈 in the PR body. The issue closes automatically when the PR is merged into `dev`.
 
 ## 6. Commit convention
 
@@ -175,3 +178,58 @@ fix: 소비기한 D-day 계산 오류 수정
 - 자정 기준이 아니라 현재 시각 기준으로 계산해 하루씩 밀리던 문제 수정
 - dayjs startOf('day')로 날짜만 비교하도록 변경
 ```
+
+## 7. Issues and labels
+
+### When to open an issue
+
+- Open an issue before you start a feature, a bug fix, or a decision the team must make. A small `chore` or `docs` change may go straight to a PR.
+- One issue = one branch = one PR. Split an issue that needs several PRs into several issues.
+- Put the issue number in the branch name: `<type>/<issue-number>-<task-description>` (§1, for example `feat/12-fridge-list`). Link the issue from the PR with `Closes #<number>`.
+- Assign the issue to the person who does the work.
+
+### Templates
+
+Create issues from the templates in `.github/ISSUE_TEMPLATE/`. Blank issues are turned off.
+
+| Template | Title | Use for |
+| --- | --- | --- |
+| 기능 개발 | `[feat] <Korean description>` | A screen or API feature. Fill in the area, part, Figma frame, API, tables, error codes, and events |
+| 버그 | `[fix] <Korean description>` | Something that does not work as the spec says. Include steps to reproduce, the error `code`, and the `traceId` |
+| 결정 요청 | `[decision] <Korean description>` | Policy items marked "proposal" or "open" in the spec, or questions a PR review raised. Write the options and who decides |
+| 설정·문서 작업 | `[chore] <Korean description>` or `[docs] <Korean description>` | Configuration, CI, and documentation work |
+
+- Use the type words of the commit convention (§6) in titles. The description is Korean, short and specific.
+- Write the Figma frame name exactly as it appears in Figma (for example `p2.1-재료 수정`). Frame numbers are being reorganized; when a frame is renamed, update open issues that use it.
+- Never paste personal data, tokens, or secrets into an issue, even in error logs.
+
+### Follow-up work
+
+A merged PR is closed and easy to forget. Work that must continue after a PR is kept as an issue.
+
+1. Before the PR is merged, its author opens an issue for each follow-up task. "Follow-up" is not a type: choose the template and type by what the task is (table below), and add the `follow-up` label.
+2. Assign the issue to the person who does the next task (usually the owner of that area) and mention them (`@login`) in the issue body.
+3. Write the PR number in the issue (for example `#38`): under 이어지는 PR in the 기능 개발, 버그, and 설정·문서 작업 templates, under 관련 이슈·PR in the 결정 요청 template.
+4. In the PR body, write `후속: #<number>` under 관련 이슈. Do not use `Closes`: it would close the follow-up issue when this PR is merged.
+5. The PR that does the follow-up task closes the issue with `Closes #<number>`.
+
+| Follow-up task | Type | Template | Example |
+| --- | --- | --- | --- |
+| Correct something that no longer matches this change | `fix` | 버그 | Code or a document that does not match a changed rule, a wrong path or number |
+| Something the team must decide first | `decision` | 결정 요청 | Policy confirmation, two documents that disagree |
+| New work that builds on this change | `feat` | 기능 개발 | A screen on top of an API this PR added, the remaining screens |
+| Configuration, CI, or documentation | `chore` or `docs` | 설정·문서 작업 | Creating labels, writing a mapping table |
+
+### Labels
+
+| Group | Labels | Rule |
+| --- | --- | --- |
+| Type | `feat`, `fix`, `chore`, `docs`, `decision` | Exactly one. Same as the title prefix |
+| Area | `area:1-auth`, `area:2-fridge`, `area:3-receipt`, `area:4-recipe`, `area:5-meal-plan`, `area:6-notification-admin`, `area:7-share-cart`, `area:common` | One or more. Area numbers match the WBS areas |
+| Part | `BE`, `FE`, `infra` | One or more |
+| Priority | `P0`, `P1`, `P2` | One. P0 = needed for the first release demo, P1 = should have, P2 = if time allows |
+| Status | `needs-decision`, `blocked` | Only while it applies. Remove it when resolved |
+| Origin | `follow-up` | On issues opened as PR follow-ups (see "Follow-up work"). Keep it after the issue is closed |
+
+- Give the PR the same type, area, and part labels as its issue.
+- A small but urgent correction caused by a document change uses type `fix`, not `docs`: for example code or another document that no longer matches a changed rule, a wrong path, code, or number, or a broken link. Use the 버그 template, the `fix` label, a `fix/` branch, and `fix:` commits. `docs` is for planned documentation work.
