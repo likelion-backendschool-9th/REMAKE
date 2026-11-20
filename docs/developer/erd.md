@@ -24,7 +24,7 @@
 | 11/20 결정 | `receipts.status`(SCANNED/CONFIRMED) 삭제. 확정한 영수증만 저장, `receipts.image_key` NOT NULL | 스캔 API는 분석만 하고 저장하지 않음. 확정 API가 영수증·품목·냉장고 재료를 한 트랜잭션으로 저장 |
 | 11/20 결정 | `receipts.store_code` 추가 | 마트 아이콘(15개 코드, 못 맞추면 `ETC`) |
 | 11/20 결정 | `receipts.total_price` 삭제. `receipts`·`receipt_items`는 `updated_at`을 지우고 `BaseCreatedEntity`로 변경(`updated_at`이 있는 테이블은 이제 5개) | 식비는 항상 식재료 품목 합계라 영수증에 적힌 총액을 쓰지 않음. 확정한 영수증은 수정하지 않음 |
-| 11/20 결정 | 영수증 보관: 구매일 기준 6개월(날짜가 없으면 저장일), 지나면 이미지·품목과 함께 삭제. 미확정 7일 정리·이미지 1년 보관 삭제 | 식비 비교가 최근 6개월 기준. 미확정은 저장하지 않음 |
+| 11/20 결정 | 영수증 보관: 구매일 기준 6개월, 지나면 이미지·품목과 함께 삭제. 미확정 7일 정리·이미지 1년 보관 삭제 | 식비 비교가 최근 6개월 기준. 미확정은 저장하지 않음 |
 | 11/20 결정 | `receipt_items`는 식재료만 저장, `category_id` NOT NULL | OCR이 식재료만 돌려줌(비식재료는 걸러짐) |
 | 11/20 결정 | `notifications.receipt_id`와 `RECEIPT_DONE` 종류 삭제(EXPIRY_SOON/EXPIRED만) | OCR이 동기라 "분석 완료" 알림이 없음 |
 | 11/20 결정 | `generation_quota_grants.expires_at` 추가(지급 후 한 달) | 주간 보상은 한 달 안에 써야 함 |
@@ -749,15 +749,16 @@ erDiagram
 | --- | --- | --- | --- | --- | --- | --- |
 | id | bigint | PK | | 아니오 | | 고유 번호 |
 | user_id | bigint | FK | users | 아니오 | | 회원 |
-| purchased_on | date | | | 예 | | 구매일(월 집계·6개월 보관 기준) |
-| store_name | varchar | | | 예 | | 판매처 |
-| store_code | varchar | | | 예 | | 마트 아이콘 코드(15개: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). 못 맞추면 `ETC`이고, 화면은 기본 아이콘과 `store_name`(OCR이 읽은 이름)을 보여 줌 |
+| purchased_on | date | | | 아니오 | | 구매일(월 집계·6개월 보관 기준) |
+| store_name | varchar | | | 아니오 | | 판매처 |
+| store_code | varchar | | | 예 | | 마트 아이콘 코드(15개: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). 못 맞추면 `ETC`이고, 화면은 기본 아이콘과 `store_name`(확인한 판매처 이름)을 보여 줌 |
 | image_key | varchar | | | 아니오 | | 저장소 경로. 영수증과 함께 삭제 |
-| created_at | timestamp | | | 아니오 | | 저장(확정) 시각. `purchased_on`이 없으면 보관 기준 |
+| created_at | timestamp | | | 아니오 | | 저장(확정) 시각 |
 
+- 구매일과 판매처 이름은 최종 등록에 필수입니다. OCR이 읽지 못한 값은 확인 화면에서 사용자가 입력합니다.
 - 식비 금액은 영수증에 적힌 총액이 아니라 항상 식재료 품목 합계(`receipt_items.price`)입니다.
 - 확정한 영수증만 저장합니다. `POST /receipts/scan`은 분석만 하고 저장하지 않으며, `POST /receipts`가 영수증·품목·등록할 냉장고 재료를 한 트랜잭션으로 저장합니다. 확정한 영수증은 수정할 수 없고 삭제만 됩니다.
-- 보관: `purchased_on`(없으면 `created_at`)부터 6개월. 매일 작업이 지난 영수증을 이미지·품목과 함께 삭제합니다. 6개월보다 오래된 구매일은 등록할 수 없습니다(`INVALID_INPUT`). 식비 조회용 인덱스 `(user_id, purchased_on)`.
+- 보관: `purchased_on`부터 6개월. 매일 작업이 지난 영수증을 이미지·품목과 함께 삭제합니다. 6개월보다 오래된 구매일은 등록할 수 없습니다(`INVALID_INPUT`). 식비 조회용 인덱스 `(user_id, purchased_on)`.
 
 ### 10. receipt_items (영수증 품목)
 
@@ -1103,4 +1104,4 @@ ERD는 그대로 두고 코드에서 지키는 규칙입니다.
 | 생성 횟수 | 지급분은 `UPDATE ... SET remaining = remaining - 1 WHERE id = ? AND remaining > 0`로 줄이고, 바뀐 행이 0이면 다음 지급분 | 동시 생성 시 같은 지급분 중복 사용 방지 |
 | 공유 공간 | 저장·저장 취소와 `save_count` 변경을 같은 트랜잭션에서 | 저장 수가 따로 놀지 않게 |
 | 공유 공간 | 숨김·삭제는 공유글만 바꾸고 사본은 그대로 | 사본은 식단 칸·요리 기록에 쓰였을 수 있음 |
-| 정리 작업 | 매일 새벽: 구매일(없으면 저장일) 기준 6개월 지난 영수증과 그 이미지·품목, 알림(30일), 이벤트 원본(180일), 인증번호(하루 지난 것), 중복 요청 키(24시간) | 계속 쌓이는 테이블 |
+| 정리 작업 | 매일 새벽: 구매일 기준 6개월 지난 영수증과 그 이미지·품목, 알림(30일), 이벤트 원본(180일), 인증번호(하루 지난 것), 중복 요청 키(24시간) | 계속 쌓이는 테이블 |
