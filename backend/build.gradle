@@ -25,6 +25,8 @@ dependencies {
 	// DB 스키마를 버전별 SQL(src/main/resources/db/migration)로 관리한다. 앱이 시작할 때 아직 적용하지 않은 파일을 실행한다.
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
 	implementation 'org.flywaydb:flyway-database-postgresql'
+	// OpenAPI 문서(/v3/api-docs)와 Swagger UI(/swagger-ui.html). 프론트가 pnpm gen:api로 이 문서에서 API 클라이언트를 만든다.
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
@@ -33,6 +35,8 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 	testImplementation 'org.testcontainers:testcontainers-postgresql'
+	// 컴파일된 운영 코드를 읽어 규칙 위반(Clock 없이 현재 시각 읽기 등)을 찾는다. ClockUsageTest가 쓴다.
+	testImplementation 'com.tngtech.archunit:archunit:1.5.1'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'

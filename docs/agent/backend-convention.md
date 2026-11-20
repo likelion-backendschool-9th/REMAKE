@@ -4,6 +4,7 @@
 
 ## Code style
 
+- Write tests by the [backend testing doc](backend-testing.md) (test types, the integration test base class, the test clock).
 - Use camelCase in Java code and JSON, snake_case in the DB.
 
 ## Folder structure
@@ -29,7 +30,7 @@ com.remake
 │
 └── global                      Shared by all features
     ├── error                   ErrorCode, BusinessException, GlobalExceptionHandler
-    ├── config                  Swagger, JPA, CORS, Clock, shared external service config
+    ├── config                  Swagger, JPA, CORS, Clock, JSON time format, shared external service config
     ├── security                JWT filter, Security config
     └── common                  Shared classes such as BaseCreatedEntity, BaseTimeEntity, the duplicate-request filter
 ```
@@ -66,6 +67,7 @@ Rules:
 
 - When you need another feature's data, call that feature's `UseCase` (port/in). Do not use another feature's `Port` (port/out), adapters, or repositories.
 - Reference another feature's data by ID only, such as `Long ingredientId`, in both domain objects and JPA entities. Do not create JPA associations (`@ManyToOne`, etc.) to another feature's entities. Keep the DB foreign keys.
+- Another feature's domain enums (fixed value lists such as `IngredientUnit` and `StorageLocation` in `ingredient/domain`) may be imported directly. The `UseCase` rule applies to reading and writing data, not to value types. Keep each enum in the feature that owns the values; do not move it to `global`.
 - Within one feature, compose objects and use JPA associations freely. Example: `Recipe` and `RecipeStep`.
 
 ### Folders created only where needed
@@ -109,7 +111,7 @@ Table structure follows the [ERD and table definition](erd.md).
   - During a deploy, the old and new app versions share the DB for a while. Split changes that break the old version, such as renaming or dropping a column, into steps (see the [deployment doc](deployment.md)).
 - **Types**: quantities `numeric(10,3)` ↔ `BigDecimal`, money `bigint` ↔ `Long` (won), timestamps `timestamp` ↔ `LocalDateTime` (Korea time), JSON `jsonb`.
 - **Fixed value lists** (statuses, kinds, units) are Java enums stored with `@Enumerated(EnumType.STRING)`. Never store the ordinal (`ORDINAL`).
-- **Read the current time only from the injected `Clock`.** Do not use argument-less `now()` such as `LocalDateTime.now()`, a column `DEFAULT now()`, or `now()` inside a query. The base classes set created and updated times through JPA auditing.
+- **Read the current time only from the injected `Clock`.** Do not use `now()` without a `Clock` such as `LocalDateTime.now()` or `LocalDate.now(zone)`, a column `DEFAULT now()`, or `now()` inside a query. The base classes set created and updated times through JPA auditing. `ClockUsageTest` fails the build when production code or migration SQL breaks this rule.
 
 ## Terms
 
@@ -146,14 +148,14 @@ Use the same word in code, DB, and API.
   - `/api/v1/public/**`, `/actuator/health/**`: allow without authentication. Blocking the health check breaks deployment.
   - `/api/v1/admin/**`: ADMIN only. 403 without the role.
   - All other `/api/v1/**`: login required.
-- In local development the frontend (`http://localhost:3000`) calls the backend (`http://localhost:8080`) directly, so allow it in CORS. Production uses one domain and needs no CORS.
+- In local development the frontend (`http://localhost:3000`) calls the backend (`http://localhost:8080`) directly, so allow it in CORS (`global/config/CorsConfig`, allowed origins in `remake.cors.allowed-origins`). Production uses one domain and needs no CORS.
 - If you need a path outside `/api/` (WebSocket, file download, etc.), tell the deployment owner before building it. The proxy needs a new rule.
 
 ## Responses and errors
 
-On success, return the Response DTO as-is without a wrapper. Distinguish success and failure by HTTP status code: 201 for creation, 204 for deletion without a body, 202 for accepted-now-processed-later (event collection), 200 for other successes.
+On success, return the Response DTO as-is without a wrapper. Never create success wrapper classes such as `ApiResponse` or `CommonResponse` (`{ data, meta }`, etc.). Distinguish success and failure by HTTP status code: 201 for creation, 204 for deletion without a body, 202 for accepted-now-processed-later (event collection), 200 for other successes.
 
-Paginate lists in this shape (`?page=0&size=20`):
+Paginate growing lists in this shape (`?page=0&size=20`, `PageResponse.from(page, XxxResponse::from)`). Do not use cursor pagination. Return fixed-size reference data (ingredient categories, etc.) as a plain array without paging.
 
 ```json
 { "content": [], "page": 0, "size": 20, "totalElements": 0, "hasNext": false }
@@ -172,14 +174,33 @@ On failure, every API returns this shape. Include `fieldErrors` (`{ field, messa
 ```
 
 - Format dates as `2026-12-21` and timestamps as `2026-11-15T09:00:00+09:00`. Money is an integer in won.
+  - Use `LocalDate` and `LocalDateTime` in DTOs as-is. `global/config/JacksonConfig` adds `+09:00`, so do not convert to `OffsetDateTime` or strings in DTOs. Fractions of a second are dropped.
+  - A timestamp received in a request with another offset (`Z`, etc.) is converted to Korea time; one without an offset is treated as Korea time.
+- Use camelCase field names. Return enum values as their names (UPPER_SNAKE_CASE, `FRIDGE`, `SHARED_COPY`). Use the enum type itself in DTOs.
 - When a value is missing, return the field as `null`; do not omit it.
 - Never return domain objects or JPA entities directly; convert them to Response DTOs.
-- The frontend generates its API client from the OpenAPI document (`pnpm gen:api`). Declare controller return types as concrete DTOs; never return `Object` or `Map`.
+- The frontend generates its API client from the OpenAPI document (`pnpm gen:api`). Declare controller return types as concrete DTOs; never return `Object` or `Map`. The document is at `/v3/api-docs` on the local backend and the UI at `/swagger-ui.html`. Put `@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)` on APIs that need login.
 - Services only throw `BusinessException(ErrorCode.XXX)`. `GlobalExceptionHandler` in `global/error` builds every error response in one place. Do not build error responses with try-catch in controllers or services.
 - Keep all error codes in the single `global/error/ErrorCode`. Use the same names as the API and error definition documents.
 - 401 (login required) and 403 (forbidden) are rejected in the Security filter chain and never reach `GlobalExceptionHandler`. Return the same shape from `AuthenticationEntryPoint` (401) and `AccessDeniedHandler` (403) in `global/security`.
 - Create, deduct, and confirm POSTs (recipe generation, cook, receipt confirm, etc.) accept an `Idempotency-Key` header. When the same key arrives again, do not process it; return the first response (24 hours, `idempotency_keys` table). One shared filter in `global/common` handles this, not each feature.
   - Endpoints: `POST /user/recipes/generate`, `/user/meal-plans/generate`, `/user/receipts`, `/user/ingredients/{id}/consume`, `/user/recipes/{id}/cook`. The frontend creates one key per user action and reuses it on retry.
+- The authentication method (how the token is sent, the token flow) is decided in [#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42). Do not add an authentication rule before that decision.
+
+### Example API
+
+Build new APIs by following the ingredient category list (`GET /api/v1/user/ingredient-categories`). It has a full set, from migration to tests.
+
+| Location | Files |
+|---|---|
+| Migration | `db/migration/V1__create_ingredient_categories.sql` |
+| domain | `IngredientCategory`, `IngredientCategoryCode`, `StorageLocation`, `IngredientUnit` |
+| port/in | `GetIngredientCategoriesUseCase` |
+| port/out | `LoadIngredientCategoryPort` |
+| service | `IngredientCategoryService` (throws `BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND)` when missing) |
+| adapter/in/web | `IngredientCategoryController`, `IngredientCategoryResponse` |
+| adapter/out/persistence | `IngredientCategoryJpaEntity`, `IngredientCategoryJpaRepository`, `IngredientCategoryPersistenceAdapter` |
+| Tests | `src/test/.../ingredient/IngredientCategoryApiTest` |
 
 ## Data access and request handling
 
