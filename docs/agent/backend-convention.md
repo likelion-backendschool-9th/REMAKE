@@ -101,7 +101,7 @@ When a feature needs a connection other than `adapter/in/web` and `adapter/out/p
 
 ## DB and entities
 
-Table structure follows the ERD and table definition v3 (the ERD page in Notion).
+Table structure follows the [ERD and table definition](erd.md).
 
 - **Create and change tables only with Flyway.** When you add or change an entity, add `backend/src/main/resources/db/migration/V<number>__<description>.sql` in the same PR. JPA runs `validate` (check only) both locally and in production, so the app does not start if the SQL is missing.
   - Use the number after dev's last migration. If another PR merges first with the same number, raise your file's number before merging.

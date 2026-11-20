@@ -152,6 +152,7 @@ Current pairs:
 | `docs/agent/deployment.md` | `docs/developer/deployment.md` |
 | `docs/agent/ci.md` | `docs/developer/ci.md` |
 | `docs/agent/backend-convention.md` | `docs/developer/backend-convention.md` |
+| `docs/agent/erd.md` | `docs/developer/erd.md` |
 | `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
 | `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |
 
