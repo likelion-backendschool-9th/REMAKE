@@ -78,6 +78,7 @@ erDiagram
   users ||--o{ cart_items : ""
   recipes |o--o{ cart_items : ""
   meal_plans |o--o{ cart_items : ""
+  meal_plan_slots |o--o{ cart_items : ""
   recipes ||--o| shared_recipes : ""
   shared_recipes ||--o{ shared_recipe_photos : ""
   shared_recipes ||--o{ shared_recipe_reports : ""
@@ -284,6 +285,7 @@ erDiagram
   users ||--o{ cart_items : ""
   recipes |o--o{ cart_items : ""
   meal_plans |o--o{ cart_items : ""
+  meal_plan_slots |o--o{ cart_items : ""
   recipes ||--o| shared_recipes : ""
   recipes {
     bigint id PK "ID"
@@ -371,6 +373,7 @@ erDiagram
     bigint user_id FK "Member"
     bigint recipe_id FK "Recipe the group is based on (null for a …"
     bigint meal_plan_id FK "Set when it came from a meal plan"
+    bigint meal_plan_slot_id FK "Source slot; nullable, ON DELETE SET NULL"
     string group_name "Group name on screen (recipe title or men…"
     string name "Ingredient name"
     decimal amount "Amount (editable)"
@@ -555,7 +558,7 @@ Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
 | 17 | meal_plans | 식단표 | One meal plan generation (up to 7 days from the start date) | mealplan | BaseCreatedEntity | 8 |
 | 18 | meal_plan_slots | 식단표 칸 | Slots per date and meal. Generated slots (AI) and manually added slots (MANUAL) | mealplan | BaseTimeEntity | 10 |
 | 19 | meal_plan_slot_ingredients | 칸별 예정 재료 | Ingredients and amounts planned for each slot. Used to prevent duplicate assignment and compute shortages | mealplan | BaseCreatedEntity | 7 |
-| 20 | cart_items | 장바구니 | Missing ingredients grouped by recipe (added automatically only) | cart | BaseTimeEntity | 10 |
+| 20 | cart_items | 장바구니 | Missing ingredients grouped by recipe (added automatically only) | cart | BaseTimeEntity | 11 |
 | 21 | shared_recipes | 공유 레시피 | Recipes posted to the shared space (fully anonymous) | share | BaseTimeEntity | 7 |
 | 22 | shared_recipe_photos | 공유 조리 사진 | Cooking photos uploaded when sharing (one or more) | share | BaseCreatedEntity | 5 |
 | 23 | shared_recipe_reports | 공유 레시피 신고 | Reports and the admin's handling result | share | BaseCreatedEntity | 10 |
@@ -608,6 +611,7 @@ Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
 | users | cart_items | 1:N | | user_id | |
 | recipes | cart_items | 1:N | Group / may be empty | recipe_id | SET NULL |
 | meal_plans | cart_items | 1:N | Missing ingredients / may be empty | meal_plan_id | SET NULL |
+| meal_plan_slots | cart_items | 1:N | Source slot / none for recipe saves | meal_plan_slot_id | SET NULL |
 | recipes | shared_recipes | 1:0..1 | Shared | recipe_id | |
 | shared_recipes | shared_recipe_photos | 1:N | Cooking photos | shared_recipe_id | CASCADE |
 | shared_recipes | shared_recipe_reports | 1:N | Reports | shared_recipe_id | |
@@ -906,6 +910,7 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | user_id | bigint | FK | users | No | | Member |
 | recipe_id | bigint | FK | recipes | Yes | | Recipe the group is based on (null for a menu-name-only slot) |
 | meal_plan_id | bigint | FK | meal_plans | Yes | | Set when it came from a meal plan |
+| meal_plan_slot_id | bigint | FK | meal_plan_slots | Yes | | Source slot (null for recipe saves). ON DELETE SET NULL |
 | group_name | varchar | | | No | | Group name on screen (recipe title or menu name) |
 | name | varchar | | | No | | Ingredient name |
 | amount | numeric(10,3) | | | No | | Amount (editable) |
@@ -914,6 +919,13 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | updated_at | timestamp | | | No | | Amount change time |
 
 - There is no API to add items directly; items are always added automatically. The same ingredient is kept separately per recipe.
+- Decision [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46): add through `AddCartItemsUseCase.add(Long userId, CartSource source, List<CartGroup> groups)` in `cart/application/port/in`; return the number of inserted rows as `int` for the caller's `cartAddedCount`.
+- `CartGroup`: nullable `recipeId`, `mealPlanId`, `mealPlanSlotId`, plus `groupName` and `items`. Each `CartItem` has `name`, `amount` (`BigDecimal`), and `unit` (the existing 14 unit codes). `CartSource`: `MEAL_PLAN`, `RECIPE_SAVE`, `SHARED_RECIPE_SAVE`.
+- For meal plans, pass one group per slot: `recipeId = null`, `mealPlanId`, `mealPlanSlotId`, and the menu name as `groupName`. For recipe saves, pass `recipeId`, the recipe title as `groupName`, and `mealPlanSlotId = null`.
+- Skip empty lists and groups without items. Return 0 if nothing is inserted and emit no event. Otherwise emit `cart_item_added` once per call from the cart UseCase only, with `cart_source` and the total inserted-row count as `item_count`; never record a rolled-back add as a successful event.
+- Join the caller's transaction with `REQUIRED`, never `REQUIRES_NEW`; roll back cart changes together with meal-plan or recipe saving. Meal-plan generation retries use the common `Idempotency-Key` handling; do not add separate retry deduplication inside the add UseCase.
+- On meal-plan overwrite, call `RemoveCartItemsByMealPlanSlotsUseCase.remove(userId, slotIds)` to delete only that user's items linked to the replaced slots, including items whose amounts the user edited. In one transaction: delete those cart items → delete the old slots → save new slots → add new cart items. Preserve items from untouched slots and emit no user-deletion event for this automatic cleanup.
+- Keep `meal_plan_slot_id` nullable with `ON DELETE SET NULL`, like the cart's `recipe_id` and `meal_plan_id`. Explicit UseCase cleanup happens before slot deletion during overwrite; the FK action does not replace that cleanup.
 
 ### 21. shared_recipes (Shared recipes)
 

@@ -9,7 +9,8 @@ Source of truth: the event data definition sheet (Korean, Google Sheets; not in 
 - `properties`: flat JSON, string/number/boolean only, <= 25 keys.
 - **Never record:** email, name, social ID, allergy/excluded ingredient names, typed ingredient names, recipe content, any free text. Record `category_code`, counts and enums instead.
 - Tracking must never break the user flow (async, swallow errors).
-- `cart_item_added` (E62) is emitted only by the cart's add UseCase, once per add path, with `cart_source`. The meal-plan and recipe APIs that add items through it do not emit it themselves.
+- Decision [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46): `cart_item_added` (E62) is emitted only by `AddCartItemsUseCase`, once per call that inserts rows. Record `cart_source` (`MEAL_PLAN`, `RECIPE_SAVE`, `SHARED_RECIPE_SAVE`) and `item_count` (total inserted rows, not groups or summed quantities). Skip empty lists and groups without items; emit nothing if the inserted count is 0. The calling meal-plan and recipe APIs do not emit it themselves. Never record a rolled-back add as a successful event.
+- Automatic cart cleanup through `RemoveCartItemsByMealPlanSlotsUseCase` during meal-plan overwrite emits no user-deletion event (`cart_items_deleted`).
 - Raw events are kept 180 days; daily aggregation in `event_daily_stats`.
 
 ## Events
