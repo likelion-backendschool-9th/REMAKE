@@ -1,6 +1,6 @@
 # API summary
 
-Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the repo). Base `/api/v1/{public|user|admin}`. All `user` and `admin` calls need a logged-in session. Auth is JWT in HttpOnly cookies for both access and refresh ([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) option A). The frontend calls the same domain with relative `/api/...` paths and `credentials: 'include'`; do not send `Authorization: Bearer` or put tokens in JS-readable storage. Error codes are in `errors.md`. "Events" lists the events the endpoint publishes (see `events.md`). Owner = feature-area owner.
+Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the repo). The login response and cookie auth differ from the original per #42. Base `/api/v1/{public|user|admin}`. All `user` and `admin` calls need a logged-in session. Auth is JWT in HttpOnly cookies for both access and refresh ([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) option A). The frontend calls the same domain with relative `/api/...` paths and `credentials: 'include'`; do not send `Authorization: Bearer` or put tokens in JS-readable storage. Error codes are in `errors.md`. "Events" lists the events the endpoint publishes (see `events.md`). Owner = feature-area owner.
 
 ## Common
 

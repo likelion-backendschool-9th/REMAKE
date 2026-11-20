@@ -149,7 +149,7 @@ com.remake
   - `/api/v1/public/**`, `/actuator/health/**`: 인증 없이 허용. 헬스체크를 막으면 배포가 실패합니다.
   - `/api/v1/admin/**`: ADMIN만. 권한이 없으면 403.
   - 나머지 `/api/v1/**`: 로그인 필요.
-- 로컬 개발에서는 프론트(`http://localhost:3000`)가 백엔드(`http://localhost:8080`)를 직접 부르므로 CORS를 열어 둡니다(`global/config/CorsConfig`, 허용 주소는 `remake.cors.allowed-origins`). 운영은 같은 도메인이라 필요 없습니다.
+- 로컬 개발에서는 프론트(`http://localhost:3000`)가 백엔드(`http://localhost:8080`)를 직접 부르므로 CORS를 열어 둡니다(`global/config/CorsConfig`, 허용 주소는 `remake.cors.allowed-origins`). 인증 쿠키를 보내려면 `allowCredentials(true)`와 정확한 출처 지정이 필요합니다. 허용 주소는 하나씩 적고(예: `http://localhost:3000`) `*`는 쓰지 않습니다. 운영은 같은 도메인이라 필요 없습니다.
 - `/api/` 밖에 둬야 하는 주소(WebSocket, 파일 다운로드 등)가 필요하면 만들기 전에 배포 담당자에게 알립니다. 프록시 규칙을 추가해야 합니다.
 
 ## 응답과 에러
@@ -180,13 +180,13 @@ com.remake
 - 필드 이름은 camelCase, enum 값은 이름 그대로(대문자 스네이크, `FRIDGE`, `SHARED_COPY`) 줍니다. DTO에도 enum 타입을 그대로 씁니다.
 - 값이 없으면 필드를 빼지 않고 `null`을 줍니다.
 - 도메인 객체나 JPA Entity를 그대로 응답으로 내보내지 않고 Response DTO로 바꿔서 줍니다.
-- 프론트는 OpenAPI 문서로 API 클라이언트를 만듭니다(`pnpm gen:api`). Controller의 반환 타입을 DTO로 분명히 쓰고, `Object`나 `Map`으로 돌려주지 않습니다. 문서는 로컬 백엔드의 `/v3/api-docs`, 화면은 `/swagger-ui.html`입니다. 로그인이 필요한 API에는 `@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)`를 붙입니다.
+- 프론트는 OpenAPI 문서로 API 클라이언트를 만듭니다(`pnpm gen:api`). Controller의 반환 타입을 DTO로 분명히 쓰고, `Object`나 `Map`으로 돌려주지 않습니다. 문서는 로컬 백엔드의 `/v3/api-docs`, 화면은 `/swagger-ui.html`입니다. 로그인이 필요한 API는 Swagger에 쿠키 인증(OpenAPI `apiKey`, `in: cookie`)으로 표시합니다(#42). 세부(쿠키 이름, 스킴 상수)는 인증을 구현할 때 확정하고, 그때까지 있는 `OpenApiConfig.BEARER_AUTH`는 그 시점에 쿠키 스킴으로 바꿉니다.
 - 에러는 Service에서 `BusinessException(ErrorCode.XXX)`로 던지기만 합니다. 응답은 `global/error`의 `GlobalExceptionHandler`가 한 곳에서 만듭니다. Controller와 Service에서 try-catch로 에러 응답을 만들지 않습니다.
 - 에러 코드는 `global/error/ErrorCode` 하나에 모읍니다. 이름은 API 정의서·에러 정의서의 코드와 같게 씁니다.
 - 로그인이 필요함(401)과 권한 없음(403)은 Security 필터 단계에서 막혀 `GlobalExceptionHandler`를 거치지 않습니다. `global/security`의 `AuthenticationEntryPoint`(401)와 `AccessDeniedHandler`(403)에서도 같은 모양으로 응답합니다.
 - 생성·차감·확정 POST(레시피 생성, 요리했어요, 영수증 확정 등)는 `Idempotency-Key` 헤더를 받습니다. 같은 키로 다시 오면 처리하지 않고 처음 응답을 그대로 돌려줍니다(24시간, `idempotency_keys` 테이블). 처리는 기능마다 만들지 않고 `global/common`의 공통 필터 하나가 맡습니다.
   - 대상: `POST /user/recipes/generate`, `/user/meal-plans/generate`, `/user/receipts`, `/user/ingredients/{id}/consume`, `/user/recipes/{id}/cook`. 프론트는 사용자 행동마다 키를 하나 만들고, 다시 시도할 때 같은 키를 씁니다.
-- 인증 방식(토큰을 보내는 방법, 토큰 흐름)은 [#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42)에서 정합니다. 결정 전에는 인증 규칙을 따로 추가하지 않습니다.
+- 인증 방식은 [#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42)에서 A안으로 확정했습니다. 액세스(30분)·리프레시(14일) JWT를 모두 HttpOnly 쿠키(`Secure; SameSite=Lax`)로 둡니다. 토큰은 `Authorization` 헤더가 아니라 쿠키에서 읽습니다. 로그인·재발급 응답에는 `accessToken`을 넣지 않습니다.
 
 ### 예시 API
 
