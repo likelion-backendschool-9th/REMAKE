@@ -4,6 +4,7 @@
 
 ## Code style
 
+- Write tests by the [backend testing doc](backend-testing.md) (test types, the integration test base class, the test clock).
 - Use camelCase in Java code and JSON, snake_case in the DB.
 
 ## Folder structure

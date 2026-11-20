@@ -4,6 +4,7 @@
 
 ## 코드 스타일
 
+- 테스트는 [백엔드 테스트 문서](backend-testing.md)대로 씁니다(테스트 종류, 통합 테스트 부모 클래스, 시험용 시계).
 - Java 코드와 JSON은 camelCase, DB는 snake_case로 씁니다.
 
 ## 폴더 구조
