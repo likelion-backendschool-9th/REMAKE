@@ -20,6 +20,24 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 이 저장소에서 작업할 
 
 `backend/`나 `frontend/`에서 작업할 때는 [배포 구성 때문에 앱에 필요한 것](deployment.md#배포-구성-때문에-앱에-필요한-것)도 확인합니다. 팀 규칙이 아니라 배포 구성에서 나온 조건을 모아 둔 표입니다(예: Spring Security를 추가할 때 헬스체크 경로를 인증 없이 허용, 새 환경 변수는 `compose.prod.yml`에도 추가).
 
+## 제품 규칙 (백엔드·프론트 공통)
+
+정책과 데이터(테이블, 횟수 제한, 단위, 에러 코드, 이벤트)는 팀 기획 문서를 따릅니다. 에이전트는 `docs/agent/spec/`의 영문 요약을 읽습니다. 코드와 정의서가 다르면 추측하지 말고 사용자에게 묻습니다.
+
+| 파일 | 내용 |
+| --- | --- |
+| [`docs/agent/spec/domain-rules.md`](../agent/spec/domain-rules.md) | 비즈니스 규칙, 횟수 제한, 단위, 카테고리, 소비기한 상태 |
+| [`docs/agent/spec/api-summary.md`](../agent/spec/api-summary.md) | 도메인별 전체 API와 각 API가 발행하는 이벤트 |
+| [`docs/agent/spec/data-model.md`](../agent/spec/data-model.md) | 테이블 32개(구조만. 자세한 내용은 [`erd.md`](erd.md)) |
+| [`docs/agent/spec/errors.md`](../agent/spec/errors.md) | 에러 코드 |
+| [`docs/agent/spec/events.md`](../agent/spec/events.md) | 이벤트 트래킹 계약 |
+
+꼭 지킬 규칙:
+
+1. **API 경로**: `/api/v1/{public|user|admin}/{자원}[/{id}[/{동작}]]`. 자원은 복수형 케밥케이스 명사, 동작은 뒤에 붙는 동사(`generate`, `cook`, `scan`)입니다. `public`은 로그인과 토큰 재발급만, `user`는 로그인한 사용자이며 항상 토큰 주인의 데이터만 다룹니다. `admin`은 ADMIN 역할만이고 서버에서 검사합니다. 경로에 `me`를 쓰지 않습니다: `/users/me`가 아니라 `/user/profile`.
+2. **AI에 자유 입력 금지.** 레시피·식단표 생성은 고른 옵션(id와 enum)만 받습니다. 사용자가 입력한 글을 프롬프트에 넣지 않습니다.
+3. **이벤트에 개인정보 금지.** 이메일, 이름, 소셜 ID, 알레르기·제외 재료 이름, 직접 입력한 재료 이름, 레시피 내용, 그 밖의 자유 텍스트를 기록하지 않습니다. `category_code`, 개수, enum을 씁니다. `user_id`는 내부 숫자 ID만 씁니다.
+
 ---
 
 ## 1. 브랜치

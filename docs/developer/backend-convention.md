@@ -139,7 +139,7 @@ com.remake
   - `public`: 로그인 전에 부르는 API(소셜 로그인, 토큰 재발급)
   - `user`: 로그인한 사용자. 대부분의 API. 토큰 주인의 데이터만 다룹니다
   - `admin`: 어드민(role=ADMIN)
-- 자원은 복수형 케밥케이스로 씁니다(`saved-recipes`, `cart-items`). 동작은 자원 뒤에 동사로 붙입니다(`/recipes/generate`, `/receipts/{id}/confirm`).
+- 자원은 복수형 케밥케이스로 씁니다(`saved-recipes`, `cart-items`). 동작은 자원 뒤에 동사로 붙입니다(`/recipes/generate`, `/receipts/scan`). 경로에 `me`를 쓰지 않습니다(`/users/me`가 아니라 `/user/profile`). 전체 API 목록은 [`spec/api-summary.md`](../agent/spec/api-summary.md)(영문)에 있습니다.
 - 운영 서버는 `/api/`로 시작하는 요청만 백엔드로 보내고 나머지는 프론트로 보냅니다. 이 규칙을 어기면 로컬에서는 동작하지만 운영에서는 404가 납니다.
 - `server.servlet.context-path`나 전역 경로 설정(`addPathPrefix`)으로 앞부분을 붙이지 않습니다. `context-path`는 헬스체크 주소(`/actuator/health/readiness`)까지 바꿔서 배포가 실패하고, 전역 설정은 Controller에 `/api`를 또 쓰면 `/api/api/...`가 됩니다.
 - Security 설정의 `requestMatchers`에도 전체 주소를 씁니다.
@@ -179,3 +179,50 @@ com.remake
 - 에러 코드는 `global/error/ErrorCode` 하나에 모읍니다. 이름은 API 정의서·에러 정의서의 코드와 같게 씁니다.
 - 로그인이 필요함(401)과 권한 없음(403)은 Security 필터 단계에서 막혀 `GlobalExceptionHandler`를 거치지 않습니다. `global/security`의 `AuthenticationEntryPoint`(401)와 `AccessDeniedHandler`(403)에서도 같은 모양으로 응답합니다.
 - 생성·차감·확정 POST(레시피 생성, 요리했어요, 영수증 확정 등)는 `Idempotency-Key` 헤더를 받습니다. 같은 키로 다시 오면 처리하지 않고 처음 응답을 그대로 돌려줍니다(24시간, `idempotency_keys` 테이블). 처리는 기능마다 만들지 않고 `global/common`의 공통 필터 하나가 맡습니다.
+  - 대상: `POST /user/recipes/generate`, `/user/meal-plans/generate`, `/user/receipts`, `/user/ingredients/{id}/consume`, `/user/recipes/{id}/cook`. 프론트는 사용자 행동마다 키를 하나 만들고, 다시 시도할 때 같은 키를 씁니다.
+
+## 데이터 접근과 요청 처리
+
+- 모든 조회는 토큰 주인의 데이터로 한정합니다. 다른 사용자의 리소스는 403이 아니라 404(`*_NOT_FOUND`)로 응답해서 있는지 없는지 알리지 않습니다.
+- 요청마다 `traceId`를 만들어 로그(MDC)에 넣고 에러 응답에도 담습니다. 스택 트레이스, SQL, 외부 서비스 에러 문구는 응답에 넣지 않습니다.
+- 시간 제한: 일반 요청 10초, OCR 30초, AI 생성 60초. 외부 서비스 시간 초과는 `OCR_TIMEOUT`·`AI_TIMEOUT`, 외부 서비스 오류는 `OCR_UPSTREAM_ERROR`·`AI_UPSTREAM_ERROR`로 바꿉니다.
+- 비즈니스 규칙(횟수 제한, 단위, 소비기한 상태, 영수증 보관)은 [`spec/domain-rules.md`](../agent/spec/domain-rules.md)(영문)에, 테이블 단위 규칙(낙관적 락, 삭제, 보관)은 [ERD](erd.md)에 있습니다.
+
+## AI 생성
+
+- LLM은 `port/out` 인터페이스 하나로 부르고, 구현은 `adapter/out/ai`에 둡니다. 입력은 요청의 ID·enum과 DB 데이터(냉장고 재료, 제외 재료 사전 ID)뿐입니다. **사용자가 입력한 글을 프롬프트에 넣지 않습니다.**
+- 응답은 구조화된 JSON으로 받아 검증합니다: 스키마, 단위는 14개 코드 중 하나, 조리 단계가 비어 있지 않음. 검증에 실패하면 `AI_INVALID_RESPONSE`이고, 저장하지 않으며 횟수도 차감하지 않습니다.
+- "레시피 재료 보충" 설정이 ON이면 냉장고에 없는 재료도 쓸 수 있습니다. 제외(알레르기) 재료는 빼고 요청하고, 결과에 그래도 들어 있으면 `allergenWarning`을 켭니다.
+- 식단표: 먼저 메뉴 이름과 칸별 재료(`meal_plan_slot_ingredients`)를 만들고, 부족한 양을 SQL `SUM`으로 계산하고, 재료로 만들 수 있는 일수까지만 생성합니다(BASIC 최대 5일, PREMIUM 7일, 1차는 BASIC 적용). 그다음 부족한 재료를 장바구니에 담습니다. 칸의 상세 레시피는 사용자가 칸을 열 때 만듭니다.
+- 성공한 생성만 횟수를 차감합니다. 한도는 [`spec/domain-rules.md`](../agent/spec/domain-rules.md)(영문)에 있습니다.
+
+## 예약 작업 (한국 시간)
+
+| 작업 | 시각 | 하는 일 |
+| --- | --- | --- |
+| 소비기한 알림 | 매일 09:00 | `EXPIRY_SOON`(3일 이하, 재료마다), `EXPIRED`(하루 한 건) 생성과 웹 푸시. 알림을 끈 사용자는 제외. `ingredient_expired`, `notification_sent` 발행 |
+| 주간 보상 | 월요일 새벽 | 지난주 저장 수 상위 3개 공유 레시피에 레시피 생성 +10/+6/+3회(한 달 유효). 지난주 TOP 100을 `shared_recipe_weekly_ranks`에 저장. `weekly_reward_granted` 발행 |
+| 영수증 정리 | 매일 새벽 | 구매일 기준 6개월 지난 영수증을 이미지·품목과 함께 삭제 |
+| 이벤트 집계 | 매일 새벽 | `events` → `event_daily_stats`, 180일 지난 원본 삭제 |
+
+- 하루·한 달 횟수 초기화 작업은 없습니다. 남은 횟수는 `usage_logs`로 계산합니다. 그 밖의 정리 작업은 ERD의 구현 규칙에 있습니다.
+
+## 이벤트 발행 (`EventTracker`)
+
+이벤트 계약은 [`spec/events.md`](../agent/spec/events.md)(영문)에 있습니다. API별 발행 이벤트는 [`spec/api-summary.md`](../agent/spec/api-summary.md)(영문)의 "Events" 열에 있습니다.
+
+- 트래커는 `event` 기능이 하나만 가집니다. 다른 기능은 `event` 기능의 UseCase로만 부릅니다(제안: `eventTracker.track(EventName.RECEIPT_SAVED, Screen.RECEIPT_RESULT, props)`, 최종 시그니처는 이벤트 담당자가 정함).
+- API가 끝나는 지점에서 성공·실패·거절 모두 정의서대로 발행합니다. 사용자 행동 하나는 CLIENT나 SERVER 중 한쪽에서 한 번만 기록합니다.
+- 트랜잭션 커밋 뒤에 비동기로 저장합니다. 트래킹은 요청을 막거나 실패시키지 않습니다. 오류는 삼키고 로그만 남깁니다.
+- 이벤트 이름과 속성은 이벤트 정의서와 같은 enum이나 상수 클래스로 관리합니다. 이벤트 이름을 문자열로 직접 쓰지 않습니다.
+- 트래커가 개인정보를 거릅니다: 그 이벤트의 허용 속성 목록에 없는 키는 버리고, 25개를 넘거나 중첩된 객체는 거부합니다. 속성은 문자·숫자·참거짓만 평평하게 둡니다.
+- 공통 값을 채웁니다: `user_id`(내부 ID), `session_id`, `source`(CLIENT/SERVER), `screen`, `platform`, `app_version`, `is_seed`, `occurred_at`.
+- `POST /api/v1/user/events`는 클라이언트 이벤트를 최대 50개 받고, 모르는 이름은 버리고, 202 `{ accepted, rejected }`로 응답합니다. 50개를 넘으면 `EVENT_BATCH_TOO_LARGE`.
+
+## 꼭 써야 하는 테스트
+
+테스트 작성 방법: [백엔드 테스트](backend-testing.md).
+
+- 비즈니스 규칙 단위 테스트: 횟수 계산(성공만 차감, 동시 `PENDING`), 단위 환산(같은 종류끼리만; 큰술 15ml, 작은술 5ml, 컵 200ml; 꼬집·약간은 차감 안 함), 소비기한 상태, 식단표 재료 배정과 부족 계산, 랭킹과 `rankChange`, 영수증 보관.
+- OCR·LLM 어댑터는 가짜로 바꾸고 시간 초과·잘못된 응답 경우를 테스트합니다.
+- 어드민 API: 어드민이 아니면 403인지, 모든 어드민 조치가 `admin_audit_logs`에 남는지 테스트합니다.

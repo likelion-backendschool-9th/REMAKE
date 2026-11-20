@@ -34,6 +34,8 @@ Korean translation for developers: [`docs/developer/frontend-agent-guide.md`](..
 - For dates, use the `dayjs` exported from `lib/dayjs.ts` (ko locale configured).
 - Build forms with React Hook Form + Zod (`@hookform/resolvers/zod`).
 - If a backend API does not exist yet, add an MSW handler in `mocks/handlers.ts` and develop against it.
+- Follow the UI rules from the product policy (blueprint.md §10). AI inputs are selections only: never add a free-text box for recipe or meal-plan generation. Show the expiry `status` and `dDay` the server returns; do not recompute them.
+- Send analytics events only through the shared tracker (blueprint.md §11). Never put personal data or free text in event properties.
 
 ## Where code goes (colocation)
 
