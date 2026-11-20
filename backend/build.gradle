@@ -37,6 +37,8 @@ dependencies {
 	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	// 컴파일된 운영 코드를 읽어 규칙 위반(Clock 없이 현재 시각 읽기 등)을 찾는다. ClockUsageTest가 쓴다.
 	testImplementation 'com.tngtech.archunit:archunit:1.5.1'
+	// @Async 이벤트 적재가 끝날 때까지 통합 테스트가 기다린다(SyncTaskExecutor로 바꾸지 않음).
+	testImplementation 'org.awaitility:awaitility:4.3.0'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
