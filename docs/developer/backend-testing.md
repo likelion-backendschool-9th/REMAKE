@@ -14,6 +14,7 @@
 | `backend/src/test/resources/application-test.yml` | `test` 프로필 설정 |
 | `backend/src/test/java/com/remake/RemakeApplicationTests.java` | 앱이 뜨는지(마이그레이션, 엔티티 검사, Bean 연결) 확인한다 |
 | `backend/src/test/java/com/remake/ScheduledSettingsTest.java` | 모든 `@Scheduled` 설정(cron, 시간대, 지연·간격 값, `${...}` 설정 값 참조, `#{...}` SpEL 식)을 Spring의 검사기로 검사한다. 값은 앱이 뜰 때 Spring이 푸는 방식 그대로 푼다. 작업은 실행하지 않는다. 테스트에서는 스케줄러를 꺼 두므로 앱이 뜰 때 Spring이 검사하지 않는다 |
+| `backend/src/test/java/com/remake/ClockUsageTest.java` | 운영 코드가 주입받은 `Clock` 없이 현재 시각을 읽으면 실패한다. `java.time` 타입의 `now()` 중 `now(Clock)`이 아닌 것(그래서 `now(ZoneId)`도 실패), `System.currentTimeMillis()`, `new Date()`, `ClockConfig` 밖에서 실제 시계로 만든 `Clock`, Hibernate의 `@CreationTimestamp`·`@UpdateTimestamp`·`@CurrentTimestamp`가 대상이다. 마이그레이션 SQL의 DB 시각 함수(`now()`, `CURRENT_DATE`, `CURRENT_TIMESTAMP` 등)도 실패한다. ArchUnit으로 컴파일된 클래스를 읽고 Spring은 띄우지 않는다. `@Query` 문자열은 검사하지 않는다 |
 | `backend/src/test/java/com/remake/support/TestDatabaseTest.java` | 임시 테이블로 `TestDatabase`의 검사가 동작하는지 확인한다. 기준 데이터를 바꾸면 실패, 사용자 데이터는 비움, 앱이 뜬 직후 사용자 데이터 테이블에 행이 있으면 실패, 기준 데이터 테이블이 사용자 데이터를 참조하면 `CASCADE` 없이 비우기가 실패. `TestDatabase`를 고쳤더니 이 테스트가 실패하면 테스트를 고치지 말고 먼저 상의한다(에이전트는 멈추고 사용자에게 묻는다) |
 
 ## 테스트 실행
@@ -101,8 +102,8 @@ class IngredientApiTest extends IntegrationTestSupport {
 
 | 규칙 | 이유 |
 | --- | --- |
-| 현재 시각은 주입받은 `Clock`으로만 읽는다(`LocalDate.now(clock)`). `domain`은 시각이나 `Clock`을 인자로 받는다 | 테스트는 `Clock` Bean으로 시각을 바꾼다. 정책 대부분이 한국 시간 기준이다(00:00 초기화, D-3, 월요일 집계, 09:00 알림) |
-| JPA 감사(`@CreatedDate`, `@LastModifiedDate`)가 넣는 시각과 날짜 검증(`@Future`, `@Past`)은 `global/config/ClockConfig.java`와 `global/config/JpaConfig.java`를 통해 `Clock`을 쓴다. `@EnableJpaAuditing`은 `JpaConfig`에만 둔다. JWT 라이브러리에도 `Clock`을 넘긴다. `@CreationTimestamp`, 컬럼의 `DEFAULT now()`, 쿼리 안의 `now()`·`CURRENT_DATE`는 쓰지 않고 시각을 파라미터로 넘긴다 | 이것들은 실제 시계를 써서 시험용 시계를 따르지 않는다. `@EnableJpaAuditing`이 두 곳에 있으면 앱이 뜨지 않는다 |
+| 현재 시각은 주입받은 `Clock`으로만 읽는다(`LocalDate.now(clock)`). `domain`은 시각이나 `Clock`을 인자로 받는다 | 테스트는 `Clock` Bean으로 시각을 바꾼다. 정책 대부분이 한국 시간 기준이다(00:00 초기화, D-3, 월요일 집계, 09:00 알림). 이 규칙을 어기면 `ClockUsageTest`가 실패한다 |
+| JPA 감사(`@CreatedDate`, `@LastModifiedDate`)가 넣는 시각과 날짜 검증(`@Future`, `@Past`)은 `global/config/ClockConfig.java`와 `global/config/JpaConfig.java`를 통해 `Clock`을 쓴다. `@EnableJpaAuditing`은 `JpaConfig`에만 둔다. JWT 라이브러리에도 `Clock`을 넘긴다. `@CreationTimestamp`, 컬럼의 `DEFAULT now()`, 쿼리 안의 `now()`·`CURRENT_DATE`는 쓰지 않고 시각을 파라미터로 넘긴다 | 이것들은 실제 시계를 써서 시험용 시계를 따르지 않는다. `ClockUsageTest`가 `@CreationTimestamp`와 마이그레이션 SQL의 시각 함수는 잡지만 `@Query` 문자열 안은 잡지 못한다. `@EnableJpaAuditing`이 두 곳에 있으면 앱이 뜨지 않는다 |
 | `BaseCreatedEntity`와 `BaseTimeEntity`의 시각 필드는 `LocalDateTime`으로 둔다. 응답의 `+09:00` 형식은 Response DTO에서 만든다 | JPA 감사는 `OffsetDateTime`을 지원하지 않아, 쓰면 저장할 때마다 실패한다 |
 | 사용자 데이터 테이블에 고정 행(빈 DB에서도 생기는 행: 마이그레이션의 상수 `INSERT`, 앱 시작 코드)을 넣지 않는다. 기존 데이터로 채우는 마이그레이션(`INSERT ... SELECT`)은 괜찮다. 탈퇴한 사용자는 `users.deleted_at`으로 표시한다. 첫 관리자는 배포 담당이 서버에서 SQL로 만든다 | 사용자 데이터 테이블에 행이 있으면 `TestDatabase`가 앱이 뜰 때 테스트를 멈춘다 |
 | `@EnableScheduling`은 `global/config/SchedulingConfig.java`에만 둔다 | 테스트는 `remake.scheduling.enabled: false`로 스케줄러를 끈다. 그러지 않으면 테스트 중에 작업이 돌아 정리와 겹친다 |

@@ -109,7 +109,7 @@ com.remake
   - 배포 중에는 이전 버전 앱과 새 버전 앱이 같은 DB를 잠시 같이 씁니다. 컬럼 이름 변경이나 삭제처럼 이전 버전을 깨는 변경은 단계를 나눠서 합니다(자세한 내용은 [배포 문서](deployment.md)).
 - **타입**: 수량은 `numeric(10,3)` ↔ `BigDecimal`, 금액은 `bigint` ↔ `Long`(원 단위), 시각은 `timestamp` ↔ `LocalDateTime`(한국 시간), JSON은 `jsonb`.
 - **정해진 값 목록**(상태, 종류, 단위 등)은 Java enum으로 만들고 `@Enumerated(EnumType.STRING)`으로 저장합니다. 순서 번호(`ORDINAL`)로 저장하지 않습니다.
-- **현재 시각은 주입받은 `Clock`으로만 읽습니다.** `LocalDateTime.now()`처럼 인자 없는 `now()`, 컬럼의 `DEFAULT now()`, 쿼리 안의 `now()`는 쓰지 않습니다. 생성·수정 시각은 공통 클래스가 JPA 감사로 넣습니다.
+- **현재 시각은 주입받은 `Clock`으로만 읽습니다.** `LocalDateTime.now()`나 `LocalDate.now(zone)`처럼 `Clock` 없이 부르는 `now()`, 컬럼의 `DEFAULT now()`, 쿼리 안의 `now()`는 쓰지 않습니다. 생성·수정 시각은 공통 클래스가 JPA 감사로 넣습니다. 운영 코드나 마이그레이션 SQL이 이 규칙을 어기면 `ClockUsageTest`가 빌드를 실패시킵니다.
 
 ## 용어
 

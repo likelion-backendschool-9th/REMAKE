@@ -109,7 +109,7 @@ Table structure follows the [ERD and table definition](erd.md).
   - During a deploy, the old and new app versions share the DB for a while. Split changes that break the old version, such as renaming or dropping a column, into steps (see the [deployment doc](deployment.md)).
 - **Types**: quantities `numeric(10,3)` ↔ `BigDecimal`, money `bigint` ↔ `Long` (won), timestamps `timestamp` ↔ `LocalDateTime` (Korea time), JSON `jsonb`.
 - **Fixed value lists** (statuses, kinds, units) are Java enums stored with `@Enumerated(EnumType.STRING)`. Never store the ordinal (`ORDINAL`).
-- **Read the current time only from the injected `Clock`.** Do not use argument-less `now()` such as `LocalDateTime.now()`, a column `DEFAULT now()`, or `now()` inside a query. The base classes set created and updated times through JPA auditing.
+- **Read the current time only from the injected `Clock`.** Do not use `now()` without a `Clock` such as `LocalDateTime.now()` or `LocalDate.now(zone)`, a column `DEFAULT now()`, or `now()` inside a query. The base classes set created and updated times through JPA auditing. `ClockUsageTest` fails the build when production code or migration SQL breaks this rule.
 
 ## Terms
 
