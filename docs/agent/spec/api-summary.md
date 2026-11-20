@@ -21,7 +21,7 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 | GET/PUT | `/user/profile` | `provider, householdSize, onboardingCompleted, lastMealPurpose, excludedCount`; PUT `{ householdSize, onboardingCompleted }` (skip allowed). Event: onboarding_completed |
 | GET/PATCH | `/user/settings` | `{ recipeSupplementEnabled, notificationEnabled, provider }` |
 | GET/PUT | `/user/excluded-ingredients` | PUT replaces all: `{ catalogIds: [] }` |
-| POST | `/user/account/withdrawal/start` | Logged-in only. Store OAuth `state` server-side (`purpose=withdraw`, userId, provider, 5 min TTL; never put purpose in the query) and return the provider authorize URL (re-auth params: Kakao `prompt=login`, Naver `auth_type=reauthenticate`, Google `max_age=0` + `prompt=select_account`). Event: account_deletion_requested |
+| POST | `/user/account/withdrawal/start` | Logged-in only. Store OAuth `state` server-side (`purpose=withdraw`, userId, provider, 5 min TTL; never put purpose in the query) and return the provider authorize URL (re-auth params: Kakao `prompt=login`, Naver `auth_type=reauthenticate`, Google `prompt=select_account` + `claims={"id_token":{"auth_time":{"essential":true}}}`). Google returns `auth_time` only when that `claims` parameter is sent and "Session age claims" is enabled in the Google Cloud console (app published and verified). The callback rejects Google withdrawal with `REAUTH_REQUIRED` if `auth_time` is missing or older than 5 min. Event: account_deletion_requested |
 
 ## 2. Fridge (owner: 김재연)
 

@@ -544,7 +544,7 @@ erDiagram
 | 1 | users | 회원 | 소셜 로그인 회원. 어드민도 role로 구분. 설정 화면 값(가구원 수·알림·재료 보충)과 요금제(BASIC/PREMIUM)를 함께 가짐 | user | BaseTimeEntity | 15 |
 | 2 | user_excluded_ingredients | 제외 재료(알레르기) | 온보딩·설정의 "레시피에서 제외할 재료"(회원과 재료 사전의 N:N) | user | 없음 | 2 |
 | 3 | refresh_tokens | 리프레시 토큰 | 로그인 갱신 토큰(해시 저장), 로그아웃 시 폐기 | auth | BaseCreatedEntity | 6 |
-| 4 | account_deletion_requests | 계정 삭제 인증 | 이메일로 보낸 인증번호 6자리(5분, 재전송, 5회 잠금) | user | BaseCreatedEntity | 7 |
+| 4 | account_deletion_requests | 계정 삭제 인증 | [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) 이후 사용하지 않음(이전: 이메일 인증번호 6자리). 이후 제거 가능 | user | BaseCreatedEntity | 7 |
 | 5 | ingredient_categories | 재료 카테고리 | 12개 카테고리 코드, 기본 보관·단위·보관 일수(기준 데이터) | ingredient | 없음 | 7 |
 | 6 | ingredient_catalog | 재료 사전 | 자동완성·카테고리 추정·제외 재료 목록(기준 데이터) | ingredient | 없음 | 5 |
 | 7 | ingredients | 냉장고 재료 | 냉장고의 재료 한 줄. 다 쓰면 FINISHED로 남김 | ingredient | BaseTimeEntity | 16 |

@@ -68,6 +68,7 @@ Code-only rows are in `global/error/ErrorCode` but not in the planning sheet: 4 
 | `CATALOG_ITEM_NOT_FOUND` | 404 | WARN | Excluded-ingredient catalog id does not exist |
 | `OAUTH_STATE_INVALID` | 400 | WARN | OAuth `state` missing, mismatched, reused, or expired (login or withdrawal re-auth) |
 | `ACCOUNT_PROVIDER_MISMATCH` | 403 | WARN | Withdrawal re-auth profile `(provider, id)` does not match the logged-in user ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)) |
+| `REAUTH_REQUIRED` | 401 | INFO | Withdrawal re-auth is not recent: Google ID token `auth_time` missing or older than 5 min. Nothing is deleted; the frontend asks the user to re-authenticate and restarts from `POST /user/account/withdrawal/start` (new `state`) ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)) |
 | `INGREDIENT_NOT_FOUND` | 404 | INFO | Missing or not owned |
 | `INSUFFICIENT_QUANTITY` | 400 | INFO | Removing more than owned |
 | `INVALID_UNIT` | 400 | INFO | Unit not in the 14-unit list or not allowed for the item |

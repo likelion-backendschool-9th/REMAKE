@@ -544,7 +544,7 @@ Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
 | 1 | users | 회원 | Social-login members. Admins are told apart by role. Also holds settings screen values (household size, notifications, ingredient supplement) and the plan (BASIC/PREMIUM) | user | BaseTimeEntity | 15 |
 | 2 | user_excluded_ingredients | 제외 재료(알레르기) | "Ingredients to exclude from recipes" chosen in onboarding and settings (N:N between members and the ingredient dictionary) | user | none | 2 |
 | 3 | refresh_tokens | 리프레시 토큰 | Login refresh tokens (stored as hashes), revoked on logout | auth | BaseCreatedEntity | 6 |
-| 4 | account_deletion_requests | 계정 삭제 인증 | 6-digit code sent by email (5 minutes, resend, lock after 5 tries) | user | BaseCreatedEntity | 7 |
+| 4 | account_deletion_requests | 계정 삭제 인증 | Unused since [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) (was: 6-digit email code); may be dropped later | user | BaseCreatedEntity | 7 |
 | 5 | ingredient_categories | 재료 카테고리 | 12 category codes with default storage, unit, and shelf life (reference data) | ingredient | none | 7 |
 | 6 | ingredient_catalog | 재료 사전 | Autocomplete, category estimation, excluded-ingredient list (reference data) | ingredient | none | 5 |
 | 7 | ingredients | 냉장고 재료 | One ingredient line in the fridge. Kept as FINISHED when used up | ingredient | BaseTimeEntity | 16 |
