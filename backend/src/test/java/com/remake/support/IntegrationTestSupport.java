@@ -31,7 +31,7 @@ public abstract class IntegrationTestSupport {
 	 * 마이그레이션이 넣는 기준 데이터 테이블. 테스트가 비우지 않는다.
 	 * 기준 데이터를 넣는 마이그레이션을 만들면 같은 PR에서 여기에 추가한다. 빠뜨리면 앱이 뜰 때 TestDatabase가 알려 준다.
 	 */
-	static final Set<String> REFERENCE_TABLES = Set.of("ingredient_categories", "ingredient_catalog", "allergens");
+	static final Set<String> REFERENCE_TABLES = Set.of("ingredient_categories", "ingredient_catalog");
 
 	@TestConfiguration(proxyBeanMethods = false)
 	static class TestConfig {
