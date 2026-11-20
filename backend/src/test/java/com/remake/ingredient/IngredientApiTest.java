@@ -173,4 +173,23 @@ class IngredientApiTest extends IntegrationTestSupport {
 		mockMvc.perform(as(ME, delete(URL + "/" + id))).andExpect(status().isNoContent());
 		mockMvc.perform(as(ME, get(URL + "/" + id))).andExpect(status().isNotFound());
 	}
+
+	@Test
+	void 수량을_고치고_사용한_재료는_거부하며_단위는_바꿀_수_없다() throws Exception {
+		Long id = createMilk(ME);
+
+		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), "{ \"amount\": 4, \"unit\": \"KG\" }"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.amount").value(4))
+				.andExpect(jsonPath("$.unit").value("EA"));
+
+		jdbcTemplate.update("UPDATE ingredients SET amount = 1 WHERE id = ?", id);
+		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), "{ \"amount\": 9 }"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+
+		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), "{ \"amount\": 0 }"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.fieldErrors[?(@.field == 'amount')]").exists());
+	}
 }

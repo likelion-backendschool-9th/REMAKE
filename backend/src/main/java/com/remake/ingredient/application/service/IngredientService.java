@@ -48,6 +48,9 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 				ingredient.changeCategory(loadIngredientCategoryPort.loadByCode(command.categoryCode())
 						.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND)).id());
 			}
+			if (command.amount() != null) {
+				ingredient.changeAmount(command.amount());
+			}
 			if (command.expirationDate() != null) {
 				ingredient.changeExpirationDate(command.expirationDate());
 			}

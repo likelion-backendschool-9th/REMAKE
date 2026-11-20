@@ -18,7 +18,6 @@ public class Ingredient {
 	private final Long id;
 	private final Long userId;
 	private final Long receiptItemId;
-	private final BigDecimal initialAmount;
 	private final IngredientUnit unit;
 
 	private Long categoryId;
@@ -27,6 +26,7 @@ public class Ingredient {
 	private LocalDate expirationDate;
 	private boolean expirationEstimated;
 	private BigDecimal amount;
+	private BigDecimal initialAmount;
 	private Long price;
 	private IngredientStatus status;
 
@@ -82,6 +82,20 @@ public class Ingredient {
 	public void changeCategory(Long newCategoryId) {
 		requireNonNull(newCategoryId, "카테고리");
 		this.categoryId = newCategoryId;
+	}
+
+	/**
+	 * 수량을 고친다. 입력을 잘못 넣은 것을 바로잡는 용도라 남은 양과 처음 양을 함께 바꾼다.
+	 * 이미 쓰거나 버린 재료는 처음 양과 남은 양이 달라서(또는 완료 상태라서) 고칠 수 없다.
+	 * 단위는 등록한 뒤에 바꾸지 않는다.
+	 */
+	public void changeAmount(BigDecimal newAmount) {
+		validateAmount(newAmount);
+		if (status != IngredientStatus.ACTIVE || amount.compareTo(initialAmount) != 0) {
+			throw new IllegalArgumentException("사용하거나 폐기한 재료는 수량을 고칠 수 없습니다.");
+		}
+		this.amount = newAmount;
+		this.initialAmount = newAmount;
 	}
 
 	/** 소비기한을 사용자가 직접 고친다. 사용자가 정한 값이므로 추정 표시를 끈다. */

@@ -156,6 +156,27 @@ class IngredientServiceTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 수량을_고치면_처음_양도_바뀌고_사용한_재료는_거부한다() {
+		Long id = createMilk(OWNER, null);
+
+		updateUseCase.updateIngredient(new UpdateIngredientCommand(OWNER, id, null, null, null, null, null,
+				new java.math.BigDecimal("5")));
+		assertThat(jdbcTemplate.queryForObject("SELECT amount FROM ingredients WHERE id = ?", java.math.BigDecimal.class, id))
+				.isEqualByComparingTo("5");
+		assertThat(jdbcTemplate.queryForObject("SELECT initial_amount FROM ingredients WHERE id = ?",
+				java.math.BigDecimal.class, id)).isEqualByComparingTo("5");
+
+		jdbcTemplate.update("UPDATE ingredients SET amount = 2 WHERE id = ?", id);
+		assertThatThrownBy(() -> updateUseCase.updateIngredient(new UpdateIngredientCommand(OWNER, id, null, null, null,
+				null, null, new java.math.BigDecimal("9"))))
+				.isInstanceOf(BusinessException.class)
+				.extracting(e -> ((BusinessException) e).getErrorCode())
+				.isEqualTo(ErrorCode.INVALID_INPUT);
+		assertThat(jdbcTemplate.queryForObject("SELECT initial_amount FROM ingredients WHERE id = ?",
+				java.math.BigDecimal.class, id)).isEqualByComparingTo("5");
+	}
+
+	@Test
 	void 다른_사용자의_재료는_고칠_수_없다() {
 		Long id = createMilk(OTHER, 3000L);
 

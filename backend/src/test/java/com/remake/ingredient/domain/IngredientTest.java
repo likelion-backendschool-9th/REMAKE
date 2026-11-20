@@ -131,4 +131,36 @@ class IngredientTest {
 		assertThatThrownBy(() -> ingredient.changePrice(-5L)).isInstanceOf(IllegalArgumentException.class);
 		assertThatThrownBy(() -> ingredient.changeStorage(null)).isInstanceOf(IllegalArgumentException.class);
 	}
+
+	@Test
+	void 사용한_적이_없으면_수량을_고치고_처음_양도_함께_바뀐다() {
+		Ingredient ingredient = register("우유", new BigDecimal("2"), null, false);
+
+		ingredient.changeAmount(new BigDecimal("3"));
+
+		assertThat(ingredient.amount()).isEqualByComparingTo("3");
+		assertThat(ingredient.initialAmount()).isEqualByComparingTo("3");
+	}
+
+	@Test
+	void 일부_사용했거나_완료된_재료는_수량을_고칠_수_없다() {
+		Ingredient used = Ingredient.restore(1L, 1L, 1L, null, "우유", StorageLocation.FRIDGE, EXPIRATION, false,
+				new BigDecimal("1"), new BigDecimal("2"), IngredientUnit.EA, null, IngredientStatus.ACTIVE);
+		Ingredient finished = Ingredient.restore(2L, 1L, 1L, null, "우유", StorageLocation.FRIDGE, EXPIRATION, false,
+				BigDecimal.ZERO, new BigDecimal("2"), IngredientUnit.EA, null, IngredientStatus.FINISHED);
+
+		assertThatThrownBy(() -> used.changeAmount(new BigDecimal("5"))).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> finished.changeAmount(new BigDecimal("5"))).isInstanceOf(IllegalArgumentException.class);
+		assertThat(used.amount()).isEqualByComparingTo("1");
+		assertThat(used.initialAmount()).isEqualByComparingTo("2");
+	}
+
+	@Test
+	void 수량_규칙을_어기면_고칠_수_없다() {
+		Ingredient ingredient = register();
+
+		assertThatThrownBy(() -> ingredient.changeAmount(BigDecimal.ZERO)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> ingredient.changeAmount(new BigDecimal("1.2345"))).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> ingredient.changeAmount(null)).isInstanceOf(IllegalArgumentException.class);
+	}
 }

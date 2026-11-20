@@ -1,5 +1,6 @@
 package com.remake.ingredient.adapter.in.web;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import com.fasterxml.jackson.annotation.JsonSetter;
@@ -9,6 +10,8 @@ import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.StorageLocation;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -26,6 +29,10 @@ public class IngredientUpdateRequest {
 	private IngredientCategoryCode categoryCode;
 	private StorageLocation storage;
 	private LocalDate expirationDate;
+	@DecimalMin(value = "0", inclusive = false)
+	@Digits(integer = 7, fraction = 3)
+	@Schema(description = "사용·폐기한 적이 없는 재료만 고칠 수 있습니다. 단위는 바꿀 수 없습니다.")
+	private BigDecimal amount;
 	@PositiveOrZero
 	@Schema(nullable = true, description = "키를 보내지 않으면 그대로, null이면 가격을 지웁니다.")
 	private Long price;
@@ -63,6 +70,14 @@ public class IngredientUpdateRequest {
 		this.expirationDate = expirationDate;
 	}
 
+	public BigDecimal getAmount() {
+		return amount;
+	}
+
+	public void setAmount(BigDecimal amount) {
+		this.amount = amount;
+	}
+
 	public Long getPrice() {
 		return price;
 	}
@@ -75,6 +90,6 @@ public class IngredientUpdateRequest {
 
 	public UpdateIngredientCommand toCommand(Long userId, Long ingredientId) {
 		return new UpdateIngredientCommand(userId, ingredientId, name, categoryCode, expirationDate, storage,
-				priceSpecified ? new PriceChange(price) : null);
+				priceSpecified ? new PriceChange(price) : null, amount);
 	}
 }
