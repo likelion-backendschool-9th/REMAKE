@@ -1,6 +1,6 @@
 # Event tracking contract
 
-Source of truth: the event data definition sheet (Korean, Google Sheets; not in the repo; 75 events). Names are snake_case and fixed; to add or rename an event update the sheet first.
+Source of truth: the event data definition sheet (Korean, Google Sheets; not in the repo; 76 events: E01–E75 and E76 `receipt_result_abandoned`, added later). Names are snake_case and fixed; to add or rename an event update the sheet first.
 
 ## Rules
 
@@ -9,6 +9,7 @@ Source of truth: the event data definition sheet (Korean, Google Sheets; not in 
 - `properties`: flat JSON, string/number/boolean only, <= 25 keys.
 - **Never record:** email, name, social ID, allergy/excluded ingredient names, typed ingredient names, recipe content, any free text. Record `category_code`, counts and enums instead.
 - Tracking must never break the user flow (async, swallow errors).
+- `cart_item_added` (E62) is emitted only by the cart's add UseCase, once per add path, with `cart_source`. The meal-plan and recipe APIs that add items through it do not emit it themselves.
 - Raw events are kept 180 days; daily aggregation in `event_daily_stats`.
 
 ## Events

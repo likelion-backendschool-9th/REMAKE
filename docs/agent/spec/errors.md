@@ -27,7 +27,7 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 ```
 
 - `fieldErrors` only for `INVALID_INPUT`. Each item is `{ field, message }`; `message` is Korean text shown under the input.
-- `details` only when the screen needs extra values (remaining count, reset time). Omit it otherwise.
+- `details` only when the screen needs extra values (remaining count, reset time). Omit it otherwise. Not in `global/error/ErrorResponse` yet ([#45](https://github.com/likelion-backendschool-9th/REMAKE/issues/45)).
 - Never include stack traces, SQL or provider error text.
 
 ## HTTP usage
@@ -40,7 +40,7 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 
 INFO: normal flow caused by input/state. WARN: limits, permissions, format. ERROR: server/AI/OCR problems, logged with traceId and counted for admin alerts.
 
-## Codes (59)
+## Codes (59 from the error definition + 4 common)
 
 | Code | HTTP | Severity | Meaning |
 |---|---|---|---|
@@ -53,6 +53,10 @@ INFO: normal flow caused by input/state. WARN: limits, permissions, format. ERRO
 | `RATE_LIMITED` | 429 | WARN | Too many requests (honor Retry-After) |
 | `INTERNAL_ERROR` | 500 | ERROR | Unexpected server error; no quota consumed; transaction rolled back |
 | `SERVICE_UNAVAILABLE` | 503 | ERROR | Maintenance / DB down; retry after 30 s |
+| `NOT_FOUND` | 404 | INFO | Common (code only): no such URL. A missing resource uses its own `*_NOT_FOUND` code |
+| `METHOD_NOT_ALLOWED` | 405 | WARN | Common (code only): HTTP method not supported on this path |
+| `NOT_ACCEPTABLE` | 406 | WARN | Common (code only): the requested response format (`Accept`) is not supported |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | WARN | Common (code only): the request body format (`Content-Type`) is not supported. An uploaded file of the wrong type is `UNSUPPORTED_FILE_TYPE` |
 | `NETWORK_OFFLINE` | (클라이언트) | INFO | Client only: device offline |
 | `CLIENT_TIMEOUT` | (클라이언트) | WARN | Client only: timeout (10 s / OCR 30 s / AI 60 s); retry with same Idempotency-Key |
 | `OAUTH_FAILED` | 401 | INFO | Social auth failed or cancelled |

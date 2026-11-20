@@ -25,7 +25,8 @@
 - 직접 추가 기능은 없습니다. **식단표 생성(05)과 레시피 저장(내 레시피·공유 레시피)에서 부족한 재료가 자동으로 담깁니다.** 외부 이동·결제 없음.
 - 레시피 이름별로 묶어서 보여주고 같은 재료도 합산하지 않습니다(제안). 사용자는 수량 변경, 선택 삭제(전체 선택 포함)만 가능. 삭제 모드 해제는 프론트에서.
 - 등록된 재료와 같은 이름의 항목 정리(영수증 등록 후)는 정책 #29를 따릅니다.
-- 담기 함수를 하나 만들어(`CartService.addShortages(userId, recipeId, shortages)`) 04·05가 호출하게 하고, 담은 개수를 응답(`cartAddedCount`)으로 돌려줍니다.
+- 장바구니 담기 UseCase를 하나 만들어 04·05가 호출하게 하고, 담은 개수를 응답(`cartAddedCount`)으로 돌려줍니다. 식단표는 메뉴명만 있는 칸(`recipeId` 없음)과 `meal_plan_id`·`group_name`도 넘겨야 해서, 인자는 한윤수·최유리가 따로 이슈로 정합니다.
+- `cart_item_added` 이벤트는 이 담기 UseCase 한 곳에서만 보냅니다(담은 경로마다 1건, `cart_source`로 식단표·레시피 저장·공유 저장 구분). 04·05는 보내지 않습니다.
 
 ## API
 
@@ -52,7 +53,7 @@
 
 ## 발행 이벤트
 
-서버(5개): `cart_item_added`(담은 경로당 1건, `cart_source`·`item_count`), `shared_recipe_published`, `shared_recipe_saved`, `shared_recipe_reported`, `weekly_reward_granted`(+ 공유 저장 때 `recipe_saved`). 프론트: `ranking_viewed`, `shared_recipe_viewed`, `shared_write_started`, `cart_viewed`, `cart_amount_changed`, `cart_items_deleted`. 레시피·재료 이름은 속성에 넣지 않습니다.
+서버(5개): `cart_item_added`(담기 UseCase에서만, 담은 경로당 1건, `cart_source`·`item_count`), `shared_recipe_published`, `shared_recipe_saved`, `shared_recipe_reported`, `weekly_reward_granted`(+ 공유 저장 때 `recipe_saved`). 프론트: `ranking_viewed`, `shared_recipe_viewed`, `shared_write_started`, `cart_viewed`, `cart_amount_changed`, `cart_items_deleted`. 레시피·재료 이름은 속성에 넣지 않습니다.
 
 ## 체크리스트
 

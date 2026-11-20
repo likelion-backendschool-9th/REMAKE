@@ -9,6 +9,7 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 - Dates `YYYY-MM-DD`; timestamps ISO 8601 `+09:00`; money = integer KRW.
 - `Idempotency-Key` header on create/deduct/confirm POSTs (24 h replay).
 - Timeouts: 10 s default, OCR 30 s, AI 60 s. Headers `X-Client-Platform`, `X-App-Version` on every call.
+- "Events" lists what happens during the call. `cart_item_added` is emitted once by the cart's add UseCase, not by the calling API (see `events.md`).
 
 ## 1. Start and social login (owner: 이준호)
 
@@ -41,7 +42,11 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/user/usage-quotas` | Remaining counts, see below |
+>>>
+<<<
+| GET | `/user/expenses/monthly/analysis` | Category share + discarded amount |
+===
+| GET | `/user/expenses/monthly/analysis` | Category share + discarded amount (sum of `ingredient_logs.cost_amount`; the Figma screen for it will be added) |
 | POST | `/user/receipts/scan` | Multipart `image` (10 MB; jpg/png/heic). **Analysis only, nothing stored.** Returns `items[]` (food only: name, categoryCode, amount, unit, price, storage, expirationDate, isExpirationEstimated), `purchasedOn`, `storeName`, `storeCode` (15 codes, `ETC` fallback), `duplicateSuspected`. No scan limit. Events: receipt_scan_succeeded, receipt_scan_failed |
 | POST | `/user/receipts` | Confirm + save (multipart `image` + `payload` JSON with `items[].register`). One transaction; only items with `register: true` become fridge ingredients. Response `{ receiptId, registeredCount }`. Purchase date older than 6 months -> INVALID_INPUT. Events: ingredient_added, receipt_saved |
 | GET | `/user/receipts` | `?month=YYYY-MM` (within last 6 months). Item `{ id, storeName, storeCode, purchasedOn, foodItemCount, foodAmount }` |
@@ -54,7 +59,15 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 
 No update endpoint for confirmed receipts. No "analysis finished" notification.
 
-`GET /user/usage-quotas`:
+## Usage quotas (owners: 김종수 recipe part, 한윤수 meal-plan part)
+
+Not related to receipts. The recipe screens and the meal-plan setup screen ("이번 달 남은 N회") read it.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/user/usage-quotas` | Remaining counts for recipes and meal plans, computed from `usage_logs` and `generation_quota_grants` |
+
+Response:
 ```json
 { "recipe": { "limit": 2, "used": 1, "remaining": 1, "bonus": 0, "bonusExpiresAt": null, "resetsAt": "2026-11-20T00:00:00+09:00" },
   "mealPlan": { "limit": 1, "used": 0, "remaining": 1, "maxDays": 5, "resetsAt": "2026-12-01T00:00:00+09:00" } }

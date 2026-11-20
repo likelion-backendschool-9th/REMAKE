@@ -159,7 +159,7 @@ Paginate lists in this shape (`?page=0&size=20`):
 { "content": [], "page": 0, "size": 20, "totalElements": 0, "hasNext": false }
 ```
 
-On failure, every API returns this shape. Include `fieldErrors` (`{ field, message }` items) only for input validation failures (`INVALID_INPUT`). Include `details` only when the screen needs extra values, such as the remaining count and reset time for `GENERATION_LIMIT_EXCEEDED` (`"details": { "remaining": 0, "resetsAt": "2026-11-21T00:00:00+09:00" }`). The error code list is [`spec/errors.md`](spec/errors.md).
+On failure, every API returns this shape. Include `fieldErrors` (`{ field, message }` items) only for input validation failures (`INVALID_INPUT`). Include `details` only when the screen needs extra values, such as the remaining count and reset time for `GENERATION_LIMIT_EXCEEDED` (`"details": { "remaining": 0, "resetsAt": "2026-11-21T00:00:00+09:00" }`). `details` is not in `ErrorResponse` yet ([#45](https://github.com/likelion-backendschool-9th/REMAKE/issues/45)). The error code list is [`spec/errors.md`](spec/errors.md).
 
 ```json
 {

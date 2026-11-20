@@ -159,7 +159,7 @@ com.remake
 { "content": [], "page": 0, "size": 20, "totalElements": 0, "hasNext": false }
 ```
 
-실패하면 모든 API가 아래 모양으로 돌려줍니다. `fieldErrors`(`{ field, message }` 항목)는 입력값 검증 실패(`INVALID_INPUT`)일 때만 넣습니다. `details`는 화면에 값이 더 필요할 때만 넣습니다. 예를 들어 `GENERATION_LIMIT_EXCEEDED`의 남은 횟수와 초기화 시각(`"details": { "remaining": 0, "resetsAt": "2026-11-21T00:00:00+09:00" }`)입니다. 에러 코드 목록은 [`spec/errors.md`](../agent/spec/errors.md)(영문)에 있습니다.
+실패하면 모든 API가 아래 모양으로 돌려줍니다. `fieldErrors`(`{ field, message }` 항목)는 입력값 검증 실패(`INVALID_INPUT`)일 때만 넣습니다. `details`는 화면에 값이 더 필요할 때만 넣습니다. 예를 들어 `GENERATION_LIMIT_EXCEEDED`의 남은 횟수와 초기화 시각(`"details": { "remaining": 0, "resetsAt": "2026-11-21T00:00:00+09:00" }`)입니다. `details`는 아직 `ErrorResponse`에 없습니다([#45](https://github.com/likelion-backendschool-9th/REMAKE/issues/45)). 에러 코드 목록은 [`spec/errors.md`](../agent/spec/errors.md)(영문)에 있습니다.
 
 ```json
 {

@@ -34,11 +34,11 @@
 
 ## 횟수(quota) 규칙
 
-- 기본 하루 2회(구독 4회, 1차는 UI만이라 기본값 적용). 보상으로 받은 횟수(`generation_quota_grants`, 지급 후 한 달 유효)를 먼저 쓸지 정하는 순서는 합의 필요.
+- 기본 하루 2회(구독 4회, 1차는 UI만이라 기본값 적용). 하루 기본 2회를 먼저 쓰고, 다 쓰면 만료되지 않은 보상분(`generation_quota_grants`, 지급 후 한 달 유효)을 씁니다.
 - **성공했을 때만 차감**. AI 실패·타임아웃·형식 검증 실패·서버 오류는 차감하지 않습니다.
 - 동시에 여러 번 눌러도 한도를 넘지 않게 `usage_logs`에 `PENDING`을 먼저 기록 → 성공 시 `SUCCESS`, 실패 시 `FAILED`. 2분 넘게 남은 `PENDING`은 정리 배치로 `FAILED` 처리.
 - 한도 초과 → `GENERATION_LIMIT_EXCEEDED`(429), `details`에 남은 횟수와 초기화 시각, 서버 이벤트 `quota_exceeded`.
-- 남은 횟수 조회는 `GET /user/usage-quotas` 하나로 레시피·식단표 모두(03·05가 같이 씀).
+- 남은 횟수 조회는 `GET /user/usage-quotas` 하나로 레시피·식단표를 모두 돌려줍니다. 레시피 부분은 김종수, 식단표 부분은 한윤수가 만듭니다(영수증과는 관계없음).
 
 ## AI 연동 규칙
 
@@ -67,7 +67,7 @@
 
 ## 발행 이벤트
 
-서버(4개): `recipe_generated`, `recipe_generate_failed`, `recipe_saved`, `cook_completed`(+ `quota_exceeded` 공동). 프론트: `recipe_generate_started`, `recipe_regenerated`, `recipe_detail_viewed`, `recipe_unsaved`, `recipe_saved_list_viewed`, `step_play_started`, `cook_deduct_viewed`, `cook_feedback_answered`. 레시피 내용·재료 이름은 속성에 넣지 않습니다(`shortage_count` 같은 수치만).
+서버(4개): `recipe_generated`, `recipe_generate_failed`, `recipe_saved`, `cook_completed`(+ `quota_exceeded`는 레시피·식단표 담당이 각자). 레시피를 저장해 장바구니에 담길 때의 `cart_item_added`는 장바구니 담기 UseCase(07)가 보내므로 여기서는 보내지 않습니다. 프론트: `recipe_generate_started`, `recipe_regenerated`, `recipe_detail_viewed`, `recipe_unsaved`, `recipe_saved_list_viewed`, `step_play_started`, `cook_deduct_viewed`, `cook_feedback_answered`. 레시피 내용·재료 이름은 속성에 넣지 않습니다(`shortage_count` 같은 수치만).
 
 ## 체크리스트
 

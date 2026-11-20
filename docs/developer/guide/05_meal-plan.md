@@ -11,7 +11,7 @@
 ## 화면 규칙
 
 - 월 달력. 날짜를 누르면 그날 점심·저녁(설정에 따라 아침 포함) 칸을 보여줍니다. 지난 달·지난 날짜도 조회.
-- 식단이 없으면 생성 안내 화면. 생성 설정: **시작일, 식단 목적 1개, 넣을 끼니, 식사 인원**, "이번 달 남은 N회" 표시.
+- 식단이 없으면 생성 안내 화면. 생성 설정: **시작일, 식단 목적 1개, 넣을 끼니, 식사 인원**, "이번 달 남은 N회" 표시(`GET /user/usage-quotas`의 `mealPlan`, 식단표 부분은 이 영역이 만듦).
 - 식단 목적 5개: `BALANCED`(균형 잡힌, 기본), `DIET`, `HIGH_PROTEIN`, `SIMPLE`, `SAVING`. 생성 직전에 고르고 마지막 선택을 기억(`profile.lastMealPurpose`). 의료 목적·칼로리 목표는 없고 "참고용 식단" 문구를 보여줍니다.
 - 칸을 누르면 바로 레시피 상세. **칸 메뉴 교체·칸 재생성·식단 삭제는 없습니다.**
 - **식단 추가는 필수**: 빈 끼니에 저장한 레시피를 넣습니다(AI 재생성 없음, 방식은 제안).
@@ -48,7 +48,7 @@
 
 ## 발행 이벤트
 
-서버(5개): `meal_plan_generated`, `meal_plan_generate_failed`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`(+ `quota_exceeded`, `cart_item_added` 공동). 프론트: `meal_plan_setup_viewed`, `meal_plan_generate_started`, `meal_plan_shortage_shown`, `meal_calendar_viewed`, `meal_day_viewed`, `meal_slot_opened`.
+서버(5개): `meal_plan_generated`, `meal_plan_generate_failed`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`(+ `quota_exceeded`). 부족 재료를 장바구니에 담을 때의 `cart_item_added`는 장바구니 담기 UseCase(07)가 보내므로 여기서는 보내지 않습니다. 프론트: `meal_plan_setup_viewed`, `meal_plan_generate_started`, `meal_plan_shortage_shown`, `meal_calendar_viewed`, `meal_day_viewed`, `meal_slot_opened`.
 
 ## 체크리스트
 

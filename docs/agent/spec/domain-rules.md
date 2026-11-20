@@ -4,6 +4,8 @@ Source: PRD v3.1, policy doc v3.1 (Korean, kept in Notion / Google Sheets; not i
 
 ## Limits (quota)
 
+Values from PRD v3.1 (11/20). Premium is UI only in release 1, and the plan difference is kept small on purpose (the business model is not a focus).
+
 | Feature | Basic | Premium (UI only in release 1) |
 |---|---|---|
 | AI recipe generation | 2 per day | 4 per day |
@@ -49,7 +51,7 @@ Types `EXPIRY_SOON` (per ingredient) and `EXPIRED` (one per day, "N expired item
 
 ## Categories (12 codes) and default shelf life (draft)
 
-VEGETABLE 7d, FRUIT 7d, MEAT 3d, SEAFOOD 2d, DAIRY_EGG 10d, GRAIN 30d, BEAN_TOFU 5d, PROCESSED 30d, SIDE_DISH 14d, SEASONING 180d, BEVERAGE 30d, ETC 7d. Used when a receipt has no expiry date (marked `isExpirationEstimated`, UI shows "estimate, please check"). Storage locations: refrigerated, frozen, room temperature. Non-food receipt lines (detergent, tissue, cookware) get no category and are excluded from the fridge and from spending.
+VEGETABLE 7d, FRUIT 7d, MEAT 3d, SEAFOOD 2d, DAIRY_EGG 10d, GRAIN 30d, BEAN_TOFU 5d, PROCESSED 30d, SIDE_DISH 14d, SEASONING 180d, BEVERAGE 30d, ETC 7d. Used when a receipt has no expiry date (marked `isExpirationEstimated`, UI shows "estimate, please check"). Storage locations: refrigerated, frozen, room temperature. Non-food receipt lines (detergent, tissue, cookware) are filtered out by OCR and never stored; Remake manages food only.
 
 ## Receipts
 
@@ -57,7 +59,7 @@ VEGETABLE 7d, FRUIT 7d, MEAT 3d, SEAFOOD 2d, DAIRY_EGG 10d, GRAIN 30d, BEAN_TOFU
 - Confirmed receipts cannot be edited; delete only. Deleting removes it from spending stats but keeps registered fridge ingredients.
 - Retention 6 months from the purchase date on the receipt (fallback saved date); average-spending comparison also uses the last 6 months. Older receipts cannot be registered.
 - Monthly total = food items of confirmed receipts. Selecting a month changes the total and the list together.
-- Discarded ingredients stay in spending (counted as purchased spending); there is no separate "wasted" cell.
+- Discarded ingredients stay in spending (counted as purchased spending); they are not subtracted from the monthly total. The monthly analysis shows the discarded amount separately (sum of `ingredient_logs.cost_amount`); its Figma screen will be added.
 - Store icon: 15 codes (CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC).
 
 ## Recipes
