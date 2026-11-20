@@ -32,7 +32,7 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 | GET | `/user/ingredients` | Filters `storageType`, `categoryCode`, `q`; default sort by expiry soonest; item has `dDay`, `status` (DANGER/SOON/OK), `isExpirationEstimated` |
 | GET | `/user/ingredients/{id}` | Detail |
 | POST | `/user/ingredients` | Required `name, categoryCode, storage, expirationDate, amount, unit`; optional `price`. Event: ingredient_added |
-| PATCH | `/user/ingredients/{id}` | Amount, expiry, storage, price. Editing expiry clears the "estimated" flag |
+| PATCH | `/user/ingredients/{id}` | Partial update of `name, categoryCode, storage, expirationDate, price, amount`; omitted keys stay unchanged, `"price": null` clears the price. Unit cannot be changed after registration (a `unit` key is ignored). Editing expiry clears the "estimated" flag. `amount` can be edited only while the ingredient is ACTIVE and never used or discarded (sets remaining and initial amount together); otherwise `INVALID_INPUT` |
 | POST | `/user/ingredients/{id}/consume` | `USED`/`DISCARDED` + amount; at 0 -> FINISHED. Events: ingredient_used, ingredient_discarded |
 | DELETE | `/user/ingredients/{id}` | Blocked with `INGREDIENT_HAS_LOGS` if history exists |
 | GET | `/user/ingredient-catalog` | Autocomplete / exclusion search `?q=&commonExclusion=true` |
