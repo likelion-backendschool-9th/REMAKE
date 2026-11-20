@@ -67,6 +67,7 @@ Rules:
 
 - When you need another feature's data, call that feature's `UseCase` (port/in). Do not use another feature's `Port` (port/out), adapters, or repositories.
 - Reference another feature's data by ID only, such as `Long ingredientId`, in both domain objects and JPA entities. Do not create JPA associations (`@ManyToOne`, etc.) to another feature's entities. Keep the DB foreign keys.
+- Another feature's domain enums (fixed value lists such as `IngredientUnit` and `StorageLocation` in `ingredient/domain`) may be imported directly. The `UseCase` rule applies to reading and writing data, not to value types. Keep each enum in the feature that owns the values; do not move it to `global`.
 - Within one feature, compose objects and use JPA associations freely. Example: `Recipe` and `RecipeStep`.
 
 ### Folders created only where needed

@@ -67,6 +67,7 @@ com.remake
 
 - 다른 기능의 데이터가 필요하면 그 기능의 `UseCase`(port/in)를 부릅니다. 다른 기능의 `Port`(port/out)나 adapter, Repository는 쓰지 않습니다.
 - 다른 기능의 데이터는 domain 객체와 JPA Entity 모두 `Long ingredientId`처럼 ID만 가집니다. 다른 기능의 Entity와 JPA 연관관계(`@ManyToOne` 등)를 맺지 않습니다. DB의 외래 키는 그대로 둡니다.
+- 다른 기능의 domain enum(`ingredient/domain`의 `IngredientUnit`, `StorageLocation` 같은 고정 값 목록)은 그대로 가져다 씁니다. `UseCase` 규칙은 데이터를 읽고 쓸 때의 규칙이고, 값 타입에는 해당하지 않습니다. enum은 그 값을 정하는 기능에 두고 `global`로 옮기지 않습니다.
 - 같은 기능 안에서는 객체로 묶고 JPA 연관관계를 써도 됩니다. 예: `Recipe`와 `RecipeStep`.
 
 ### 필요한 기능만 만드는 폴더
