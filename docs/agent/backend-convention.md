@@ -201,7 +201,7 @@ On failure, every API returns this shape. Include `fieldErrors` (`{ field, messa
 | Job | When | What |
 | --- | --- | --- |
 | Expiry notifications | Daily 09:00 | `EXPIRY_SOON` (3 days or less, one per ingredient) and `EXPIRED` (one per day) with web push. Skip users with notifications off. Emit `ingredient_expired` and `notification_sent` |
-| Weekly reward | Monday early morning | Top 3 shared recipes by saves last week get +10/+6/+3 recipe generations (valid one month). Save last week's TOP 100 to `shared_recipe_weekly_ranks`. Emit `weekly_reward_granted` |
+| Weekly ranking and reward | Monday 00:00 | Fix last week's TOP 100 in `shared_recipe_weekly_ranks` and give the authors of the top 3 recipes +10/+6/+3 recipe generations (valid one month), in one transaction. Rules in the [ERD](erd.md) §24. Emit `weekly_reward_granted` |
 | Receipt cleanup | Daily early morning | Delete receipts older than 6 months by purchase date, with images and items |
 | Event aggregation | Daily early morning | `events` → `event_daily_stats`; delete raw events older than 180 days |
 

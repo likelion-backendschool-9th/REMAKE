@@ -11,7 +11,7 @@ Source: PRD v3.1, policy doc v3.1 (Korean, kept in Notion / Google Sheets; not i
 | Receipt scan (OCR) | **no limit** (calls still logged) | no limit |
 
 - Only successful generations count; failures do not. Reset: daily 00:00 KST (recipes), 1st of month 00:00 (meal plans).
-- Weekly reward for the top 3 saved shared recipes: 1st +10, 2nd +6, 3rd +3 recipe generations, **valid one month** after grant (`generation_quota_grants.expires_at`).
+- Weekly reward for the top 3 saved shared recipes: 1st +10, 2nd +6, 3rd +3 recipe generations to **each recipe's author** (rewards follow recipes, so one author may receive more than one), **valid one month** after grant (`generation_quota_grants.expires_at`).
 - Slot-detail generation for a meal-plan slot does not use the daily recipe quota (proposal).
 
 ## Expiry status
@@ -82,7 +82,7 @@ Items are added automatically only (meal-plan shortages, saving a recipe incl. s
 ## Sharing and ranking
 
 - Share only Remake-generated recipes; title and at least one cooking photo required; confirm modal; fully anonymous; report reasons PHOTO, OFFENSIVE, DANGEROUS, OTHER; admin decides (no auto hide).
-- Weekly ranking TOP 100 by saves this week; ranking screen shows rank change vs last week (arrow); latest sort shows "-" and shared time; TOP 3 card on recipe home shows rank only.
+- Weekly ranking TOP 100 by saves this week. The weekly job at Monday 00:00 fixes last week's ranking and resets the count: it counts saves made last week that still exist when the job runs (see `../erd.md` §24); ranking screen shows rank change vs last week (arrow); latest sort shows "-" and shared time; TOP 3 card on recipe home shows rank only.
 - Saving a shared recipe copies it into the saver's list and adds shortages to the cart; own posts excluded from counts.
 
 ## Account

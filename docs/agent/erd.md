@@ -976,8 +976,10 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | save_count | int | | | No | | Saves in that week |
 | created_at | timestamp | | | No | | Save time (weekly job) |
 
-- Every Monday early morning the weekly job saves last week's final TOP 100 here. `rankChange` = last week's rank − this week's rank (null if there is no rank last week or it is the same).
-- The UK makes a rerun of the job safe (delete the week's rows and insert again, or skip if they exist).
+- **Aggregation is the reset point.** Every Monday at 00:00, right after the week ends, the weekly job fixes last week's ranking. It counts `saved_recipes` rows whose `saved_at` is in last week and that still exist when the job runs (a save cancelled before the job is not counted), and saves the TOP 100 here. The new week's ranking starts from zero at the same moment.
+- **Aggregation comes first.** Count, save the ranks, and grant the rewards (`generation_quota_grants`, to the authors of the top 3 recipes) in one transaction that reads one consistent snapshot (for example `REPEATABLE READ`). Saves and cancellations made while the job runs do not change the result; they belong to the new week.
+- `UK(week_start + rank_no)` prevents recording the same week and rank twice. If the week's ranks already exist, a rerun does not recount; it uses the saved ranks and grants only the rewards that are missing (`generation_quota_grants` has the same UK).
+- `rankChange` = last week's rank − this week's rank (null if there is no rank last week or it is the same).
 
 ### 25. generation_quota_grants (Generation quota grants)
 

@@ -201,7 +201,7 @@ com.remake
 | 작업 | 시각 | 하는 일 |
 | --- | --- | --- |
 | 소비기한 알림 | 매일 09:00 | `EXPIRY_SOON`(3일 이하, 재료마다), `EXPIRED`(하루 한 건) 생성과 웹 푸시. 알림을 끈 사용자는 제외. `ingredient_expired`, `notification_sent` 발행 |
-| 주간 보상 | 월요일 새벽 | 지난주 저장 수 상위 3개 공유 레시피에 레시피 생성 +10/+6/+3회(한 달 유효). 지난주 TOP 100을 `shared_recipe_weekly_ranks`에 저장. `weekly_reward_granted` 발행 |
+| 주간 랭킹·보상 | 월요일 0시 | 지난주 TOP 100을 `shared_recipe_weekly_ranks`에 확정하고, 상위 레시피 3개의 작성자에게 레시피 생성 +10/+6/+3회(한 달 유효)를 한 트랜잭션에서 지급. 규칙은 [ERD](erd.md) §24. `weekly_reward_granted` 발행 |
 | 영수증 정리 | 매일 새벽 | 구매일 기준 6개월 지난 영수증을 이미지·품목과 함께 삭제 |
 | 이벤트 집계 | 매일 새벽 | `events` → `event_daily_stats`, 180일 지난 원본 삭제 |
 
