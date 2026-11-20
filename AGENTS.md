@@ -9,7 +9,7 @@ Korean translation for developers: [`docs/developer/agent-guide.md`](docs/develo
 
 | Path | Contents | More rules |
 | --- | --- | --- |
-| `backend/` | Spring Boot API server | `docs/agent/backend-testing.md` (tests) |
+| `backend/` | Spring Boot API server | [`docs/agent/backend-convention.md`](docs/agent/backend-convention.md) (conventions), [`docs/agent/erd.md`](docs/agent/erd.md) (ERD), [`docs/agent/backend-testing.md`](docs/agent/backend-testing.md) (tests) |
 | `frontend/` | Next.js PWA | `frontend/AGENTS.md` (if present) |
 | `deploy/`, `compose.prod.yml` | Deployment config | [`docs/agent/deployment.md`](docs/agent/deployment.md) |
 | `docs/agent/` | Docs for AI agents (English) | see §5 |
@@ -151,6 +151,8 @@ Current pairs:
 | `docs/agent/git-convention.md` | `docs/developer/git-convention.md` |
 | `docs/agent/deployment.md` | `docs/developer/deployment.md` |
 | `docs/agent/ci.md` | `docs/developer/ci.md` |
+| `docs/agent/backend-convention.md` | `docs/developer/backend-convention.md` |
+| `docs/agent/erd.md` | `docs/developer/erd.md` |
 | `docs/agent/backend-testing.md` | `docs/developer/backend-testing.md` |
 | `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
 | `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |

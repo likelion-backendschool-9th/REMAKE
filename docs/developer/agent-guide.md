@@ -9,7 +9,7 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 이 저장소에서 작업할 
 
 | 경로 | 내용 | 세부 규칙 |
 | --- | --- | --- |
-| `backend/` | Spring Boot API 서버 | `docs/developer/backend-testing.md` (테스트) |
+| `backend/` | Spring Boot API 서버 | [`backend-convention.md`](backend-convention.md) (컨벤션), [`erd.md`](erd.md) (ERD), [`backend-testing.md`](backend-testing.md) (테스트) |
 | `frontend/` | Next.js PWA | `frontend/AGENTS.md` (있는 경우) |
 | `deploy/`, `compose.prod.yml` | 배포 설정 | [`deployment.md`](deployment.md) |
 | `docs/agent/` | AI 에이전트용 문서 (영문) | 5장 참고 |
@@ -151,6 +151,8 @@ PR에서 CI가 무엇을 검사하고 결과를 어떻게 보는지는 [`docs/de
 | `docs/agent/git-convention.md` | `docs/developer/git-convention.md` |
 | `docs/agent/deployment.md` | `docs/developer/deployment.md` |
 | `docs/agent/ci.md` | `docs/developer/ci.md` |
+| `docs/agent/backend-convention.md` | `docs/developer/backend-convention.md` |
+| `docs/agent/erd.md` | `docs/developer/erd.md` |
 | `docs/agent/backend-testing.md` | `docs/developer/backend-testing.md` |
 | `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
 | `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |

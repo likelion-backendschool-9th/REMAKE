@@ -81,7 +81,7 @@ class IngredientApiTest extends IntegrationTestSupport {
 
 ## Reference data
 
-- Reference data (ingredient categories, ingredient catalog, allergens) is inserted only by Flyway migrations. Its tables are listed in `IntegrationTestSupport.REFERENCE_TABLES`, and `TestDatabase` never truncates them.
+- Reference data (ingredient categories, ingredient catalog; allergy items are part of the ingredient catalog) is inserted only by Flyway migrations. Its tables are listed in `IntegrationTestSupport.REFERENCE_TABLES`, and `TestDatabase` never truncates them.
 - When a migration adds a reference table, add the table to the list in the same PR. If you forget, the application fails at startup with `앱이 뜬 직후 행이 있는 테이블: [...]`.
 - Do not add `CASCADE` to the truncate. If it fails with `cannot truncate a table referenced in a foreign key constraint`, a reference table references user data. Fix the schema.
 
@@ -103,7 +103,7 @@ class IngredientApiTest extends IntegrationTestSupport {
 | --- | --- |
 | Read the current time only from the injected `Clock` (`LocalDate.now(clock)`). `domain` receives the time or a `Clock` as an argument | Tests change the time through the `Clock` bean. Most policies depend on Korean time (00:00 reset, D-3, Monday ranking, 09:00 alerts) |
 | Timestamps set by JPA auditing (`@CreatedDate`, `@LastModifiedDate`) and date validation (`@Future`, `@Past`) use the `Clock` through `global/config/ClockConfig.java` and `global/config/JpaConfig.java`. Put `@EnableJpaAuditing` only on `JpaConfig`. Pass the `Clock` to the JWT library. Do not use `@CreationTimestamp`, a column `DEFAULT now()`, or `now()`/`CURRENT_DATE` in queries; pass the time as a parameter | Those use the real clock and do not follow the test clock. A second `@EnableJpaAuditing` stops the application from starting |
-| Declare the time fields of `BaseTimeEntity` as `LocalDateTime`. Build the `+09:00` format of responses in the Response DTO | JPA auditing does not support `OffsetDateTime`: with it, every save fails |
+| Declare the time fields of `BaseCreatedEntity` and `BaseTimeEntity` as `LocalDateTime`. Build the `+09:00` format of responses in the Response DTO | JPA auditing does not support `OffsetDateTime`: with it, every save fails |
 | Do not insert fixed rows into user data tables (rows that exist even on an empty DB: constant `INSERT`s in migrations, startup code). Backfill migrations (`INSERT ... SELECT`) are fine. Mark withdrawn users with `users.deleted_at`. The deployment owner makes the first admin with SQL on the server | `TestDatabase` stops the tests at startup when a user data table has rows |
 | Put `@EnableScheduling` only on `global/config/SchedulingConfig.java` | Tests turn scheduling off with `remake.scheduling.enabled: false`. Otherwise jobs run during tests and overlap with the cleanup |
 | Keep `@Scheduled` values (cron, zone, delays) in code or `application.yml`. Do not set or override them only in `application-prod.yml` | `ScheduledSettingsTest` checks the values that the `test` profile reads. Values only in the `prod` profile are not checked |

@@ -81,7 +81,7 @@ class IngredientApiTest extends IntegrationTestSupport {
 
 ## 기준 데이터
 
-- 기준 데이터(재료 카테고리, 재료 목록, 알레르기)는 Flyway 마이그레이션으로만 넣는다. 그 테이블은 `IntegrationTestSupport.REFERENCE_TABLES`에 적혀 있고, `TestDatabase`는 이 테이블을 비우지 않는다.
+- 기준 데이터(재료 카테고리, 재료 사전. 알레르기 항목은 재료 사전에 포함)는 Flyway 마이그레이션으로만 넣는다. 그 테이블은 `IntegrationTestSupport.REFERENCE_TABLES`에 적혀 있고, `TestDatabase`는 이 테이블을 비우지 않는다.
 - 마이그레이션으로 기준 데이터 테이블을 추가하면 같은 PR에서 이 목록에도 추가한다. 빠뜨리면 앱이 뜰 때 `앱이 뜬 직후 행이 있는 테이블: [...]`로 실패한다.
 - 테이블을 비울 때 `CASCADE`를 붙이지 않는다. `cannot truncate a table referenced in a foreign key constraint`로 실패하면 기준 데이터 테이블이 사용자 데이터를 참조하고 있는 것이다. 스키마를 고친다.
 
@@ -103,7 +103,7 @@ class IngredientApiTest extends IntegrationTestSupport {
 | --- | --- |
 | 현재 시각은 주입받은 `Clock`으로만 읽는다(`LocalDate.now(clock)`). `domain`은 시각이나 `Clock`을 인자로 받는다 | 테스트는 `Clock` Bean으로 시각을 바꾼다. 정책 대부분이 한국 시간 기준이다(00:00 초기화, D-3, 월요일 집계, 09:00 알림) |
 | JPA 감사(`@CreatedDate`, `@LastModifiedDate`)가 넣는 시각과 날짜 검증(`@Future`, `@Past`)은 `global/config/ClockConfig.java`와 `global/config/JpaConfig.java`를 통해 `Clock`을 쓴다. `@EnableJpaAuditing`은 `JpaConfig`에만 둔다. JWT 라이브러리에도 `Clock`을 넘긴다. `@CreationTimestamp`, 컬럼의 `DEFAULT now()`, 쿼리 안의 `now()`·`CURRENT_DATE`는 쓰지 않고 시각을 파라미터로 넘긴다 | 이것들은 실제 시계를 써서 시험용 시계를 따르지 않는다. `@EnableJpaAuditing`이 두 곳에 있으면 앱이 뜨지 않는다 |
-| `BaseTimeEntity`의 시각 필드는 `LocalDateTime`으로 둔다. 응답의 `+09:00` 형식은 Response DTO에서 만든다 | JPA 감사는 `OffsetDateTime`을 지원하지 않아, 쓰면 저장할 때마다 실패한다 |
+| `BaseCreatedEntity`와 `BaseTimeEntity`의 시각 필드는 `LocalDateTime`으로 둔다. 응답의 `+09:00` 형식은 Response DTO에서 만든다 | JPA 감사는 `OffsetDateTime`을 지원하지 않아, 쓰면 저장할 때마다 실패한다 |
 | 사용자 데이터 테이블에 고정 행(빈 DB에서도 생기는 행: 마이그레이션의 상수 `INSERT`, 앱 시작 코드)을 넣지 않는다. 기존 데이터로 채우는 마이그레이션(`INSERT ... SELECT`)은 괜찮다. 탈퇴한 사용자는 `users.deleted_at`으로 표시한다. 첫 관리자는 배포 담당이 서버에서 SQL로 만든다 | 사용자 데이터 테이블에 행이 있으면 `TestDatabase`가 앱이 뜰 때 테스트를 멈춘다 |
 | `@EnableScheduling`은 `global/config/SchedulingConfig.java`에만 둔다 | 테스트는 `remake.scheduling.enabled: false`로 스케줄러를 끈다. 그러지 않으면 테스트 중에 작업이 돌아 정리와 겹친다 |
 | `@Scheduled` 값(cron, 시간대, 지연 시간)은 코드나 `application.yml`에 둔다. `application-prod.yml`에서만 정하거나 바꾸지 않는다 | `ScheduledSettingsTest`는 `test` 프로필이 읽는 값을 검사한다. `prod` 프로필에만 있는 값은 검사되지 않는다 |

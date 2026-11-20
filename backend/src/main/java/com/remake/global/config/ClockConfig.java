@@ -18,7 +18,7 @@ public class ClockConfig {
 		return Clock.system(ZoneId.of("Asia/Seoul"));
 	}
 
-	// BaseTimeEntity의 생성·수정 시각 (JpaConfig의 @EnableJpaAuditing이 이 이름으로 찾는다)
+	// BaseCreatedEntity·BaseTimeEntity의 생성·수정 시각 (JpaConfig의 @EnableJpaAuditing이 이 이름으로 찾는다)
 	@Bean
 	public DateTimeProvider auditingDateTimeProvider(Clock clock) {
 		return () -> Optional.of(LocalDateTime.now(clock));
