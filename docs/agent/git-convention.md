@@ -207,11 +207,18 @@ Create issues from the templates in `.github/ISSUE_TEMPLATE/`. Blank issues are 
 
 A merged PR is closed and easy to forget. Work that must continue after a PR is kept as an issue.
 
-1. Before the PR is merged, its author opens an issue for each follow-up task. Use the 버그 template (`fix`) by default. Use the 결정 요청 template (`decision`) when the team must decide something first.
+1. Before the PR is merged, its author opens an issue for each follow-up task. "Follow-up" is not a type: choose the template and type by what the task is (table below), and add the `follow-up` label.
 2. Assign the issue to the person who does the next task (usually the owner of that area) and mention them (`@login`) in the issue body.
-3. Write the PR number in the issue (for example `#38`): under 이어지는 PR in the 버그 template, under 관련 이슈·PR in the 결정 요청 template.
+3. Write the PR number in the issue (for example `#38`): under 이어지는 PR in the 기능 개발, 버그, and 설정·문서 작업 templates, under 관련 이슈·PR in the 결정 요청 template.
 4. In the PR body, write `후속: #<number>` under 관련 이슈. Do not use `Closes`: it would close the follow-up issue when this PR is merged.
 5. The PR that does the follow-up task closes the issue with `Closes #<number>`.
+
+| Follow-up task | Type | Template | Example |
+| --- | --- | --- | --- |
+| Correct something that no longer matches this change | `fix` | 버그 | Code or a document that does not match a changed rule, a wrong path or number |
+| Something the team must decide first | `decision` | 결정 요청 | Policy confirmation, two documents that disagree |
+| New work that builds on this change | `feat` | 기능 개발 | A screen on top of an API this PR added, the remaining screens |
+| Configuration, CI, or documentation | `chore` or `docs` | 설정·문서 작업 | Creating labels, writing a mapping table |
 
 ### Labels
 
@@ -222,6 +229,7 @@ A merged PR is closed and easy to forget. Work that must continue after a PR is 
 | Part | `BE`, `FE`, `infra` | One or more |
 | Priority | `P0`, `P1`, `P2` | One. P0 = needed for the first release demo, P1 = should have, P2 = if time allows |
 | Status | `needs-decision`, `blocked` | Only while it applies. Remove it when resolved |
+| Origin | `follow-up` | On issues opened as PR follow-ups (see "Follow-up work"). Keep it after the issue is closed |
 
 - Give the PR the same type, area, and part labels as its issue.
 - A small but urgent correction caused by a document change uses type `fix`, not `docs`: for example code or another document that no longer matches a changed rule, a wrong path, code, or number, or a broken link. Use the 버그 template, the `fix` label, a `fix/` branch, and `fix:` commits. `docs` is for planned documentation work.
