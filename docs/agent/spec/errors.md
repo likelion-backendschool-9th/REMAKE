@@ -4,18 +4,31 @@ Source: `docs/Remake_API예외·에러정의서.md` and `Remake_API에러코드.
 
 ## Response body
 
+Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses and errors: `{ code, message, status, traceId, fieldErrors?, details? }`.
+
 ```json
 {
-  "code": "INSUFFICIENT_QUANTITY",
-  "message": "가지고 있는 양보다 많아요",
+  "code": "INVALID_INPUT",
+  "message": "입력값을 확인해 주세요",
   "status": 400,
   "traceId": "9f2c1e7a5b",
-  "fieldErrors": [{ "field": "amount", "reason": "MAX_EXCEEDED", "max": 300 }],
-  "details": { "remaining": 3 }
+  "fieldErrors": [{ "field": "amount", "message": "300 이하로 입력해 주세요" }]
 }
 ```
 
-`fieldErrors` only for INVALID_INPUT. `details` carries values the screen needs (remaining count, reset time). Never include stack traces, SQL or provider error text.
+```json
+{
+  "code": "GENERATION_LIMIT_EXCEEDED",
+  "message": "오늘 생성 횟수를 모두 썼어요",
+  "status": 429,
+  "traceId": "4c8d2a1f0e",
+  "details": { "remaining": 0, "resetsAt": "2026-11-21T00:00:00+09:00" }
+}
+```
+
+- `fieldErrors` only for `INVALID_INPUT`. Each item is `{ field, message }`; `message` is Korean text shown under the input.
+- `details` only when the screen needs extra values (remaining count, reset time). Omit it otherwise.
+- Never include stack traces, SQL or provider error text.
 
 ## HTTP usage
 
