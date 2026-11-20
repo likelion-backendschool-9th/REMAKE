@@ -10,6 +10,7 @@ import com.remake.ingredient.application.port.in.GetIngredientUseCase;
 import com.remake.ingredient.application.port.in.UpdateIngredientCommand;
 import com.remake.ingredient.application.port.in.UpdateIngredientUseCase;
 import com.remake.ingredient.application.port.out.DeleteIngredientPort;
+import com.remake.ingredient.application.port.out.LoadIngredientCategoryPort;
 import com.remake.ingredient.application.port.out.LoadIngredientPort;
 import com.remake.ingredient.application.port.out.SaveIngredientPort;
 import com.remake.ingredient.domain.Ingredient;
@@ -25,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 public class IngredientService implements GetIngredientUseCase, UpdateIngredientUseCase, DeleteIngredientUseCase {
 
 	private final LoadIngredientPort loadIngredientPort;
+	private final LoadIngredientCategoryPort loadIngredientCategoryPort;
 	private final SaveIngredientPort saveIngredientPort;
 	private final DeleteIngredientPort deleteIngredientPort;
 
@@ -39,6 +41,13 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 	public Ingredient updateIngredient(UpdateIngredientCommand command) {
 		Ingredient ingredient = loadOwned(command.userId(), command.ingredientId());
 		try {
+			if (command.name() != null) {
+				ingredient.changeName(command.name());
+			}
+			if (command.categoryCode() != null) {
+				ingredient.changeCategory(loadIngredientCategoryPort.loadByCode(command.categoryCode())
+						.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND)).id());
+			}
 			if (command.expirationDate() != null) {
 				ingredient.changeExpirationDate(command.expirationDate());
 			}

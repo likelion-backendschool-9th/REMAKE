@@ -85,9 +85,7 @@ class IngredientJpaEntity extends BaseTimeEntity {
 	static IngredientJpaEntity from(Ingredient ingredient) {
 		IngredientJpaEntity entity = new IngredientJpaEntity();
 		entity.userId = ingredient.userId();
-		entity.categoryId = ingredient.categoryId();
 		entity.receiptItemId = ingredient.receiptItemId();
-		entity.name = ingredient.name();
 		entity.initialAmount = ingredient.initialAmount();
 		entity.unit = ingredient.unit();
 		entity.apply(ingredient);
@@ -96,6 +94,8 @@ class IngredientJpaEntity extends BaseTimeEntity {
 
 	/** 도메인 객체에서 바뀔 수 있는 값만 엔티티에 옮긴다. 변경 감지로 저장된다. */
 	void apply(Ingredient ingredient) {
+		this.categoryId = ingredient.categoryId();
+		this.name = ingredient.name();
 		this.storage = ingredient.storage();
 		this.expirationDate = ingredient.expirationDate();
 		this.expirationEstimated = ingredient.expirationEstimated();

@@ -17,12 +17,12 @@ public class Ingredient {
 
 	private final Long id;
 	private final Long userId;
-	private final Long categoryId;
 	private final Long receiptItemId;
-	private final String name;
 	private final BigDecimal initialAmount;
 	private final IngredientUnit unit;
 
+	private Long categoryId;
+	private String name;
 	private StorageLocation storage;
 	private LocalDate expirationDate;
 	private boolean expirationEstimated;
@@ -73,6 +73,15 @@ public class Ingredient {
 			BigDecimal initialAmount, IngredientUnit unit, Long price, IngredientStatus status) {
 		return new Ingredient(id, userId, categoryId, receiptItemId, name, storage, expirationDate,
 				expirationEstimated, amount, initialAmount, unit, price, status);
+	}
+
+	public void changeName(String newName) {
+		this.name = normalizeName(newName);
+	}
+
+	public void changeCategory(Long newCategoryId) {
+		requireNonNull(newCategoryId, "카테고리");
+		this.categoryId = newCategoryId;
 	}
 
 	/** 소비기한을 사용자가 직접 고친다. 사용자가 정한 값이므로 추정 표시를 끈다. */
