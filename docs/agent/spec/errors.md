@@ -1,0 +1,92 @@
+# Error contract
+
+Source: `docs/Remake_API예외·에러정의서.md` and `Remake_API에러코드.xlsx`. Codes are fixed UPPER_SNAKE_CASE; never rename. Clients branch on `code`; `message` is Korean user-facing text.
+
+## Response body
+
+```json
+{
+  "code": "INSUFFICIENT_QUANTITY",
+  "message": "가지고 있는 양보다 많아요",
+  "status": 400,
+  "traceId": "9f2c1e7a5b",
+  "fieldErrors": [{ "field": "amount", "reason": "MAX_EXCEEDED", "max": 300 }],
+  "details": { "remaining": 3 }
+}
+```
+
+`fieldErrors` only for INVALID_INPUT. `details` carries values the screen needs (remaining count, reset time). Never include stack traces, SQL or provider error text.
+
+## HTTP usage
+
+- 400 rule/input violation; 401 no/expired auth; 403 forbidden or restricted account; 404 missing **or not owned** (do not leak existence); 409 state conflict; 413/415 file size/type; 422 well-formed but unprocessable; 429 limit/rate; 5xx server or upstream (AI/OCR) problems, not the user fault.
+- Failed AI generation and any 5xx/rollback **never consume quota**.
+- Query endpoints with no data return 200 with empty arrays/0 (e.g. month with no receipts), not an error.
+
+## Severity and logging
+
+INFO: normal flow caused by input/state. WARN: limits, permissions, format. ERROR: server/AI/OCR problems, logged with traceId and counted for admin alerts.
+
+## Codes (59)
+
+| Code | HTTP | Severity | Meaning |
+|---|---|---|---|
+| `INVALID_INPUT` | 400 | INFO | Missing/invalid field, bad month/date/sort, receipt older than 6 months (fieldErrors) |
+| `UNAUTHORIZED` | 401 | INFO | No/forged access token -> go to login |
+| `TOKEN_EXPIRED` | 401 | INFO | Access token expired -> refresh once, retry once |
+| `FORBIDDEN` | 403 | WARN | Not allowed (another user's admin-only resource, non-admin on /admin) |
+| `ACCOUNT_SUSPENDED` | 403 | WARN | Account restricted by admin; only logout allowed |
+| `CONCURRENT_UPDATE` | 409 | WARN | Optimistic lock conflict on ingredient (version); reload and retry |
+| `RATE_LIMITED` | 429 | WARN | Too many requests (honor Retry-After) |
+| `INTERNAL_ERROR` | 500 | ERROR | Unexpected server error; no quota consumed; transaction rolled back |
+| `SERVICE_UNAVAILABLE` | 503 | ERROR | Maintenance / DB down; retry after 30 s |
+| `NETWORK_OFFLINE` | (클라이언트) | INFO | Client only: device offline |
+| `CLIENT_TIMEOUT` | (클라이언트) | WARN | Client only: timeout (10 s / OCR 30 s / AI 60 s); retry with same Idempotency-Key |
+| `OAUTH_FAILED` | 401 | INFO | Social auth failed or cancelled |
+| `OAUTH_PROVIDER_UNSUPPORTED` | 400 | WARN | provider not kakao/naver/google |
+| `REFRESH_TOKEN_INVALID` | 401 | INFO | Refresh token expired/revoked/forged -> login |
+| `CATALOG_ITEM_NOT_FOUND` | 404 | WARN | Excluded-ingredient catalog id does not exist |
+| `ACCOUNT_EMAIL_MISSING` | 422 | WARN | Provider gave no email so no code can be sent (open policy #25) |
+| `DELETION_CODE_RESEND_TOO_SOON` | 429 | INFO | Resend within 30 s |
+| `DELETION_CODE_INVALID` | 400 | INFO | Wrong code (details.remaining attempts) |
+| `DELETION_CODE_EXPIRED` | 400 | INFO | Code older than 5 min |
+| `DELETION_CODE_LOCKED` | 429 | WARN | 5 wrong attempts; request a new code |
+| `INGREDIENT_NOT_FOUND` | 404 | INFO | Missing or not owned |
+| `INSUFFICIENT_QUANTITY` | 400 | INFO | Removing more than owned |
+| `INVALID_UNIT` | 400 | INFO | Unit not in the 14-unit list or not allowed for the item |
+| `INGREDIENT_ALREADY_FINISHED` | 409 | INFO | Using/discarding a FINISHED ingredient |
+| `INGREDIENT_HAS_LOGS` | 409 | INFO | Cannot delete: use/discard history exists |
+| `FILE_TOO_LARGE` | 413 | INFO | Upload over limit (receipt image 10 MB) |
+| `UNSUPPORTED_FILE_TYPE` | 415 | INFO | Not jpg/png/heic (or allowed photo type) |
+| `RECEIPT_NOT_RECOGNIZED` | 422 | WARN | Image is not a receipt / nothing readable |
+| `OCR_UPSTREAM_ERROR` | 502 | ERROR | OCR provider error (502) |
+| `OCR_TIMEOUT` | 504 | ERROR | OCR exceeded 30 s |
+| `RECEIPT_NOT_FOUND` | 404 | INFO | Missing or not owned |
+| `GENERATION_LIMIT_EXCEEDED` | 429 | WARN | Daily recipe generation limit reached (details: remaining/resetsAt) |
+| `NO_INGREDIENTS` | 400 | INFO | No fridge ingredients to generate from |
+| `AI_UPSTREAM_ERROR` | 502 | ERROR | LLM provider error; quota not consumed |
+| `AI_TIMEOUT` | 504 | ERROR | LLM exceeded 60 s; quota not consumed |
+| `AI_INVALID_RESPONSE` | 502 | ERROR | LLM output failed validation; not stored, quota not consumed |
+| `RECIPE_NOT_FOUND` | 404 | INFO | Missing or not owned |
+| `COOK_ITEM_INVALID` | 400 | INFO | Cook-deduct item not valid for this recipe/unit |
+| `SAVED_RECIPE_NOT_FOUND` | 404 | INFO | Recipe is not in the user saved list |
+| `MEAL_PLAN_LIMIT_EXCEEDED` | 429 | WARN | Monthly meal-plan limit reached |
+| `MEAL_PLAN_NO_INGREDIENTS` | 422 | INFO | Ingredients cannot fill even one day (422) |
+| `MEAL_PLAN_OVERLAP` | 409 | INFO | Period overlaps an existing plan and overwrite not set |
+| `SLOT_ALREADY_EXISTS` | 409 | INFO | Meal slot already filled |
+| `SLOT_NOT_FOUND` | 404 | INFO | Missing slot |
+| `PAST_DATE_NOT_ALLOWED` | 400 | INFO | Cannot add a meal on a past date |
+| `NOTIFICATION_NOT_FOUND` | 404 | INFO | Missing notification |
+| `PUSH_SUBSCRIPTION_INVALID` | 400 | WARN | Bad web-push subscription |
+| `CART_ITEM_NOT_FOUND` | 404 | INFO | Missing cart item |
+| `RECIPE_NOT_SHAREABLE` | 400 | WARN | Only recipes generated by Remake by this user can be shared |
+| `ALREADY_SHARED` | 409 | INFO | Recipe already shared |
+| `PHOTO_REQUIRED` | 400 | INFO | Cooking photo (>= 1) required |
+| `SHARED_RECIPE_NOT_FOUND` | 404 | INFO | Missing, hidden or deleted shared recipe |
+| `REPORT_ALREADY_EXISTS` | 409 | INFO | User already reported this recipe |
+| `EVENT_BATCH_TOO_LARGE` | 413 | INFO | More than 50 events in a batch |
+| `USER_NOT_FOUND` | 404 | INFO | Admin: user missing |
+| `REPORT_NOT_FOUND` | 404 | INFO | Admin: report missing |
+| `FUNNEL_NOT_FOUND` | 404 | INFO | Admin: unknown funnel code |
+| `ADMIN_REASON_REQUIRED` | 400 | INFO | Admin action needs a reason |
+| `QUOTA_ADJUST_INVALID` | 400 | INFO | Invalid quota adjustment delta |
