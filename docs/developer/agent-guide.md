@@ -27,7 +27,7 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 이 저장소에서 작업할 
 자세한 내용: [`git-convention.md`](git-convention.md)
 
 - `main`은 배포 가능한 안정 버전, `dev`는 통합·테스트 브랜치이고, 나머지는 작업 브랜치입니다.
-- 작업 브랜치 이름은 `<유형>/<짧은-설명>` 형식이고, 설명은 영어 소문자 kebab-case로 씁니다.
+- 작업 브랜치 이름은 `<유형>/<짧은-설명>` 형식이고, 설명은 영어 소문자 kebab-case로 씁니다. 이슈가 있는 작업이면 이슈 번호를 앞에 붙입니다: `<유형>/<이슈번호>-<짧은-설명>` (예: `feat/12-fridge-list`).
   - `feat/` 신규 기능 (`feat/login-implementation`)
   - `fix/` 버그 수정 (`fix/login-error`)
   - `chore/` 환경 설정·유지보수 (`chore/eslint-config`)

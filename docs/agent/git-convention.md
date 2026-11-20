@@ -8,7 +8,7 @@
 - `dev`: integrates and tests the team's work.
 - Work branches: features, bug fixes, configuration, and documentation.
 
-Create work branches by task type. Name format: `<type>/<task-description>`, where the description is short lowercase kebab-case English.
+Create work branches by task type. Name format: `<type>/<task-description>`, where the description is short lowercase kebab-case English. If the work has an issue, put the issue number first: `<type>/<issue-number>-<task-description>` (for example `feat/12-fridge-list`), so the branch list shows which issue each branch belongs to. Small `chore` or `docs` work without an issue has no number.
 
 | Type | Purpose | Example |
 | --- | --- | --- |
@@ -185,7 +185,7 @@ fix: 소비기한 D-day 계산 오류 수정
 
 - Open an issue before you start a feature, a bug fix, or a decision the team must make. A small `chore` or `docs` change may go straight to a PR.
 - One issue = one branch = one PR. Split an issue that needs several PRs into several issues.
-- Branch names stay `<type>/<task-description>` (§1). Link the issue from the PR with `Closes #<number>`.
+- Put the issue number in the branch name: `<type>/<issue-number>-<task-description>` (§1, for example `feat/12-fridge-list`). Link the issue from the PR with `Closes #<number>`.
 - Assign the issue to the person who does the work.
 
 ### Templates

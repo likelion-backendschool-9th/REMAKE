@@ -27,7 +27,7 @@ When working in `backend/` or `frontend/`, also check [What the app needs becaus
 Full reference: [`docs/agent/git-convention.md`](docs/agent/git-convention.md)
 
 - `main`: stable, release-ready. `dev`: integration and testing. Everything else is a work branch.
-- Work branch name: `<type>/<short-description>` in lowercase kebab-case English.
+- Work branch name: `<type>/<short-description>` in lowercase kebab-case English. If the work has an issue, put its number first: `<type>/<issue-number>-<short-description>` (e.g. `feat/12-fridge-list`).
   - `feat/` new feature (`feat/login-implementation`)
   - `fix/` bug fix (`fix/login-error`)
   - `chore/` config and maintenance (`chore/eslint-config`)
