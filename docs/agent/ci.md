@@ -8,7 +8,7 @@ When a PR targets `dev` or `main`, GitHub Actions checks the changed areas. A PR
 
 | Workflow | PRs it checks | What it does | Required check |
 | --- | --- | --- | --- |
-| Backend CI | PRs that change `backend/`, `.github/workflows/backend-ci.yml`, or `scripts/backend_test_summary.py` | Runs `./gradlew build` (compile, tests, jar; the tests start their own PostgreSQL container), writes the test summary, builds the backend Docker image | `Backend CI required` |
+| Backend CI | PRs that change `backend/`, `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, or `scripts/check_migrations.py` | Runs `./gradlew build` (compile, tests, jar; the tests start their own PostgreSQL container), writes the test summary, checks the Flyway migration files, builds the backend Docker image | `Backend CI required` |
 | Frontend CI | PRs that change `frontend/` or `.github/workflows/frontend-ci.yml` | `pnpm lint`, `pnpm typecheck`, `pnpm build`, builds the frontend Docker image | `Frontend CI required` |
 | Deploy CI | PRs that change the deploy files (`compose.prod.yml`, `deploy/`) or the workflow files (`.github/workflows/`) | Deploy files: checks the shell scripts, Compose, and the proxy Nginx configuration. Workflow files: actionlint | `Deploy CI required` |
 | PR Attribution Check | Every PR | Checks commits and the PR description for automatic AI attribution | — |
@@ -39,6 +39,21 @@ Spring reuses a started application for test classes with the same configuration
 - **Changing the thresholds**: change `--max-spring-boots` and `--max-test-seconds` in `.github/workflows/backend-ci.yml`. A PR that adds a new test base class raises `--max-spring-boots` in the same PR.
 - The summary step is auxiliary: a problem in the summary script does not fail CI. A failing test still fails CI.
 - **When a test fails**: download `backend-test-report` from **Artifacts** at the bottom of the run page, unzip it, and open `index.html` to see the failed tests and their output. It is kept for 7 days.
+
+## Migration check
+
+The backend tests start from an empty DB and apply every migration in order, so they pass even when a migration fails on the development server. The server DB already has every migration merged into `dev` applied. The `Backend migration check` job (`scripts/check_migrations.py`) compares the PR with the base branch **as it is when the check runs**, not when the PR was opened, and fails in these cases:
+
+| Case | Why it fails on the server | Message |
+| --- | --- | --- |
+| A new file name is not `V<number>__<description>.sql` (number without a leading zero; description of letters, digits, and underscores) | Flyway ignores the file or reads `V01` and `V1` as the same version | `파일 이름은 V<번호>__<설명>.sql 형식이어야 합니다` |
+| A new file's number is not greater than the base branch's last number | The same number stops the app from starting. A smaller number is rejected because the server DB has already applied a larger one, even though the tests pass | `dev의 마지막 번호가 V<n>입니다. V<n+1> 이상으로 바꾸세요` |
+| Two new files in the PR use the same number | Same as above | `...와 번호(V<n>)가 같습니다` |
+| The PR changes, deletes, or renames a file that is already on the base branch | The server DB stores each applied file's checksum and rejects a changed file, even though the tests pass | `dev에 이미 있는(서버에 적용된) 파일은 고치거나 지우거나 이름을 바꿀 수 없습니다` |
+
+- When it fails, rename your new file to the number in the message. Put changes to an applied file in a new numbered file instead.
+- The result is a snapshot. If another PR with a migration merges after your check passed, your check stays green. **Right before merging a PR that adds a migration, re-run Backend CI**: on the PR's **Checks** tab, open Backend CI and click **Re-run all jobs**. A re-run is not a push, so the approval stays. It compares with the latest `dev` again.
+- Run it locally from the repository root: `git fetch origin dev && python3 scripts/check_migrations.py origin/dev HEAD`.
 
 ## Deploy file and workflow checks (Deploy CI)
 

@@ -38,7 +38,7 @@ jobs:
           set -euo pipefail
           if [ "$EVENT_NAME" = push ]; then
             echo 'changed=true' >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -Eq '^(backend/|\.github/workflows/backend-ci\.yml$|scripts/backend_test_summary\.py$)'; then
+          elif git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -Eq '^(backend/|\.github/workflows/backend-ci\.yml$|scripts/(backend_test_summary|check_migrations)\.py$)'; then
             echo 'changed=true' >> "$GITHUB_OUTPUT"
           else
             echo 'changed=false' >> "$GITHUB_OUTPUT"
@@ -94,6 +94,28 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # 테스트는 빈 DB에서 시작하므로, 서버 DB(dev 에 머지된 마이그레이션이 모두 적용됨)에서만 실패하는 경우를 못 잡는다.
+  # 번호 겹침·역전, 이미 적용된 파일 수정을 검사하는 순간의 최신 base 브랜치와 비교해서 잡는다.
+  # PR 을 연 시점이 아니라 지금의 base 와 비교하므로, 머지 직전에 Re-run 하면 승인을 유지한 채 다시 확인할 수 있다.
+  migrations:
+    name: Backend migration check
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check migrations against the latest base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          python3 scripts/check_migrations.py "origin/$BASE_REF" "$HEAD_SHA"
+
   docker-build:
     name: Backend Docker build
     needs: changes
@@ -114,7 +136,7 @@ jobs:
 
   required:
     name: Backend CI required
-    needs: [changes, build, docker-build]
+    needs: [changes, build, migrations, docker-build]
     if: always()
     runs-on: ubuntu-latest
     env:
@@ -122,6 +144,7 @@ jobs:
       CHANGED: ${{ needs.changes.outputs.changed }}
       DETECT_RESULT: ${{ needs.changes.result }}
       BUILD_RESULT: ${{ needs.build.result }}
+      MIGRATION_RESULT: ${{ needs.migrations.result }}
       DOCKER_RESULT: ${{ needs.docker-build.result }}
     steps:
       - name: Verify backend checks
@@ -133,6 +156,10 @@ jobs:
           if [ "$CHANGED" = true ]; then
             if [ "$EVENT_NAME" = pull_request ] && [ "$BUILD_RESULT" != success ]; then
               echo '::error::Backend build and test did not pass'
+              exit 1
+            fi
+            if [ "$EVENT_NAME" = pull_request ] && [ "$MIGRATION_RESULT" != success ]; then
+              echo '::error::Backend migration check did not pass'
               exit 1
             fi
             if [ "$DOCKER_RESULT" != success ]; then

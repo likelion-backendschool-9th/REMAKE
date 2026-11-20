@@ -108,6 +108,7 @@ com.remake
 - **테이블은 Flyway로만 만들고 바꿉니다.** 엔티티를 추가하거나 바꾸면 같은 PR에 `backend/src/main/resources/db/migration/V<번호>__<설명>.sql`을 넣습니다. JPA는 로컬과 운영 모두 `validate`(검사만)라서 SQL을 빠뜨리면 앱이 뜨지 않습니다.
   - 번호는 dev의 마지막 번호 다음 숫자를 씁니다. 다른 PR이 먼저 머지돼서 번호가 겹치면, 머지 전에 내 파일 번호를 올립니다.
   - 이미 dev에 머지된 마이그레이션 파일은 고치지 않습니다. 바꿀 것이 있으면 새 번호 파일을 추가합니다.
+  - Backend CI가 이 두 규칙을 최신 dev와 비교해 검사합니다([마이그레이션 검사](ci.md#마이그레이션-검사)). 마이그레이션을 추가하는 PR은 머지 직전에 Backend CI를 다시 실행해서 최신 dev와 한 번 더 비교합니다.
   - 배포 중에는 이전 버전 앱과 새 버전 앱이 같은 DB를 잠시 같이 씁니다. 컬럼 이름 변경이나 삭제처럼 이전 버전을 깨는 변경은 단계를 나눠서 합니다(자세한 내용은 [배포 문서](deployment.md)).
 - **타입**: 수량은 `numeric(10,3)` ↔ `BigDecimal`, 금액은 `bigint` ↔ `Long`(원 단위), 시각은 `timestamp` ↔ `LocalDateTime`(한국 시간), JSON은 `jsonb`.
 - **정해진 값 목록**(상태, 종류, 단위 등)은 Java enum으로 만들고 `@Enumerated(EnumType.STRING)`으로 저장합니다. 순서 번호(`ORDINAL`)로 저장하지 않습니다.
