@@ -11,7 +11,9 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -82,7 +84,13 @@ class ClockUsageTest {
 					+ "|\\b(current_timestamp|current_date|current_time|localtimestamp|localtime)\\b",
 			Pattern.CASE_INSENSITIVE);
 
-	private static final Pattern SQL_COMMENT = Pattern.compile("--[^\\n]*|/\\*.*?\\*/", Pattern.DOTALL);
+	// PostgreSQL은 'now'::timestamp, 'today'::date 같은 특수 문자열 값도 실행 시각으로 바꾼다.
+	private static final Pattern SQL_TIME_STRING = Pattern.compile(
+			"'\\s*(now|today|tomorrow|yesterday)\\s*'", Pattern.CASE_INSENSITIVE);
+
+	// 문자열('...', 안의 ''는 따옴표 한 개)을 먼저 알아봐야 문자열 안의 --를 주석으로 잘못 보지 않는다.
+	private static final Pattern SQL_TOKEN = Pattern.compile(
+			"(?<string>'(?:[^']|'')*')|(?<comment>--[^\\n]*|/\\*.*?\\*/)", Pattern.DOTALL);
 
 	@Test
 	void 마이그레이션_SQL은_DB의_현재_시각_함수를_쓰지_않는다() throws IOException {
@@ -91,31 +99,40 @@ class ClockUsageTest {
 		List<String> violations = new ArrayList<>();
 		try (Stream<Path> files = Files.walk(MIGRATION_DIR)) {
 			for (Path file : files.filter(path -> path.toString().endsWith(".sql")).sorted().toList()) {
-				String[] lines = withoutComments(Files.readString(file)).split("\n", -1);
-				for (int i = 0; i < lines.length; i++) {
-					Matcher matcher = SQL_TIME_FUNCTION.matcher(lines[i]);
-					if (matcher.find()) {
-						violations.add(file.getFileName() + ":" + (i + 1) + " " + matcher.group().trim());
-					}
-				}
+				findSqlTimeUsages(file.getFileName().toString(), Files.readString(file), violations);
 			}
 		}
 		assertThat(violations)
-				.as("DB의 현재 시각 함수(DEFAULT now() 등)는 시험용 시계를 따르지 않는다. "
+				.as("DB의 현재 시각 함수(DEFAULT now(), 'now'::timestamp 등)는 시험용 시계를 따르지 않는다. "
 						+ "시각 컬럼은 기본값 없이 두고 앱이 값을 넣는다(BaseCreatedEntity·BaseTimeEntity)")
 				.isEmpty();
 	}
 
-	// 주석 안의 글자는 검사하지 않는다. 줄 번호가 바뀌지 않도록 주석 안의 줄바꿈은 남긴다.
-	private static String withoutComments(String sql) {
-		Matcher matcher = SQL_COMMENT.matcher(sql);
-		StringBuilder result = new StringBuilder();
-		while (matcher.find()) {
-			String newlines = matcher.group().replaceAll("[^\\n]", "");
-			matcher.appendReplacement(result, newlines);
+	// 주석은 지우고, 문자열은 값이 'now'·'today' 같은 특수 값인지만 본다.
+	// 시각 함수는 주석과 문자열을 뺀 나머지에서 찾는다(설명 문자열 안의 now()는 걸리지 않게).
+	// 줄 번호가 바뀌지 않도록 지운 자리의 줄바꿈은 남긴다.
+	private static void findSqlTimeUsages(String fileName, String sql, List<String> violations) {
+		Matcher token = SQL_TOKEN.matcher(sql);
+		StringBuilder code = new StringBuilder();
+		while (token.find()) {
+			String text = token.group();
+			if (token.group("string") != null && SQL_TIME_STRING.matcher(text).matches()) {
+				violations.add(fileName + ":" + lineOf(sql, token.start()) + " " + text);
+			}
+			token.appendReplacement(code, text.replaceAll("[^\\n]", ""));
 		}
-		matcher.appendTail(result);
-		return result.toString();
+		token.appendTail(code);
+		String[] lines = code.toString().split("\n", -1);
+		for (int i = 0; i < lines.length; i++) {
+			Matcher function = SQL_TIME_FUNCTION.matcher(lines[i]);
+			while (function.find()) {
+				violations.add(fileName + ":" + (i + 1) + " " + function.group().trim());
+			}
+		}
+	}
+
+	private static int lineOf(String text, int offset) {
+		return (int) text.substring(0, offset).chars().filter(c -> c == '\n').count() + 1;
 	}
 
 	// 메서드 호출, 생성자 호출, 메서드 참조(LocalDateTime::now)를 모두 본다.
@@ -145,6 +162,14 @@ class ClockUsageTest {
 		}
 		if (owner.equals("java.util.Date") && name.equals("<init>") && parameters.isEmpty()) {
 			return true;
+		}
+		// Calendar.getInstance(...)와 날짜 값 없이 만든 GregorianCalendar(시간대·지역만 받는 것 포함)는 현재 시각으로 채워진다.
+		if (owner.equals("java.util.Calendar") && name.equals("getInstance")) {
+			return true;
+		}
+		if (owner.equals("java.util.GregorianCalendar") && name.equals("<init>")) {
+			return parameters.stream().allMatch(type -> type.isEquivalentTo(TimeZone.class)
+					|| type.isEquivalentTo(Locale.class));
 		}
 		if ((owner.equals("java.time.Clock") && SYSTEM_CLOCK_FACTORIES.contains(name))
 				|| (owner.equals("java.time.InstantSource") && name.equals("system"))) {
