@@ -203,6 +203,16 @@ Create issues from the templates in `.github/ISSUE_TEMPLATE/`. Blank issues are 
 - Write the Figma frame name exactly as it appears in Figma (for example `p2.1-재료 수정`). Frame numbers are being reorganized; when a frame is renamed, update open issues that use it.
 - Never paste personal data, tokens, or secrets into an issue, even in error logs.
 
+### Follow-up work
+
+A merged PR is closed and easy to forget. Work that must continue after a PR is kept as an issue.
+
+1. Before the PR is merged, its author opens an issue for each follow-up task. Use the 버그 template (`fix`) by default. Use the 결정 요청 template (`decision`) when the team must decide something first.
+2. Assign the issue to the person who does the next task (usually the owner of that area) and mention them (`@login`) in the issue body.
+3. Write the PR number in the issue (for example `#38`): under 이어지는 PR in the 버그 template, under 관련 이슈·PR in the 결정 요청 template.
+4. In the PR body, write `후속: #<number>` under 관련 이슈. Do not use `Closes`: it would close the follow-up issue when this PR is merged.
+5. The PR that does the follow-up task closes the issue with `Closes #<number>`.
+
 ### Labels
 
 | Group | Labels | Rule |
