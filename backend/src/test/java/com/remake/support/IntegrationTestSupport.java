@@ -1,11 +1,15 @@
 package com.remake.support;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.concurrent.ThreadPoolExecutor;
 
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -14,11 +18,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import com.remake.global.config.AsyncConfig;
 import com.remake.ingredient.domain.IngredientStatus;
 
 /**
@@ -77,11 +83,26 @@ public abstract class IntegrationTestSupport {
 	@Autowired
 	private TestDatabase testDatabase;
 
+	// 이벤트 비동기 적재가 truncate 전에 끝나게 기다린다. SyncTaskExecutor로 바꾸지 않는다.
+	@Autowired
+	@Qualifier(AsyncConfig.EVENT_TASK_EXECUTOR)
+	private ThreadPoolTaskExecutor eventTaskExecutor;
+
 	// 외부 서비스 어댑터는 여기서 어댑터 클래스 단위로 가짜로 바꾼다.
 	// @MockitoBean protected RecipeAiAdapter recipeAiAdapter;
 
 	// 도우미는 필요한 테이블이 생기는 PR에서 여기에 추가한다.
 	// protected Long createUser() { ... }            users 테이블을 만드는 PR
+
+	/** 서버 EventTracker(@Async) 적재가 끝날 때까지 기다린다. */
+	protected void awaitEventWrites() {
+		Awaitility.await().atMost(Duration.ofSeconds(3)).until(this::eventExecutorIdle);
+	}
+
+	private boolean eventExecutorIdle() {
+		ThreadPoolExecutor pool = eventTaskExecutor.getThreadPoolExecutor();
+		return eventTaskExecutor.getActiveCount() == 0 && pool.getQueue().isEmpty();
+	}
 
 	/** 재료 카테고리 id. 기준 데이터 id는 하드코딩하지 않고 code로 찾는다(예: categoryId("MEAT")). */
 	protected Long categoryId(String code) {
@@ -107,6 +128,7 @@ public abstract class IntegrationTestSupport {
 
 	@AfterEach
 	void cleanUp() {
+		awaitEventWrites();
 		clock.reset();
 		testDatabase.cleanUp();
 	}
