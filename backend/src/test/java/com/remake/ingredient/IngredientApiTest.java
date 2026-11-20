@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -18,14 +19,19 @@ import com.remake.global.web.LoginUserIdArgumentResolver;
 import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.support.IntegrationTestSupport;
 
-// 재료 API. 로그인(#66)이 아직 없어 요청 속성으로 사용자 id를 넣는다. #66 이후에도 같은 방식으로 쓸 수 있다.
-// 사용자 ID(101, 102)는 users 테이블이 없어 임의 번호다. users 마이그레이션이 외래 키를 추가하면 createUser()로 바꾼다.
+// 재료 API. 통합 테스트는 요청 속성으로 로그인 사용자를 넣는다(AuthCookieFilter가 SecurityContext로 옮긴다).
 class IngredientApiTest extends IntegrationTestSupport {
 
 	private static final String URL = "/api/v1/user/ingredients";
 	private static final Long ME = 101L;
 	private static final Long OTHER = 102L;
 	private static final LocalDate EXPIRATION = LocalDate.of(2026, 3, 12);
+
+	@BeforeEach
+	void setUpUsers() {
+		ensureUser(ME);
+		ensureUser(OTHER);
+	}
 
 	private MockHttpServletRequestBuilder as(Long userId, MockHttpServletRequestBuilder builder) {
 		return builder.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, userId);
