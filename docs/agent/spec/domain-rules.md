@@ -18,7 +18,7 @@ Values from PRD v3.1 (11/20). Premium is UI only in release 1, and the plan diff
 
 ## Expiry status
 
-DANGER = expired or D-DAY; SOON = D-1..D-3; OK = later. Notifications fire 3 days before expiry (fixed, not user-configurable). Daily 09:00 KST batch.
+DANGER = expired or D-DAY; SOON = D-1..D-3; OK = later. Notifications are sent every day while an ingredient is within 3 days of expiry, D-DAY included (fixed, not user-configurable). Daily 09:00 KST batch. The notification rule differs from the screen status on purpose: D-DAY is DANGER on the fridge screen and "expiring soon" (`EXPIRY_SOON`) in notifications.
 
 ## Notifications
 

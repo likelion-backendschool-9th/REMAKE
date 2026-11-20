@@ -37,6 +37,7 @@ p2-냉장고(+스켈레톤, 재료 스크롤, 재료 카테고리 선택, 위치
 ## 구현 규칙
 
 - **소비기한 상태는 서버가 계산**: 지났거나 D-DAY면 DANGER, D-1~D-3 SOON, 그 외 OK. 기준일(3일)은 상수 한 곳에.
+- 알림의 임박 기준은 화면과 다릅니다(의도한 차이). 오늘이 기한인 재료(D-DAY)는 화면에서는 DANGER(위험), 알림에서는 임박(`EXPIRY_SOON`)입니다. 알림용 조회는 재료 쪽 UseCase(`GetExpiryAlertIngredientsUseCase`)가 따로 판정합니다.
 - 같은 재료를 두 기기에서 동시에 수정하면 `version` 충돌 → `CONCURRENT_UPDATE`. 프론트는 최신 데이터를 다시 불러옵니다.
 - `consume`: 가진 양보다 많이 빼면 `INSUFFICIENT_QUANTITY`. 이미 `FINISHED`면 `INGREDIENT_ALREADY_FINISHED`. 버렸어요는 `cost_amount`(가격 비례)를 로그에 남기고, 가격이 없으면 금액 집계에서 빼고 "제외 N개"로 안내.
 - 요리 후 재료 차감(04 영역)도 `ingredient_logs`에 `USED`로 남기므로, 차감 로직은 이 영역의 서비스를 재사용하세요.
