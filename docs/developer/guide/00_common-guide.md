@@ -56,7 +56,7 @@ remake/
 
 ## 5. 에러 공통 규칙
 
-응답 형식은 항상 `{ code, message, status, traceId, fieldErrors?, details? }`입니다. 프론트는 `code`로 분기하고 `message`는 사용자에게 보여줄 한국어 문장입니다. 코드 목록은 API 예외·에러 정의서(노션/구글 시트 참고, 59개)나 영문 요약(코드에만 있는 공통 4개 포함) [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)를 보세요.
+응답 형식은 항상 `{ code, message, status, traceId, fieldErrors?, details? }`입니다. 프론트는 `code`로 분기하고 `message`는 사용자에게 보여줄 한국어 문장입니다. 코드 목록은 API 예외·에러 정의서(노션/구글 시트 참고, 59개)나 영문 요약(코드에만 있는 5개 포함) [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)를 보세요.
 
 백엔드: `BusinessException(ErrorCode)` 하나를 던지고 `@RestControllerAdvice`가 변환합니다. 스택 트레이스·SQL·외부 서비스 에러 문구는 응답에 넣지 않습니다. 요청마다 `traceId`를 만들어 로그(MDC)에 같이 남깁니다. 5xx와 롤백은 횟수를 차감하지 않습니다. 데이터가 없는 조회는 에러가 아니라 200과 빈 배열·0입니다.
 

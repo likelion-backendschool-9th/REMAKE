@@ -40,7 +40,9 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 
 INFO: normal flow caused by input/state. WARN: limits, permissions, format. ERROR: server/AI/OCR problems, logged with traceId and counted for admin alerts.
 
-## Codes (59 from the error definition + 4 common)
+## Codes (59 from the error definition + 5 code-only)
+
+Code-only rows are in `global/error/ErrorCode` but not in the planning sheet: 4 common framework codes and feature codes that other features use internally.
 
 | Code | HTTP | Severity | Meaning |
 |---|---|---|---|
@@ -57,6 +59,7 @@ INFO: normal flow caused by input/state. WARN: limits, permissions, format. ERRO
 | `METHOD_NOT_ALLOWED` | 405 | WARN | Common (code only): HTTP method not supported on this path |
 | `NOT_ACCEPTABLE` | 406 | WARN | Common (code only): the requested response format (`Accept`) is not supported |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | WARN | Common (code only): the request body format (`Content-Type`) is not supported. An uploaded file of the wrong type is `UNSUPPORTED_FILE_TYPE` |
+| `INGREDIENT_CATEGORY_NOT_FOUND` | 404 | INFO | Feature (code only): no ingredient category with that ID or code. Thrown by the ingredient category UseCase that other features (ingredient registration, receipts) call; not returned by its own list API |
 | `NETWORK_OFFLINE` | (클라이언트) | INFO | Client only: device offline |
 | `CLIENT_TIMEOUT` | (클라이언트) | WARN | Client only: timeout (10 s / OCR 30 s / AI 60 s); retry with same Idempotency-Key |
 | `OAUTH_FAILED` | 401 | INFO | Social auth failed or cancelled |
