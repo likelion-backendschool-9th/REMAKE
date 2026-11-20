@@ -54,6 +54,55 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # 서버 .env 는 PR 에서 볼 수 없다. compose.prod.yml 에 새 변수가 생기면 노란 경고로 알려서,
+      # 머지 전에 배포 담당이 서버 .env 에 값을 넣게 한다. 필수 변수(${VAR:?})가 서버에 없으면
+      # compose 가 파일 전체를 해석하지 못해 백엔드·프론트 배포와 롤백이 모두 멈춘다. 경고만 하고 실패시키지 않는다.
+      - name: Warn about new environment variables
+        continue-on-error: true
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          DOC_URL: ${{ github.server_url }}/${{ github.repository }}/blob/dev/docs/developer/deployment.md
+        run: |
+          set -euo pipefail
+          # ${VAR...} 의 변수 이름. $${VAR} 는 compose 가 바꾸지 않는 글자 그대로의 값이라 뺀다.
+          vars() { { grep -oP '(?<!\$)\$\{\K[A-Za-z_][A-Za-z0-9_]*' || true; } | sort -u; }
+          is_required() { grep -qP "(?<!\\\$)\\\$\\{$1:\\?" compose.prod.yml; }
+          base_vars="$RUNNER_TEMP/base-vars"
+          head_vars="$RUNNER_TEMP/head-vars"
+          git show "$BASE_SHA:compose.prod.yml" 2>/dev/null | vars > "$base_vars" || : > "$base_vars"
+          vars < compose.prod.yml > "$head_vars"
+          mapfile -t added < <(comm -13 "$base_vars" "$head_vars")
+          if [ "${#added[@]}" -eq 0 ]; then
+            echo 'compose.prod.yml 에 새 환경 변수가 없습니다.'
+            exit 0
+          fi
+          {
+          cat <<'EOF'
+          ### 서버 `.env`에 먼저 넣어야 할 새 환경 변수
+
+          머지 전에 배포 담당이 서버 `.env`에 값을 넣어야 합니다. 필수(`:?`) 변수가 서버에 없으면 백엔드·프론트 배포와 롤백이 모두 멈춥니다.
+          EOF
+            echo "자세한 순서: [배포 문서](${DOC_URL})"
+            echo
+            echo '| 변수 | 필수 |'
+            echo '| --- | --- |'
+            for name in "${added[@]}"; do
+              if is_required "$name"; then required="예 (\`:?\`)"; else required='아니요 (빠지면 기본값)'; fi
+              echo "| \`${name}\` | ${required} |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          for name in "${added[@]}"; do
+            line="$(grep -nF -- "\${${name}" compose.prod.yml | head -n 1 | cut -d: -f1)"
+            if is_required "$name"; then
+              message="필수 변수입니다. 머지 전에 배포 담당이 서버 .env 에 ${name} 값을 넣어야 합니다. 없으면 백엔드·프론트 배포와 롤백이 모두 멈춥니다. PR 본문에서 배포 담당을 불러 주세요."
+            else
+              message="빠지면 기본값으로 동작합니다. 서버에 다른 값이 필요하면 머지 전에 배포 담당에게 알려 주세요."
+            fi
+            echo "::warning file=compose.prod.yml,line=${line:-1},title=새 환경 변수 ${name}::${message}"
+          done
 
       - name: Check shell scripts
         run: |
