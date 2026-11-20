@@ -19,9 +19,9 @@ p1-로그인, p1-로그인-최근 로그인, 스플래쉬, p1.1-가구원 수(+�
 
 | 메서드 | 경로 | 비고 |
 |---|---|---|
-| POST | `/api/v1/public/auth/oauth/{provider}` | 요청 `{ code, redirectUri }` → `{ accessToken, onboardingCompleted }`, 리프레시는 HttpOnly 쿠키 |
-| POST | `/api/v1/public/auth/refresh` | 리프레시 쿠키로 재발급 |
-| POST | `/api/v1/user/auth/logout` | 리프레시 토큰 폐기 |
+| POST | `/api/v1/public/auth/oauth/{provider}` | 요청 `{ code, redirectUri }` → `{ onboardingCompleted }`. 액세스(30분)·리프레시(14일) 모두 HttpOnly 쿠키(`Secure; SameSite=Lax`) |
+| POST | `/api/v1/public/auth/refresh` | 리프레시 쿠키로 액세스 쿠키 재발급(본문 없음 / 204). 무효면 `REFRESH_TOKEN_INVALID` |
+| POST | `/api/v1/user/auth/logout` | 리프레시 토큰 폐기 + 두 쿠키 삭제 |
 | GET·PUT | `/api/v1/user/profile` | 가구원 수·온보딩 완료·마지막 식단 목적 |
 | GET·PATCH | `/api/v1/user/settings` | `recipeSupplementEnabled`, `notificationEnabled`, `provider` |
 | GET·PUT | `/api/v1/user/excluded-ingredients` | PUT은 `{ catalogIds }`로 통째 교체 |
@@ -34,12 +34,16 @@ p1-로그인, p1-로그인-최근 로그인, 스플래쉬, p1.1-가구원 수(+�
 
 ## 구현 규칙
 
-- JWT: 액세스 30분, 리프레시 14일(HttpOnly 쿠키, 로테이션 여부는 팀 합의). 리프레시는 DB에 해시로만 저장하고 로그아웃·삭제 때 폐기.
-- `/api/v1/admin/**`는 ADMIN role만 통과. 서버 보안 설정에서 막고 UI는 보조일 뿐입니다. [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58) 결정에 따라 8.2 분석 API에 필요한 ADMIN 권한 검사와 비관리자 접근 차단은 P0 선행 작업입니다. 분석 API 구현·시연 전에 실제 보안 필터를 통과하는 ADMIN 허용·일반 사용자 403·비로그인 차단을 검증합니다. 그 외 어드민 기능은 P1을 유지합니다.
+- JWT([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) A): 액세스·리프레시 **모두** HttpOnly 쿠키. 액세스 30분, 리프레시 14일(`Secure; SameSite=Lax`). 응답 본문에 `accessToken`을 넣지 않고, 프론트는 `Authorization: Bearer`를 쓰지 않는다. 리프레시는 DB에 해시로만 저장하고 로그아웃·삭제 때 폐기(로테이션 여부는 구현 때 확정).
+- `/api/v1/admin/**`는 ADMIN role만 통과. 서버 보안 설정에서 막고 UI는 보조일 뿐입니다.
 - 계정 삭제: 인증번호 6자리, 유효 5분, 재전송 30초 간격, 5회 틀리면 잠금(새 번호를 받으면 해제). 삭제하면 `provider_user_id`·`email`을 비우고 행은 유지(공유 레시피와 이벤트 통계가 남도록), 영수증 이미지와 개인 데이터는 삭제. `events.user_id`에는 FK를 걸지 않습니다.
 - 소셜이 이메일을 주지 않으면 `ACCOUNT_EMAIL_MISSING`(대체 방법은 미결 #25).
 - 알레르기 같은 설정 값은 본인만 조회, 건강 상태(질환) 정보는 수집하지 않습니다. 제외 재료 이름은 이벤트에 넣지 않고 개수만.
 - 설정의 프리미엄 구독 화면은 UI만 만들고 기능은 없습니다.
+
+## 분석 API 접근 제어 우선순위 (#58 확정)
+
+- [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58) 결정에 따라 8.2 분석 API에 필요한 ADMIN 권한 검사와 비관리자 접근 차단은 P0 선행 작업입니다. 분석 API 구현·시연 전에 실제 보안 필터를 통과하는 ADMIN 허용·일반 사용자 403·비로그인 차단을 검증합니다. 그 외 어드민 기능은 P1을 유지합니다.
 
 ## 에러 코드
 
