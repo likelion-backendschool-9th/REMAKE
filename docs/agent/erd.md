@@ -254,11 +254,6 @@ erDiagram
     date expiration_date "Expiration date"
     boolean is_expiration_estimated "Whether the date is an estimate"
     timestamp created_at "Creation time"
->>>
-<<<
-Kept 6 months by purchase date | receipt | BaseTimeEntity | 9 |
-===
-Kept 6 months by purchase date | receipt | BaseCreatedEntity | 7 |
   }
 ```
 
@@ -549,7 +544,7 @@ Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
 | 6 | ingredient_catalog | 재료 사전 | Autocomplete, category estimation, excluded-ingredient list (reference data) | ingredient | none | 5 |
 | 7 | ingredients | 냉장고 재료 | One ingredient line in the fridge. Kept as FINISHED when used up | ingredient | BaseTimeEntity | 16 |
 | 8 | ingredient_logs | 재료 사용·폐기 이력 | "Used" and "Discarded" records. Source of the wasted-money statistics | ingredient | BaseCreatedEntity | 8 |
-| 9 | receipts | 영수증 | One confirmed receipt (unconfirmed OCR results are never stored). Kept 6 months by purchase date | receipt | BaseTimeEntity | 9 |
+| 9 | receipts | 영수증 | One confirmed receipt (unconfirmed OCR results are never stored). Kept 6 months by purchase date | receipt | BaseCreatedEntity | 7 |
 | 10 | receipt_items | 영수증 품목 | One food line of a confirmed receipt (non-food lines are not stored) | receipt | BaseCreatedEntity | 11 |
 | 11 | recipes | 레시피 | AI-generated recipes and copies of shared recipes. Never edited after creation | recipe | BaseCreatedEntity | 11 |
 | 12 | recipe_ingredients | 레시피 재료 | Ingredients and amounts in a recipe | recipe | BaseCreatedEntity | 8 |
@@ -760,6 +755,7 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | image_key | varchar | | | No | | Storage path. Deleted together with the receipt |
 | created_at | timestamp | | | No | | Save (confirm) time. Retention basis when `purchased_on` is null |
 
+- Spending amounts are always the sum of food items (`receipt_items.price`), not the total printed on the receipt.
 - Only confirmed receipts are stored. `POST /receipts/scan` analyzes and stores nothing; `POST /receipts` saves the receipt, its items, and the registered fridge ingredients in one transaction. A confirmed receipt cannot be edited, only deleted.
 - Retention: 6 months from `purchased_on` (or `created_at` if null). A daily job deletes older receipts with their images and items. A purchase date older than 6 months cannot be registered (`INVALID_INPUT`). Index `(user_id, purchased_on)` for spending queries.
 
@@ -778,12 +774,6 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | expiration_date | date | | | Yes | | Expiration date |
 | is_expiration_estimated | boolean | | | No | false | Whether the date is an estimate |
 | created_at | timestamp | | | No | | Creation time |
->>>
-<<<
-- Only confirmed receipts are stored.
-===
-- Spending amounts are always the sum of food items (`receipt_items.price`), not the total printed on the receipt.
-- Only confirmed receipts are stored.
 
 ### 11. recipes (Recipes)
 

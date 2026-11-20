@@ -254,11 +254,6 @@ erDiagram
     date expiration_date "소비기한"
     boolean is_expiration_estimated "추정값인지"
     timestamp created_at "만든 시각"
->>>
-<<<
-구매일 기준 6개월 보관 | receipt | BaseTimeEntity | 9 |
-===
-구매일 기준 6개월 보관 | receipt | BaseCreatedEntity | 7 |
   }
 ```
 
@@ -549,7 +544,7 @@ erDiagram
 | 6 | ingredient_catalog | 재료 사전 | 자동완성·카테고리 추정·제외 재료 목록(기준 데이터) | ingredient | 없음 | 5 |
 | 7 | ingredients | 냉장고 재료 | 냉장고의 재료 한 줄. 다 쓰면 FINISHED로 남김 | ingredient | BaseTimeEntity | 16 |
 | 8 | ingredient_logs | 재료 사용·폐기 이력 | 사용했어요·버렸어요 기록. 버린 금액 통계의 원본 | ingredient | BaseCreatedEntity | 8 |
-| 9 | receipts | 영수증 | 확정한 영수증 한 장(확정 전 OCR 결과는 저장하지 않음). 구매일 기준 6개월 보관 | receipt | BaseTimeEntity | 9 |
+| 9 | receipts | 영수증 | 확정한 영수증 한 장(확정 전 OCR 결과는 저장하지 않음). 구매일 기준 6개월 보관 | receipt | BaseCreatedEntity | 7 |
 | 10 | receipt_items | 영수증 품목 | 확정한 영수증의 식재료 한 줄(비식재료는 저장하지 않음) | receipt | BaseCreatedEntity | 11 |
 | 11 | recipes | 레시피 | AI가 만든 레시피 본체와 공유 레시피 사본. 한 번 만들면 수정하지 않음 | recipe | BaseCreatedEntity | 11 |
 | 12 | recipe_ingredients | 레시피 재료 | 레시피에 들어가는 재료와 수량 | recipe | BaseCreatedEntity | 8 |
@@ -760,6 +755,7 @@ erDiagram
 | image_key | varchar | | | 아니오 | | 저장소 경로. 영수증과 함께 삭제 |
 | created_at | timestamp | | | 아니오 | | 저장(확정) 시각. `purchased_on`이 없으면 보관 기준 |
 
+- 식비 금액은 영수증에 적힌 총액이 아니라 항상 식재료 품목 합계(`receipt_items.price`)입니다.
 - 확정한 영수증만 저장합니다. `POST /receipts/scan`은 분석만 하고 저장하지 않으며, `POST /receipts`가 영수증·품목·등록할 냉장고 재료를 한 트랜잭션으로 저장합니다. 확정한 영수증은 수정할 수 없고 삭제만 됩니다.
 - 보관: `purchased_on`(없으면 `created_at`)부터 6개월. 매일 작업이 지난 영수증을 이미지·품목과 함께 삭제합니다. 6개월보다 오래된 구매일은 등록할 수 없습니다(`INVALID_INPUT`). 식비 조회용 인덱스 `(user_id, purchased_on)`.
 
@@ -778,12 +774,6 @@ erDiagram
 | expiration_date | date | | | 예 | | 소비기한 |
 | is_expiration_estimated | boolean | | | 아니오 | false | 추정값인지 |
 | created_at | timestamp | | | 아니오 | | 만든 시각 |
->>>
-<<<
-- 확정한 영수증만 저장합니다.
-===
-- 식비 금액은 영수증에 적힌 총액이 아니라 항상 식재료 품목 합계(`receipt_items.price`)입니다.
-- 확정한 영수증만 저장합니다.
 
 ### 11. recipes (레시피)
 

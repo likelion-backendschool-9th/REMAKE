@@ -17,7 +17,6 @@ docs/
 │  └─ spec/                     기획 문서 영문 요약 (영문만 있음)
 │     ├─ domain-rules.md        비즈니스 규칙: 횟수 제한, 단위 14개, 카테고리 12개, 소비기한 상태, 영수증·식단표·공유 규칙
 │     ├─ api-summary.md         도메인별 전체 API와 각 API가 발행하는 이벤트
-│     ├─ data-model.md          테이블 32개 구조 요약 (자세한 내용은 erd.md)
 │     ├─ errors.md              에러 응답 형식과 에러 코드 59개 + 공통 4개
 │     └─ events.md              이벤트 트래킹 규칙과 이벤트 76개
 └─ developer/                   개발자용 (한글)

@@ -33,14 +33,9 @@ p3-영수증(+스켈레톤, 최대 스크롤), p3.1-카메라, p3.3-ocr 결과(+
 | GET | `/api/v1/user/receipts/{id}` | 품목, 총 금액(식재료 합계), 이미지 서명 URL |
 | DELETE | `/api/v1/user/receipts/{id}` | 이미지·품목 삭제, 등록된 재료는 유지 |
 | GET | `/api/v1/user/expenses/monthly` | 월 총액 + 최근 6개월 평균 대비(`comparison.diffAmount`) |
-| GET | `/api/v1/user/expenses/monthly/analysis` | 카테고리 비중 + 버린 재료 금액 |
+| GET | `/api/v1/user/expenses/monthly/analysis` | 카테고리 비중 + 버린 재료 금액(`ingredient_logs.cost_amount` 합계. 보여 줄 피그마 화면은 추가 예정) |
 | GET | `/api/v1/user/expenses/patterns` | `?month=`: 6개월 월 탭, 총액·평균 대비, 카테고리 비중, 날짜별 합계 |
 | GET | `/api/v1/user/expenses/daily-items` | `?date=`: 그날 산 식재료 목록(`imageUrl`은 카테고리 이미지) |
->>>
-<<<
-| GET | `/api/v1/user/expenses/monthly/analysis` | 카테고리 비중 + 버린 재료 금액 |
-===
-| GET | `/api/v1/user/expenses/monthly/analysis` | 카테고리 비중 + 버린 재료 금액(`ingredient_logs.cost_amount` 합계. 보여 줄 피그마 화면은 추가 예정) |
 
 ## 테이블
 
