@@ -240,7 +240,7 @@ erDiagram
     string store_name "Store"
     string store_code "Store icon code (15 codes, ETC fallback)"
     string image_key "Storage path. Deleted with the receipt"
-    timestamp created_at "Save (confirm) time. Retention basis if n…"
+    timestamp created_at "Save (confirm) time"
   }
   receipt_items {
     bigint id PK "ID"

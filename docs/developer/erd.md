@@ -240,7 +240,7 @@ erDiagram
     string store_name "판매처"
     string store_code "마트 아이콘 코드(15개, 못 맞추면 ETC)"
     string image_key "저장소 경로. 영수증과 함께 삭제"
-    timestamp created_at "저장(확정) 시각. 구매일이 없으면 보관 기준"
+    timestamp created_at "저장(확정) 시각"
   }
   receipt_items {
     bigint id PK "고유 번호"
