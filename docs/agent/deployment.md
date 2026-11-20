@@ -22,7 +22,7 @@ user → host Nginx (80/443, domain·TLS) → 127.0.0.1:APP_PORT → proxy conta
 
 ## Current state
 
-- When changes to `backend/` land on `dev`, `Backend CD` runs; changes to `frontend/` run `Frontend CD`. Changes to the shared deploy files (`compose.prod.yml`, `deploy/`) run both.
+- When changes to `backend/` land on `dev`, `Backend CD` runs; changes to `frontend/` run `Frontend CD`. Changes to the shared deploy files (`compose.prod.yml`, `deploy/`) run both. Changes to Markdown files only under `backend/` or `frontend/` (`AGENTS.md`, `blueprint.md`, `README.md`, and so on) do not deploy: they do not change the app, and a needless redeploy would replace the previous version kept for rollback.
 - Each CD first runs its checks (backend `./gradlew build`; frontend `pnpm lint`, `pnpm typecheck`, `pnpm build`) and deploys to the server only if they pass.
 - PRs that change the deploy files (`compose.prod.yml`, `deploy/`) are checked by `Deploy CI` before merge: the shell scripts in `deploy/` (`bash -n`, `shellcheck`), `compose.prod.yml` with the empty values of `deploy/prod.env.example` filled in (`docker compose config`), and the proxy Nginx configuration with `nginx -t` run the same way `deploy/deploy.sh` runs it on the server. A required variable (`${VAR:?...}`) added to `compose.prod.yml` but missing from `deploy/prod.env.example` fails this check. Details: [`ci.md`](ci.md#deploy-file-and-workflow-checks-deploy-ci).
 - Development server: <https://remake.newlecture.com> (HTTP requests are redirected to HTTPS).
