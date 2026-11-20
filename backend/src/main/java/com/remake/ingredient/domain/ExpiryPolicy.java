@@ -38,4 +38,12 @@ public final class ExpiryPolicy {
 	public static LocalDate expiredYesterday(LocalDate today) {
 		return today.minusDays(1);
 	}
+
+	/**
+	 * 소비기한을 모를 때 카테고리 기본 보관 기간으로 추정한다. 기준일은 영수증이면 구매일, 직접 추가면 등록한 날이다.
+	 * 추정한 날짜는 Ingredient에 추정 표시(expirationEstimated)와 함께 저장한다.
+	 */
+	public static LocalDate estimateExpirationDate(LocalDate baseDate, int defaultShelfLifeDays) {
+		return baseDate.plusDays(defaultShelfLifeDays);
+	}
 }

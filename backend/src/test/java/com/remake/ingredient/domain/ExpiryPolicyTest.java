@@ -35,4 +35,11 @@ class ExpiryPolicyTest {
 		assertThat(ExpiryPolicy.expiringTo(monthEnd)).isEqualTo(LocalDate.of(2026, 3, 3));
 		assertThat(ExpiryPolicy.expiredYesterday(LocalDate.of(2026, 3, 1))).isEqualTo(LocalDate.of(2026, 2, 28));
 	}
+
+	@Test
+	void 소비기한을_모르면_기준일에_기본_보관_일수를_더해_추정한다() {
+		assertThat(ExpiryPolicy.estimateExpirationDate(TODAY, 7)).isEqualTo(LocalDate.of(2026, 3, 11));
+		// 영수증은 구매일이 기준이라 오래된 구매일이면 추정한 날짜가 이미 지났을 수 있다.
+		assertThat(ExpiryPolicy.estimateExpirationDate(LocalDate.of(2026, 2, 20), 3)).isEqualTo(LocalDate.of(2026, 2, 23));
+	}
 }

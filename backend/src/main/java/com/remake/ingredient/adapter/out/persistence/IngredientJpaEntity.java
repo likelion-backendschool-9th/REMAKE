@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import com.remake.global.common.BaseTimeEntity;
+import com.remake.ingredient.domain.Ingredient;
 import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.ingredient.domain.StorageLocation;
@@ -24,7 +25,7 @@ import lombok.NoArgsConstructor;
 /**
  * ingredients 테이블. 테이블은 Flyway(V2__create_ingredients.sql)가 만들고, JPA는 validate로 모양만 검사한다.
  * 다른 기능의 데이터(users, receipt_items)는 연관 관계 없이 ID로만 갖는다.
- * 등록·수정·소비 기능이 들어오는 PR에서 생성 메서드와 변경 메서드를 추가한다.
+ * 도메인 객체와 바꾸는 메서드는 from, apply, toDomain이다.
  */
 @Entity
 @Table(name = "ingredients")
@@ -79,4 +80,32 @@ class IngredientJpaEntity extends BaseTimeEntity {
 	// 동시 수정 방지(낙관적 락)
 	@Version
 	private Long version;
+
+	/** 새 재료를 저장하려고 도메인 객체에서 엔티티를 만든다. */
+	static IngredientJpaEntity from(Ingredient ingredient) {
+		IngredientJpaEntity entity = new IngredientJpaEntity();
+		entity.userId = ingredient.userId();
+		entity.receiptItemId = ingredient.receiptItemId();
+		entity.unit = ingredient.unit();
+		entity.apply(ingredient);
+		return entity;
+	}
+
+	/** 도메인 객체에서 바뀔 수 있는 값만 엔티티에 옮긴다. 변경 감지로 저장된다. */
+	void apply(Ingredient ingredient) {
+		this.categoryId = ingredient.categoryId();
+		this.name = ingredient.name();
+		this.storage = ingredient.storage();
+		this.expirationDate = ingredient.expirationDate();
+		this.expirationEstimated = ingredient.expirationEstimated();
+		this.amount = ingredient.amount();
+		this.initialAmount = ingredient.initialAmount();
+		this.price = ingredient.price();
+		this.status = ingredient.status();
+	}
+
+	Ingredient toDomain() {
+		return Ingredient.restore(id, userId, categoryId, receiptItemId, name, storage, expirationDate,
+				expirationEstimated, amount, initialAmount, unit, price, status);
+	}
 }
