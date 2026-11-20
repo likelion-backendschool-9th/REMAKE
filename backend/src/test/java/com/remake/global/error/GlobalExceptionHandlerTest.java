@@ -5,12 +5,14 @@ import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 
@@ -92,7 +94,39 @@ class GlobalExceptionHandlerTest extends IntegrationTestSupport {
 	void 허용하지_않는_메서드는_405() throws Exception {
 		mockMvc.perform(delete("/test/errors/business"))
 				.andExpect(status().isMethodNotAllowed())
+				// 허용하는 메서드를 알려 주는 Allow 헤더를 빼지 않는다
+				.andExpect(header().string(HttpHeaders.ALLOW, "GET"))
 				.andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
+	}
+
+	@Test
+	void 필수_헤더가_없으면_400() throws Exception {
+		mockMvc.perform(get("/test/errors/header"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+	}
+
+	@Test
+	void 필수_파일이_없으면_400() throws Exception {
+		mockMvc.perform(multipart("/test/errors/part").param("other", "value"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+	}
+
+	@Test
+	void 필수_쿠키가_없으면_400() throws Exception {
+		mockMvc.perform(get("/test/errors/cookie"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+	}
+
+	@Test
+	void ResponseStatusException은_원래_상태로_응답하고_사유를_숨긴다() throws Exception {
+		mockMvc.perform(get("/test/errors/status"))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("NOT_FOUND"))
+				.andExpect(jsonPath("$.message").value(ErrorCode.NOT_FOUND.getMessage()))
+				.andExpect(jsonPath("$.traceId").isString());
 	}
 
 	@Test

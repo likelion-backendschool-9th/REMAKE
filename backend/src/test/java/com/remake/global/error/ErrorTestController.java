@@ -1,11 +1,17 @@
 package com.remake.global.error;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -43,5 +49,22 @@ class ErrorTestController {
 	@GetMapping("/unexpected")
 	void unexpected() {
 		throw new IllegalStateException("내부 정보: DB 비밀번호가 틀림");
+	}
+
+	@GetMapping("/header")
+	void header(@RequestHeader("X-Required") String value) {
+	}
+
+	@PostMapping("/part")
+	void part(@RequestPart("file") MultipartFile file) {
+	}
+
+	@GetMapping("/cookie")
+	void cookie(@CookieValue("refresh_token") String refreshToken) {
+	}
+
+	@GetMapping("/status")
+	void status() {
+		throw new ResponseStatusException(HttpStatus.NOT_FOUND, "내부 사유");
 	}
 }
