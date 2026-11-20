@@ -1,5 +1,7 @@
 package com.remake.support;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
@@ -16,6 +18,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+
+import com.remake.ingredient.domain.IngredientStatus;
 
 /**
  * 모든 통합 테스트의 부모 클래스. 테스트 클래스는 이 클래스를 상속만 하고 설정 어노테이션을 붙이지 않는다.
@@ -82,6 +86,23 @@ public abstract class IntegrationTestSupport {
 	/** 재료 카테고리 id. 기준 데이터 id는 하드코딩하지 않고 code로 찾는다(예: categoryId("MEAT")). */
 	protected Long categoryId(String code) {
 		return jdbcTemplate.queryForObject("SELECT id FROM ingredient_categories WHERE code = ?", Long.class, code);
+	}
+
+	/** 냉장고 재료 한 건을 넣고 id를 돌려준다. 단위·양은 기본값(EA, 1)이고 생성·수정 시각은 시험용 시계를 따른다. */
+	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate,
+			IngredientStatus status) {
+		return createIngredient(userId, categoryCode, name, expirationDate, status, null);
+	}
+
+	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate,
+			IngredientStatus status, Long price) {
+		LocalDateTime now = LocalDateTime.now(clock);
+		return jdbcTemplate.queryForObject("""
+				INSERT INTO ingredients (user_id, category_id, name, storage, expiration_date, amount, initial_amount,
+				                         unit, price, status, created_at, updated_at)
+				VALUES (?, ?, ?, 'FRIDGE', ?, 1, 1, 'EA', ?, ?, ?, ?)
+				RETURNING id
+				""", Long.class, userId, categoryId(categoryCode), name, expirationDate, price, status.name(), now, now);
 	}
 
 	@AfterEach
