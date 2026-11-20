@@ -2,7 +2,8 @@ package com.remake.ingredient.adapter.in.web;
 
 import com.remake.ingredient.domain.IngredientCategory;
 import com.remake.ingredient.domain.IngredientUnit;
-import com.remake.ingredient.domain.Storage;
+import com.remake.ingredient.domain.IngredientCategoryCode;
+import com.remake.ingredient.domain.StorageLocation;
 
 /**
  * 재료 카테고리 응답. 도메인 객체·JPA 엔티티를 그대로 내보내지 않고 Response DTO로 바꾼다.
@@ -10,10 +11,10 @@ import com.remake.ingredient.domain.Storage;
  */
 public record IngredientCategoryResponse(
 		Long id,
-		String code,
+		IngredientCategoryCode code,
 		String name,
 		String imageUrl,
-		Storage defaultStorage,
+		StorageLocation defaultStorage,
 		IngredientUnit defaultUnit,
 		int defaultShelfLifeDays) {
 

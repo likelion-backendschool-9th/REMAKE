@@ -192,7 +192,7 @@ Build new APIs by following the ingredient category list (`GET /api/v1/user/ingr
 | Location | Files |
 |---|---|
 | Migration | `db/migration/V1__create_ingredient_categories.sql` |
-| domain | `IngredientCategory`, `Storage`, `IngredientUnit` |
+| domain | `IngredientCategory`, `IngredientCategoryCode`, `StorageLocation`, `IngredientUnit` |
 | port/in | `GetIngredientCategoriesUseCase` |
 | port/out | `LoadIngredientCategoryPort` |
 | service | `IngredientCategoryService` (throws `BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND)` when missing) |

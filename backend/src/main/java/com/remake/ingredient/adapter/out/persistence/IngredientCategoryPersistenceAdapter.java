@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import com.remake.ingredient.application.port.out.LoadIngredientCategoryPort;
 import com.remake.ingredient.domain.IngredientCategory;
+import com.remake.ingredient.domain.IngredientCategoryCode;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,5 +28,10 @@ class IngredientCategoryPersistenceAdapter implements LoadIngredientCategoryPort
 	@Override
 	public Optional<IngredientCategory> loadById(Long categoryId) {
 		return repository.findById(categoryId).map(IngredientCategoryJpaEntity::toDomain);
+	}
+
+	@Override
+	public Optional<IngredientCategory> loadByCode(IngredientCategoryCode code) {
+		return repository.findByCode(code).map(IngredientCategoryJpaEntity::toDomain);
 	}
 }

@@ -2,7 +2,8 @@ package com.remake.ingredient.adapter.out.persistence;
 
 import com.remake.ingredient.domain.IngredientCategory;
 import com.remake.ingredient.domain.IngredientUnit;
-import com.remake.ingredient.domain.Storage;
+import com.remake.ingredient.domain.IngredientCategoryCode;
+import com.remake.ingredient.domain.StorageLocation;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -30,8 +31,9 @@ class IngredientCategoryJpaEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, unique = true, length = 30)
-	private String code;
+	private IngredientCategoryCode code;
 
 	@Column(nullable = false, length = 30)
 	private String name;
@@ -42,7 +44,7 @@ class IngredientCategoryJpaEntity {
 	// enum은 이름(STRING)으로 저장한다. 순서 번호(ORDINAL)는 쓰지 않는다.
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 10)
-	private Storage defaultStorage;
+	private StorageLocation defaultStorage;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 10)

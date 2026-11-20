@@ -6,10 +6,10 @@ package com.remake.ingredient.domain;
  */
 public record IngredientCategory(
 		Long id,
-		String code,
+		IngredientCategoryCode code,
 		String name,
 		String imageUrl,
-		Storage defaultStorage,
+		StorageLocation defaultStorage,
 		IngredientUnit defaultUnit,
 		int defaultShelfLifeDays) {
 }

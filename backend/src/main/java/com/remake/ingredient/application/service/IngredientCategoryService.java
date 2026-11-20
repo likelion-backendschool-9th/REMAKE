@@ -10,6 +10,7 @@ import com.remake.global.error.ErrorCode;
 import com.remake.ingredient.application.port.in.GetIngredientCategoriesUseCase;
 import com.remake.ingredient.application.port.out.LoadIngredientCategoryPort;
 import com.remake.ingredient.domain.IngredientCategory;
+import com.remake.ingredient.domain.IngredientCategoryCode;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +28,12 @@ public class IngredientCategoryService implements GetIngredientCategoriesUseCase
 	@Override
 	public List<IngredientCategory> getIngredientCategories() {
 		return loadIngredientCategoryPort.loadAll();
+	}
+
+	@Override
+	public IngredientCategory getIngredientCategoryByCode(IngredientCategoryCode code) {
+		return loadIngredientCategoryPort.loadByCode(code)
+				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND));
 	}
 
 	@Override

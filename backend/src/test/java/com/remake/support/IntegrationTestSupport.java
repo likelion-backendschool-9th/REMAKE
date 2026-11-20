@@ -78,7 +78,11 @@ public abstract class IntegrationTestSupport {
 
 	// 도우미는 필요한 테이블이 생기는 PR에서 여기에 추가한다.
 	// protected Long createUser() { ... }            users 테이블을 만드는 PR
-	// protected Long categoryId(String code) { ... }  기준 데이터 마이그레이션 PR
+
+	/** 재료 카테고리 id. 기준 데이터 id는 하드코딩하지 않고 code로 찾는다(예: categoryId("MEAT")). */
+	protected Long categoryId(String code) {
+		return jdbcTemplate.queryForObject("SELECT id FROM ingredient_categories WHERE code = ?", Long.class, code);
+	}
 
 	@AfterEach
 	void cleanUp() {

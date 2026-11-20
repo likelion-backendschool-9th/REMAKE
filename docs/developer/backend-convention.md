@@ -192,7 +192,7 @@ com.remake
 | 위치 | 파일 |
 |---|---|
 | 마이그레이션 | `db/migration/V1__create_ingredient_categories.sql` |
-| domain | `IngredientCategory`, `Storage`, `IngredientUnit` |
+| domain | `IngredientCategory`, `IngredientCategoryCode`, `StorageLocation`, `IngredientUnit` |
 | port/in | `GetIngredientCategoriesUseCase` |
 | port/out | `LoadIngredientCategoryPort` |
 | service | `IngredientCategoryService` (없으면 `BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND)`) |
