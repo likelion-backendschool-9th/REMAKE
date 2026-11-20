@@ -30,7 +30,7 @@ com.remake
 │
 └── global                      Shared by all features
     ├── error                   ErrorCode, BusinessException, GlobalExceptionHandler
-    ├── config                  Swagger, JPA, CORS, Clock, shared external service config
+    ├── config                  Swagger, JPA, CORS, Clock, JSON time format, shared external service config
     ├── security                JWT filter, Security config
     └── common                  Shared classes such as BaseCreatedEntity, BaseTimeEntity, the duplicate-request filter
 ```
@@ -152,9 +152,9 @@ Use the same word in code, DB, and API.
 
 ## Responses and errors
 
-On success, return the Response DTO as-is without a wrapper. Distinguish success and failure by HTTP status code: 201 for creation, 204 for deletion without a body, 202 for accepted-now-processed-later (event collection), 200 for other successes.
+On success, return the Response DTO as-is without a wrapper. Never create success wrapper classes such as `ApiResponse` or `CommonResponse` (`{ data, meta }`, etc.). Distinguish success and failure by HTTP status code: 201 for creation, 204 for deletion without a body, 202 for accepted-now-processed-later (event collection), 200 for other successes.
 
-Paginate lists in this shape (`?page=0&size=20`):
+Paginate growing lists in this shape (`?page=0&size=20`, `PageResponse.from(page, XxxResponse::from)`). Do not use cursor pagination. Return fixed-size reference data (ingredient categories, etc.) as a plain array without paging.
 
 ```json
 { "content": [], "page": 0, "size": 20, "totalElements": 0, "hasNext": false }
@@ -173,6 +173,9 @@ On failure, every API returns this shape. Include `fieldErrors` only for input v
 ```
 
 - Format dates as `2026-12-21` and timestamps as `2026-11-15T09:00:00+09:00`. Money is an integer in won.
+  - Use `LocalDate` and `LocalDateTime` in DTOs as-is. `global/config/JacksonConfig` adds `+09:00`, so do not convert to `OffsetDateTime` or strings in DTOs. Fractions of a second are dropped.
+  - A timestamp received in a request with another offset (`Z`, etc.) is converted to Korea time; one without an offset is treated as Korea time.
+- Use camelCase field names. Return enum values as their names (UPPER_SNAKE_CASE, `FRIDGE`, `SHARED_COPY`). Use the enum type itself in DTOs.
 - When a value is missing, return the field as `null`; do not omit it.
 - Never return domain objects or JPA entities directly; convert them to Response DTOs.
 - The frontend generates its API client from the OpenAPI document (`pnpm gen:api`). Declare controller return types as concrete DTOs; never return `Object` or `Map`. The document is at `/v3/api-docs` on the local backend and the UI at `/swagger-ui.html`. Put `@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)` on APIs that need login.
@@ -180,3 +183,19 @@ On failure, every API returns this shape. Include `fieldErrors` only for input v
 - Keep all error codes in the single `global/error/ErrorCode`. Use the same names as the API and error definition documents.
 - 401 (login required) and 403 (forbidden) are rejected in the Security filter chain and never reach `GlobalExceptionHandler`. Return the same shape from `AuthenticationEntryPoint` (401) and `AccessDeniedHandler` (403) in `global/security`.
 - Create, deduct, and confirm POSTs (recipe generation, cook, receipt confirm, etc.) accept an `Idempotency-Key` header. When the same key arrives again, do not process it; return the first response (24 hours, `idempotency_keys` table). One shared filter in `global/common` handles this, not each feature.
+- APIs that need login authenticate with the `Authorization: Bearer <accessToken>` header. The refresh token is sent and received as an HttpOnly cookie.
+
+### Example API
+
+Build new APIs by following the ingredient category list (`GET /api/v1/user/ingredient-categories`). It has a full set, from migration to tests.
+
+| Location | Files |
+|---|---|
+| Migration | `db/migration/V1__create_ingredient_categories.sql` |
+| domain | `IngredientCategory`, `Storage`, `IngredientUnit` |
+| port/in | `GetIngredientCategoriesUseCase` |
+| port/out | `LoadIngredientCategoryPort` |
+| service | `IngredientCategoryService` (throws `BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND)` when missing) |
+| adapter/in/web | `IngredientCategoryController`, `IngredientCategoryResponse` |
+| adapter/out/persistence | `IngredientCategoryJpaEntity`, `IngredientCategoryJpaRepository`, `IngredientCategoryPersistenceAdapter` |
+| Tests | `src/test/.../ingredient/IngredientCategoryApiTest` |

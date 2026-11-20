@@ -30,7 +30,7 @@ com.remake
 │
 └── global                      모든 기능이 같이 쓰는 것
     ├── error                   ErrorCode, BusinessException, GlobalExceptionHandler
-    ├── config                  Swagger, JPA, CORS, Clock, 외부 서비스 공통 설정
+    ├── config                  Swagger, JPA, CORS, Clock, JSON 시각 표기, 외부 서비스 공통 설정
     ├── security                JWT 필터, Security 설정
     └── common                  BaseCreatedEntity, BaseTimeEntity, 중복 요청 방지 필터 같은 공통 클래스
 ```
@@ -152,9 +152,9 @@ com.remake
 
 ## 응답과 에러
 
-성공하면 Response DTO를 감싸지 않고 그대로 돌려줍니다. 성공과 실패는 HTTP 상태 코드로 구분합니다. 생성은 201, 본문 없는 삭제는 204, 접수만 하고 나중에 처리(이벤트 수집)는 202, 나머지 성공은 200입니다.
+성공하면 Response DTO를 감싸지 않고 그대로 돌려줍니다. `ApiResponse`, `CommonResponse`처럼 성공 응답을 감싸는 클래스(`{ data, meta }` 등)는 만들지 않습니다. 성공과 실패는 HTTP 상태 코드로 구분합니다. 생성은 201, 본문 없는 삭제는 204, 접수만 하고 나중에 처리(이벤트 수집)는 202, 나머지 성공은 200입니다.
 
-목록은 아래 모양으로 페이징합니다(`?page=0&size=20`).
+계속 늘어나는 목록은 아래 모양으로 페이징합니다(`?page=0&size=20`, `PageResponse.from(page, XxxResponse::from)`). 커서 방식은 쓰지 않습니다. 개수가 정해진 기준 데이터(재료 카테고리 등)는 페이징하지 않고 배열로 줍니다.
 
 ```json
 { "content": [], "page": 0, "size": 20, "totalElements": 0, "hasNext": false }
@@ -173,6 +173,9 @@ com.remake
 ```
 
 - 날짜는 `2026-12-21`, 시각은 `2026-11-15T09:00:00+09:00` 형식으로 줍니다. 금액은 원 단위 정수입니다.
+  - DTO에는 `LocalDate`, `LocalDateTime`을 그대로 씁니다. `+09:00`은 `global/config/JacksonConfig`가 붙이므로 DTO에서 `OffsetDateTime`이나 문자열로 바꾸지 않습니다. 초 아래는 버립니다.
+  - 요청으로 받은 시각은 다른 시간대(`Z` 등)면 한국 시간으로 바꾸고, 시간대가 없으면 한국 시간으로 봅니다.
+- 필드 이름은 camelCase, enum 값은 이름 그대로(대문자 스네이크, `FRIDGE`, `SHARED_COPY`) 줍니다. DTO에도 enum 타입을 그대로 씁니다.
 - 값이 없으면 필드를 빼지 않고 `null`을 줍니다.
 - 도메인 객체나 JPA Entity를 그대로 응답으로 내보내지 않고 Response DTO로 바꿔서 줍니다.
 - 프론트는 OpenAPI 문서로 API 클라이언트를 만듭니다(`pnpm gen:api`). Controller의 반환 타입을 DTO로 분명히 쓰고, `Object`나 `Map`으로 돌려주지 않습니다. 문서는 로컬 백엔드의 `/v3/api-docs`, 화면은 `/swagger-ui.html`입니다. 로그인이 필요한 API에는 `@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)`를 붙입니다.
@@ -180,3 +183,19 @@ com.remake
 - 에러 코드는 `global/error/ErrorCode` 하나에 모읍니다. 이름은 API 정의서·에러 정의서의 코드와 같게 씁니다.
 - 로그인이 필요함(401)과 권한 없음(403)은 Security 필터 단계에서 막혀 `GlobalExceptionHandler`를 거치지 않습니다. `global/security`의 `AuthenticationEntryPoint`(401)와 `AccessDeniedHandler`(403)에서도 같은 모양으로 응답합니다.
 - 생성·차감·확정 POST(레시피 생성, 요리했어요, 영수증 확정 등)는 `Idempotency-Key` 헤더를 받습니다. 같은 키로 다시 오면 처리하지 않고 처음 응답을 그대로 돌려줍니다(24시간, `idempotency_keys` 테이블). 처리는 기능마다 만들지 않고 `global/common`의 공통 필터 하나가 맡습니다.
+- 로그인이 필요한 API는 `Authorization: Bearer <accessToken>` 헤더로 인증합니다. 리프레시 토큰은 HttpOnly 쿠키로 주고받습니다.
+
+### 예시 API
+
+새 API는 재료 카테고리 목록(`GET /api/v1/user/ingredient-categories`)을 따라 만듭니다. 마이그레이션부터 테스트까지 한 벌이 다 있습니다.
+
+| 위치 | 파일 |
+|---|---|
+| 마이그레이션 | `db/migration/V1__create_ingredient_categories.sql` |
+| domain | `IngredientCategory`, `Storage`, `IngredientUnit` |
+| port/in | `GetIngredientCategoriesUseCase` |
+| port/out | `LoadIngredientCategoryPort` |
+| service | `IngredientCategoryService` (없으면 `BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND)`) |
+| adapter/in/web | `IngredientCategoryController`, `IngredientCategoryResponse` |
+| adapter/out/persistence | `IngredientCategoryJpaEntity`, `IngredientCategoryJpaRepository`, `IngredientCategoryPersistenceAdapter` |
+| 테스트 | `src/test/.../ingredient/IngredientCategoryApiTest` |
