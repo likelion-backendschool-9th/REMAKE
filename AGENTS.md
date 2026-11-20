@@ -27,7 +27,7 @@ When working in `backend/` or `frontend/`, also check [What the app needs becaus
 Full reference: [`docs/agent/git-convention.md`](docs/agent/git-convention.md)
 
 - `main`: stable, release-ready. `dev`: integration and testing. Everything else is a work branch.
-- Work branch name: `<type>/<short-description>` in lowercase kebab-case English.
+- Work branch name: `<type>/<short-description>` in lowercase kebab-case English. If the work has an issue, put its number first: `<type>/<issue-number>-<short-description>` (e.g. `feat/12-fridge-list`).
   - `feat/` new feature (`feat/login-implementation`)
   - `fix/` bug fix (`fix/login-error`)
   - `chore/` config and maintenance (`chore/eslint-config`)
@@ -95,6 +95,7 @@ PR rules:
 
   ## 관련 이슈
   - Closes #번호  (없으면 "없음")
+  - 후속: #번호  (이어서 할 작업 이슈, 없으면 생략)
 
   ## 테스트
   - 실행한 검사와 결과 (예: pnpm lint 통과, ./gradlew build 통과)
@@ -106,6 +107,8 @@ PR rules:
 
 - Remove the template's HTML comment. Do not add AI bylines (see §2).
 - Do not merge PRs yourself, and do not merge `dev` into `main`. The team does that after review.
+- If the work has an issue, write `Closes #<number>` under 관련 이슈 and give the PR the issue's type, area, and part labels. Issue templates, titles, and labels: [`docs/agent/git-convention.md`](docs/agent/git-convention.md) §7.
+- If work must continue after the PR, open a follow-up issue before the merge, assign the person who does it, and write `후속: #<number>` under 관련 이슈 (§7 "Follow-up work"). When you write the PR for the user, list the follow-up tasks and ask the user who to assign before creating the issues.
 
 ## 4. Checks before commit / push
 
