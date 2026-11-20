@@ -1,0 +1,70 @@
+/* Remake 디자인 토큰 v2.0.0 (2026-11-20)
+ * 원칙: 피그마 디자인이 최우선. 토큰은 피그마에 정의된 변수·스타일만 이름 그대로 옮긴 것이다. 간격·반경·그림자·글래스 등 나머지 값은 억지로 정리하거나 맞추지 말고 피그마 프레임(Dev Mode)의 값을 그대로 읽어 쓴다. 프레임에 변수가 걸려 있으면 그 변수에 해당하는 토큰을 쓰고, 안 걸려 있으면 프레임 값을 그대로 쓴다.
+ * 원천: design/tokens/build_tokens.py (생성 파일은 손으로 고치지 말고 이 스크립트로 다시 만듭니다)
+ */
+:root {
+  color-scheme: light;
+
+  /* ---------- 피그마 변수 (Collection 1) ---------- */
+  --text-header: #111827; /* figma: text/header */
+  --text-title: #374151; /* figma: text/title */
+  --text-content: #4B5563; /* figma: text/content */
+  --text-assist: #98A3B4; /* figma: text/assist */
+  --text-placeholder: #ABB7CA; /* figma: text/placeholder */
+  --text-disabled: #B0B8C1; /* figma: text/disabled */
+  --text-primary: #3182F6; /* figma: text/primary */
+  --text-error: #EF4444; /* figma: text/error */
+  --text-warring: #FF7119; /* figma: text/warring */
+  --text-safe: #179C00; /* figma: text/safe */
+  --text-white: #F8F9F6; /* figma: text/white */
+  --bg-white: #FFFFFF; /* figma: bg/white */
+  --bg-1depth: #F2F4F7; /* figma: bg/1depth */
+  --bg-1depth-bg: #EFF5FF; /* figma: bg/1depth-bg */
+  --bg-blue-btn-bg: #EBF3FF; /* figma: bg/blue-btn-bg */
+  --bg-input-bg: #F2F4F6; /* figma: bg/input-bg */
+  --bg-gray-1depth: #F5F5F5; /* figma: bg/gray-1depth */
+  --bg-gray-2depth: #EAEAEA; /* figma: bg/gray-2depth */
+  --bg-gray-3depth: #CFCFCF; /* figma: bg/gray-3depth */
+  --bg-gray-4depth: #B9B9B9; /* figma: bg/gray-4depth */
+  --bg-skeletn-bg: #E9ECEF; /* figma: bg/skeletn-bg */
+  --bg-skeleton-highlights: #F1F5F9; /* figma: bg/skeleton-highlights */
+  --bg-shadow: rgba(25, 31, 40, 0.32); /* figma: bg/shadow */
+  --stroke-1: #E2E8F0; /* figma: stroke-1 */
+
+  /* ---------- 피그마 페인트 스타일 ---------- */
+  --style-primay: #3182F6; /* figma style: primay */
+  --style-complementary: #F56214; /* figma style: complementary */
+
+  /* ---------- 피그마 텍스트 스타일 (모바일). 사용: font: var(--font-content-mobile); ---------- */
+  --font-header-mobile: 600 1.125rem/normal var(--font-family-base); /* figma: header - mobile = Pretendard SemiBold 18px, 행간 auto */
+  --font-title-mobile: 500 1rem/normal var(--font-family-base); /* figma: title - mobile = Pretendard Medium 16px, 행간 auto */
+  --font-content-mobile: 500 0.875rem/normal var(--font-family-base); /* figma: content - mobile = Pretendard Medium 14px, 행간 auto */
+  --font-assist-mobile: 500 0.75rem/normal var(--font-family-base); /* figma: assist - mobile = Pretendard Medium 12px, 행간 auto */
+  --font-placeholder-mobile: 500 0.75rem/normal var(--font-family-base); /* figma: placeholder - mobile = Pretendard Medium 12px, 행간 auto */
+  --font-error-mobile: 400 0.75rem/normal var(--font-family-base); /* figma: error - mobile = Pretendard Regular 12px, 행간 auto */
+
+  /* ---------- 재료 카테고리 점 색 (피그마 화면 값) ---------- */
+  --category-vegetable: #2E9E5D; /* 채소 */
+  --category-fruit: #CE3B78; /* 과일 */
+  --category-meat: #C24747; /* 육류 */
+  --category-seafood: #358AD4; /* 해산물 */
+  --category-dairy-egg: #A58812; /* 달걀 및 유제품 */
+  --category-grain: #B98046; /* 곡류 및 면, 빵 */
+  --category-bean-tofu: #779933; /* 두부 및 콩류 */
+  --category-processed: #9947C2; /* 가공 및 냉동식품 */
+  --category-side-dish: #DA5D2F; /* 김치 및 반찬 */
+  --category-seasoning: #2E9E8B; /* 양념 */
+  --category-beverage: #4641C8; /* 음료 */
+  --category-etc: #7B838E; /* 기타 */
+
+  /* ---------- 기능상 필요한 예외 (피그마에 없음) ---------- */
+  --font-family-base: var(--font-pretendard, 'Pretendard Variable'), Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', sans-serif; /* 글꼴 지정(피그마 Pretendard + 대체 글꼴) */
+  --font-size-input: 1rem; /* 입력창 글자 16px. 피그마는 14·12px지만 iOS에서 16px 미만이면 화면이 자동 확대됨 */
+  --z-sticky: 100; /* 상단 고정 헤더·탭 */
+  --z-fixed: 200; /* 하단 고정 버튼 영역 */
+  --z-dropdown: 300; /* 케밥 메뉴 */
+  --z-overlay: 400; /* 딤 배경 */
+  --z-sheet: 500; /* 바텀시트 */
+  --z-modal: 600; /* 모달 */
+  --z-toast: 700; /* 토스트 */
+}

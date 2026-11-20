@@ -25,8 +25,36 @@
 - 직접 추가 기능은 없습니다. **식단표 생성(05)과 레시피 저장(내 레시피·공유 레시피)에서 부족한 재료가 자동으로 담깁니다.** 외부 이동·결제 없음.
 - 레시피 이름별로 묶어서 보여주고 같은 재료도 합산하지 않습니다(제안). 사용자는 수량 변경, 선택 삭제(전체 선택 포함)만 가능. 삭제 모드 해제는 프론트에서.
 - 등록된 재료와 같은 이름의 항목 정리(영수증 등록 후)는 정책 #29를 따릅니다.
-- 장바구니 담기 UseCase를 하나 만들어 04·05가 호출하게 하고, 담은 개수를 응답(`cartAddedCount`)으로 돌려줍니다. 식단표는 메뉴명만 있는 칸(`recipeId` 없음)과 `meal_plan_id`·`group_name`도 넘겨야 해서, 인자는 한윤수·최유리가 따로 이슈로 정합니다.
-- `cart_item_added` 이벤트는 이 담기 UseCase 한 곳에서만 보냅니다(담은 경로마다 1건, `cart_source`로 식단표·레시피 저장·공유 저장 구분). 04·05는 보내지 않습니다.
+- 공통 담기·칸 단위 삭제 계약은 [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46)에서 확정했습니다. 아래 구현 규칙을 따릅니다.
+
+## 장바구니 구현 규칙 (#46 확정)
+
+두 UseCase는 `cart/application/port/in`에 두고, 04·05·공유 저장은 구현 서비스 대신 이 인터페이스로 호출합니다.
+
+```java
+// AddCartItemsUseCase
+int add(Long userId, CartSource source, List<CartGroup> groups);
+
+// RemoveCartItemsByMealPlanSlotsUseCase (반환형은 #46에서 정하지 않음)
+// remove(userId, slotIds)
+```
+
+- `CartGroup`: `recipeId?`, `mealPlanId?`, `mealPlanSlotId?`, `groupName`, `items`. `?`는 NULL 허용을 뜻합니다.
+- `CartItem`: `name`, `amount`(`BigDecimal`), `unit`(기존 14개 단위 코드).
+- `CartSource`: `MEAL_PLAN`(식단표 생성), `RECIPE_SAVE`(내 레시피 저장), `SHARED_RECIPE_SAVE`(공유 레시피 저장).
+- 식단표는 칸마다 묶음 하나를 전달합니다. `recipeId = null`, `mealPlanId`, `mealPlanSlotId`, `groupName = 메뉴명`을 채웁니다. 레시피 저장은 `recipeId`, `groupName = 레시피 제목`, `mealPlanSlotId = null`로 전달합니다.
+- 반환값은 실제 추가한 `cart_items` 행 수입니다(묶음 수·수량 합계 아님). 호출 측은 이를 `cartAddedCount`로 응답합니다.
+- 빈 목록과 재료가 없는 묶음은 건너뜁니다. 추가 건수가 0이면 0을 반환하고 이벤트를 발행하지 않습니다.
+- 호출자의 트랜잭션에 `REQUIRED`로 참여합니다. `REQUIRES_NEW`는 사용하지 않고, 식단표·레시피 저장 실패 시 장바구니 변경도 함께 롤백합니다.
+- 추가 건수가 있을 때 `cart_item_added`를 장바구니 담기 UseCase에서만 호출당 1건 발행합니다. `cart_source`와 전체 추가 행 수인 `item_count`를 기록하고, 04·05·공유 저장에서 중복 발행하지 않습니다. 롤백된 작업이 성공 이벤트로 남지 않도록 처리합니다.
+- 식단표 생성의 같은 요청 재시도는 공통 `Idempotency-Key` 처리에 맡깁니다. 담기 UseCase에 별도 재시도 중복 방지를 추가하지 않습니다.
+
+### 식단표 덮어쓰기
+
+- `cart_items.meal_plan_slot_id`는 `meal_plan_slots`를 참조하는 nullable FK입니다. 레시피 저장 경로에서는 null이며, FK 삭제 동작은 `ON DELETE SET NULL`입니다([ERD 20번](../erd.md#20-cart_items-장바구니)).
+- `RemoveCartItemsByMealPlanSlotsUseCase.remove(userId, slotIds)`는 해당 사용자의 지정된 칸에 연결된 장바구니 항목만 삭제합니다. 사용자가 수량을 수정한 항목도 삭제하며, 유지되는 칸의 항목은 보존합니다.
+- 식단표는 동일 트랜잭션에서 **기존 칸의 장바구니 항목 삭제 → 기존 칸 삭제 → 새 칸 저장 → 새 장바구니 항목 추가** 순서로 호출합니다. `mealPlanId`로 장바구니 항목을 일괄 삭제하지 않습니다.
+- 이 자동 정리에는 사용자 삭제 이벤트를 발행하지 않습니다. FK의 `SET NULL`은 칸 삭제 시의 동작이며, 덮어쓰기의 명시적인 UseCase 정리를 대체하지 않습니다.
 
 ## API
 
@@ -53,7 +81,7 @@
 
 ## 발행 이벤트
 
-서버(5개): `cart_item_added`(담기 UseCase에서만, 담은 경로당 1건, `cart_source`·`item_count`), `shared_recipe_published`, `shared_recipe_saved`, `shared_recipe_reported`, `weekly_reward_granted`(+ 공유 저장 때 `recipe_saved`). 프론트: `ranking_viewed`, `shared_recipe_viewed`, `shared_write_started`, `cart_viewed`, `cart_amount_changed`, `cart_items_deleted`. 레시피·재료 이름은 속성에 넣지 않습니다.
+서버(5개): `cart_item_added`(담기 UseCase에서만, 실제 추가 건수가 있을 때 호출당 1건, `cart_source`·`item_count`), `shared_recipe_published`, `shared_recipe_saved`, `shared_recipe_reported`, `weekly_reward_granted`(+ 공유 저장 때 `recipe_saved`). 프론트: `ranking_viewed`, `shared_recipe_viewed`, `shared_write_started`, `cart_viewed`, `cart_amount_changed`, `cart_items_deleted`. 레시피·재료 이름은 속성에 넣지 않습니다.
 
 ## 체크리스트
 

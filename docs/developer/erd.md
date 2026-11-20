@@ -24,12 +24,13 @@
 | 11/20 결정 | `receipts.status`(SCANNED/CONFIRMED) 삭제. 확정한 영수증만 저장, `receipts.image_key` NOT NULL | 스캔 API는 분석만 하고 저장하지 않음. 확정 API가 영수증·품목·냉장고 재료를 한 트랜잭션으로 저장 |
 | 11/20 결정 | `receipts.store_code` 추가 | 마트 아이콘(15개 코드, 못 맞추면 `ETC`) |
 | 11/20 결정 | `receipts.total_price` 삭제. `receipts`·`receipt_items`는 `updated_at`을 지우고 `BaseCreatedEntity`로 변경(`updated_at`이 있는 테이블은 이제 5개) | 식비는 항상 식재료 품목 합계라 영수증에 적힌 총액을 쓰지 않음. 확정한 영수증은 수정하지 않음 |
-| 11/20 결정 | 영수증 보관: 구매일 기준 6개월(날짜가 없으면 저장일), 지나면 이미지·품목과 함께 삭제. 미확정 7일 정리·이미지 1년 보관 삭제 | 식비 비교가 최근 6개월 기준. 미확정은 저장하지 않음 |
+| 11/20 결정 | 영수증 보관: 구매일 기준 6개월, 지나면 이미지·품목과 함께 삭제. 미확정 7일 정리·이미지 1년 보관 삭제 | 식비 비교가 최근 6개월 기준. 미확정은 저장하지 않음 |
 | 11/20 결정 | `receipt_items`는 식재료만 저장, `category_id` NOT NULL | OCR이 식재료만 돌려줌(비식재료는 걸러짐) |
 | 11/20 결정 | `notifications.receipt_id`와 `RECEIPT_DONE` 종류 삭제(EXPIRY_SOON/EXPIRED만) | OCR이 동기라 "분석 완료" 알림이 없음 |
 | 11/20 결정 | `generation_quota_grants.expires_at` 추가(지급 후 한 달) | 주간 보상은 한 달 안에 써야 함 |
 | 11/20 결정 | 남은 횟수 계산에서 `usage_logs`로 OCR 횟수를 세는 부분 삭제 | 영수증 스캔은 횟수 제한 없음. OCR 기록은 모니터링용으로만 남김. OCR에 AI를 붙이면 다시 정함 |
 | 11/20 결정 | `shared_recipes.save_count`는 상세 화면용 누적값, 주간 인기순은 `saved_recipes.saved_at`으로 셈 | 랭킹은 "이번 주 저장 수" 기준 |
+| 11/20 결정 | `cart_items.meal_plan_slot_id` 추가(nullable FK, `ON DELETE SET NULL`; [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46)) | 식단표 덮어쓰기 시 출처 칸으로 항목을 구분해 교체되는 칸의 장바구니 항목만 삭제하고 유지되는 칸의 항목은 보존 |
 
 ## 공통 규칙
 
@@ -78,6 +79,7 @@ erDiagram
   users ||--o{ cart_items : ""
   recipes |o--o{ cart_items : ""
   meal_plans |o--o{ cart_items : ""
+  meal_plan_slots |o--o{ cart_items : ""
   recipes ||--o| shared_recipes : ""
   shared_recipes ||--o{ shared_recipe_photos : ""
   shared_recipes ||--o{ shared_recipe_reports : ""
@@ -240,7 +242,7 @@ erDiagram
     string store_name "판매처"
     string store_code "마트 아이콘 코드(15개, 못 맞추면 ETC)"
     string image_key "저장소 경로. 영수증과 함께 삭제"
-    timestamp created_at "저장(확정) 시각. 구매일이 없으면 보관 기준"
+    timestamp created_at "저장(확정) 시각"
   }
   receipt_items {
     bigint id PK "고유 번호"
@@ -284,6 +286,7 @@ erDiagram
   users ||--o{ cart_items : ""
   recipes |o--o{ cart_items : ""
   meal_plans |o--o{ cart_items : ""
+  meal_plan_slots |o--o{ cart_items : ""
   recipes ||--o| shared_recipes : ""
   recipes {
     bigint id PK "고유 번호"
@@ -371,6 +374,7 @@ erDiagram
     bigint user_id FK "회원"
     bigint recipe_id FK "묶음 기준 레시피(메뉴명만 있는 칸이면 null)"
     bigint meal_plan_id FK "식단표에서 왔으면"
+    bigint meal_plan_slot_id FK "출처 식단 칸; NULL 허용, ON DELETE SET NULL"
     string group_name "화면의 묶음 이름(레시피 제목·메뉴명)"
     string name "재료 이름"
     decimal amount "수량(변경 가능)"
@@ -555,7 +559,7 @@ erDiagram
 | 17 | meal_plans | 식단표 | 식단표 한 번의 생성 결과(시작일부터 최대 7일) | mealplan | BaseCreatedEntity | 8 |
 | 18 | meal_plan_slots | 식단표 칸 | 날짜·끼니별 칸. 생성 칸(AI)과 직접 추가 칸(MANUAL) | mealplan | BaseTimeEntity | 10 |
 | 19 | meal_plan_slot_ingredients | 칸별 예정 재료 | 칸마다 쓸 재료와 수량. 중복 배정 방지·부족 재료 계산 | mealplan | BaseCreatedEntity | 7 |
-| 20 | cart_items | 장바구니 | 레시피별 부족 재료 목록(자동으로만 담김) | cart | BaseTimeEntity | 10 |
+| 20 | cart_items | 장바구니 | 레시피별 부족 재료 목록(자동으로만 담김) | cart | BaseTimeEntity | 11 |
 | 21 | shared_recipes | 공유 레시피 | 공유 공간에 올린 레시피(완전 익명) | share | BaseTimeEntity | 7 |
 | 22 | shared_recipe_photos | 공유 조리 사진 | 공유할 때 올린 조리 사진(1장 이상) | share | BaseCreatedEntity | 5 |
 | 23 | shared_recipe_reports | 공유 레시피 신고 | 신고와 어드민 처리 결과 | share | BaseCreatedEntity | 10 |
@@ -608,6 +612,7 @@ erDiagram
 | users | cart_items | 1:N | | user_id | |
 | recipes | cart_items | 1:N | 묶음 / 없을 수 있음 | recipe_id | SET NULL |
 | meal_plans | cart_items | 1:N | 부족 재료 / 없을 수 있음 | meal_plan_id | SET NULL |
+| meal_plan_slots | cart_items | 1:N | 출처 식단 칸 / 레시피 저장이면 없음 | meal_plan_slot_id | SET NULL |
 | recipes | shared_recipes | 1:0..1 | 공유 | recipe_id | |
 | shared_recipes | shared_recipe_photos | 1:N | 조리 사진 | shared_recipe_id | CASCADE |
 | shared_recipes | shared_recipe_reports | 1:N | 신고 | shared_recipe_id | |
@@ -749,15 +754,16 @@ erDiagram
 | --- | --- | --- | --- | --- | --- | --- |
 | id | bigint | PK | | 아니오 | | 고유 번호 |
 | user_id | bigint | FK | users | 아니오 | | 회원 |
-| purchased_on | date | | | 예 | | 구매일(월 집계·6개월 보관 기준) |
-| store_name | varchar | | | 예 | | 판매처 |
-| store_code | varchar | | | 예 | | 마트 아이콘 코드(15개: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). 못 맞추면 `ETC`이고, 화면은 기본 아이콘과 `store_name`(OCR이 읽은 이름)을 보여 줌 |
+| purchased_on | date | | | 아니오 | | 구매일(월 집계·6개월 보관 기준) |
+| store_name | varchar | | | 아니오 | | 판매처 |
+| store_code | varchar | | | 예 | | 마트 아이콘 코드(15개: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). 못 맞추면 `ETC`이고, 화면은 기본 아이콘과 `store_name`(확인한 판매처 이름)을 보여 줌 |
 | image_key | varchar | | | 아니오 | | 저장소 경로. 영수증과 함께 삭제 |
-| created_at | timestamp | | | 아니오 | | 저장(확정) 시각. `purchased_on`이 없으면 보관 기준 |
+| created_at | timestamp | | | 아니오 | | 저장(확정) 시각 |
 
+- 구매일과 판매처 이름은 최종 등록에 필수입니다. OCR이 읽지 못한 값은 확인 화면에서 사용자가 입력합니다.
 - 식비 금액은 영수증에 적힌 총액이 아니라 항상 식재료 품목 합계(`receipt_items.price`)입니다.
 - 확정한 영수증만 저장합니다. `POST /receipts/scan`은 분석만 하고 저장하지 않으며, `POST /receipts`가 영수증·품목·등록할 냉장고 재료를 한 트랜잭션으로 저장합니다. 확정한 영수증은 수정할 수 없고 삭제만 됩니다.
-- 보관: `purchased_on`(없으면 `created_at`)부터 6개월. 매일 작업이 지난 영수증을 이미지·품목과 함께 삭제합니다. 6개월보다 오래된 구매일은 등록할 수 없습니다(`INVALID_INPUT`). 식비 조회용 인덱스 `(user_id, purchased_on)`.
+- 보관: `purchased_on`부터 6개월. 매일 작업이 지난 영수증을 이미지·품목과 함께 삭제합니다. 6개월보다 오래된 구매일은 등록할 수 없습니다(`INVALID_INPUT`). 식비 조회용 인덱스 `(user_id, purchased_on)`.
 
 ### 10. receipt_items (영수증 품목)
 
@@ -906,6 +912,7 @@ erDiagram
 | user_id | bigint | FK | users | 아니오 | | 회원 |
 | recipe_id | bigint | FK | recipes | 예 | | 묶음 기준 레시피(메뉴명만 있는 칸이면 null) |
 | meal_plan_id | bigint | FK | meal_plans | 예 | | 식단표에서 왔으면 |
+| meal_plan_slot_id | bigint | FK | meal_plan_slots | 예 | | 출처 식단 칸(레시피 저장이면 null). ON DELETE SET NULL |
 | group_name | varchar | | | 아니오 | | 화면의 묶음 이름(레시피 제목·메뉴명) |
 | name | varchar | | | 아니오 | | 재료 이름 |
 | amount | numeric(10,3) | | | 아니오 | | 수량(변경 가능) |
@@ -914,6 +921,13 @@ erDiagram
 | updated_at | timestamp | | | 아니오 | | 수량 변경 시각 |
 
 - 직접 추가 API가 없어 항상 자동으로 담김. 같은 재료라도 레시피별로 따로 둠.
+- [#46 결정](https://github.com/likelion-backendschool-9th/REMAKE/issues/46): `cart/application/port/in`의 `AddCartItemsUseCase.add(Long userId, CartSource source, List<CartGroup> groups)`로 담음. 실제 추가한 행 수를 `int`로 반환하고, 호출 측은 이를 `cartAddedCount`로 응답함.
+- `CartGroup`: NULL 가능한 `recipeId`, `mealPlanId`, `mealPlanSlotId`와 `groupName`, `items`. 각 `CartItem`은 `name`, `amount`(`BigDecimal`), `unit`(기존 14개 단위 코드)을 가짐. `CartSource`: `MEAL_PLAN`, `RECIPE_SAVE`, `SHARED_RECIPE_SAVE`.
+- 식단표는 칸마다 묶음 하나로 `recipeId = null`, `mealPlanId`, `mealPlanSlotId`, `groupName = 메뉴명`을 전달함. 레시피 저장은 `recipeId`, `groupName = 레시피 제목`, `mealPlanSlotId = null`을 전달함.
+- 빈 목록과 재료가 없는 묶음은 건너뜀. 추가 건수가 없으면 0을 반환하고 이벤트를 보내지 않음. 추가한 경우 장바구니 UseCase에서만 호출당 `cart_item_added` 1건을 발행하며, `cart_source`와 전체 추가 행 수인 `item_count`를 기록함. 롤백된 담기를 성공 이벤트로 남기지 않음.
+- 호출자의 트랜잭션에 `REQUIRED`로 참여하고 `REQUIRES_NEW`는 사용하지 않음. 식단표·레시피 저장 실패 시 장바구니 변경도 함께 롤백함. 식단표 생성 재시도는 공통 `Idempotency-Key` 처리에 맡기고 담기 UseCase에 별도 재시도 중복 방지를 추가하지 않음.
+- 식단표 덮어쓰기는 `RemoveCartItemsByMealPlanSlotsUseCase.remove(userId, slotIds)`로 해당 사용자의 교체 대상 칸에 연결된 항목만 삭제함. 사용자가 수량을 수정한 항목도 포함함. 한 트랜잭션에서 기존 칸의 장바구니 항목 삭제 → 기존 칸 삭제 → 새 칸 저장 → 새 장바구니 항목 추가 순서로 처리함. 유지되는 칸의 항목은 보존하고 자동 정리에는 사용자 삭제 이벤트를 발행하지 않음.
+- `meal_plan_slot_id`는 `recipe_id`·`meal_plan_id`처럼 NULL을 허용하고 `ON DELETE SET NULL`로 정의함. 덮어쓰기에서는 칸 삭제 전에 UseCase로 항목을 정리하며, FK 삭제 동작으로 이 정리를 대체하지 않음.
 
 ### 21. shared_recipes (공유 레시피)
 
@@ -1103,4 +1117,4 @@ ERD는 그대로 두고 코드에서 지키는 규칙입니다.
 | 생성 횟수 | 지급분은 `UPDATE ... SET remaining = remaining - 1 WHERE id = ? AND remaining > 0`로 줄이고, 바뀐 행이 0이면 다음 지급분 | 동시 생성 시 같은 지급분 중복 사용 방지 |
 | 공유 공간 | 저장·저장 취소와 `save_count` 변경을 같은 트랜잭션에서 | 저장 수가 따로 놀지 않게 |
 | 공유 공간 | 숨김·삭제는 공유글만 바꾸고 사본은 그대로 | 사본은 식단 칸·요리 기록에 쓰였을 수 있음 |
-| 정리 작업 | 매일 새벽: 구매일(없으면 저장일) 기준 6개월 지난 영수증과 그 이미지·품목, 알림(30일), 이벤트 원본(180일), 인증번호(하루 지난 것), 중복 요청 키(24시간) | 계속 쌓이는 테이블 |
+| 정리 작업 | 매일 새벽: 구매일 기준 6개월 지난 영수증과 그 이미지·품목, 알림(30일), 이벤트 원본(180일), 인증번호(하루 지난 것), 중복 요청 키(24시간) | 계속 쌓이는 테이블 |

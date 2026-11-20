@@ -39,7 +39,9 @@
 - 같은 기간에 이미 식단표가 있으면 `MEAL_PLAN_OVERLAP`(`overwrite`로 덮어쓰기 가능). 재료로 하루도 못 채우면 `MEAL_PLAN_NO_INGREDIENTS`(422).
 - 식단 추가: 이미 찬 칸은 `SLOT_ALREADY_EXISTS`, 지난 날짜는 `PAST_DATE_NOT_ALLOWED`, 레시피가 없으면 `RECIPE_NOT_FOUND`.
 - 알레르기(제외 재료)와 가구원 수·식사 인원을 생성에 반영. AI 입력은 id·enum만(자유 입력 금지), 응답 검증은 04와 같은 클라이언트·검증기를 재사용.
-- 부족한 재료를 `cart_items`에 넣는 일은 최유리(07)의 서비스를 호출합니다(레시피별 묶음, 합산하지 않음).
+- 부족 재료는 [07의 공통 계약](07_shared-cart.md#장바구니-구현-규칙-46-확정)에 따라 `AddCartItemsUseCase.add(userId, CartSource.MEAL_PLAN, groups)`로 담습니다(#46 확정). 칸마다 묶음 하나로 `recipeId = null`, `mealPlanId`, `mealPlanSlotId`, `groupName = 메뉴명`, `items`를 전달하며 합산하지 않습니다. 부족 재료가 없는 칸은 제외하고, 반환된 실제 추가 행 수를 `cartAddedCount`로 응답합니다.
+- `overwrite`는 교체할 칸만 대상으로 같은 트랜잭션에서 `RemoveCartItemsByMealPlanSlotsUseCase.remove(userId, slotIds)` → 기존 칸 삭제 → 새 칸 저장 → 담기 순서로 처리합니다. 유지되는 칸의 장바구니 항목은 보존하고 교체 대상 칸의 항목은 수량 수정 여부와 관계없이 삭제합니다. 장바구니 변경도 함께 롤백하며, 자동 정리에는 사용자 삭제 이벤트를 보내지 않습니다.
+- 식단표 생성의 동일 요청 재시도는 공통 `Idempotency-Key` 처리에 맡깁니다. 장바구니 담기 UseCase에 별도 재시도 중복 방지를 추가하지 않습니다.
 - 프론트는 60초 타임아웃과 생성 중 화면이 필요합니다(진행 표시 방식은 미결).
 
 ## 에러 코드

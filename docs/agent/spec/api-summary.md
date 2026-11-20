@@ -42,8 +42,8 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/user/receipts/scan` | Multipart `image` (10 MB; jpg/png/heic). **Analysis only, nothing stored.** Returns `items[]` (food only: name, categoryCode, amount, unit, price, storage, expirationDate, isExpirationEstimated), `purchasedOn`, `storeName`, `storeCode` (15 codes, `ETC` fallback), `duplicateSuspected`. No scan limit. Events: receipt_scan_succeeded, receipt_scan_failed |
-| POST | `/user/receipts` | Confirm + save (multipart `image` + `payload` JSON with `items[].register`). One transaction; only items with `register: true` become fridge ingredients. Response `{ receiptId, registeredCount }`. Purchase date older than 6 months -> INVALID_INPUT. Events: ingredient_added, receipt_saved |
+| POST | `/user/receipts/scan` | Multipart `image` (10 MB; jpg/png/heic). **Analysis only, nothing stored.** Returns `items[]` (food only: name, categoryCode, amount, unit, price, storage, expirationDate, isExpirationEstimated), `purchasedOn` and `storeName` (nullable when unreadable), `storeCode` (15 codes, `ETC` fallback), `duplicateSuspected`. No scan limit. Events: receipt_scan_succeeded, receipt_scan_failed |
+| POST | `/user/receipts` | Confirm + save (multipart `image` + `payload` JSON with required `purchasedOn`, nonblank `storeName`, and `items[].register`). One transaction; only items with `register: true` become fridge ingredients. Response `{ receiptId, registeredCount }`. Purchase date older than 6 months -> INVALID_INPUT. Events: ingredient_added, receipt_saved |
 | GET | `/user/receipts` | `?month=YYYY-MM` (within last 6 months). Item `{ id, storeName, storeCode, purchasedOn, foodItemCount, foodAmount }` |
 | GET | `/user/receipts/{id}` | Items, total, signed image URL |
 | DELETE | `/user/receipts/{id}` | Removes image/items; fridge ingredients stay; amounts leave spending stats |

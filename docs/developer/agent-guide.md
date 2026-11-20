@@ -12,6 +12,7 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 이 저장소에서 작업할 
 | `backend/` | Spring Boot API 서버 | [`backend-convention.md`](backend-convention.md) (컨벤션), [`erd.md`](erd.md) (ERD), [`backend-testing.md`](backend-testing.md) (테스트) |
 | `frontend/` | Next.js PWA | `frontend/AGENTS.md` (있는 경우) |
 | `deploy/`, `compose.prod.yml` | 배포 설정 | [`deployment.md`](deployment.md) |
+| `design/tokens/` | 디자인 토큰 생성기(`build_tokens.py`)와 결과물 | [`design-tokens.md`](design-tokens.md) |
 | `docs/agent/` | AI 에이전트용 문서 (영문) | 5장 참고 |
 | `docs/developer/` | 개발자용 문서 (한글) | 5장 참고 |
 | `.github/` | CI 워크플로, PR·이슈 템플릿 | — |
@@ -179,5 +180,6 @@ PR에서 CI가 무엇을 검사하고 결과를 어떻게 보는지는 [`docs/de
 | `docs/agent/backend-testing.md` | `docs/developer/backend-testing.md` |
 | `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
 | `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |
+| `docs/agent/design-tokens.md` | `docs/developer/design-tokens.md` |
 
 새 짝을 추가하면 이 표와 `AGENTS.md`의 표에 모두 한 줄씩 추가합니다.
