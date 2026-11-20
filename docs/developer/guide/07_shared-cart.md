@@ -4,6 +4,12 @@
 
 레시피 공유(완전 익명), 이번 주 레시피 랭킹(TOP 100)과 금주 TOP 3, 공유 레시피 상세·저장·신고, 주간 보상 지급, 장바구니(부족 재료 자동 담기).
 
+## 구현·이벤트 검증 우선순위 ([#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58) 확정)
+
+- 공유·장바구니·주간 보상 기능은 P1을 유지합니다. 이 기능들의 이벤트 발행·검증도 각 P1 기능 일정에 맞춰 진행하며, 11.8의 P0 시연 검증을 위해 기능 전체를 P0로 올리지 않습니다.
+- 공유·장바구니·보상 이벤트는 `cart_item_added`, `cart_viewed`, `cart_amount_changed`, `cart_items_deleted`, `ranking_viewed`, `shared_recipe_viewed`, `shared_write_started`, `shared_recipe_published`, `shared_recipe_saved`, `shared_recipe_reported`, `weekly_reward_granted`입니다. 공유 저장에서 함께 발행하는 `recipe_saved`도 이 경로는 P1 일정에 맞춥니다.
+- 이벤트 이름·속성·발행 책임은 기존 계약을 유지합니다. 04의 내 레시피 저장처럼 다른 기능도 사용하는 이벤트는 호출 경로별 일정으로 구분합니다([08의 시연 범위](08_event-tracking.md#시연-우선순위와-선행-관계-58-확정)).
+
 ## 화면 (피그마 프레임)
 
 4.1.4-이번 주 레시피 랭킹(+스켈레톤, 최신순, 인풋 포커스), 4.1.4.1-공유 레시피 상세(+저장, 신고하기, 스켈레톤), 4.1.1.1-레시피 공유 작성(+인풋 포커스, 사진 수정, 완료), 장바구니(+항목 선택, 빈 리스트, 삭제), 모달(공유 확인 등)

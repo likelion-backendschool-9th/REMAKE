@@ -126,6 +126,10 @@ Fully anonymous: no author info in any response.
 
 ## Admin (all under `/admin`, ADMIN only; every action writes `admin_audit_logs`)
 
+Decision [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58): WBS 8.2 analytics APIs (dashboard, metrics, funnels, event log/catalog) remain P0. The ADMIN authorization check and non-admin blocking required by these APIs are P0 prerequisites from WBS 8.1, not an upgrade of all admin features. Implement and verify this gate first: ADMIN allowed, authenticated non-admin 403 `FORBIDDEN`, unauthenticated requests rejected through server security filters. Other admin features remain P1. Access control is tracked in [#84](https://github.com/likelion-backendschool-9th/REMAKE/issues/84), analytics in [#93](https://github.com/likelion-backendschool-9th/REMAKE/issues/93).
+
+WBS 11.8 P0 event verification covers only first-demo features. Sharing/cart/reward events follow their P1 feature schedules; see [the event priority rules](events.md#demo-implementation-and-verification-priority-decision-58). Event names and payloads are unchanged.
+
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/admin/dashboard/summary` | North-star metric, KPI cards, alerts (`?from&to&includeSeed`) |
