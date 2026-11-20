@@ -13,6 +13,15 @@ Source of truth: the event data definition sheet (Korean, Google Sheets; not in 
 - Automatic cart cleanup through `RemoveCartItemsByMealPlanSlotsUseCase` during meal-plan overwrite emits no user-deletion event (`cart_items_deleted`).
 - Raw events are kept 180 days; daily aggregation in `event_daily_stats`.
 
+## Demo implementation and verification priority (decision [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58))
+
+- WBS 11.8 P0 verification covers only events from features included in the first demo. Sharing, cart, and weekly rewards remain P1; implement and verify their events with their respective P1 features. Preserve names, properties, CLIENT/SERVER ownership, and publishing responsibilities.
+- Defer `cart_item_added`, `cart_viewed`, `cart_amount_changed`, `cart_items_deleted`, `ranking_viewed`, `shared_recipe_viewed`, `shared_write_started`, `shared_recipe_published`, `shared_recipe_saved`, `shared_recipe_reported`, and `weekly_reward_granted` to those feature schedules. Previously P0 events in this group are marked P1 below; existing P1/P2 distinctions remain.
+- For `recipe_saved` (E44), verify the own-recipe save path with its P0 demo feature; the shared-recipe save path follows the P1 sharing schedule. A shared event name does not promote all its publishing paths to P0.
+- WBS 8.2 analytics APIs remain P0. Implement and verify ADMIN authorization and non-admin blocking first (the required part of WBS 8.1 is P0); other admin features remain P1. Verify ADMIN access, an authenticated non-admin's 403 `FORBIDDEN`, and unauthenticated rejection through the real security filters before analytics implementation/demo. Frontend route blocking alone is insufficient.
+- Implementation is tracked in [#84](https://github.com/likelion-backendschool-9th/REMAKE/issues/84) (ADMIN access), [#93](https://github.com/likelion-backendschool-9th/REMAKE/issues/93) (analytics), [#65](https://github.com/likelion-backendschool-9th/REMAKE/issues/65) (server tracker/ingest), and [#116](https://github.com/likelion-backendschool-9th/REMAKE/issues/116) (frontend tracker). These requirements are not evidence that implementation is complete.
+- Ask the team lead to update the external WBS: mark the required ADMIN gate as P0 and a predecessor of 8.2, restrict 11.8 P0 verification to first-demo feature events, and schedule sharing/cart/reward events with their P1 features. Repository edits do not update the WBS sheet.
+
 ## Events
 
 | ID | Name | Source | Priority | Properties | Publisher API |
@@ -79,7 +88,7 @@ Source of truth: the event data definition sheet (Korean, Google Sheets; not in 
 | E59 | `meal_slot_detail_generated` | SERVER | P1 | recipe_id, duration_ms | POST /user/meal-plan-slots/{slotId}/detail |
 | E60 | `meal_slot_detail_failed` | SERVER | P1 | error_code, duration_ms | POST /user/meal-plan-slots/{slotId}/detail |
 | E61 | `meal_added` | SERVER | P0 | meal_type, date_relation, recipe_id | POST /user/meal-plan-slots |
-| E62 | `cart_item_added` | SERVER | P0 | cart_source, item_count | POST /user/meal-plans/generate / PUT /user/saved-recipes/{recipeId} / PUT /user/shared-recipes/{id}/save |
+| E62 | `cart_item_added` | SERVER | P1 | cart_source, item_count | POST /user/meal-plans/generate / PUT /user/saved-recipes/{recipeId} / PUT /user/shared-recipes/{id}/save |
 | E63 | `cart_viewed` | CLIENT | P1 | group_count, item_count | POST /user/events (sent by frontend) |
 | E64 | `cart_amount_changed` | CLIENT | P2 | (common only) | POST /user/events (sent by frontend) |
 | E65 | `cart_items_deleted` | CLIENT | P1 | deleted_count, was_select_all | POST /user/events (sent by frontend) |
@@ -87,9 +96,9 @@ Source of truth: the event data definition sheet (Korean, Google Sheets; not in 
 | E67 | `notification_clicked` | CLIENT | P0 | notification_type, click_from | POST /user/events (sent by frontend) |
 | E68 | `notification_list_viewed` | CLIENT | P1 | unread_count | POST /user/events (sent by frontend) |
 | E69 | `ranking_viewed` | CLIENT | P1 | ranking_view, query_used | POST /user/events (sent by frontend) |
-| E70 | `shared_recipe_viewed` | CLIENT | P0 | shared_recipe_id, view_from, rank_bucket | POST /user/events (sent by frontend) |
-| E71 | `shared_write_started` | CLIENT | P0 | recipe_id | POST /user/events (sent by frontend) |
-| E72 | `shared_recipe_published` | SERVER | P0 | shared_recipe_id, photo_count | POST /user/shared-recipes |
-| E73 | `shared_recipe_saved` | SERVER | P0 | shared_recipe_id, cart_added_count | PUT /user/shared-recipes/{id}/save |
-| E74 | `shared_recipe_reported` | SERVER | P0 | shared_recipe_id, report_reason | POST /user/shared-recipes/{id}/reports |
+| E70 | `shared_recipe_viewed` | CLIENT | P1 | shared_recipe_id, view_from, rank_bucket | POST /user/events (sent by frontend) |
+| E71 | `shared_write_started` | CLIENT | P1 | recipe_id | POST /user/events (sent by frontend) |
+| E72 | `shared_recipe_published` | SERVER | P1 | shared_recipe_id, photo_count | POST /user/shared-recipes |
+| E73 | `shared_recipe_saved` | SERVER | P1 | shared_recipe_id, cart_added_count | PUT /user/shared-recipes/{id}/save |
+| E74 | `shared_recipe_reported` | SERVER | P1 | shared_recipe_id, report_reason | POST /user/shared-recipes/{id}/reports |
 | E75 | `weekly_reward_granted` | SERVER | P1 | reward_rank, reward_amount | 서버 배치 금주의 레시피(WBS 7.3) |

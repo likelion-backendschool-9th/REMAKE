@@ -41,6 +41,10 @@ p1-로그인, p1-로그인-최근 로그인, 스플래쉬, p1.1-가구원 수(+�
 - 알레르기 같은 설정 값은 본인만 조회, 건강 상태(질환) 정보는 수집하지 않습니다. 제외 재료 이름은 이벤트에 넣지 않고 개수만.
 - 설정의 프리미엄 구독 화면은 UI만 만들고 기능은 없습니다.
 
+## 분석 API 접근 제어 우선순위 (#58 확정)
+
+- [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58) 결정에 따라 8.2 분석 API에 필요한 ADMIN 권한 검사와 비관리자 접근 차단은 P0 선행 작업입니다. 분석 API 구현·시연 전에 실제 보안 필터를 통과하는 ADMIN 허용·일반 사용자 403·비로그인 차단을 검증합니다. 그 외 어드민 기능은 P1을 유지합니다.
+
 ## 에러 코드
 
 `OAUTH_FAILED`, `OAUTH_PROVIDER_UNSUPPORTED`, `ACCOUNT_SUSPENDED`, `REFRESH_TOKEN_INVALID`, `CATALOG_ITEM_NOT_FOUND`, `ACCOUNT_EMAIL_MISSING`, `DELETION_CODE_RESEND_TOO_SOON`, `DELETION_CODE_INVALID`(details에 남은 횟수), `DELETION_CODE_EXPIRED`, `DELETION_CODE_LOCKED`, 공통 `UNAUTHORIZED`·`TOKEN_EXPIRED`·`FORBIDDEN`.
