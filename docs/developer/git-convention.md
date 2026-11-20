@@ -159,7 +159,7 @@ git push -u origin docs/git-convention
 - 하나의 커밋에는 하나의 주요 변경 사항을 담는다.
 - `수정`, `작업`, `update`처럼 의미가 모호한 메시지는 사용하지 않는다.
 - 본문은 한국어 목록(`- `)으로 변경 내용과 이유를 적는다. 제목을 반복하지 않는다.
-- 커밋 메시지와 PR 본문에 AI 도구의 공동 작성자 표기(`Co-Authored-By: Claude ...`)나 `Generated with ...` 문구를 넣지 않는다. `PR Attribution Check` CI에서 실패한다.
+- 커밋 메시지와 PR 본문에 AI 도구의 공동 작성자 표기(`Co-Authored-By: Claude ...`)나 `Generated with ...`·`Made with ...`(예: `Made with Cursor`) 문구를 넣지 않는다. `PR Attribution Check` CI에서 실패한다.
 
 ### 예시
 

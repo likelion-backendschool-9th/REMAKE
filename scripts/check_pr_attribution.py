@@ -7,11 +7,14 @@ import subprocess
 import sys
 
 
-AGENT = re.compile(r"\b(?:claude|codex|copilot|chatgpt|openai|gemini)\b|anthropic\.com", re.I)
+AGENT = re.compile(
+    r"\b(?:claude|codex|copilot|chatgpt|openai|gemini|cursor)\b|anthropic\.com|cursoragent",
+    re.I,
+)
 CO_AUTHOR = re.compile(r"^\s*co-authored-by:\s*(.+)$", re.I | re.M)
 PR_BYLINE = re.compile(
-    r"^\s*(?:🤖\s*)?generated with\s+\[?"
-    r"(?:claude code|codex|github copilot|copilot|chatgpt|gemini)\b",
+    r"^\s*(?:🤖\s*)?(?:generated|made) with\s+\[?"
+    r"(?:claude code|codex|github copilot|copilot|chatgpt|gemini|cursor)\b",
     re.I | re.M,
 )
 SESSION_LINK = re.compile(r"^\s*claude-session\s*:", re.I | re.M)
@@ -40,6 +43,7 @@ def main() -> int:
         if (
             AGENT.search(author)
             or any(AGENT.search(co_author) for co_author in co_authors)
+            or PR_BYLINE.search(message)
             or SESSION_LINK.search(message)
         ):
             errors.append(f"commit {commit[:12]} contains AI agent attribution")
