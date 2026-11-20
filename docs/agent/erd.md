@@ -24,7 +24,7 @@
 | 11/20 decision | `receipts.status` (SCANNED/CONFIRMED) removed. Only confirmed receipts are stored; `receipts.image_key` NOT NULL | The scan API only analyzes and stores nothing. The confirm API saves the receipt, items, and fridge ingredients in one transaction |
 | 11/20 decision | `receipts.store_code` added | Store icon (15 codes, `ETC` fallback) |
 | 11/20 decision | `receipts.total_price` removed; `receipts` and `receipt_items` drop `updated_at` and extend `BaseCreatedEntity` (5 tables now have `updated_at`) | Spending is always the sum of food items, so the printed total is never used. A confirmed receipt is never edited |
-| 11/20 decision | Receipt retention: 6 months by purchase date (saved date if none), then deleted with images and items. The 7-day unconfirmed cleanup and 1-year image retention are removed | Spending comparison uses the last 6 months. Nothing unconfirmed is stored |
+| 11/20 decision | Receipt retention: 6 months by purchase date, then deleted with images and items. The 7-day unconfirmed cleanup and 1-year image retention are removed | Spending comparison uses the last 6 months. Nothing unconfirmed is stored |
 | 11/20 decision | `receipt_items` stores food items only; `category_id` NOT NULL | OCR returns food items only (non-food lines are filtered out) |
 | 11/20 decision | `notifications.receipt_id` and type `RECEIPT_DONE` removed (EXPIRY_SOON/EXPIRED only) | OCR is synchronous, so there is no "analysis finished" notification |
 | 11/20 decision | `generation_quota_grants.expires_at` added (one month after the grant) | Weekly rewards must be used within one month |
@@ -242,7 +242,7 @@ erDiagram
     string store_name "Store"
     string store_code "Store icon code (15 codes, ETC fallback)"
     string image_key "Storage path. Deleted with the receipt"
-    timestamp created_at "Save (confirm) time. Retention basis if n…"
+    timestamp created_at "Save (confirm) time"
   }
   receipt_items {
     bigint id PK "ID"
@@ -754,15 +754,16 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | --- | --- | --- | --- | --- | --- | --- |
 | id | bigint | PK | | No | | ID |
 | user_id | bigint | FK | users | No | | Member |
-| purchased_on | date | | | Yes | | Purchase date (basis of the monthly total and the 6-month retention) |
-| store_name | varchar | | | Yes | | Store |
-| store_code | varchar | | | Yes | | Store icon code (15 codes: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). `ETC` if not matched; the screen then shows `store_name` (the name OCR read) with the default icon |
+| purchased_on | date | | | No | | Purchase date (basis of the monthly total and the 6-month retention) |
+| store_name | varchar | | | No | | Store |
+| store_code | varchar | | | Yes | | Store icon code (15 codes: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). `ETC` if not matched; the screen then shows `store_name` (the confirmed store name) with the default icon |
 | image_key | varchar | | | No | | Storage path. Deleted together with the receipt |
-| created_at | timestamp | | | No | | Save (confirm) time. Retention basis when `purchased_on` is null |
+| created_at | timestamp | | | No | | Save (confirm) time |
 
 - Spending amounts are always the sum of food items (`receipt_items.price`), not the total printed on the receipt.
 - Only confirmed receipts are stored. `POST /receipts/scan` analyzes and stores nothing; `POST /receipts` saves the receipt, its items, and the registered fridge ingredients in one transaction. A confirmed receipt cannot be edited, only deleted.
-- Retention: 6 months from `purchased_on` (or `created_at` if null). A daily job deletes older receipts with their images and items. A purchase date older than 6 months cannot be registered (`INVALID_INPUT`). Index `(user_id, purchased_on)` for spending queries.
+- Purchase date and store name are required at final registration. The user enters any value OCR could not read on the review screen.
+- Retention: 6 months from `purchased_on`. A daily job deletes older receipts with their images and items. A purchase date older than 6 months cannot be registered (`INVALID_INPUT`). Index `(user_id, purchased_on)` for spending queries.
 
 ### 10. receipt_items (Receipt items)
 
@@ -1116,4 +1117,4 @@ Rules kept in code while the ERD stays as is.
 | Quota | Reduce a grant with `UPDATE ... SET remaining = remaining - 1 WHERE id = ? AND remaining > 0`; if no row changed, use the next grant | Prevents two concurrent generations from spending the same grant |
 | Shared space | Change `save_count` in the same transaction as save and unsave | Keeps the save count consistent |
 | Shared space | Hiding or deleting changes only the shared post; copies stay | Copies may already be used in meal plan slots or cook logs |
-| Cleanup jobs | Every early morning: receipts older than 6 months by purchase date (saved date if none) with images and items, notifications (30 days), raw events (180 days), deletion codes (older than a day), duplicate request keys (24 hours) | Tables that keep growing |
+| Cleanup jobs | Every early morning: receipts older than 6 months by purchase date with images and items, notifications (30 days), raw events (180 days), deletion codes (older than a day), duplicate request keys (24 hours) | Tables that keep growing |
