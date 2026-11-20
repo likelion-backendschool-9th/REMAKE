@@ -22,7 +22,7 @@
 
 ## 지금 상태
 
-- `dev`에 `backend/` 변경이 들어오면 `Backend CD`, `frontend/` 변경이 들어오면 `Frontend CD`가 실행된다. 공용 배포 파일(`compose.prod.yml`, `deploy/`)이 바뀌면 둘 다 실행된다.
+- `dev`에 `backend/` 변경이 들어오면 `Backend CD`, `frontend/` 변경이 들어오면 `Frontend CD`가 실행된다. 공용 배포 파일(`compose.prod.yml`, `deploy/`)이 바뀌면 둘 다 실행된다. `backend/`, `frontend/` 아래의 마크다운 파일(`AGENTS.md`, `blueprint.md`, `README.md` 등)만 바뀐 경우는 배포하지 않는다. 앱이 바뀌지 않는데 다시 배포하면 롤백용으로 남겨 둔 이전 버전만 덮어쓰기 때문이다.
 - 각 CD는 먼저 검사(백엔드 `./gradlew build`, 프론트 `pnpm lint`, `pnpm typecheck`, `pnpm build`)를 하고, 통과해야 서버에 배포한다.
 - 배포 파일(`compose.prod.yml`, `deploy/`)을 바꾼 PR은 머지 전에 `Deploy CI`가 검사한다. `deploy/`의 셸 스크립트(`bash -n`, `shellcheck`), `deploy/prod.env.example`의 빈 값을 채워 넣은 `compose.prod.yml`(`docker compose config`), 그리고 `deploy/deploy.sh`가 서버에서 하는 것과 같은 방식의 `nginx -t`로 프록시 Nginx 설정을 검사한다. `compose.prod.yml`에 필수 변수(`${VAR:?...}`)를 추가하고 `deploy/prod.env.example`에 빠뜨리면 이 검사가 실패한다. 자세한 내용은 [`ci.md`](ci.md#배포-파일워크플로-검사-deploy-ci)를 본다.
 - 개발 서버: <https://remake.newlecture.com> (HTTP로 접속하면 HTTPS로 이동한다).
@@ -89,6 +89,8 @@ bash deploy/deploy.sh status              # 앱별 활성 슬롯과 컨테이너
 
 드물게 되돌리기까지 실패하면(예: 이전 설정으로 reload 실패) 프록시가 새 슬롯을 가리키고 있을 수 있다. 이때는 어느 슬롯을 꺼도 장애가 날 수 있으므로 새 슬롯과 이전 슬롯을 모두 그대로 두고 "수동 확인 필요" 오류로 중단한다. `bash deploy/deploy.sh status`와 `proxy/<앱>.conf`를 확인하고, `docker compose --env-file .env -f compose.prod.yml exec proxy nginx -s reload`로 프록시를 기록 파일에 맞춘 뒤, 쓰지 않는 슬롯을 직접 종료한다.
 
+`deploy/deploy.sh`는 가장 먼저 compose가 서버 `.env`로 `compose.prod.yml`을 해석할 수 있는지 확인한다(`docker compose config`). `status`와 `rollback`도 같다. 해석하지 못하면 compose가 출력한 메시지를 보여 주고 `compose.prod.yml 을 해석하지 못했다`로 중단하며, 아무것도 바꾸지 않는다. 흔한 원인은 서버 `.env`에 아직 없는 새 필수 변수다. 서버 `.env`에 값을 넣고 실패한 CD 실행을 다시 실행한다(**Actions** → 실패한 실행 → **Re-run failed jobs**). Backend CD와 Frontend CD가 둘 다 실패했을 수 있다. 변수를 없앨 때는 반대 순서로, `compose.prod.yml`에서 먼저 빼고 머지한 뒤 서버 `.env`에서 지운다.
+
 프록시는 슬롯 이름(`backend-blue`, `frontend-green` 등)을 도커 내부 DNS로 10초마다 다시 조회한다. 그래서 활성 슬롯 컨테이너가 재시작되거나 서버가 재부팅되어 IP가 바뀌어도, 다음 배포를 기다리지 않고 자동으로 새 IP를 따라간다.
 
 ## 확인
@@ -108,7 +110,7 @@ DB 스키마는 Flyway로 관리한다. 테이블 변경은 `backend/src/main/re
 | 조건 | 이유 | 지키지 않으면 | 하는 법 |
 | --- | --- | --- | --- |
 | 헬스체크 경로는 인증 없이 응답 | 도커 헬스체크와 `deploy/deploy.sh`의 전환 확인이 `/actuator/health/readiness`를 인증 정보 없이 호출한다. Spring Security를 추가하면 기본값으로 모든 경로에 인증이 필요해진다. | 새 슬롯이 정상 상태가 되지 않아 배포가 매번 실패한다(이전 버전은 계속 서비스된다). | Security 설정에서 `/actuator/health/**`를 인증 없이 허용한다. 외부 사용자는 프록시가 `/actuator`를 404로 막고, 운영 프로필은 `health`만 노출하므로 바깥에 드러나지 않는다. |
-| 새 환경 변수는 `compose.prod.yml`에도 추가 | 서버의 `.env`는 compose가 설정 파일의 `${...}`를 채울 때만 쓰인다. 컨테이너에는 `compose.prod.yml`의 `environment`에 적힌 값만 들어간다. | 로컬에서는 동작하고 운영에서만 기동에 실패한다. | 새 설정 값(토큰 비밀 키, 외부 API 키 등)을 백엔드 `environment`와 `deploy/prod.env.example`에 함께 추가하고, 서버 `.env`에 실제 값을 넣도록 배포 담당자에게 알린다. |
+| 새 환경 변수는 `compose.prod.yml`에도 추가 | 서버의 `.env`는 compose가 설정 파일의 `${...}`를 채울 때만 쓰인다. 컨테이너에는 `compose.prod.yml`의 `environment`에 적힌 값만 들어간다. | 로컬에서는 동작하고 운영에서만 기동에 실패한다. compose는 파일 전체를 먼저 해석하기 때문에, 필수 변수(`${VAR:?...}`)가 서버 `.env`에 없으면 모든 compose 명령이 실패한다. 값을 넣을 때까지 백엔드·프론트 배포와 롤백이 모두 실패한다. 이미 떠 있는 컨테이너는 계속 서비스한다. | 새 설정 값(토큰 비밀 키, 외부 API 키 등)을 백엔드 `environment`와 `deploy/prod.env.example`에 함께 추가한다. **머지 전에** PR 본문에서 배포 담당자(`@Yunsu0407`)를 부르고 변수 이름을 알린다. 배포 담당자가 서버 `.env`에 실제 값을 넣고 PR에 답을 남기면 그다음에 머지한다. `compose.prod.yml`에 새 변수가 생기면 Deploy CI가 경고를 띄운다. |
 | 파일은 컨테이너 안에 저장하지 않음 | 배포할 때마다 새 컨테이너로 바뀐다. 요청 본문 크기는 프록시와 호스트 Nginx 모두 1MB로 제한되어 있다. | 재배포 후 저장한 파일이 사라진다. 1MB가 넘는 요청은 413을 받는다. | 업로드 파일처럼 남겨야 하는 파일은 볼륨이나 외부 저장소에 둔다(도입할 때 배포 담당자와 정한다). |
 | 배포 중 두 버전이 함께 실행됨을 감안 | 새 슬롯이 뜬 뒤 전환하고 이전 슬롯을 끄기까지 보통 수십 초 동안 두 버전이 함께 떠 있다. 서버 메모리에만 있는 상태는 전환할 때 사라진다. | `@Scheduled` 같은 예약 작업이 두 번 실행될 수 있다. 로그인 상태를 서버 메모리 세션에 두면 배포할 때마다 모든 사용자가 로그아웃된다. | 예약 작업은 두 번 실행되어도 문제없게 만들거나 중복 실행을 막는다. 로그인 상태는 서버 메모리 세션에 두지 않는다. |
 | 요청 하나는 60초 안에 끝남 | 프록시와 호스트 Nginx는 응답을 60초까지 기다린다. 배포 때 이전 버전은 처리 중인 요청을 최대 30초까지 기다린 뒤 종료된다. | 오래 걸리는 요청이 504로 끊기거나 배포 때 중단된다. | OCR처럼 오래 걸리는 처리는 요청 안에서 끝까지 기다리지 말고, 작업을 접수한 뒤 상태를 조회하는 방식으로 만든다. |

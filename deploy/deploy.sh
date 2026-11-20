@@ -76,6 +76,18 @@ check_requirements() {
   [[ -f "$ENV_FILE" ]] || die "$ENV_FILE 파일이 없다 (DB 값과 APP_PORT 를 채운 .env 가 필요하다)"
   [[ -f "$COMPOSE_FILE" ]] || die "$COMPOSE_FILE 파일이 없다"
   docker info >/dev/null 2>&1 || die "docker 를 사용할 수 없다 (docker 그룹 권한을 확인한다)"
+  check_compose_config
+}
+
+# compose 는 파일 전체를 먼저 해석한다. 필수 변수(${VAR:?}) 하나만 비어도 모든 compose 명령이 실패해서
+# 아래 단계들이 "postgres 가 실행 중이 아니다", "새 슬롯이 준비되지 않았다" 같은 엉뚱한 이유로 멈춘다.
+# 그래서 시작할 때 한 번 해석해 보고, 실패하면 compose 가 출력한 원인을 그대로 보여 주고 멈춘다.
+check_compose_config() {
+  local out
+  if ! out="$("${COMPOSE[@]}" config --quiet 2>&1)"; then
+    printf '%s\n' "$out" >&2
+    die "$COMPOSE_FILE 을 해석하지 못했다 (위 메시지가 원인). 새 필수 변수가 생겼다면 $ENV_FILE 에 값을 넣고 다시 실행한다. 아무것도 바꾸지 않았다."
+  fi
 }
 
 # 배포와 롤백이 동시에 실행되지 않도록 잠근다. 다른 배포가 진행 중이면 끝날 때까지 기다린다.

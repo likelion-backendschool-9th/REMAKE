@@ -8,8 +8,8 @@
 
 | 워크플로 | 검사하는 PR | 하는 일 | 필수 검사 |
 | --- | --- | --- | --- |
-| Backend CI | `backend/`, `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, `scripts/check_migrations.py`가 바뀐 PR | `./gradlew build`(컴파일, 테스트, jar. 테스트가 PostgreSQL 컨테이너를 직접 띄움), 테스트 요약, Flyway 마이그레이션 파일 검사, 백엔드 Docker 이미지 빌드 | `Backend CI required` |
-| Frontend CI | `frontend/`, `.github/workflows/frontend-ci.yml`이 바뀐 PR | `pnpm lint`, `pnpm typecheck`, `pnpm build`, 프론트 Docker 이미지 빌드 | `Frontend CI required` |
+| Backend CI | `backend/`(`README.md` 같은 마크다운 파일만 바뀐 경우는 제외), `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, `scripts/check_migrations.py`가 바뀐 PR | `./gradlew build`(컴파일, 테스트, jar. 테스트가 PostgreSQL 컨테이너를 직접 띄움), 테스트 요약, Flyway 마이그레이션 파일 검사, 백엔드 Docker 이미지 빌드 | `Backend CI required` |
+| Frontend CI | `frontend/`(`AGENTS.md`, `blueprint.md` 같은 마크다운 파일만 바뀐 경우는 제외), `.github/workflows/frontend-ci.yml`이 바뀐 PR | `pnpm lint`, `pnpm typecheck`, `pnpm build`, 프론트 Docker 이미지 빌드 | `Frontend CI required` |
 | Deploy CI | 배포 파일(`compose.prod.yml`, `deploy/`) 또는 워크플로 파일(`.github/workflows/`)이 바뀐 PR | 배포 파일: 셸 스크립트, Compose, 프록시 Nginx 설정 검사. 워크플로 파일: actionlint | `Deploy CI required` |
 | PR Attribution Check | 모든 PR | 커밋과 PR 본문의 AI 자동 표기 검사 | — |
 | Auto Assign PR Author | 모든 PR | PR 작성자를 담당자로 지정 | — |
@@ -60,7 +60,7 @@ Spring은 설정이 같은 테스트 클래스끼리 한 번 띄운 앱을 재�
 | 바뀐 파일 | 검사 |
 | --- | --- |
 | `deploy/`의 셸 스크립트 | `bash -n`(문법), `shellcheck`(흔한 실수) |
-| `compose.prod.yml` | `deploy/prod.env.example`의 빈 값을 임시 값으로 채워 `docker compose config`. `compose.prod.yml`에 필수 변수(`${VAR:?...}`)를 추가하고 `deploy/prod.env.example`에 빠뜨리면 실패한다 |
+| `compose.prod.yml` | `deploy/prod.env.example`의 빈 값을 임시 값으로 채워 `docker compose config`. `compose.prod.yml`에 필수 변수(`${VAR:?...}`)를 추가하고 `deploy/prod.env.example`에 빠뜨리면 실패한다. `compose.prod.yml`에 새로 생긴 변수는 그 줄에 노란 경고를 띄우고 실행 요약에 (필수 여부와 함께) 목록으로 남긴다. 머지 전에 배포 담당자가 서버 `.env`에 넣어야 한다([배포 문서](deployment.md#배포-구성-때문에-앱에-필요한-것)). 경고는 머지를 막지 않는다 |
 | `deploy/nginx/` | `deploy/deploy.sh`가 서버에서 하는 것과 같은 방식의 `nginx -t` |
 | `.github/workflows/` | actionlint: 문법, 그 자리에서 쓸 수 없는 값, 없는 작업을 가리키는 `needs`, `run` 스크립트(shellcheck), 외부 입력(PR 제목 등)을 스크립트에 그대로 넣는 위험 |
 

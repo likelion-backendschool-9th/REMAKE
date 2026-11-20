@@ -8,8 +8,8 @@ When a PR targets `dev` or `main`, GitHub Actions checks the changed areas. A PR
 
 | Workflow | PRs it checks | What it does | Required check |
 | --- | --- | --- | --- |
-| Backend CI | PRs that change `backend/`, `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, or `scripts/check_migrations.py` | Runs `./gradlew build` (compile, tests, jar; the tests start their own PostgreSQL container), writes the test summary, checks the Flyway migration files, builds the backend Docker image | `Backend CI required` |
-| Frontend CI | PRs that change `frontend/` or `.github/workflows/frontend-ci.yml` | `pnpm lint`, `pnpm typecheck`, `pnpm build`, builds the frontend Docker image | `Frontend CI required` |
+| Backend CI | PRs that change `backend/` (except changes to Markdown files only, such as `README.md`), `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, or `scripts/check_migrations.py` | Runs `./gradlew build` (compile, tests, jar; the tests start their own PostgreSQL container), writes the test summary, checks the Flyway migration files, builds the backend Docker image | `Backend CI required` |
+| Frontend CI | PRs that change `frontend/` (except changes to Markdown files only, such as `AGENTS.md` or `blueprint.md`) or `.github/workflows/frontend-ci.yml` | `pnpm lint`, `pnpm typecheck`, `pnpm build`, builds the frontend Docker image | `Frontend CI required` |
 | Deploy CI | PRs that change the deploy files (`compose.prod.yml`, `deploy/`) or the workflow files (`.github/workflows/`) | Deploy files: checks the shell scripts, Compose, and the proxy Nginx configuration. Workflow files: actionlint | `Deploy CI required` |
 | PR Attribution Check | Every PR | Checks commits and the PR description for automatic AI attribution | — |
 | Auto Assign PR Author | Every PR | Assigns the PR author | — |
@@ -60,7 +60,7 @@ The backend tests start from an empty DB and apply every migration in order, so 
 | Changed files | Check |
 | --- | --- |
 | Shell scripts in `deploy/` | `bash -n` (syntax), `shellcheck` (common mistakes) |
-| `compose.prod.yml` | `docker compose config` with the empty values of `deploy/prod.env.example` filled with placeholder values. Adding a required variable (`${VAR:?...}`) to `compose.prod.yml` without adding it to `deploy/prod.env.example` fails this check |
+| `compose.prod.yml` | `docker compose config` with the empty values of `deploy/prod.env.example` filled with placeholder values. Adding a required variable (`${VAR:?...}`) to `compose.prod.yml` without adding it to `deploy/prod.env.example` fails this check. A variable that is new in `compose.prod.yml` raises a yellow warning on that line and is listed in the run summary (required or not): the deployment owner must put it in the server's `.env` before merging (see the [deployment document](deployment.md#what-the-app-needs-because-of-the-deployment-setup)). The warning does not block the merge |
 | `deploy/nginx/` | `nginx -t`, run the same way `deploy/deploy.sh` runs it on the server |
 | `.github/workflows/` | actionlint: syntax, values not available in that context, `needs` pointing to a missing job, `run` scripts (shellcheck), and external input (such as the PR title) placed directly in a script |
 

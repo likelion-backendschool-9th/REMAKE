@@ -9,6 +9,8 @@ on:
     branches: [dev]
     paths:
       - 'backend/**'
+      # 마크다운(AGENTS.md, README.md 등)만 바뀐 변경은 빌드·검사·배포에 영향이 없어 건너뛴다.
+      - '!backend/**/*.md'
       - 'compose.prod.yml'
       - 'deploy/**'
       - '.github/workflows/backend-cd.yml'
