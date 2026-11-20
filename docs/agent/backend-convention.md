@@ -45,7 +45,7 @@ Feature folders and tables (ERD v3):
 | `recipe` | recipes, recipe_ingredients, recipe_steps, recipe_catalog_items, saved_recipes, recipe_cook_logs |
 | `mealplan` | meal_plans, meal_plan_slots, meal_plan_slot_ingredients |
 | `cart` | cart_items |
-| `share` | shared_recipes, shared_recipe_photos, shared_recipe_reports |
+| `share` | shared_recipes, shared_recipe_photos, shared_recipe_reports, shared_recipe_weekly_ranks |
 | `quota` | usage_logs, generation_quota_grants |
 | `notification` | notifications, push_subscriptions |
 | `event` | events, event_daily_stats |

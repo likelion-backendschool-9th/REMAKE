@@ -1,6 +1,6 @@
 # Data model (32 tables)
 
-Source: `docs/Remake_테이블정의서.xlsx` / `Remake_ERD.html`. PostgreSQL. Column descriptions are in the Korean source; this file lists structure only. `PK`, `FK->table`, `UK`, `?` = nullable.
+Source: `docs/Remake_테이블정의서.xlsx` / `Remake_ERD.html`. PostgreSQL. Column descriptions are in the Korean source; this file lists structure only. `PK`, `FK->table`, `UK`, `?` = nullable. `UK(a, b)` is a composite unique key over those columns. Full column details (defaults, nullability, reasons) are in [`../erd.md`](../erd.md).
 
 Common base classes: `BaseTimeEntity` (created_at, updated_at), `BaseCreatedEntity` (created_at). Feature folder = backend package.
 
@@ -110,7 +110,7 @@ Columns: `id` bigint (PK); `user_id` bigint (FK->users); `start_date` date; `pur
 
 Date/meal slots; AI-generated or MANUAL (user added).
 
-Columns: `id` bigint (PK); `user_id` bigint (FK->users); `meal_plan_id` bigint (FK->meal_plans, ?); `slot_date` date; `meal_type` varchar (UK); `menu_name` varchar; `recipe_id` bigint (FK->recipes, ?); `source` varchar; `created_at` timestamp; `updated_at` timestamp
+Columns: `id` bigint (PK); `user_id` bigint (FK->users); `meal_plan_id` bigint (FK->meal_plans, ?); `slot_date` date; `meal_type` varchar (UK(user_id, slot_date, meal_type)); `menu_name` varchar; `recipe_id` bigint (FK->recipes, ?); `source` varchar; `created_at` timestamp; `updated_at` timestamp
 
 ## 19. `meal_plan_slot_ingredients` — mealplan package
 
@@ -140,19 +140,19 @@ Columns: `id` bigint (PK); `shared_recipe_id` bigint (FK->shared_recipes); `imag
 
 Reports and admin handling result.
 
-Columns: `id` bigint (PK); `shared_recipe_id` bigint (FK->shared_recipes); `reporter_id` bigint (FK,UK->users); `reason` varchar; `reason_detail` varchar (?); `status` varchar; `result` varchar (?); `handled_by` bigint (FK->users, ?); `handled_at` timestamp (?); `created_at` timestamp
+Columns: `id` bigint (PK); `shared_recipe_id` bigint (FK->shared_recipes); `reporter_id` bigint (FK->users; UK(shared_recipe_id, reporter_id)); `reason` varchar; `reason_detail` varchar (?); `status` varchar; `result` varchar (?); `handled_by` bigint (FK->users, ?); `handled_at` timestamp (?); `created_at` timestamp
 
 ## 24. `shared_recipe_weekly_ranks` — share package
 
 Last week TOP 100 saved by the weekly batch; used for rankChange.
 
-Columns: `id` bigint (PK); `week_start` date; `shared_recipe_id` bigint (FK->shared_recipes); `rank_no` int; `save_count` int; `created_at` timestamp
+Columns: `id` bigint (PK); `week_start` date; `shared_recipe_id` bigint (FK->shared_recipes); `rank_no` int (UK(week_start, rank_no)); `save_count` int; `created_at` timestamp
 
 ## 25. `generation_quota_grants` — quota package
 
 Extra recipe generations (weekly reward, admin adjustment); valid one month.
 
-Columns: `id` bigint (PK); `user_id` bigint (FK->users); `amount` int; `remaining` int; `expires_at` timestamp; `reason` varchar; `week_start` date (?); `rank_no` int (UK, ?); `shared_recipe_id` bigint (FK->shared_recipes, ?); `admin_id` bigint (FK->users, ?); `memo` varchar (?); `created_at` timestamp
+Columns: `id` bigint (PK); `user_id` bigint (FK->users); `amount` int; `remaining` int; `expires_at` timestamp; `reason` varchar; `week_start` date (?); `rank_no` int (?; UK(week_start, rank_no)); `shared_recipe_id` bigint (FK->shared_recipes, ?); `admin_id` bigint (FK->users, ?); `memo` varchar (?); `created_at` timestamp
 
 ## 26. `usage_logs` — quota package
 
@@ -164,7 +164,7 @@ Columns: `id` bigint (PK); `user_id` bigint (FK->users); `type` varchar; `status
 
 Notification rows (EXPIRY_SOON, EXPIRED).
 
-Columns: `id` bigint (PK); `user_id` bigint (FK->users); `ingredient_id` bigint (FK->ingredients, ?); `type` varchar; `dedupe_key` varchar (UK); `title` varchar; `body` varchar; `read_at` timestamp (?); `created_at` timestamp
+Columns: `id` bigint (PK); `user_id` bigint (FK->users); `ingredient_id` bigint (FK->ingredients, ?); `type` varchar; `dedupe_key` varchar (UK(user_id, dedupe_key)); `title` varchar; `body` varchar; `read_at` timestamp (?); `created_at` timestamp
 
 ## 28. `push_subscriptions` — notification package
 
@@ -248,4 +248,4 @@ Columns: `user_id` bigint (PK,FK->users); `idempotency_key` varchar (PK); `reque
 - `users` -> `admin_audit_logs` (1:N) via `admin_id`
 - `users` -> `idempotency_keys` (1:N) via `user_id`
 
-Key constraints: UK(provider, provider_user_id) on users; refresh_tokens.token_hash UK; deleting an ingredient with logs is blocked (RESTRICT); index `receipts(user_id, purchased_on)` for expense queries.
+Key constraints: UK(provider, provider_user_id) on users; refresh_tokens.token_hash UK; composite UKs `recipe_steps(recipe_id, step_no)`, `saved_recipes(user_id, recipe_id)` and `(user_id, shared_recipe_id)`, `meal_plan_slots(user_id, slot_date, meal_type)`, `shared_recipe_reports(shared_recipe_id, reporter_id)`, `shared_recipe_weekly_ranks(week_start, rank_no)`, `generation_quota_grants(week_start, rank_no)`, `notifications(user_id, dedupe_key)`; deleting an ingredient with logs is blocked (RESTRICT); index `receipts(user_id, purchased_on)` for expense queries.
