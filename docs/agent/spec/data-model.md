@@ -1,6 +1,6 @@
 # Data model (32 tables)
 
-Source: `docs/Remake_테이블정의서.xlsx` / `Remake_ERD.html`. PostgreSQL. Column descriptions are in the Korean source; this file lists structure only. `PK`, `FK->table`, `UK`, `?` = nullable. `UK(a, b)` is a composite unique key over those columns. Full column details (defaults, nullability, reasons) are in [`../erd.md`](../erd.md).
+Source: table definition and ERD (Korean, kept in Notion / Google Sheets; not in the repo). PostgreSQL. Column descriptions are in the Korean source; this file lists structure only. `PK`, `FK->table`, `UK`, `?` = nullable. `UK(a, b)` is a composite unique key over those columns. Full column details (defaults, nullability, reasons) are in [`../erd.md`](../erd.md).
 
 Common base classes: `BaseTimeEntity` (created_at, updated_at), `BaseCreatedEntity` (created_at). Feature folder = backend package.
 

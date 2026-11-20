@@ -1,6 +1,6 @@
 # API summary
 
-Source: `docs/Remake_API정의서_v3.md`. Base `/api/v1/{public|user|admin}`. All `user` and `admin` calls need `Authorization: Bearer`. Error codes are in `errors.md`. "Events" lists the events the endpoint publishes (see `events.md`). Owner = feature-area owner.
+Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the repo). Base `/api/v1/{public|user|admin}`. All `user` and `admin` calls need a logged-in session. The frontend calls the same domain with relative `/api/...` paths and an HttpOnly cookie; the final token flow is an open decision (`frontend/blueprint.md` §9), so do not add `Authorization: Bearer` handling on your own. Error codes are in `errors.md`. "Events" lists the events the endpoint publishes (see `events.md`). Owner = feature-area owner.
 
 ## Common
 

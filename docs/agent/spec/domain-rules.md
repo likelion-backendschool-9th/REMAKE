@@ -1,6 +1,6 @@
 # Domain rules
 
-Source: PRD v3.1, policy doc v3.1 (`docs/`). Items marked (proposal) are not confirmed by the PO yet; implement them behind named constants.
+Source: PRD v3.1, policy doc v3.1 (Korean, kept in Notion / Google Sheets; not in the repo). Items marked (proposal) are not confirmed by the PO yet; implement them behind named constants.
 
 ## Limits (quota)
 

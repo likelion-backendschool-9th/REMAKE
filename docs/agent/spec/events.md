@@ -1,6 +1,6 @@
 # Event tracking contract
 
-Source of truth: `docs/Remake_이벤트데이터정의서.xlsx` (75 events). Names are snake_case and fixed; to add or rename an event update the sheet first.
+Source of truth: the event data definition sheet (Korean, Google Sheets; not in the repo; 75 events). Names are snake_case and fixed; to add or rename an event update the sheet first.
 
 ## Rules
 

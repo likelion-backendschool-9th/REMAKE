@@ -1,6 +1,6 @@
 # Error contract
 
-Source: `docs/Remake_API예외·에러정의서.md` and `Remake_API에러코드.xlsx`. Codes are fixed UPPER_SNAKE_CASE; never rename. Clients branch on `code`; `message` is Korean user-facing text.
+Source: API exception and error definition (Korean, kept in Notion / Google Sheets; not in the repo). Codes are fixed UPPER_SNAKE_CASE; never rename. Clients branch on `code`; `message` is Korean user-facing text.
 
 ## Response body
 
