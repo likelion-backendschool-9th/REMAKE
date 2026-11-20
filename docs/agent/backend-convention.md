@@ -146,7 +146,7 @@ Use the same word in code, DB, and API.
   - `/api/v1/public/**`, `/actuator/health/**`: allow without authentication. Blocking the health check breaks deployment.
   - `/api/v1/admin/**`: ADMIN only. 403 without the role.
   - All other `/api/v1/**`: login required.
-- In local development the frontend (`http://localhost:3000`) calls the backend (`http://localhost:8080`) directly, so allow it in CORS. Production uses one domain and needs no CORS.
+- In local development the frontend (`http://localhost:3000`) calls the backend (`http://localhost:8080`) directly, so allow it in CORS (`global/config/CorsConfig`, allowed origins in `remake.cors.allowed-origins`). Production uses one domain and needs no CORS.
 - If you need a path outside `/api/` (WebSocket, file download, etc.), tell the deployment owner before building it. The proxy needs a new rule.
 
 ## Responses and errors
@@ -174,7 +174,7 @@ On failure, every API returns this shape. Include `fieldErrors` only for input v
 - Format dates as `2026-12-21` and timestamps as `2026-11-15T09:00:00+09:00`. Money is an integer in won.
 - When a value is missing, return the field as `null`; do not omit it.
 - Never return domain objects or JPA entities directly; convert them to Response DTOs.
-- The frontend generates its API client from the OpenAPI document (`pnpm gen:api`). Declare controller return types as concrete DTOs; never return `Object` or `Map`.
+- The frontend generates its API client from the OpenAPI document (`pnpm gen:api`). Declare controller return types as concrete DTOs; never return `Object` or `Map`. The document is at `/v3/api-docs` on the local backend and the UI at `/swagger-ui.html`. Put `@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)` on APIs that need login.
 - Services only throw `BusinessException(ErrorCode.XXX)`. `GlobalExceptionHandler` in `global/error` builds every error response in one place. Do not build error responses with try-catch in controllers or services.
 - Keep all error codes in the single `global/error/ErrorCode`. Use the same names as the API and error definition documents.
 - 401 (login required) and 403 (forbidden) are rejected in the Security filter chain and never reach `GlobalExceptionHandler`. Return the same shape from `AuthenticationEntryPoint` (401) and `AccessDeniedHandler` (403) in `global/security`.
