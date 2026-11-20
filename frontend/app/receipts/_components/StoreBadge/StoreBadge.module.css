@@ -1,0 +1,115 @@
+/* 마트 브랜드 배지. 이미지 없이 코드로 그린다.
+   모양은 피그마 "브랜드 로고" 프레임(node 5687:2589): 44px 정사각형, 모서리 11px, Pretendard ExtraBold.
+   글자 크기는 약어 길이에 따라 피그마 값(44px 기준 20/16/14/12px)을 --label-size로 두고, 배지 크기에 비례해 계산한다.
+   마트별 색은 이 파일 안의 변수로만 둔다(globals.css·tokens.css에 넣지 않음). 다른 화면에서도 쓰게 되면 그때 공용 위치로 옮긴다. */
+
+.badge {
+  --badge-size: 2.75rem; /* 44px */
+  --label-size: 14; /* 44px 배지 기준 글자 크기(px) */
+  --label-weight: 800;
+  --store-bg: #f2f4f6;
+  --store-fg: #4e5968;
+
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--badge-size);
+  height: var(--badge-size);
+  overflow: hidden;
+  border-radius: calc(var(--badge-size) / 4); /* 44px에서 11px */
+  background: var(--store-bg);
+  color: var(--store-fg);
+  font-family: var(--font-family-base);
+  font-size: calc(var(--badge-size) * var(--label-size) / 44);
+  font-weight: var(--label-weight);
+  line-height: normal;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* 마트별 색(stores.ts의 bg/fg와 같은 값)과 피그마 글자 크기 */
+.badge[data-store="CU"] {
+  --store-bg: #652f8d;
+  --store-fg: #ffffff;
+  --label-size: 16;
+}
+
+.badge[data-store="GS25"] {
+  --store-bg: #0a9bd9;
+  --store-fg: #ffffff;
+  --label-size: 12;
+  --label-weight: 700;
+}
+
+.badge[data-store="SEVEN_ELEVEN"] {
+  --store-bg: #f58220;
+  --store-fg: #ffffff;
+  --label-size: 20;
+}
+
+.badge[data-store="EMART24"] {
+  --store-bg: #ffb81c;
+  --store-fg: #231f20;
+}
+
+.badge[data-store="EMART"] {
+  --store-bg: #ffd400;
+  --store-fg: #231f20;
+  --label-size: 20;
+}
+
+.badge[data-store="HOMEPLUS"] {
+  --store-bg: #e31837;
+  --store-fg: #ffffff;
+  --label-size: 16;
+}
+
+.badge[data-store="LOTTE_MART"] {
+  --store-bg: #ed1c24;
+  --store-fg: #ffffff;
+  --label-size: 20;
+}
+
+.badge[data-store="COSTCO"] {
+  --store-bg: #005daa;
+  --store-fg: #ffffff;
+  --label-size: 20;
+}
+
+.badge[data-store="TRADERS"] {
+  --store-bg: #1a1a1a;
+  --store-fg: #ffd400;
+  --label-size: 20;
+}
+
+.badge[data-store="HANARO"] {
+  --store-bg: #009a44;
+  --store-fg: #ffffff;
+}
+
+.badge[data-store="GS_FRESH"] {
+  --store-bg: #00a651;
+  --store-fg: #ffffff;
+}
+
+.badge[data-store="LOTTE_SUPER"] {
+  --store-bg: #ed1c24;
+  --store-fg: #ffffff;
+}
+
+.badge[data-store="EMART_EVERYDAY"] {
+  --store-bg: #ffd400;
+  --store-fg: #231f20;
+}
+
+.badge[data-store="HOMEPLUS_EXPRESS"] {
+  --store-bg: #e31837;
+  --store-fg: #ffffff;
+}
+
+/* 피그마에 없음: 2글자 약어 기준(14px) */
+.badge[data-store="ETC"] {
+  --store-bg: #f2f4f6;
+  --store-fg: #4e5968;
+}
