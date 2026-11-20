@@ -67,6 +67,14 @@ public class Ingredient {
 				expirationEstimated, amount, amount, unit, price, IngredientStatus.ACTIVE);
 	}
 
+	/** 저장된 값으로 되살린다. 저장소 어댑터만 쓴다. 이미 저장된 값이라 규칙을 다시 확인하지 않는다. */
+	public static Ingredient restore(Long id, Long userId, Long categoryId, Long receiptItemId, String name,
+			StorageLocation storage, LocalDate expirationDate, boolean expirationEstimated, BigDecimal amount,
+			BigDecimal initialAmount, IngredientUnit unit, Long price, IngredientStatus status) {
+		return new Ingredient(id, userId, categoryId, receiptItemId, name, storage, expirationDate,
+				expirationEstimated, amount, initialAmount, unit, price, status);
+	}
+
 	/** 소비기한을 사용자가 직접 고친다. 사용자가 정한 값이므로 추정 표시를 끈다. */
 	public void changeExpirationDate(LocalDate newExpirationDate) {
 		requireNonNull(newExpirationDate, "소비기한");

@@ -2,6 +2,7 @@ package com.remake.ingredient.adapter.out.persistence;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +17,9 @@ import com.remake.ingredient.domain.IngredientStatus;
  * 알림 배치가 부르는 조회는 엔티티를 메모리에 올리지 않고 필요한 값만 읽는다(재료가 많아져도 열 몇 개만 읽는다).
  */
 interface IngredientJpaRepository extends JpaRepository<IngredientJpaEntity, Long> {
+
+	/** 사용자 본인의 재료만 읽는다. 다른 사용자의 재료는 없는 것과 같다. */
+	Optional<IngredientJpaEntity> findByIdAndUserId(Long id, Long userId);
 
 	@Query("""
 			select new com.remake.ingredient.domain.ExpiringIngredient(i.userId, i.id, i.name, i.expirationDate)
