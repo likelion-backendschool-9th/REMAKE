@@ -28,7 +28,8 @@
   user-select: none;
 }
 
-/* 마트별 색(stores.ts의 bg/fg와 같은 값)과 피그마 글자 크기 */
+/* 마트별 색(stores.ts의 bg/fg와 같은 값)과 피그마 글자 크기.
+   피그마에서 변수로 지정된 글자색(text/header, text/white)은 같은 이름의 토큰을 쓴다. */
 .badge[data-store="CU"] {
   --store-bg: #652f8d;
   --store-fg: #ffffff;
@@ -50,12 +51,12 @@
 
 .badge[data-store="EMART24"] {
   --store-bg: #ffb81c;
-  --store-fg: #231f20;
+  --store-fg: var(--text-header);
 }
 
 .badge[data-store="EMART"] {
   --store-bg: #ffd400;
-  --store-fg: #231f20;
+  --store-fg: var(--text-header);
   --label-size: 20;
 }
 
@@ -67,13 +68,13 @@
 
 .badge[data-store="LOTTE_MART"] {
   --store-bg: #ed1c24;
-  --store-fg: #ffffff;
+  --store-fg: var(--text-white);
   --label-size: 20;
 }
 
 .badge[data-store="COSTCO"] {
   --store-bg: #005daa;
-  --store-fg: #ffffff;
+  --store-fg: var(--text-white);
   --label-size: 20;
 }
 
@@ -100,12 +101,12 @@
 
 .badge[data-store="EMART_EVERYDAY"] {
   --store-bg: #ffd400;
-  --store-fg: #231f20;
+  --store-fg: var(--text-header);
 }
 
 .badge[data-store="HOMEPLUS_EXPRESS"] {
   --store-bg: #e31837;
-  --store-fg: #ffffff;
+  --store-fg: var(--text-white);
 }
 
 /* 피그마에 없음: 2글자 약어 기준(14px) */
