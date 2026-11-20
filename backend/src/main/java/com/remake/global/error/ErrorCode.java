@@ -29,7 +29,9 @@ public enum ErrorCode {
 
 	// 기능별 (기능을 만드는 PR에서 추가. 마지막 줄만 ;로 끝낸다)
 	// 재료
-	INGREDIENT_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "재료 카테고리를 찾을 수 없습니다.");
+	INGREDIENT_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "재료 카테고리를 찾을 수 없습니다."),
+	INGREDIENT_NOT_FOUND(HttpStatus.NOT_FOUND, "재료를 찾을 수 없습니다."),
+	INVALID_UNIT(HttpStatus.BAD_REQUEST, "사용할 수 없는 단위입니다.");
 
 	private final HttpStatus status;
 	private final String message;
