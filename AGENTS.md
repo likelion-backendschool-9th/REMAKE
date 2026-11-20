@@ -106,6 +106,7 @@ PR rules:
 
 - Remove the template's HTML comment. Do not add AI bylines (see §2).
 - Do not merge PRs yourself, and do not merge `dev` into `main`. The team does that after review.
+- If the work has an issue, write `Closes #<number>` under 관련 이슈 and give the PR the issue's type, area, and part labels. Issue templates, titles, and labels: [`docs/agent/git-convention.md`](docs/agent/git-convention.md) §7.
 
 ## 4. Checks before commit / push
 
