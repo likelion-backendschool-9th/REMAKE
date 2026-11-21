@@ -27,7 +27,7 @@ p2-냉장고(+스켈레톤, 재료 스크롤, 재료 카테고리 선택, 위치
 | PATCH | `/api/v1/user/ingredients/{id}` | 이름·카테고리·보관 위치·소비기한·가격·수량 (보낸 값만 수정, 단위는 변경 불가) |
 | POST | `/api/v1/user/ingredients/{id}/consume` | `USED`/`DISCARDED` + 수량 |
 | DELETE | `/api/v1/user/ingredients/{id}` | 기록이 있으면 불가 |
-| GET | `/api/v1/user/ingredient-catalog` | 자동완성, `commonExclusion=true`면 대표 알레르기 재료 상단 |
+| GET | `/api/v1/user/ingredient-catalog` | 자동완성, `commonExclusion=true`면 대표 알레르기 재료 상단. `q`는 이름에 포함(대소문자 무시, 50자 이하·넘으면 `INVALID_INPUT`, 없으면 전체), 앞부분이 맞는 이름이 먼저, 최대 50개. 항목: `id`, `name`, `categoryCode`, `shelfLifeDays`(항목 값이 없으면 카테고리 기본값), `isCommonExclusion` |
 | GET | `/api/v1/user/ingredient-categories` | 카테고리 12개 기준값 |
 
 ## 테이블
@@ -62,4 +62,4 @@ p2-냉장고(+스켈레톤, 재료 스크롤, 재료 카테고리 선택, 위치
 - [ ] 필터·정렬 동작, 빈 목록 화면
 - [ ] 사용·버림 후 수량 0 처리, 버린 금액이 소비 패턴에 반영
 - [ ] 동시 수정 충돌, 기록 있는 재료 삭제 불가 테스트
-- [ ] 카테고리·재료 사전 시드 데이터
+- [x] 카테고리·재료 사전 시드 데이터

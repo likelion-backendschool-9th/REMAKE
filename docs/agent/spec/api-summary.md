@@ -35,7 +35,7 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 | PATCH | `/user/ingredients/{id}` | Partial update of `name, categoryCode, storage, expirationDate, price, amount`; omitted keys stay unchanged, `"price": null` clears the price. Unit cannot be changed after registration (a `unit` key is ignored). Editing expiry clears the "estimated" flag. `amount` can be edited only while the ingredient is ACTIVE and never used or discarded (sets remaining and initial amount together); otherwise `INVALID_INPUT` |
 | POST | `/user/ingredients/{id}/consume` | `USED`/`DISCARDED` + amount; at 0 -> FINISHED. Events: ingredient_used, ingredient_discarded |
 | DELETE | `/user/ingredients/{id}` | Blocked with `INGREDIENT_HAS_LOGS` if history exists |
-| GET | `/user/ingredient-catalog` | Autocomplete / exclusion search `?q=&commonExclusion=true` |
+| GET | `/user/ingredient-catalog` | Autocomplete / exclusion search `?q=&commonExclusion=true`. `q`: name contains, case-insensitive, max 50 chars (longer is `INVALID_INPUT`), optional (omitted = all); prefix matches first, then by name, max 50 items. `commonExclusion=true` puts common allergy items (`isCommonExclusion`) on top. Item: `id`, `name`, `categoryCode`, `shelfLifeDays` (category default when the item has none), `isCommonExclusion` |
 | GET | `/user/ingredient-categories` | 12 categories with defaults |
 
 ## 3. Receipts and spending (owner: 이동준)
