@@ -73,7 +73,7 @@ Code-only rows are in `global/error/ErrorCode` but not in the planning sheet: 4 
 | `DELETION_CODE_LOCKED` | 429 | WARN | 5 wrong attempts; request a new code |
 | `INGREDIENT_NOT_FOUND` | 404 | INFO | Missing or not owned |
 | `INSUFFICIENT_QUANTITY` | 400 | INFO | Removing more than owned |
-| `INVALID_UNIT` | 400 | INFO | Unit not in the 14-unit list or not allowed for the item |
+| `INVALID_UNIT` | 400 | INFO | Unit not one of the 9 fridge units (G, KG, ML, L, EA, PACK, BUNCH, PIECE, SHEET) or not allowed for the item |
 | `INGREDIENT_ALREADY_FINISHED` | 409 | INFO | Using/discarding a FINISHED ingredient |
 | `INGREDIENT_HAS_LOGS` | 409 | INFO | Cannot delete: use/discard history exists |
 | `FILE_TOO_LARGE` | 413 | INFO | Upload over limit (receipt image 10 MB) |
