@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 
 import { AppProviders } from "@/providers/app-providers";
 
+import { gmarketSans, pretendard } from "./fonts/fonts";
+
 import "./globals.css";
 
 const APP_NAME = "REMAKE";
@@ -23,7 +25,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={`${pretendard.variable} ${gmarketSans.variable}`}>
       <body>
         <AppProviders>{children}</AppProviders>
       </body>

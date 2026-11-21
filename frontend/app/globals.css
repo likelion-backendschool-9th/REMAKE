@@ -13,6 +13,9 @@
   /* layout: 모바일 기준 최대 폭 */
   --layout-max-width: 480px;
   --layout-gutter: 1rem;
+
+  /* font: 본문은 tokens.css의 --font-family-base(Pretendard), 로고 글자만 GmarketSans */
+  --font-family-logo: var(--font-gmarket), var(--font-family-base);
 }
 
 *,

@@ -21,24 +21,24 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 
 ## 2. Tech stack
 
-| Area            | Technology                             | Why                                                                           |
-| --------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
-| Framework       | Next.js (App Router) + TypeScript      | Screens split per route; frontend handles screens only                        |
-| Package manager | pnpm                                   | Fast installs; lockfile keeps dependency versions identical for all 7 members |
-| Styling         | CSS Modules + CSS variables            | Component-scoped styles without extra libraries; shared design tokens         |
-| Server data     | TanStack Query                         | Caching and refetching server data                                            |
-| Client state    | Zustand                                | Only the minimum, such as login info                                          |
-| URL state       | nuqs                                   | Filters, tabs, sort, and selected month live in the URL                       |
-| API integration | openapi-typescript + openapi-fetch     | Types generated from Spring OpenAPI; type-safe calls                          |
-| Forms           | React Hook Form + Zod                  | Validation for onboarding, custom recipe input, ingredient edits              |
-| Dates           | dayjs                                  | Date display; meal-plan calendar                                              |
-| Icons           | @solar-icons/react (Solar)             | Tree-shakable React components; work offline                                  |
-| Font            | Pretendard (`next/font/local`)         | Korean UI font; no layout shift while loading                                 |
-| PWA & push      | Serwist + Web Push                     | Service worker, offline screen, expiry alerts                                 |
-| Store release   | PWABuilder (TWA)                       | Generates the Android app package                                             |
-| Web deploy      | `output: "standalone"` + nginx         | Node server running behind nginx                                              |
-| Code quality    | ESLint + Prettier, Husky + lint-staged | Unified code style for 7 people; automatic checks before commit               |
-| API mocking     | MSW                                    | Build screens against dummy responses before the backend is ready             |
+| Area            | Technology                                   | Why                                                                                    |
+| --------------- | -------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Framework       | Next.js (App Router) + TypeScript            | Screens split per route; frontend handles screens only                                 |
+| Package manager | pnpm                                         | Fast installs; lockfile keeps dependency versions identical for all 7 members          |
+| Styling         | CSS Modules + CSS variables                  | Component-scoped styles without extra libraries; shared design tokens                  |
+| Server data     | TanStack Query                               | Caching and refetching server data                                                     |
+| Client state    | Zustand                                      | Only the minimum, such as login info                                                   |
+| URL state       | nuqs                                         | Filters, tabs, sort, and selected month live in the URL                                |
+| API integration | openapi-typescript + openapi-fetch           | Types generated from Spring OpenAPI; type-safe calls                                   |
+| Forms           | React Hook Form + Zod                        | Validation for onboarding, custom recipe input, ingredient edits                       |
+| Dates           | dayjs                                        | Date display; meal-plan calendar                                                       |
+| Icons           | @solar-icons/react (Solar)                   | Tree-shakable React components; work offline                                           |
+| Font            | Pretendard + GmarketSans (`next/font/local`) | Pretendard: Korean UI font. GmarketSans: logo text only. No layout shift while loading |
+| PWA & push      | Serwist + Web Push                           | Service worker, offline screen, expiry alerts                                          |
+| Store release   | PWABuilder (TWA)                             | Generates the Android app package                                                      |
+| Web deploy      | `output: "standalone"` + nginx               | Node server running behind nginx                                                       |
+| Code quality    | ESLint + Prettier, Husky + lint-staged       | Unified code style for 7 people; automatic checks before commit                        |
+| API mocking     | MSW                                          | Build screens against dummy responses before the backend is ready                      |
 
 ## 3. Folder structure
 
@@ -46,6 +46,7 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 frontend/
 ├─ app/                  # routes. Each route folder colocates the code only it uses (see §3.1)
 │  ├─ layout.tsx         # root layout, globals.css, home page.tsx
+│  ├─ fonts/             # font files (woff2) + fonts.ts (next/font/local)
 │  ├─ fridge/            # example route — see §3.1
 │  ├─ sw.ts              # service worker (caching, push handling)
 │  ├─ serwist/[path]/    # service-worker serving route
@@ -170,7 +171,9 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 - Mobile first. Design for a 360px width. The default max layout width is `--layout-max-width` (480px) and the side gutter is `--layout-gutter`. Wider screens show the 480px container centered.
 - Light theme only; no dark mode.
 - Units: rem (1rem = 16px; never change the root font size). Convert Figma px by dividing by 16 (10px → 0.625rem). Use px only for lines such as borders.
-- Font: load Pretendard with `next/font/local`.
+- Font: both are loaded with `next/font/local` in `app/fonts/fonts.ts` and attached to `<html>` in `app/layout.tsx`. Use woff2 files only.
+  - Pretendard (body text): weights 500/600/700/800 only (the ones Figma uses). CSS variable `--font-pretendard`, used by `--font-family-base` in `tokens.css`.
+  - GmarketSans (logo text only): weights 300/500/700, `preload: false`. Use `font-family: var(--font-family-logo)` (defined in `globals.css`). Do not use it for other text.
 - Full-screen height uses `100dvh`. Bottom-fixed elements add `env(safe-area-inset-bottom)`.
 - Mostly flat. Apply glass effects only to elements that have them in Figma.
 - Put a style file next to its component with the same name. Example: `IngredientCard.tsx` + `IngredientCard.module.css`
