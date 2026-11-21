@@ -90,7 +90,7 @@ Items are added automatically only (meal-plan shortages, saving a recipe incl. s
 
 ## Account
 
-Social login only (Kakao, Naver, Google). No email signup. Deleting an account requires a 6-digit emailed code (5 min, 30 s resend, 5 attempts). Personal data and receipt images are deleted; events remain de-identified.
+Social login only (Kakao, Naver, Google). No email signup. Deleting an account requires identity confirmation by provider ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)); the account is identified only by `(provider, provider_user_id)`. **Kakao/Naver**: social re-authentication with forced re-login, then unlink the provider connection (Kakao `unlink`, Naver token delete); if unlinking fails, the service deletion still proceeds and the failure is logged. **Google**: Google does not support forced re-authentication, so a 6-digit code is sent to the user's Google email (5 min, 30 s resend, 5 attempts). No Google `revoke` (the server holds no Google token); the user can remove app access in their Google account. The service deletion is a soft delete: keep the `users` row, set `deleted_at`, clear `provider_user_id` and `email`, delete personal data and receipt images, and revoke all refresh tokens. Events remain de-identified.
 
 ## Out of scope (release 1)
 

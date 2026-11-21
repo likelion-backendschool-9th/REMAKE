@@ -42,8 +42,8 @@ Source of truth: the event data definition sheet (Korean, Google Sheets; not in 
 | E14 | `setting_changed` | CLIENT | P1 | setting_key, new_value_bool | POST /user/events (sent by frontend) |
 | E15 | `excluded_ingredients_updated` | CLIENT | P1 | excluded_count | POST /user/events (sent by frontend) |
 | E16 | `logout_confirmed` | CLIENT | P1 | (common only) | POST /user/events (sent by frontend) |
-| E17 | `account_deletion_requested` | SERVER | P1 | is_resend | POST /user/account/deletion-codes |
-| E18 | `account_deleted` | SERVER | P1 | tenure_days | POST /user/account/deletion-codes/verify |
+| E17 | `account_deletion_requested` | SERVER | P1 | is_resend (true only for a Google code resend; false for Kakao/Naver) | POST /user/account/withdrawal/start |
+| E18 | `account_deleted` | SERVER | P1 | tenure_days | Kakao/Naver: POST /public/auth/oauth/{provider} (purpose=withdraw); Google: POST /user/account/withdrawal/verify |
 | E19 | `fridge_list_viewed` | CLIENT | P0 | total_count, danger_count, soon_count, ok_count | POST /user/events (sent by frontend) |
 | E20 | `fridge_filter_applied` | CLIENT | P1 | filter_type, filter_value | POST /user/events (sent by frontend) |
 | E21 | `ingredient_add_started` | CLIENT | P0 | add_source | POST /user/events (sent by frontend) |
