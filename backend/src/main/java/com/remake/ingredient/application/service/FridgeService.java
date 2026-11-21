@@ -42,7 +42,7 @@ public class FridgeService implements GetFridgeUseCase {
 	@Transactional(readOnly = true)
 	public List<FridgeIngredient> getFridgeIngredients(Long userId, StorageLocation storage,
 			IngredientCategoryCode categoryCode, String keyword) {
-		if (keyword != null && keyword.length() > MAX_KEYWORD_LENGTH) {
+		if (keyword != null && keyword.strip().length() > MAX_KEYWORD_LENGTH) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT, "검색어는 50자 이하여야 합니다.");
 		}
 		List<IngredientCategory> categories = loadIngredientCategoryPort.loadAll();

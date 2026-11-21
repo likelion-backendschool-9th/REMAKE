@@ -149,6 +149,8 @@ class FridgeApiTest extends IntegrationTestSupport {
 		mockMvc.perform(as(ME, get(URL).param("categoryCode", "NOPE")))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+		mockMvc.perform(as(ME, get(URL).param("q", " " + "가".repeat(50) + " ")))
+				.andExpect(status().isOk());
 		mockMvc.perform(as(ME, get(URL).param("q", "가".repeat(51))))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));

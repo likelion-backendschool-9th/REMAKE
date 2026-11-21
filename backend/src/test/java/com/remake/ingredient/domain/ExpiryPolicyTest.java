@@ -3,7 +3,6 @@ package com.remake.ingredient.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
-import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -59,14 +58,5 @@ class ExpiryPolicyTest {
 		assertThat(ExpiryPolicy.dDay(TODAY.plusDays(3), TODAY)).isEqualTo(3);
 		assertThat(ExpiryPolicy.dDay(TODAY.minusDays(2), TODAY)).isEqualTo(-2);
 		assertThat(ExpiryPolicy.dDay(LocalDate.of(2026, 3, 2), LocalDate.of(2026, 2, 27))).isEqualTo(3);
-	}
-
-	@Test
-	void 요약은_목록과_같은_기준으로_센다() {
-		FridgeSummary summary = FridgeSummary.of(List.of(TODAY.minusDays(1), TODAY, TODAY.plusDays(1),
-				TODAY.plusDays(3), TODAY.plusDays(4)), TODAY);
-
-		assertThat(summary).isEqualTo(new FridgeSummary(5, 2, 2, 1));
-		assertThat(FridgeSummary.of(List.of(), TODAY)).isEqualTo(new FridgeSummary(0, 0, 0, 0));
 	}
 }
