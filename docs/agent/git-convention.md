@@ -159,7 +159,7 @@ Put one blank line under the subject, then the body. Every commit has a body.
 - One commit carries one main change.
 - Do not use vague descriptions such as `수정`, `작업`, or `update`.
 - Write the body as a Korean bullet list (`- `) of the changes and their reasons. Do not repeat the subject.
-- Do not add AI co-author trailers (`Co-Authored-By: Claude ...`) or `Generated with ...` bylines to commits or PR bodies. The `PR Attribution Check` CI fails on them.
+- Do not add AI co-author trailers (`Co-Authored-By: Claude ...`) or `Generated with ...` / `Made with ...` bylines (e.g. `Made with Cursor`) to commits or PR bodies. The `PR Attribution Check` CI fails on them.
 
 ### Examples
 

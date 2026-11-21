@@ -85,7 +85,9 @@ class GlobalExceptionHandlerTest extends IntegrationTestSupport {
 
 	@Test
 	void 없는_주소는_404() throws Exception {
-		mockMvc.perform(get("/api/v1/user/no-such-path"))
+		// /api/v1/user/** 는 로그인이 필요하므로, 인증된 상태에서 핸들러 없음(404)을 확인한다.
+		mockMvc.perform(get("/api/v1/user/no-such-path")
+						.requestAttr(com.remake.global.web.LoginUserIdArgumentResolver.ATTRIBUTE, 1L))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("NOT_FOUND"));
 	}

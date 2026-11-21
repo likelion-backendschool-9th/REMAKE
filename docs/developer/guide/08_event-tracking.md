@@ -4,6 +4,21 @@
 
 기준 문서: 이벤트 데이터 정의서(노션/구글 시트 참고. 이벤트 76개, 속성, 지표 21개, 화면 코드 38개). 영문 전체 목록은 [`docs/agent/spec/events.md`](../../agent/spec/events.md).
 
+## 시연 우선순위와 선행 관계 ([#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58) 확정)
+
+| 작업 | 확정 우선순위·범위 | 선행 관계·검증 |
+| --- | --- | --- |
+| 8.1 ADMIN 접근 제어 중 분석 API에 필요한 범위 | ADMIN 권한 검사·비관리자 접근 차단만 P0로 조정 | 실제 보안 필터로 ADMIN 허용·일반 사용자 403·비로그인 차단을 먼저 검증 |
+| 8.2 KPI·퍼널·이벤트 로그 분석 API | P0 유지 | 위 접근 제어를 선행 구현·검증한 뒤 분석 API 구현·시연 |
+| 그 외 어드민 기능 | P1 유지 | 분석 API의 선행 범위에 포함하지 않음 |
+| 11.8 이벤트 발행·검증 | P0 검증은 1차 시연에 포함되는 기능의 이벤트로 한정 | 해당 기능의 성공·실패·거절 지점에서 계약대로 발행·수집되는지 검증 |
+| 공유·장바구니·보상 및 관련 이벤트 | 기능은 P1 유지, 이벤트 발행·검증도 각 P1 기능 일정에 맞춤 | P0 시연을 위해 이 기능을 앞당기지 않음 |
+
+- ADMIN 접근 제어는 [#84](https://github.com/likelion-backendschool-9th/REMAKE/issues/84), 분석 API는 [#93](https://github.com/likelion-backendschool-9th/REMAKE/issues/93), 공통 이벤트 수집·서버 트래커는 [#65](https://github.com/likelion-backendschool-9th/REMAKE/issues/65), 프론트 트래커는 [#116](https://github.com/likelion-backendschool-9th/REMAKE/issues/116)에서 구현합니다. 이 문서의 검증 기준은 구현 완료를 뜻하지 않습니다.
+- P1 기능 일정에 맞추는 이벤트는 `cart_item_added`, `cart_viewed`, `cart_amount_changed`, `cart_items_deleted`, `ranking_viewed`, `shared_recipe_viewed`, `shared_write_started`, `shared_recipe_published`, `shared_recipe_saved`, `shared_recipe_reported`, `weekly_reward_granted`입니다. `recipe_saved`의 공유 저장 경로도 P1이며, 내 레시피 저장 경로는 해당 P0 시연 기능 일정에 따릅니다. 이벤트별 기존 세부 우선순위(P1/P2)는 [이벤트 명세](../../agent/spec/events.md)를 따릅니다.
+- 이벤트 이름·속성·CLIENT/SERVER 구분·발행 책임은 변경하지 않습니다. 원래 P0였던 공유·장바구니 이벤트의 구현·검증 우선순위만 P1로 맞춥니다.
+- **WBS 반영은 팀장님께 별도 요청해야 합니다.** 요청 내용은 ① 분석 API에 필요한 8.1 접근 제어를 P0로 조정하고 `ADMIN 권한 검사·비관리자 접근 차단 → 8.2 분석 API` 선행 관계 명시 ② 11.8의 P0 검증 대상을 1차 시연 기능 이벤트로 한정 ③ 공유·장바구니·보상 이벤트는 각 P1 기능 일정에 맞춘다고 기록하는 것입니다. 이 문서 수정만으로 WBS가 갱신되지는 않습니다.
+
 ## 1. 구조
 
 ```
@@ -87,6 +102,8 @@ track('receipt_item_edited', { item_index: 2, edit_field: 'amount' });
 - 매일 새벽 배치가 전날 `events`를 `event_daily_stats`로 집계하고 180일 지난 원본을 삭제합니다.
 
 ## 8. 체크리스트
+
+아래 발행·검증 항목은 위 시연 범위에 따라 P0 기능 이벤트를 먼저 확인하고, 공유·장바구니·보상 이벤트는 각 P1 기능 구현 시 확인합니다.
 
 - [ ] 내가 맡은 API의 "발행 이벤트"를 성공·실패 지점에서 모두 발행
 - [ ] 속성에 이메일·이름·재료명·알레르기·자유 입력이 없다

@@ -24,7 +24,7 @@ p2-냉장고(+스켈레톤, 재료 스크롤, 재료 카테고리 선택, 위치
 | GET | `/api/v1/user/ingredients` | `storageType`, `categoryCode`, `q`. 항목에 `dDay`, `status`, `isExpirationEstimated` |
 | GET | `/api/v1/user/ingredients/{id}` | 상세 |
 | POST | `/api/v1/user/ingredients` | 필수 `name, categoryCode, storage, expirationDate, amount, unit`, 선택 `price` |
-| PATCH | `/api/v1/user/ingredients/{id}` | 수량·소비기한·위치·가격 |
+| PATCH | `/api/v1/user/ingredients/{id}` | 이름·카테고리·보관 위치·소비기한·가격·수량 (보낸 값만 수정, 단위는 변경 불가) |
 | POST | `/api/v1/user/ingredients/{id}/consume` | `USED`/`DISCARDED` + 수량 |
 | DELETE | `/api/v1/user/ingredients/{id}` | 기록이 있으면 불가 |
 | GET | `/api/v1/user/ingredient-catalog` | 자동완성, `commonExclusion=true`면 대표 알레르기 재료 상단 |
@@ -38,6 +38,8 @@ p2-냉장고(+스켈레톤, 재료 스크롤, 재료 카테고리 선택, 위치
 
 - **소비기한 상태는 서버가 계산**: 지났거나 D-DAY면 DANGER, D-1~D-3 SOON, 그 외 OK. 기준일(3일)은 상수 한 곳에.
 - 알림의 임박 기준은 화면과 다릅니다(의도한 차이). 오늘이 기한인 재료(D-DAY)는 화면에서는 DANGER(위험), 알림에서는 임박(`EXPIRY_SOON`)입니다. 알림용 조회는 재료 쪽 UseCase(`GetExpiryAlertIngredientsUseCase`)가 따로 판정합니다.
+- **재료 수정(PATCH)**: 피그마 p2.1에 맞춰 이름·카테고리·보관 위치·소비기한·가격·수량을 고칠 수 있습니다. 보내지 않은 키는 그대로이고, `"price": null`이면 가격을 지웁니다. 단위는 등록한 뒤 바꾸지 않습니다(`unit`을 보내도 무시). 소비기한을 고치면 추정 표시(`isExpirationEstimated`)가 꺼집니다. 수량은 사용·폐기한 적이 없고 완료되지 않은 재료만 고칠 수 있고, 입력 실수를 바로잡는 용도라 남은 양과 처음 양을 함께 바꿉니다. 이미 쓰거나 버린 재료의 수량을 고치면 `INVALID_INPUT`입니다.
+- **단위**: 냉장고는 단위 9개(G, KG, ML, L, EA, PACK, BUNCH, PIECE, SHEET)만 받습니다. 그 밖의 값(레시피 단위 `TBSP` 등 포함)은 `INVALID_UNIT`입니다.
 - 같은 재료를 두 기기에서 동시에 수정하면 `version` 충돌 → `CONCURRENT_UPDATE`. 프론트는 최신 데이터를 다시 불러옵니다.
 - `consume`: 가진 양보다 많이 빼면 `INSUFFICIENT_QUANTITY`. 이미 `FINISHED`면 `INGREDIENT_ALREADY_FINISHED`. 버렸어요는 `cost_amount`(가격 비례)를 로그에 남기고, 가격이 없으면 금액 집계에서 빼고 "제외 N개"로 안내.
 - 요리 후 재료 차감(04 영역)도 `ingredient_logs`에 `USED`로 남기므로, 차감 로직은 이 영역의 서비스를 재사용하세요.

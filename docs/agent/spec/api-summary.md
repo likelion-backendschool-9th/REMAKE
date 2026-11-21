@@ -15,8 +15,8 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/public/auth/oauth/{provider}` | provider `kakao`/`naver`/`google`. Body `{ code, redirectUri, state }`. Shared callback for **login** and **Kakao/Naver withdrawal re-auth**; branch on server-stored OAuth `state.purpose` (`withdraw` vs login). Login -> `{ onboardingCompleted }` + access/refresh HttpOnly cookies. Withdrawal -> unlink provider, soft-delete user, clear cookies. Google withdrawal never uses this callback. Events: login_succeeded / login_failed / signup_completed, or account_deleted |
-| POST | `/public/auth/refresh` | Reissue access cookie from refresh cookie (body empty / 204). Invalid refresh -> `REFRESH_TOKEN_INVALID` |
+| POST | `/public/auth/oauth/{provider}` | provider `kakao`/`naver`/`google`. Body `{ code, redirectUri, state? }`. Shared callback for **login** and **Kakao/Naver withdrawal re-auth**; branch on server-stored OAuth `state.purpose` (`withdraw` vs login). `state` is optional for login but **required for Naver** (missing -> `OAUTH_FAILED`) and **required for withdrawal** (it carries `purpose`). Login -> `{ onboardingCompleted }` + access (30 min) and refresh (14 d) HttpOnly cookies (`Secure; SameSite=Lax`). Withdrawal -> unlink provider, soft-delete user, clear cookies. Google withdrawal never uses this callback. Events: login_succeeded / login_failed / signup_completed, or account_deleted |
+| POST | `/public/auth/refresh` | Reissue **access** cookie only from refresh cookie (no refresh rotation; body empty / 204). Invalid refresh -> `REFRESH_TOKEN_INVALID`; suspended account -> `ACCOUNT_SUSPENDED` |
 | POST | `/user/auth/logout` | Revoke refresh token and clear both cookies |
 | GET/PUT | `/user/profile` | `provider, householdSize, onboardingCompleted, lastMealPurpose, excludedCount`; PUT `{ householdSize, onboardingCompleted }` (skip allowed). Event: onboarding_completed |
 | GET/PATCH | `/user/settings` | `{ recipeSupplementEnabled, notificationEnabled, provider }` |
@@ -32,7 +32,7 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 | GET | `/user/ingredients` | Filters `storageType`, `categoryCode`, `q`; default sort by expiry soonest; item has `dDay`, `status` (DANGER/SOON/OK), `isExpirationEstimated` |
 | GET | `/user/ingredients/{id}` | Detail |
 | POST | `/user/ingredients` | Required `name, categoryCode, storage, expirationDate, amount, unit`; optional `price`. Event: ingredient_added |
-| PATCH | `/user/ingredients/{id}` | Amount, expiry, storage, price. Editing expiry clears the "estimated" flag |
+| PATCH | `/user/ingredients/{id}` | Partial update of `name, categoryCode, storage, expirationDate, price, amount`; omitted keys stay unchanged, `"price": null` clears the price. Unit cannot be changed after registration (a `unit` key is ignored). Editing expiry clears the "estimated" flag. `amount` can be edited only while the ingredient is ACTIVE and never used or discarded (sets remaining and initial amount together); otherwise `INVALID_INPUT` |
 | POST | `/user/ingredients/{id}/consume` | `USED`/`DISCARDED` + amount; at 0 -> FINISHED. Events: ingredient_used, ingredient_discarded |
 | DELETE | `/user/ingredients/{id}` | Blocked with `INGREDIENT_HAS_LOGS` if history exists |
 | GET | `/user/ingredient-catalog` | Autocomplete / exclusion search `?q=&commonExclusion=true` |
@@ -125,6 +125,10 @@ Fully anonymous: no author info in any response.
 `POST /user/events` — `{ events: [{ name, screen, properties, occurredAt, sessionId }] }`, max 50; unknown names dropped; returns 202 `{ accepted, rejected }`.
 
 ## Admin (all under `/admin`, ADMIN only; every action writes `admin_audit_logs`)
+
+Decision [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58): WBS 8.2 analytics APIs (dashboard, metrics, funnels, event log/catalog) remain P0. The ADMIN authorization check and non-admin blocking required by these APIs are P0 prerequisites from WBS 8.1, not an upgrade of all admin features. Implement and verify this gate first: ADMIN allowed, authenticated non-admin 403 `FORBIDDEN`, unauthenticated requests rejected through server security filters. Other admin features remain P1. Access control is tracked in [#84](https://github.com/likelion-backendschool-9th/REMAKE/issues/84), analytics in [#93](https://github.com/likelion-backendschool-9th/REMAKE/issues/93).
+
+WBS 11.8 P0 event verification covers only first-demo features. Sharing/cart/reward events follow their P1 feature schedules; see [the event priority rules](events.md#demo-implementation-and-verification-priority-decision-58). Event names and payloads are unchanged.
 
 | Method | Path | Purpose |
 |---|---|---|

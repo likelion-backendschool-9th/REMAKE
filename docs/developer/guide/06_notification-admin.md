@@ -36,6 +36,11 @@ p6-알람(+스켈레톤), 상단 알림 띠(냉장고·영수증 등 각 탭 상
 
 **소비기한 알림**(매일 09:00): 오늘부터 3일 뒤까지(오늘이 기한인 D-DAY 포함) 재료는 기간 안에 있는 동안 매일 `EXPIRY_SOON`을, 기한이 오늘보다 이전인 재료는 `EXPIRED`(하루 한 건)를 생성 + 푸시. 재료 조회는 재료 쪽 UseCase(`GetExpiryAlertIngredientsUseCase`)가 판정해서 돌려줍니다. 화면(02 영역)은 D-DAY를 위험으로 보고 알림은 임박으로 봅니다(의도한 차이). 알림 OFF 사용자 제외. 같은 재료의 기한 지남은 처음 발견했을 때 한 번만 `ingredient_expired` 이벤트(재료당 1회).
 
+## 어드민 우선순위와 선행 관계 ([#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58) 확정)
+
+- 8.2 KPI·퍼널·이벤트 로그 분석 API는 P0를 유지합니다. 해당 API에 필요한 **ADMIN 권한 검사·비관리자 접근 차단 → 8.2 분석 API** 순서로 진행합니다. 8.1 접근 제어 중 이 선행 범위만 P0로 조정하며, 그 외 어드민 기능은 P1을 유지합니다.
+- 접근 제어 구현은 [#84](https://github.com/likelion-backendschool-9th/REMAKE/issues/84), 분석 API 구현은 [#93](https://github.com/likelion-backendschool-9th/REMAKE/issues/93)에서 진행합니다. 분석 API를 구현·시연하기 전에 실제 보안 필터를 통과하는 요청으로 ADMIN 허용, 일반 사용자 403 `FORBIDDEN`, 비로그인 차단을 검증합니다. 프론트의 `/admin` 차단만으로 완료하지 않습니다.
+
 ## 어드민 구현 규칙
 
 - 일반 사용자와 같은 소셜 로그인을 쓰고 `role=ADMIN`인 계정만 통과. 보안 설정에서 `/api/v1/admin/**`를 막고 권한이 없으면 403 `FORBIDDEN`. 프론트 `/admin`도 막지만 서버 검증이 기준.

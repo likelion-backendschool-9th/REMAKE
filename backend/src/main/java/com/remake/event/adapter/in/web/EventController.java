@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
  * 지금은 Security가 없어 userId를 null로 저장한다.
  */
 @Tag(name = "이벤트")
-@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+@SecurityRequirement(name = OpenApiConfig.COOKIE_AUTH)
 @RestController
 @RequestMapping("/api/v1/user/events")
 @RequiredArgsConstructor
