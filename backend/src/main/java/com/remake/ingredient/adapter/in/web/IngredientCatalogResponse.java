@@ -1,10 +1,9 @@
 package com.remake.ingredient.adapter.in.web;
 
-import com.remake.ingredient.domain.IngredientCatalogItem;
-import com.remake.ingredient.domain.IngredientCategory;
+import com.remake.ingredient.domain.IngredientCatalogEntry;
 import com.remake.ingredient.domain.IngredientCategoryCode;
 
-/** 재료 사전 한 항목. shelfLifeDays는 항목 값이 없으면 카테고리 기본값으로 채워 준다. */
+/** 재료 사전 한 항목. shelfLifeDays는 Service가 항목 값이 없으면 카테고리 기본값으로 채워 둔 값이다. */
 public record IngredientCatalogResponse(
 		Long id,
 		String name,
@@ -12,8 +11,8 @@ public record IngredientCatalogResponse(
 		int shelfLifeDays,
 		boolean isCommonExclusion) {
 
-	public static IngredientCatalogResponse from(IngredientCatalogItem item, IngredientCategory category) {
-		return new IngredientCatalogResponse(item.id(), item.name(), category.code(),
-				item.effectiveShelfLifeDays(category), item.commonExclusion());
+	public static IngredientCatalogResponse from(IngredientCatalogEntry entry) {
+		return new IngredientCatalogResponse(entry.item().id(), entry.item().name(), entry.categoryCode(),
+				entry.shelfLifeDays(), entry.item().commonExclusion());
 	}
 }

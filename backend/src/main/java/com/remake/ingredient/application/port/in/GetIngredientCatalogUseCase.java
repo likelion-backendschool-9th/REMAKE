@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import com.remake.ingredient.domain.IngredientCatalogEntry;
 import com.remake.ingredient.domain.IngredientCatalogItem;
 
 /**
@@ -15,8 +16,9 @@ public interface GetIngredientCatalogUseCase {
 	/**
 	 * 이름 자동완성·제외 재료 검색. keyword는 선택이고(없으면 전체) 50자 이하여야 한다(아니면 INVALID_INPUT).
 	 * 앞부분이 맞는 이름이 먼저, 그다음 이름순이고, commonExclusionFirst면 대표 알레르기 재료를 맨 위에 둔다. 최대 50개.
+	 * 결과에는 카테고리 code와 보관 일수(항목 값이 없으면 카테고리 기본값)가 붙어 있다.
 	 */
-	List<IngredientCatalogItem> searchCatalog(String keyword, boolean commonExclusionFirst);
+	List<IngredientCatalogEntry> searchCatalog(String keyword, boolean commonExclusionFirst);
 
 	/** id로 읽는다. 없는 id는 결과에 없으니 호출한 쪽이 개수를 비교해 CATALOG_ITEM_NOT_FOUND 같은 오류로 바꾼다. */
 	List<IngredientCatalogItem> getCatalogItemsByIds(Collection<Long> ids);
