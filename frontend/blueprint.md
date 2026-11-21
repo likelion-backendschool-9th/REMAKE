@@ -129,7 +129,7 @@ The folder structure above takes precedence: component folders and files are Pas
 | `/login`         | Login                    | Social login                                                   |
 | `/onboarding`    | Onboarding               | Household size, then allergies (each step can be skipped)      |
 | `/fridge`        | My fridge                | Ingredient list, sort by storage location / expiry date        |
-| `/fridge/[id]`   | Ingredient detail & edit | Edit quantity and expiry date                                  |
+| `/fridge/[id]`   | Ingredient detail & edit | Edit name, category, storage, expiry, price, quantity          |
 | `/fridge/add`    | Add ingredient           | Choose manual entry or receipt photo                           |
 | `/receipt`       | Receipt OCR              | Scan → loading (one request) → review and edit items → confirm |
 | `/recipes`       | Recipe recommendations   | AI recommendations based on owned ingredients                  |

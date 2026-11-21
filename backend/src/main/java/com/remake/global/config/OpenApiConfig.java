@@ -16,14 +16,17 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 @Configuration
 public class OpenApiConfig {
 
-	// 로그인이 필요한 API에 붙일 보안 방식 이름. Controller나 메서드에 @SecurityRequirement(name = "bearerAuth")로 쓴다.
-	public static final String BEARER_AUTH = "bearerAuth";
+	/** 로그인이 필요한 API에 붙일 쿠키 인증 스킴 이름(#42). */
+	public static final String COOKIE_AUTH = "cookieAuth";
 
 	@Bean
-	public OpenAPI remakeOpenApi() {
+	public OpenAPI remakeOpenApi(AuthProperties authProperties) {
 		return new OpenAPI()
 				.info(new Info().title("Remake API").version("v1"))
-				.components(new Components().addSecuritySchemes(BEARER_AUTH,
-						new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")));
+				.components(new Components().addSecuritySchemes(COOKIE_AUTH,
+						new SecurityScheme()
+								.type(SecurityScheme.Type.APIKEY)
+								.in(SecurityScheme.In.COOKIE)
+								.name(authProperties.accessCookieName())));
 	}
 }

@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
  * 경로는 /api/v1/{public|user|admin}/{복수형 리소스}를 Controller에 직접 쓴다.
  */
 @Tag(name = "재료 카테고리")
-@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+@SecurityRequirement(name = OpenApiConfig.COOKIE_AUTH)
 @RestController
 @RequestMapping("/api/v1/user/ingredient-categories")
 @RequiredArgsConstructor

@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.global.web.LoginUserIdArgumentResolver;
 import com.remake.ingredient.application.port.in.GetIngredientCategoriesUseCase;
 import com.remake.ingredient.domain.IngredientCategory;
 import com.remake.ingredient.domain.IngredientCategoryCode;
@@ -31,7 +32,8 @@ class IngredientCategoryApiTest extends IntegrationTestSupport {
 	void 카테고리_목록을_감싸지_않고_배열로_돌려준다() throws Exception {
 		String[] codes = Arrays.stream(IngredientCategoryCode.values()).map(Enum::name).toArray(String[]::new);
 
-		mockMvc.perform(get("/api/v1/user/ingredient-categories"))
+		mockMvc.perform(get("/api/v1/user/ingredient-categories")
+						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, 1L))
 				.andExpect(status().isOk())
 				// ApiResponse 같은 감싸기 없이 최상위가 배열이고, DB의 code 12개가 enum과 같은 순서로 나온다
 				.andExpect(jsonPath("$[*].code", contains(codes)))
