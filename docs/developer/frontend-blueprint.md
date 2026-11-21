@@ -33,7 +33,7 @@
 | 폼              | React Hook Form + Zod                  | 온보딩, 커스텀 레시피 입력, 재료 수정 검증                  |
 | 날짜            | dayjs                                  | 날짜 표시, 식단표 달력                                      |
 | 아이콘          | @solar-icons/react (Solar)             | 트리 셰이킹되는 React 컴포넌트, 오프라인에서도 동작         |
-| 폰트            | Pretendard (`next/font/local`)         | 한글 UI 폰트, 로딩 중 레이아웃 밀림 방지                    |
+| 폰트            | Pretendard + GmarketSans (`next/font/local`) | Pretendard: 한글 UI 폰트. GmarketSans: 로고 글자 전용. 로딩 중 레이아웃 밀림 방지 |
 | PWA·푸시        | Serwist + Web Push                     | 서비스 워커, 오프라인 화면, 소비기한 알림                   |
 | 스토어 배포     | PWABuilder (TWA)                       | 안드로이드 앱 패키지 생성                                   |
 | 웹 배포         | `output: "standalone"` + nginx         | Node 서버를 nginx 뒤에서 실행                               |
@@ -46,6 +46,7 @@
 frontend/
 ├─ app/                  # 라우트. 각 라우트 폴더에 그 라우트만 쓰는 코드를 함께 둔다 (3.1 참고)
 │  ├─ layout.tsx         # 루트 레이아웃, globals.css, 홈 page.tsx
+│  ├─ fonts/             # 폰트 파일(woff2) + fonts.ts (next/font/local)
 │  ├─ fridge/            # 라우트 예시 — 3.1 참고
 │  ├─ sw.ts              # 서비스 워커 (캐싱, 푸시 수신)
 │  ├─ serwist/[path]/    # 서비스 워커 서빙 라우트
@@ -170,7 +171,9 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - 모바일 우선입니다. 기준 폭은 360px입니다. 기본 레이아웃 최대 폭은 `--layout-max-width`(480px), 좌우 여백은 `--layout-gutter`입니다. 480px보다 넓은 화면은 480px 컨테이너를 가운데 정렬해 보여 줍니다.
 - 라이트 모드만 있습니다. 다크 모드는 없습니다.
 - 단위는 rem입니다(1rem = 16px, 루트 font-size는 바꾸지 않음). 피그마 px 값은 16으로 나눠 씁니다(10px → 0.625rem). 테두리 같은 선만 px로 씁니다.
-- 폰트: Pretendard를 `next/font/local`로 불러옵니다.
+- 폰트: 두 폰트 모두 `app/fonts/fonts.ts`에서 `next/font/local`로 불러오고 `app/layout.tsx`의 `<html>`에 붙입니다. 파일은 woff2만 씁니다.
+  - Pretendard(본문): 피그마에서 쓰는 굵기 500/600/700/800만 둡니다. CSS 변수 `--font-pretendard`이고, `tokens.css`의 `--font-family-base`가 이 변수를 씁니다.
+  - GmarketSans(로고 글자 전용): 굵기 300/500/700, `preload: false`. `font-family: var(--font-family-logo)`(`globals.css`에 정의)로 씁니다. 다른 글자에는 쓰지 않습니다.
 - 화면 전체 높이는 `100dvh`, 하단 고정 요소는 `env(safe-area-inset-bottom)`을 더합니다.
 - 대부분 플랫하게 만들고, 글래스 효과는 피그마에서 글래스가 걸린 요소에만 씁니다.
 - 스타일 파일은 컴포넌트와 같은 폴더에 같은 이름으로 둡니다. 예: `IngredientCard.tsx` + `IngredientCard.module.css`
