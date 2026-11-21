@@ -19,7 +19,9 @@ class WebConfigTest extends IntegrationTestSupport {
 		mockMvc.perform(get("/v3/api-docs"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.info.title").value("Remake API"))
-				.andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"));
+				.andExpect(jsonPath("$.components.securitySchemes.cookieAuth.type").value("apiKey"))
+				.andExpect(jsonPath("$.components.securitySchemes.cookieAuth.in").value("cookie"))
+				.andExpect(jsonPath("$.components.securitySchemes.cookieAuth.name").value("ACCESS_TOKEN"));
 	}
 
 	@Test

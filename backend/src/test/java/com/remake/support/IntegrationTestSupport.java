@@ -20,12 +20,15 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import com.remake.auth.adapter.out.oauth.SocialOAuthAdapter;
 import com.remake.global.config.AsyncConfig;
 import com.remake.ingredient.domain.IngredientStatus;
+import com.remake.user.domain.AuthProvider;
 
 /**
  * 모든 통합 테스트의 부모 클래스. 테스트 클래스는 이 클래스를 상속만 하고 설정 어노테이션을 붙이지 않는다.
@@ -89,10 +92,41 @@ public abstract class IntegrationTestSupport {
 	private ThreadPoolTaskExecutor eventTaskExecutor;
 
 	// 외부 서비스 어댑터는 여기서 어댑터 클래스 단위로 가짜로 바꾼다.
-	// @MockitoBean protected RecipeAiAdapter recipeAiAdapter;
+	@MockitoBean
+	protected SocialOAuthAdapter socialOAuthAdapter;
 
-	// 도우미는 필요한 테이블이 생기는 PR에서 여기에 추가한다.
-	// protected Long createUser() { ... }            users 테이블을 만드는 PR
+	/** 테스트용 회원 한 명을 넣고 id를 돌려준다. provider_user_id는 호출마다 다르게 만든다. */
+	protected Long createUser() {
+		return createUser(AuthProvider.KAKAO, "test-" + System.nanoTime());
+	}
+
+	protected Long createUser(AuthProvider provider, String providerUserId) {
+		LocalDateTime now = LocalDateTime.now(clock);
+		return jdbcTemplate.queryForObject("""
+				INSERT INTO users (provider, provider_user_id, email, role, status, plan, onboarding_completed,
+				                   recipe_supplement_enabled, notification_enabled, created_at, updated_at)
+				VALUES (?, ?, NULL, 'USER', 'ACTIVE', 'BASIC', false, false, true, ?, ?)
+				RETURNING id
+				""", Long.class, provider.name(), providerUserId, now, now);
+	}
+
+	/**
+	 * 고정 id로 회원이 없으면 넣는다. 예전 테스트가 쓰던 101L 같은 번호를 ingredients FK에 맞출 때 쓴다.
+	 */
+	protected void ensureUser(Long id) {
+		Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE id = ?", Integer.class, id);
+		if (count != null && count > 0) {
+			return;
+		}
+		LocalDateTime now = LocalDateTime.now(clock);
+		jdbcTemplate.update("""
+				INSERT INTO users (id, provider, provider_user_id, email, role, status, plan, onboarding_completed,
+				                   recipe_supplement_enabled, notification_enabled, created_at, updated_at)
+				OVERRIDING SYSTEM VALUE
+				VALUES (?, 'KAKAO', ?, NULL, 'USER', 'ACTIVE', 'BASIC', false, false, true, ?, ?)
+				""", id, "fixed-" + id, now, now);
+		jdbcTemplate.execute("SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT COALESCE(MAX(id), 1) FROM users))");
+	}
 
 	/** 서버 EventTracker(@Async) 적재가 끝날 때까지 기다린다. */
 	protected void awaitEventWrites() {
@@ -117,6 +151,7 @@ public abstract class IntegrationTestSupport {
 
 	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate,
 			IngredientStatus status, Long price) {
+		ensureUser(userId);
 		LocalDateTime now = LocalDateTime.now(clock);
 		return jdbcTemplate.queryForObject("""
 				INSERT INTO ingredients (user_id, category_id, name, storage, expiration_date, amount, initial_amount,

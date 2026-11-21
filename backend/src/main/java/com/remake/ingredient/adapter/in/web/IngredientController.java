@@ -30,7 +30,7 @@ import lombok.RequiredArgsConstructor;
 
 /** 냉장고 재료 등록·상세·수정·삭제. 사용자는 항상 로그인한 사용자 본인이고, 다른 사용자의 재료는 404이다. */
 @Tag(name = "재료")
-@SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
+@SecurityRequirement(name = OpenApiConfig.COOKIE_AUTH)
 @RestController
 @RequestMapping("/api/v1/user/ingredients")
 @RequiredArgsConstructor

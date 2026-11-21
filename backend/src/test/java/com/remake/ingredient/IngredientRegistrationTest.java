@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -22,7 +23,6 @@ import com.remake.ingredient.domain.StorageLocation;
 import com.remake.support.IntegrationTestSupport;
 
 // 재료 등록을 DB까지 확인한다. 기본 시각은 2026-03-04 10:00(서울)이라 오늘은 3월 4일이다.
-// 사용자 ID(101)는 users 테이블이 없어 임의 번호다. users 마이그레이션이 외래 키를 추가하면 createUser()로 바꾼다.
 class IngredientRegistrationTest extends IntegrationTestSupport {
 
 	private static final Long USER = 101L;
@@ -32,6 +32,11 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 
 	@Autowired
 	private GetIngredientUseCase getUseCase;
+
+	@BeforeEach
+	void setUpUser() {
+		ensureUser(USER);
+	}
 
 	private RegisterIngredientCommand command(String name, IngredientCategoryCode category, LocalDate expirationDate,
 			LocalDate baseDate, boolean estimated, BigDecimal amount, Long receiptItemId) {

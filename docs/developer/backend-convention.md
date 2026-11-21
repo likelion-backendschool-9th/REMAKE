@@ -180,7 +180,7 @@ com.remake
 - 필드 이름은 camelCase, enum 값은 이름 그대로(대문자 스네이크, `FRIDGE`, `SHARED_COPY`) 줍니다. DTO에도 enum 타입을 그대로 씁니다.
 - 값이 없으면 필드를 빼지 않고 `null`을 줍니다.
 - 도메인 객체나 JPA Entity를 그대로 응답으로 내보내지 않고 Response DTO로 바꿔서 줍니다.
-- 프론트는 OpenAPI 문서로 API 클라이언트를 만듭니다(`pnpm gen:api`). Controller의 반환 타입을 DTO로 분명히 쓰고, `Object`나 `Map`으로 돌려주지 않습니다. 문서는 로컬 백엔드의 `/v3/api-docs`, 화면은 `/swagger-ui.html`입니다. 로그인이 필요한 API는 Swagger에 쿠키 인증(OpenAPI `apiKey`, `in: cookie`)으로 표시합니다(#42). 세부(쿠키 이름, 스킴 상수)는 인증을 구현할 때 확정하고, 그때까지 있는 `OpenApiConfig.BEARER_AUTH`는 그 시점에 쿠키 스킴으로 바꿉니다.
+- 프론트는 OpenAPI 문서로 API 클라이언트를 만듭니다(`pnpm gen:api`). Controller의 반환 타입을 DTO로 분명히 쓰고, `Object`나 `Map`으로 돌려주지 않습니다. 문서는 로컬 백엔드의 `/v3/api-docs`, 화면은 `/swagger-ui.html`입니다. 로그인이 필요한 API는 Swagger에 `@SecurityRequirement(name = OpenApiConfig.COOKIE_AUTH)`로 쿠키 인증(OpenAPI `apiKey`, `in: cookie`, 이름 `ACCESS_TOKEN`)을 표시합니다(#42).
 - 에러는 Service에서 `BusinessException(ErrorCode.XXX)`로 던지기만 합니다. 응답은 `global/error`의 `GlobalExceptionHandler`가 한 곳에서 만듭니다. Controller와 Service에서 try-catch로 에러 응답을 만들지 않습니다.
 - 에러 코드는 `global/error/ErrorCode` 하나에 모읍니다. 이름은 API 정의서·에러 정의서의 코드와 같게 씁니다.
 - 로그인이 필요함(401)과 권한 없음(403)은 Security 필터 단계에서 막혀 `GlobalExceptionHandler`를 거치지 않습니다. `global/security`의 `AuthenticationEntryPoint`(401)와 `AccessDeniedHandler`(403)에서도 같은 모양으로 응답합니다.

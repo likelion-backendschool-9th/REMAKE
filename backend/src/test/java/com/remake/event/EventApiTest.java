@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
 import com.remake.event.adapter.in.web.EventController;
+import com.remake.global.web.LoginUserIdArgumentResolver;
 import com.remake.support.IntegrationTestSupport;
 
 class EventApiTest extends IntegrationTestSupport {
@@ -35,6 +36,7 @@ class EventApiTest extends IntegrationTestSupport {
 				""";
 
 		mockMvc.perform(post("/api/v1/user/events")
+						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, 1L)
 						.contentType(MediaType.APPLICATION_JSON)
 						.header(EventController.HEADER_PLATFORM, "PWA")
 						.header(EventController.HEADER_APP_VERSION, "1.0.0")
@@ -73,6 +75,7 @@ class EventApiTest extends IntegrationTestSupport {
 				""";
 
 		mockMvc.perform(post("/api/v1/user/events")
+						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, 1L)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(body))
 				.andExpect(status().isAccepted())
@@ -104,6 +107,7 @@ class EventApiTest extends IntegrationTestSupport {
 				""";
 
 		mockMvc.perform(post("/api/v1/user/events")
+						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, 1L)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(body))
 				.andExpect(status().isAccepted())
@@ -120,6 +124,7 @@ class EventApiTest extends IntegrationTestSupport {
 				.collect(Collectors.joining(","));
 
 		mockMvc.perform(post("/api/v1/user/events")
+						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, 1L)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"events\":[" + events + "]}"))
 				.andExpect(status().isContentTooLarge())

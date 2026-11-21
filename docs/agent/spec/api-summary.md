@@ -15,8 +15,8 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/public/auth/oauth/{provider}` | provider `kakao`/`naver`/`google`. Body `{ code, redirectUri }` -> `{ onboardingCompleted }`. Sets access (30 min) and refresh (14 d) as HttpOnly cookies (`Secure; SameSite=Lax`). Events: login_succeeded, login_failed, signup_completed |
-| POST | `/public/auth/refresh` | Reissue access cookie from refresh cookie (body empty / 204). Invalid refresh -> `REFRESH_TOKEN_INVALID` |
+| POST | `/public/auth/oauth/{provider}` | provider `kakao`/`naver`/`google`. Body `{ code, redirectUri, state? }` -> `{ onboardingCompleted }`. `state` is optional; **required for Naver** (missing -> `OAUTH_FAILED`). Sets access (30 min) and refresh (14 d) as HttpOnly cookies (`Secure; SameSite=Lax`). Events: login_succeeded, login_failed, signup_completed |
+| POST | `/public/auth/refresh` | Reissue **access** cookie only from refresh cookie (no refresh rotation; body empty / 204). Invalid refresh -> `REFRESH_TOKEN_INVALID`; suspended account -> `ACCOUNT_SUSPENDED` |
 | POST | `/user/auth/logout` | Revoke refresh token and clear both cookies |
 | GET/PUT | `/user/profile` | `provider, householdSize, onboardingCompleted, lastMealPurpose, excludedCount`; PUT `{ householdSize, onboardingCompleted }` (skip allowed). Event: onboarding_completed |
 | GET/PATCH | `/user/settings` | `{ recipeSupplementEnabled, notificationEnabled, provider }` |

@@ -22,6 +22,7 @@ class IngredientPersistenceAdapterTest extends IntegrationTestSupport {
 
 	@Test
 	void 새_재료를_저장하면_id가_채워지고_같은_값으로_읽힌다() {
+		ensureUser(101L);
 		Ingredient registered = Ingredient.register(101L, categoryId("MEAT"), 77L, "삼겹살", StorageLocation.FREEZER,
 				LocalDate.of(2026, 3, 12), true, new BigDecimal("0.001"), IngredientUnit.KG, 12000L);
 
@@ -46,6 +47,7 @@ class IngredientPersistenceAdapterTest extends IntegrationTestSupport {
 
 	@Test
 	void 저장한_재료는_생성_시각이_시험용_시계를_따른다() {
+		ensureUser(101L);
 		Ingredient registered = Ingredient.register(101L, categoryId("VEGETABLE"), null, "양파",
 				StorageLocation.FRIDGE, LocalDate.of(2026, 3, 12), false, BigDecimal.ONE, IngredientUnit.EA, null);
 
@@ -58,6 +60,7 @@ class IngredientPersistenceAdapterTest extends IntegrationTestSupport {
 
 	@Test
 	void 다른_사용자_번호로는_읽히지_않는다() {
+		ensureUser(101L);
 		Ingredient registered = Ingredient.register(101L, categoryId("VEGETABLE"), null, "양파",
 				StorageLocation.FRIDGE, LocalDate.of(2026, 3, 12), false, BigDecimal.ONE, IngredientUnit.EA, null);
 		Ingredient saved = transactionTemplate.execute(status -> adapter.save(registered));
