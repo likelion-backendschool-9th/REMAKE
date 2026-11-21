@@ -3,10 +3,8 @@ package com.remake.ingredient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.everyItem;
-import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -61,6 +59,20 @@ class IngredientCatalogApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 같은_재료의_다른_표기는_대표_알레르기를_하나에만_표시한다() throws Exception {
+		List<String> common = jdbcTemplate.queryForList(
+				"SELECT name FROM ingredient_catalog WHERE is_common_exclusion", String.class);
+
+		assertThat(common).contains("달걀", "쇠고기").doesNotContain("계란", "소고기");
+		// 다른 표기로 검색해도 항목은 나온다
+		mockMvc.perform(asUser(get(URL).param("q", "소고기")))
+				.andExpect(jsonPath("$[0].name").value("소고기"))
+				.andExpect(jsonPath("$[0].isCommonExclusion").value(false));
+		mockMvc.perform(asUser(get(URL).param("q", "계란")))
+				.andExpect(jsonPath("$[0].name").value("계란"));
+	}
+
+	@Test
 	void 이름에_검색어가_들어간_항목을_카테고리와_보관_일수와_함께_돌려준다() throws Exception {
 		mockMvc.perform(asUser(get(URL).param("q", "우유")))
 				.andExpect(status().isOk())
@@ -93,8 +105,7 @@ class IngredientCatalogApiTest extends IntegrationTestSupport {
 	void 검색어가_없으면_최대_50개를_돌려준다() throws Exception {
 		mockMvc.perform(asUser(get(URL)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()", lessThanOrEqualTo(50)))
-				.andExpect(jsonPath("$.length()", greaterThan(0)));
+				.andExpect(jsonPath("$", hasSize(50)));
 	}
 
 	@Test
