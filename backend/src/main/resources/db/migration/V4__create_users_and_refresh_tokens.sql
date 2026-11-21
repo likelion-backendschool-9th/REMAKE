@@ -34,7 +34,9 @@ CREATE TABLE refresh_tokens (
 
 CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens (user_id);
 
--- users 없이 넣었던 개발 leftover ingredients는 FK를 걸 수 없어 제거한다(0행이면 영향 없음).
+-- users 없이 넣었던 개발 leftover ingredients는 FK를 걸 수 없어 제거한다.
+-- 주의: users는 바로 위에서 새로 만들어 이 시점에 비어 있으므로, 이 문장은 ingredients를 **전부** 지운다.
+-- ingredients가 0행이면 영향 없음. 적용 전 서버의 ingredients 건수를 확인하고, 남아 있으면 팀 동의 후 적용한다.
 DELETE FROM ingredients
 WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ingredients.user_id);
 
