@@ -232,6 +232,30 @@ class AuthApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 정지_계정의_리프레시는_ACCOUNT_SUSPENDED다() throws Exception {
+		when(socialOAuthAdapter.exchange(any(), any(), any(), any()))
+				.thenReturn(new SocialProfile(AuthProvider.KAKAO, "suspend-refresh", null));
+
+		MockHttpServletResponse loginResponse = mockMvc.perform(post("/api/v1/public/auth/oauth/kakao")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{ "code": "s-code", "redirectUri": "http://localhost:3000/cb" }
+								"""))
+				.andExpect(status().isOk())
+				.andReturn()
+				.getResponse();
+
+		Cookie refresh = loginResponse.getCookie("REFRESH_TOKEN");
+		assertThat(refresh).isNotNull();
+
+		jdbcTemplate.update("UPDATE users SET status = 'SUSPENDED'");
+
+		mockMvc.perform(post("/api/v1/public/auth/refresh").cookie(refresh))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("ACCOUNT_SUSPENDED"));
+	}
+
+	@Test
 	void 쿠키_없이_user_API는_401이다() throws Exception {
 		mockMvc.perform(get("/api/v1/user/ingredient-categories"))
 				.andExpect(status().isUnauthorized())

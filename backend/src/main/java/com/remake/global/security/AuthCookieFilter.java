@@ -11,8 +11,6 @@ import com.remake.auth.application.port.out.JwtTokenPort;
 import com.remake.global.config.AuthProperties;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
-import com.remake.global.web.LoginUserIdArgumentResolver;
-import com.remake.user.domain.UserRole;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,10 +20,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 로그인 사용자를 SecurityContext에 넣는다.
- * 1) 테스트·내부용 요청 속성(LoginUserIdArgumentResolver.ATTRIBUTE)
- * 2) 액세스 토큰 HttpOnly 쿠키
- * 클라이언트가 요청 속성을 세팅할 수는 없다.
+ * 액세스 토큰 HttpOnly 쿠키를 읽어 SecurityContext에 로그인 사용자를 넣는다.
+ * 테스트용 요청 속성은 {@link TestLoginAttributeFilter}(test 프로필)가 처리한다.
  */
 @Component
 @RequiredArgsConstructor
@@ -40,12 +36,7 @@ public class AuthCookieFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
 		if (SecurityContextHolder.getContext().getAuthentication() == null) {
-			Object attr = request.getAttribute(LoginUserIdArgumentResolver.ATTRIBUTE);
-			if (attr instanceof Long userId) {
-				setAuthentication(userId, UserRole.USER);
-			} else {
-				readAccessCookie(request);
-			}
+			readAccessCookie(request);
 		}
 		filterChain.doFilter(request, response);
 	}
@@ -57,19 +48,15 @@ public class AuthCookieFilter extends OncePerRequestFilter {
 		}
 		try {
 			JwtTokenPort.AccessClaims claims = jwtTokenPort.parseAccessToken(token);
-			setAuthentication(claims.userId(), claims.role());
+			LoginUserPrincipal principal = new LoginUserPrincipal(claims.userId(), claims.role());
+			UsernamePasswordAuthenticationToken authentication =
+					new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+			SecurityContextHolder.getContext().setAuthentication(authentication);
 		} catch (BusinessException ex) {
 			if (ex.getErrorCode() == ErrorCode.TOKEN_EXPIRED) {
 				request.setAttribute(TOKEN_EXPIRED_ATTR, Boolean.TRUE);
 			}
 		}
-	}
-
-	private void setAuthentication(Long userId, UserRole role) {
-		LoginUserPrincipal principal = new LoginUserPrincipal(userId, role);
-		UsernamePasswordAuthenticationToken authentication =
-				new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
-		SecurityContextHolder.getContext().setAuthentication(authentication);
 	}
 
 	public static String readCookie(HttpServletRequest request, String name) {

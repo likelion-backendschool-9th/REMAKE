@@ -1,5 +1,6 @@
 package com.remake.global.security;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,6 +23,7 @@ public class SecurityConfig {
 
 	private final AuthCookieFilter authCookieFilter;
 	private final SecurityErrorWriter securityErrorWriter;
+	private final ObjectProvider<TestLoginAttributeFilter> testLoginAttributeFilter;
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -51,6 +53,8 @@ public class SecurityConfig {
 						.accessDeniedHandler((request, response, accessDeniedException) ->
 								securityErrorWriter.write(response, ErrorCode.FORBIDDEN)))
 				.addFilterBefore(authCookieFilter, UsernamePasswordAuthenticationFilter.class);
+		testLoginAttributeFilter.ifAvailable(filter ->
+				http.addFilterBefore(filter, AuthCookieFilter.class));
 		return http.build();
 	}
 }

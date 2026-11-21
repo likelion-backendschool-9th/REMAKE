@@ -34,5 +34,9 @@ CREATE TABLE refresh_tokens (
 
 CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens (user_id);
 
+-- users 없이 넣었던 개발 leftover ingredients는 FK를 걸 수 없어 제거한다(0행이면 영향 없음).
+DELETE FROM ingredients
+WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ingredients.user_id);
+
 ALTER TABLE ingredients
     ADD CONSTRAINT fk_ingredients_user FOREIGN KEY (user_id) REFERENCES users (id);

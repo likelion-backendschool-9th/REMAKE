@@ -1,9 +1,12 @@
 package com.remake.user.application.service;
 
+import java.util.Optional;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.remake.user.application.port.in.FindOrCreateSocialUserUseCase;
+import com.remake.user.application.port.in.GetUserUseCase;
 import com.remake.user.application.port.out.LoadUserPort;
 import com.remake.user.application.port.out.SaveUserPort;
 import com.remake.user.domain.AuthProvider;
@@ -14,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class UserService implements FindOrCreateSocialUserUseCase {
+public class UserService implements FindOrCreateSocialUserUseCase, GetUserUseCase {
 
 	private final LoadUserPort loadUserPort;
 	private final SaveUserPort saveUserPort;
@@ -24,5 +27,11 @@ public class UserService implements FindOrCreateSocialUserUseCase {
 		return loadUserPort.findByProviderAndProviderUserId(provider, providerUserId)
 				.map(user -> new Result(user, false))
 				.orElseGet(() -> new Result(saveUserPort.save(User.signUp(provider, providerUserId, email)), true));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<User> getUser(Long id) {
+		return loadUserPort.findById(id);
 	}
 }

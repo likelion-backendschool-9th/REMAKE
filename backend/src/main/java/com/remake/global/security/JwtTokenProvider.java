@@ -20,10 +20,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import lombok.RequiredArgsConstructor;
 
 @Component
-@RequiredArgsConstructor
 public class JwtTokenProvider implements JwtTokenPort {
 
 	private static final String CLAIM_ROLE = "role";
@@ -33,6 +31,14 @@ public class JwtTokenProvider implements JwtTokenPort {
 
 	private final AuthProperties authProperties;
 	private final Clock clock;
+	private final SecretKey secretKey;
+
+	public JwtTokenProvider(AuthProperties authProperties, Clock clock) {
+		this.authProperties = authProperties;
+		this.clock = clock;
+		// 키가 짧으면 여기서 WeakKeyException → 앱 시작 실패(첫 로그인 500을 막는다).
+		this.secretKey = Keys.hmacShaKeyFor(authProperties.jwtSecret().getBytes(StandardCharsets.UTF_8));
+	}
 
 	@Override
 	public IssuedTokens issue(Long userId, UserRole role) {
@@ -73,14 +79,14 @@ public class JwtTokenProvider implements JwtTokenPort {
 				.claim(CLAIM_TYPE, type)
 				.issuedAt(Date.from(issuedAt))
 				.expiration(Date.from(expiresAt))
-				.signWith(secretKey())
+				.signWith(secretKey)
 				.compact();
 	}
 
 	private Claims parse(String token) {
 		try {
 			return Jwts.parser()
-					.verifyWith(secretKey())
+					.verifyWith(secretKey)
 					.clock(() -> Date.from(this.clock.instant()))
 					.build()
 					.parseSignedClaims(token)
@@ -100,10 +106,5 @@ public class JwtTokenProvider implements JwtTokenPort {
 
 	private UserRole roleOf(Claims claims) {
 		return UserRole.valueOf(claims.get(CLAIM_ROLE, String.class));
-	}
-
-	private SecretKey secretKey() {
-		byte[] bytes = authProperties.jwtSecret().getBytes(StandardCharsets.UTF_8);
-		return Keys.hmacShaKeyFor(bytes);
 	}
 }

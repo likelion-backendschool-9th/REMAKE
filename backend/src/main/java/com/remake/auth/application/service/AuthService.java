@@ -25,14 +25,14 @@ import com.remake.event.domain.Screen;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.user.application.port.in.FindOrCreateSocialUserUseCase;
-import com.remake.user.application.port.out.LoadUserPort;
+import com.remake.user.application.port.in.GetUserUseCase;
 import com.remake.user.domain.User;
 
 import lombok.RequiredArgsConstructor;
 
 /**
  * 로그인 성공 이벤트는 커밋 뒤에 남기고, login_failed는 트랜잭션 롤백 밖에서 남긴다.
- * (실패를 같은 @Transactional 안에서 track하면 afterCommit이 호출되지 않는다.)
+ * 리프레시 토큰은 로테이션하지 않는다. 액세스만 다시 발급하고, 폐기는 로그아웃·계정 삭제 때만 한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -40,7 +40,7 @@ public class AuthService implements SocialLoginUseCase, RefreshAccessTokenUseCas
 
 	private final OAuthClientPort oAuthClientPort;
 	private final FindOrCreateSocialUserUseCase findOrCreateSocialUserUseCase;
-	private final LoadUserPort loadUserPort;
+	private final GetUserUseCase getUserUseCase;
 	private final JwtTokenPort jwtTokenPort;
 	private final TokenHasherPort tokenHasherPort;
 	private final LoadRefreshTokenPort loadRefreshTokenPort;
@@ -117,11 +117,15 @@ public class AuthService implements SocialLoginUseCase, RefreshAccessTokenUseCas
 		if (!stored.isValid(now) || !stored.userId().equals(userId)) {
 			throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
 		}
-		User user = loadUserPort.findById(userId)
+		User user = getUserUseCase.getUser(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID));
+		if (user.isSuspended()) {
+			throw new BusinessException(ErrorCode.ACCOUNT_SUSPENDED);
+		}
 		if (!user.isActive()) {
 			throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
 		}
+		// 로테이션하지 않음: 액세스 쿠키만 다시 발급하고 리프레시 행·쿠키는 유지한다.
 		return new RefreshAccessTokenUseCase.Result(jwtTokenPort.issueAccessToken(user.id(), user.role()));
 	}
 

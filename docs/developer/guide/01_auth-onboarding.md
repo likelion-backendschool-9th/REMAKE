@@ -19,8 +19,8 @@ p1-로그인, p1-로그인-최근 로그인, 스플래쉬, p1.1-가구원 수(+�
 
 | 메서드 | 경로 | 비고 |
 |---|---|---|
-| POST | `/api/v1/public/auth/oauth/{provider}` | 요청 `{ code, redirectUri }` → `{ onboardingCompleted }`. 액세스(30분)·리프레시(14일) 모두 HttpOnly 쿠키(`Secure; SameSite=Lax`) |
-| POST | `/api/v1/public/auth/refresh` | 리프레시 쿠키로 액세스 쿠키 재발급(본문 없음 / 204). 무효면 `REFRESH_TOKEN_INVALID` |
+| POST | `/api/v1/public/auth/oauth/{provider}` | 요청 `{ code, redirectUri, state? }` → `{ onboardingCompleted }`. `state`는 선택이나 **네이버는 필수**(없으면 `OAUTH_FAILED`). 액세스(30분)·리프레시(14일) 모두 HttpOnly 쿠키(`Secure; SameSite=Lax`) |
+| POST | `/api/v1/public/auth/refresh` | 리프레시 쿠키로 **액세스** 쿠키만 재발급(로테이션 없음, 본문 없음 / 204). 무효면 `REFRESH_TOKEN_INVALID`, 정지 계정이면 `ACCOUNT_SUSPENDED` |
 | POST | `/api/v1/user/auth/logout` | 리프레시 토큰 폐기 + 두 쿠키 삭제 |
 | GET·PUT | `/api/v1/user/profile` | 가구원 수·온보딩 완료·마지막 식단 목적 |
 | GET·PATCH | `/api/v1/user/settings` | `recipeSupplementEnabled`, `notificationEnabled`, `provider` |
@@ -34,7 +34,7 @@ p1-로그인, p1-로그인-최근 로그인, 스플래쉬, p1.1-가구원 수(+�
 
 ## 구현 규칙
 
-- JWT([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) A): 액세스·리프레시 **모두** HttpOnly 쿠키. 액세스 30분, 리프레시 14일(`Secure; SameSite=Lax`). 응답 본문에 `accessToken`을 넣지 않고, 프론트는 `Authorization: Bearer`를 쓰지 않는다. 리프레시는 DB에 해시로만 저장하고 로그아웃·삭제 때 폐기(로테이션 여부는 구현 때 확정).
+- JWT([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) A): 액세스·리프레시 **모두** HttpOnly 쿠키. 액세스 30분, 리프레시 14일(`Secure; SameSite=Lax`). 응답 본문에 `accessToken`을 넣지 않고, 프론트는 `Authorization: Bearer`를 쓰지 않는다. 리프레시는 DB에 해시로만 저장한다. **로테이션하지 않는다**(재발급 API는 액세스 쿠키만 갱신). 폐기는 로그아웃·계정 삭제 때만 한다.
 - `/api/v1/admin/**`는 ADMIN role만 통과. 서버 보안 설정에서 막고 UI는 보조일 뿐입니다.
 - 계정 삭제: 인증번호 6자리, 유효 5분, 재전송 30초 간격, 5회 틀리면 잠금(새 번호를 받으면 해제). 삭제하면 `provider_user_id`·`email`을 비우고 행은 유지(공유 레시피와 이벤트 통계가 남도록), 영수증 이미지와 개인 데이터는 삭제. `events.user_id`에는 FK를 걸지 않습니다.
 - 소셜이 이메일을 주지 않으면 `ACCOUNT_EMAIL_MISSING`(대체 방법은 미결 #25).
