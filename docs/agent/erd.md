@@ -31,7 +31,7 @@
 | 11/20 decision | OCR counting in `usage_logs` removed from the remaining-count rule | Receipt scans have no limit. OCR rows are kept for monitoring. Decide again if AI is added to OCR |
 | 11/20 decision | `shared_recipes.save_count` is the cumulative count for the detail screen; weekly popularity counts `saved_recipes.saved_at` | The ranking is "saves this week" |
 | 11/20 decision | `cart_items.meal_plan_slot_id` added (nullable FK, `ON DELETE SET NULL`; [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46)) | Identify items by source slot so meal-plan overwrite removes only replaced slots' cart items and preserves those from untouched slots |
-| 11/20 decision | Account deletion uses **social re-authentication** (reuse OAuth callback; identify by `(provider, provider_user_id)` only). Email OTP deletion is abandoned ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). Soft-delete unchanged (`deleted_at`, clear PII). Provider unlink/revoke after re-auth; unlink failure does not block service deletion | Kakao/Naver/Google do not guarantee email. Guides require unlink/revoke on withdrawal |
+| 11/20 decision | Account deletion: **Kakao/Naver use social re-authentication** (reuse OAuth callback, then unlink; unlink failure does not block service deletion). **Google uses a 6-digit email code** (`account_deletion_requests`). Identify by `(provider, provider_user_id)` only ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). Soft-delete unchanged (`deleted_at`, clear PII) | Kakao/Naver do not guarantee email but can force re-login. Google always gives a verified email but cannot force re-login (`auth_time` stays old) |
 
 ## Common rules
 
@@ -544,7 +544,7 @@ Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
 | 1 | users | 회원 | Social-login members. Admins are told apart by role. Also holds settings screen values (household size, notifications, ingredient supplement) and the plan (BASIC/PREMIUM) | user | BaseTimeEntity | 15 |
 | 2 | user_excluded_ingredients | 제외 재료(알레르기) | "Ingredients to exclude from recipes" chosen in onboarding and settings (N:N between members and the ingredient dictionary) | user | none | 2 |
 | 3 | refresh_tokens | 리프레시 토큰 | Login refresh tokens (stored as hashes), revoked on logout | auth | BaseCreatedEntity | 6 |
-| 4 | account_deletion_requests | 계정 삭제 인증 | Unused since [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) (was: 6-digit email code); may be dropped later | user | BaseCreatedEntity | 7 |
+| 4 | account_deletion_requests | 계정 삭제 인증 | 6-digit email code for **Google** account deletion only (5 minutes, resend, lock after 5 tries; [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)) | user | BaseCreatedEntity | 7 |
 | 5 | ingredient_categories | 재료 카테고리 | 12 category codes with default storage, unit, and shelf life (reference data) | ingredient | none | 7 |
 | 6 | ingredient_catalog | 재료 사전 | Autocomplete, category estimation, excluded-ingredient list (reference data) | ingredient | none | 5 |
 | 7 | ingredients | 냉장고 재료 | One ingredient line in the fridge. Kept as FINISHED when used up | ingredient | BaseTimeEntity | 16 |
@@ -644,7 +644,7 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | id | bigint | PK | | No | | ID |
 | provider | varchar | | | No | | NAVER/KAKAO/GOOGLE |
 | provider_user_id | varchar | UK | | Yes | | Social provider user ID. UK(provider + this). **Set to null on withdrawal** |
-| email | varchar | | | Yes | | Optional profile email from the provider when granted. Not used to identify or delete the account ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). Set to null on withdrawal |
+| email | varchar | | | Yes | | Email from the provider when granted (store Google's only when `email_verified`). Never used to identify the account. Used only to send the Google account deletion code ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). Set to null on withdrawal |
 | role | varchar | | | No | USER | USER/ADMIN |
 | status | varchar | | | No | ACTIVE | ACTIVE/SUSPENDED |
 | plan | varchar | | | No | BASIC | BASIC/PREMIUM. Release 1 applies BASIC limits only (the premium screen is UI only) |
@@ -677,9 +677,9 @@ Social-login members. Admins are told apart by role. Also holds settings screen 
 | revoked_at | timestamp | | | Yes | | Logout time |
 | created_at | timestamp | | | No | | Issue time |
 
-### 4. account_deletion_requests (Account deletion codes) — unused after [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)
+### 4. account_deletion_requests (Account deletion codes) — Google users only after [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)
 
-Withdrawal no longer uses email OTP. This table may be dropped in a later migration. Kept in the ERD until then.
+Kakao/Naver users delete through social re-authentication and never create rows here.
 
 | Column | Type | PK/FK | References | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |

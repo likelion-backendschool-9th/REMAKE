@@ -15,13 +15,14 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/public/auth/oauth/{provider}` | provider `kakao`/`naver`/`google`. Body `{ code, redirectUri, state }`. Shared callback for **login** and **withdrawal re-auth**; branch on server-stored OAuth `state.purpose` (`withdraw` vs login). Login -> `{ onboardingCompleted }` + access/refresh HttpOnly cookies. Withdrawal -> unlink provider, soft-delete user, clear cookies. Events: login_succeeded / login_failed / signup_completed, or account_deleted |
+| POST | `/public/auth/oauth/{provider}` | provider `kakao`/`naver`/`google`. Body `{ code, redirectUri, state }`. Shared callback for **login** and **Kakao/Naver withdrawal re-auth**; branch on server-stored OAuth `state.purpose` (`withdraw` vs login). Login -> `{ onboardingCompleted }` + access/refresh HttpOnly cookies. Withdrawal -> unlink provider, soft-delete user, clear cookies. Google withdrawal never uses this callback. Events: login_succeeded / login_failed / signup_completed, or account_deleted |
 | POST | `/public/auth/refresh` | Reissue access cookie from refresh cookie (body empty / 204). Invalid refresh -> `REFRESH_TOKEN_INVALID` |
 | POST | `/user/auth/logout` | Revoke refresh token and clear both cookies |
 | GET/PUT | `/user/profile` | `provider, householdSize, onboardingCompleted, lastMealPurpose, excludedCount`; PUT `{ householdSize, onboardingCompleted }` (skip allowed). Event: onboarding_completed |
 | GET/PATCH | `/user/settings` | `{ recipeSupplementEnabled, notificationEnabled, provider }` |
 | GET/PUT | `/user/excluded-ingredients` | PUT replaces all: `{ catalogIds: [] }` |
-| POST | `/user/account/withdrawal/start` | Logged-in only. Store OAuth `state` server-side (`purpose=withdraw`, userId, provider, 5 min TTL; never put purpose in the query) and return the provider authorize URL (re-auth params: Kakao `prompt=login`, Naver `auth_type=reauthenticate`, Google `prompt=select_account` + `claims={"id_token":{"auth_time":{"essential":true}}}`). Google returns `auth_time` only when that `claims` parameter is sent and "Session age claims" is enabled in the Google Cloud console (app published and verified). The callback rejects Google withdrawal with `REAUTH_REQUIRED` if `auth_time` is missing or older than 5 min. Event: account_deletion_requested |
+| POST | `/user/account/withdrawal/start` | Logged-in only. Branch on the user's provider. **Kakao/Naver** -> `{ method: "SOCIAL_REAUTH", authorizeUrl }`: store OAuth `state` server-side (`purpose=withdraw`, userId, provider, 5 min TTL; never put purpose in the query); re-auth params Kakao `prompt=login`, Naver `auth_type=reauthenticate`. **Google** -> `{ method: "EMAIL_CODE", maskedEmail, expiresInSeconds: 300 }`: send a 6-digit code to the stored Google email (Google cannot force re-login). Calling again = resend (30 s interval). Event: account_deletion_requested |
+| POST | `/user/account/withdrawal/verify` | Google users only. `{ code }`; correct code deletes the account (204, cookies cleared). Other providers -> `FORBIDDEN`. Event: account_deleted |
 
 ## 2. Fridge (owner: 김재연)
 

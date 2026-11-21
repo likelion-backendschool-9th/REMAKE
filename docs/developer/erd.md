@@ -31,7 +31,7 @@
 | 11/20 결정 | 남은 횟수 계산에서 `usage_logs`로 OCR 횟수를 세는 부분 삭제 | 영수증 스캔은 횟수 제한 없음. OCR 기록은 모니터링용으로만 남김. OCR에 AI를 붙이면 다시 정함 |
 | 11/20 결정 | `shared_recipes.save_count`는 상세 화면용 누적값, 주간 인기순은 `saved_recipes.saved_at`으로 셈 | 랭킹은 "이번 주 저장 수" 기준 |
 | 11/20 결정 | `cart_items.meal_plan_slot_id` 추가(nullable FK, `ON DELETE SET NULL`; [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46)) | 식단표 덮어쓰기 시 출처 칸으로 항목을 구분해 교체되는 칸의 장바구니 항목만 삭제하고 유지되는 칸의 항목은 보존 |
-| 11/20 결정 | 계정 삭제는 **소셜 재인증**(OAuth 콜백 재사용, 식별은 `(provider, provider_user_id)`만). 이메일 인증번호 탈퇴는 폐기 ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). 소프트 삭제(`deleted_at`, 개인정보 비움)는 동일. 재인증 토큰으로 제공자 unlink/revoke, 실패해도 서비스 탈퇴는 진행 | 카카오·네이버·구글이 이메일을 보장하지 않음. 가이드는 탈퇴 시 연결 끊기를 요구 |
+| 11/20 결정 | 계정 삭제: **카카오·네이버는 소셜 재인증**(OAuth 콜백 재사용 후 연결 끊기, 실패해도 서비스 탈퇴는 진행). **구글은 이메일 인증번호 6자리**(`account_deletion_requests`). 식별은 `(provider, provider_user_id)`만 ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). 소프트 삭제(`deleted_at`, 개인정보 비움)는 동일 | 카카오·네이버는 이메일을 보장하지 않지만 재로그인을 강제할 수 있음. 구글은 인증된 이메일을 항상 주지만 재로그인을 강제할 수 없음(`auth_time`이 오래된 채로 남음) |
 
 ## 공통 규칙
 
@@ -544,7 +544,7 @@ erDiagram
 | 1 | users | 회원 | 소셜 로그인 회원. 어드민도 role로 구분. 설정 화면 값(가구원 수·알림·재료 보충)과 요금제(BASIC/PREMIUM)를 함께 가짐 | user | BaseTimeEntity | 15 |
 | 2 | user_excluded_ingredients | 제외 재료(알레르기) | 온보딩·설정의 "레시피에서 제외할 재료"(회원과 재료 사전의 N:N) | user | 없음 | 2 |
 | 3 | refresh_tokens | 리프레시 토큰 | 로그인 갱신 토큰(해시 저장), 로그아웃 시 폐기 | auth | BaseCreatedEntity | 6 |
-| 4 | account_deletion_requests | 계정 삭제 인증 | [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) 이후 사용하지 않음(이전: 이메일 인증번호 6자리). 이후 제거 가능 | user | BaseCreatedEntity | 7 |
+| 4 | account_deletion_requests | 계정 삭제 인증 | **구글** 계정 삭제용 이메일 인증번호 6자리(5분, 재전송, 5회 잠금; [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)) | user | BaseCreatedEntity | 7 |
 | 5 | ingredient_categories | 재료 카테고리 | 12개 카테고리 코드, 기본 보관·단위·보관 일수(기준 데이터) | ingredient | 없음 | 7 |
 | 6 | ingredient_catalog | 재료 사전 | 자동완성·카테고리 추정·제외 재료 목록(기준 데이터) | ingredient | 없음 | 5 |
 | 7 | ingredients | 냉장고 재료 | 냉장고의 재료 한 줄. 다 쓰면 FINISHED로 남김 | ingredient | BaseTimeEntity | 16 |
@@ -644,7 +644,7 @@ erDiagram
 | id | bigint | PK | | 아니오 | | 고유 번호 |
 | provider | varchar | | | 아니오 | | NAVER/KAKAO/GOOGLE |
 | provider_user_id | varchar | UK | | 예 | | 소셜 고유 ID. UK(provider+이 값). **탈퇴하면 null** |
-| email | varchar | | | 예 | | 제공자가 주면 저장하는 선택 프로필. 계정 식별·탈퇴 인증에는 쓰지 않음([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). 탈퇴하면 null |
+| email | varchar | | | 예 | | 제공자가 주면 저장(구글은 `email_verified`일 때만). 계정 식별에는 쓰지 않음. 구글 계정 삭제 인증번호 발송에만 씀([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). 탈퇴하면 null |
 | role | varchar | | | 아니오 | USER | USER/ADMIN |
 | status | varchar | | | 아니오 | ACTIVE | ACTIVE/SUSPENDED |
 | plan | varchar | | | 아니오 | BASIC | BASIC/PREMIUM. 1차는 BASIC 한도만 적용(프리미엄 화면은 UI만) |
@@ -677,9 +677,9 @@ erDiagram
 | revoked_at | timestamp | | | 예 | | 로그아웃 시각 |
 | created_at | timestamp | | | 아니오 | | 발급 시각 |
 
-### 4. account_deletion_requests (계정 삭제 인증) — [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) 이후 미사용
+### 4. account_deletion_requests (계정 삭제 인증) — [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54) 이후 구글 회원만 사용
 
-탈퇴는 이메일 OTP를 쓰지 않는다. 이 테이블은 이후 마이그레이션에서 제거할 수 있다.
+카카오·네이버 회원은 소셜 재인증으로 탈퇴하므로 이 테이블에 행을 만들지 않는다.
 
 | 컬럼명 | 타입 | PK/FK | 참조 테이블 | NULL 허용 | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |

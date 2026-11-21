@@ -66,9 +66,13 @@ Code-only rows are in `global/error/ErrorCode` but not in the planning sheet: 4 
 | `OAUTH_PROVIDER_UNSUPPORTED` | 400 | WARN | provider not kakao/naver/google |
 | `REFRESH_TOKEN_INVALID` | 401 | INFO | Refresh token expired/revoked/forged -> login |
 | `CATALOG_ITEM_NOT_FOUND` | 404 | WARN | Excluded-ingredient catalog id does not exist |
-| `OAUTH_STATE_INVALID` | 400 | WARN | OAuth `state` missing, mismatched, reused, or expired (login or withdrawal re-auth) |
+| `OAUTH_STATE_INVALID` | 400 | WARN | OAuth `state` missing, mismatched, reused, or expired (login or Kakao/Naver withdrawal re-auth) |
 | `ACCOUNT_PROVIDER_MISMATCH` | 403 | WARN | Withdrawal re-auth profile `(provider, id)` does not match the logged-in user ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)) |
-| `REAUTH_REQUIRED` | 401 | INFO | Withdrawal re-auth is not recent: Google ID token `auth_time` missing or older than 5 min. Nothing is deleted; the frontend asks the user to re-authenticate and restarts from `POST /user/account/withdrawal/start` (new `state`) ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)) |
+| `ACCOUNT_EMAIL_MISSING` | 422 | WARN | Google user has no stored verified email, so no withdrawal code can be sent ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). Should not happen when Google login requests the `email` scope |
+| `DELETION_CODE_RESEND_TOO_SOON` | 429 | INFO | Google withdrawal code resend within 30 s |
+| `DELETION_CODE_INVALID` | 400 | INFO | Wrong Google withdrawal code (details.remaining attempts) |
+| `DELETION_CODE_EXPIRED` | 400 | INFO | Google withdrawal code older than 5 min |
+| `DELETION_CODE_LOCKED` | 429 | WARN | 5 wrong attempts; request a new code |
 | `INGREDIENT_NOT_FOUND` | 404 | INFO | Missing or not owned |
 | `INSUFFICIENT_QUANTITY` | 400 | INFO | Removing more than owned |
 | `INVALID_UNIT` | 400 | INFO | Unit not in the 14-unit list or not allowed for the item |
