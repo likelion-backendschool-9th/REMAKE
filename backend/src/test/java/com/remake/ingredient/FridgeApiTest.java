@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
@@ -15,13 +16,18 @@ import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.support.IntegrationTestSupport;
 
 // 냉장고 목록·요약. 오늘은 시험용 시계의 2026-03-04이다.
-// 사용자 ID(101, 102)는 임의 번호다. users 외래 키가 생기면 createUser()로 바꾼다.
 class FridgeApiTest extends IntegrationTestSupport {
 
 	private static final String URL = "/api/v1/user/ingredients";
 	private static final Long ME = 101L;
 	private static final Long OTHER = 102L;
 	private static final LocalDate TODAY = LocalDate.of(2026, 3, 4);
+
+	@BeforeEach
+	void setUpUsers() {
+		ensureUser(ME);
+		ensureUser(OTHER);
+	}
 
 	private MockHttpServletRequestBuilder as(Long userId, MockHttpServletRequestBuilder builder) {
 		return builder.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, userId);
