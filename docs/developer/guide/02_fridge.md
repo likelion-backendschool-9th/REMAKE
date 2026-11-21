@@ -21,7 +21,7 @@ p2-냉장고(+스켈레톤, 재료 스크롤, 재료 카테고리 선택, 위치
 | 메서드 | 경로 | 비고 |
 |---|---|---|
 | GET | `/api/v1/user/ingredients/summary` | `{ total, danger, soon, ok }` |
-| GET | `/api/v1/user/ingredients` | `storageType`, `categoryCode`, `q`. 항목에 `dDay`, `status`, `isExpirationEstimated` |
+| GET | `/api/v1/user/ingredients` | `storageType`, `categoryCode`, `q`(이름에 포함, 대소문자 무시, 50자 이하·넘으면 `INVALID_INPUT`). 진행 중 재료만, 소비기한 빠른 순. 항목: `id`, `name`, `categoryCode`, `storage`, `expirationDate`, `isExpirationEstimated`, `dDay`(지났으면 음수), `status`, `amount`, `unit`, `price` |
 | GET | `/api/v1/user/ingredients/{id}` | 상세 |
 | POST | `/api/v1/user/ingredients` | 필수 `name, categoryCode, storage, expirationDate, amount, unit`, 선택 `price` |
 | PATCH | `/api/v1/user/ingredients/{id}` | 이름·카테고리·보관 위치·소비기한·가격·수량 (보낸 값만 수정, 단위는 변경 불가) |
@@ -58,8 +58,9 @@ p2-냉장고(+스켈레톤, 재료 스크롤, 재료 카테고리 선택, 위치
 
 ## 체크리스트
 
-- [ ] 요약 수치와 목록의 위험·임박·여유 상태 일치
-- [ ] 필터·정렬 동작, 빈 목록 화면
+- [x] 요약 수치와 목록의 위험·임박·여유 상태 일치
+- [x] 필터·정렬 동작 (API)
+- [ ] 빈 목록 화면 (API는 빈 목록·0 요약을 돌려줌, 화면은 프론트 #99)
 - [ ] 사용·버림 후 수량 0 처리, 버린 금액이 소비 패턴에 반영
 - [ ] 동시 수정 충돌, 기록 있는 재료 삭제 불가 테스트
 - [ ] 카테고리·재료 사전 시드 데이터

@@ -1,5 +1,8 @@
 package com.remake.ingredient.adapter.out.persistence;
 
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
@@ -10,6 +13,8 @@ import com.remake.ingredient.application.port.out.DeleteIngredientPort;
 import com.remake.ingredient.application.port.out.LoadIngredientPort;
 import com.remake.ingredient.application.port.out.SaveIngredientPort;
 import com.remake.ingredient.domain.Ingredient;
+import com.remake.ingredient.domain.IngredientStatus;
+import com.remake.ingredient.domain.StorageLocation;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,6 +28,28 @@ class IngredientPersistenceAdapter implements LoadIngredientPort, SaveIngredient
 	@Override
 	public Optional<Ingredient> loadByIdAndUserId(Long ingredientId, Long userId) {
 		return repository.findByIdAndUserId(ingredientId, userId).map(IngredientJpaEntity::toDomain);
+	}
+
+	@Override
+	public List<Ingredient> loadActiveByUserId(Long userId, StorageLocation storage, Long categoryId, String keyword) {
+		return repository.search(userId, IngredientStatus.ACTIVE, storage, categoryId, likePattern(keyword)).stream()
+				.map(IngredientJpaEntity::toDomain)
+				.toList();
+	}
+
+	@Override
+	public List<LocalDate> loadActiveExpirationDates(Long userId) {
+		return repository.findExpirationDates(userId, IngredientStatus.ACTIVE);
+	}
+
+	// 검색어의 %, _, \\는 글자 그대로 찾도록 이스케이프한다. 검색어가 없으면 모든 이름과 맞는 %이다.
+	private static String likePattern(String keyword) {
+		if (keyword == null || keyword.isBlank()) {
+			return "%";
+		}
+		String escaped = keyword.strip().toLowerCase(Locale.ROOT)
+				.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+		return "%" + escaped + "%";
 	}
 
 	@Override

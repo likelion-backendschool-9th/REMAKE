@@ -29,7 +29,7 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/user/ingredients/summary` | `{ total, danger, soon, ok }` |
-| GET | `/user/ingredients` | Filters `storageType`, `categoryCode`, `q`; default sort by expiry soonest; item has `dDay`, `status` (DANGER/SOON/OK), `isExpirationEstimated` |
+| GET | `/user/ingredients` | Filters `storageType`, `categoryCode`, `q` (name contains, case-insensitive, max 50 chars; longer is `INVALID_INPUT`); ACTIVE only, default sort by expiry soonest; item has `id`, `name`, `categoryCode`, `storage`, `expirationDate`, `isExpirationEstimated`, `dDay` (negative when expired), `status` (DANGER/SOON/OK), `amount`, `unit`, `price` |
 | GET | `/user/ingredients/{id}` | Detail |
 | POST | `/user/ingredients` | Required `name, categoryCode, storage, expirationDate, amount, unit`; optional `price`. Event: ingredient_added |
 | PATCH | `/user/ingredients/{id}` | Partial update of `name, categoryCode, storage, expirationDate, price, amount`; omitted keys stay unchanged, `"price": null` clears the price. Unit cannot be changed after registration (a `unit` key is ignored). Editing expiry clears the "estimated" flag. `amount` can be edited only while the ingredient is ACTIVE and never used or discarded (sets remaining and initial amount together); otherwise `INVALID_INPUT` |
