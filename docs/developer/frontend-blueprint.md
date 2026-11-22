@@ -156,7 +156,7 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - **OCR과 AI 생성**은 각각 동기 요청 한 번이고, 응답에 결과가 담깁니다. 기다리는 동안 로딩 화면을 보여 줍니다(시간 제한: OCR 30초, AI 60초). 작업 ID, polling, 스트리밍은 없습니다.
 - **queryKey**는 Query 훅과 같은 곳에 둡니다. 라우트의 `_lib/queries.ts`, 공유되면 `lib/queries/<도메인>.ts`. 예: `fridgeKeys.all`, `fridgeKeys.detail(id)`
 - **API 클라이언트**: 모든 호출은 `lib/api/client.ts`를 거칩니다. 쿠키를 함께 보냅니다(`credentials: "include"`). 타임아웃은 `AbortSignal.timeout`으로 겁니다. 개발 중에는 넉넉하게 기본 30초, OCR 60초, AI 생성 120초로 둡니다. 프론트 타임아웃은 백엔드 제한(위 참고)보다 길어야 합니다. 그래야 프론트가 먼저 끊지 않고 서버의 `OCR_TIMEOUT`·`AI_TIMEOUT` 응답을 화면에서 처리할 수 있습니다. 최종 값은 개발 막바지에 #122에서 정합니다.
-- **재시도**: GET만 1회 재시도합니다. POST·PUT·PATCH·DELETE는 재시도하지 않습니다(`Idempotency-Key`를 쓰는 API는 예외). TanStack Query는 기본으로 3회 재시도하므로 query는 1, mutation은 0으로 설정합니다.
+- **재시도**: GET만 1회 재시도합니다. POST·PUT·PATCH·DELETE는 재시도하지 않습니다. TanStack Query는 기본으로 3회 재시도하므로 query는 1, mutation은 0으로 설정합니다.
 - **캐싱**: 자주 안 바뀌는 데이터(카테고리, 마트 목록, 알레르기 목록, 금주의 레시피)는 `staleTime`을 길게(수 분~1시간) 둡니다. 자주 바뀌는 데이터(냉장고 재료, 장바구니)는 짧게 두고, 바꾼 뒤에는 `invalidateQueries`를 합니다.
 - **에러**: 백엔드 에러 `code`를 사용자 문구로 바꾸는 표는 `lib/error-messages.ts` 하나로 관리합니다(§10 에러). 401이면 로그인 화면으로 보냅니다.
 - **Zustand**에는 진짜 전역 상태(로그인 사용자 요약, UI 설정)와, props로 내리면 3단계를 넘는 상태만 둡니다.

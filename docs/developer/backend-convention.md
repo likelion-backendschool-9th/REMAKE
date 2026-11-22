@@ -26,7 +26,7 @@ com.remake
 │       │   └── scheduler       예약 작업 (필요한 기능만)
 │       └── out
 │           ├── persistence     JPA Entity, Repository, Port 구현
-│           └── ai / ocr / oauth / filestorage / push / mail  외부 서비스 호출 (필요한 기능만)
+│           └── ai / ocr / oauth / filestorage / mail  외부 서비스 호출 (필요한 기능만)
 │
 └── global                      모든 기능이 같이 쓰는 것
     ├── error                   ErrorCode, BusinessException, GlobalExceptionHandler
@@ -39,19 +39,18 @@ com.remake
 
 | 기능 폴더 | 테이블 |
 |---|---|
-| `user` | users, user_excluded_ingredients, account_deletion_requests |
+| `user` | users, user_excluded_ingredients, account_deletion_requests, subscriptions, subscription_payments |
 | `auth` | refresh_tokens |
 | `ingredient` | ingredient_categories, ingredient_catalog, ingredients, ingredient_logs |
 | `receipt` | receipts, receipt_items |
-| `recipe` | recipes, recipe_ingredients, recipe_steps, recipe_catalog_items, saved_recipes, recipe_cook_logs |
-| `mealplan` | meal_plans, meal_plan_slots, meal_plan_slot_ingredients |
+| `recipe` | recipes, recipe_ingredients, recipe_steps, saved_recipes |
+| `mealplan` | meal_plans, meal_plan_slots |
 | `cart` | cart_items |
-| `share` | shared_recipes, shared_recipe_photos, shared_recipe_reports, shared_recipe_weekly_ranks |
+| `share` | shared_recipes, shared_recipe_reports, shared_recipe_weekly_ranks |
 | `quota` | usage_logs, generation_quota_grants |
-| `notification` | notifications, push_subscriptions |
-| `event` | events, event_daily_stats |
-| `admin` | admin_audit_logs. 어드민 화면의 기능(신고 처리, 횟수 조정, 계정 제한)은 각 기능의 UseCase를 부릅니다 |
-| `global/common` | idempotency_keys |
+| `notification` | notifications |
+| `event` | events |
+| `admin` | 보류: 어드민 화면이 피그마에 없어 어드민 테이블이 없습니다. 디자인되면 어드민 기능은 각 기능의 UseCase를 부릅니다 |
 
 지킬 것:
 
@@ -81,9 +80,8 @@ com.remake
 | OCR (영수증 글자 읽기) | `adapter/out/ocr` | `receipt/adapter/out/ocr` |
 | 소셜 로그인 | `adapter/out/oauth` | `auth/adapter/out/oauth` |
 | 파일 저장 (영수증 사진, 조리 사진) | `adapter/out/filestorage` | `receipt/adapter/out/filestorage` |
-| 웹 푸시 발송 | `adapter/out/push` | `notification/adapter/out/push` |
 | 소셜 연결 끊기 (카카오 unlink / 네이버 delete) | `adapter/out/oauth` | `user/adapter/out/oauth` |
-| 메일 발송 (구글 계정 삭제 인증번호) | `adapter/out/mail` | `user/adapter/out/mail` |
+| 메일 발송 (카카오·구글 계정 삭제 인증번호) | `adapter/out/mail` | `user/adapter/out/mail` |
 
 - 스케줄러는 Controller처럼 `UseCase`만 부릅니다. 두 번 돌아도 결과가 같게 만들고, 동시에 도는 중복은 DB 유니크 키로 막습니다.
 - Service는 외부 서비스를 직접 부르지 않고 `port/out` 인터페이스만 부릅니다. 외부 서비스 호출 코드는 위 adapter 폴더에서 그 인터페이스를 구현합니다.
@@ -185,8 +183,7 @@ com.remake
 - 에러는 Service에서 `BusinessException(ErrorCode.XXX)`로 던지기만 합니다. 응답은 `global/error`의 `GlobalExceptionHandler`가 한 곳에서 만듭니다. Controller와 Service에서 try-catch로 에러 응답을 만들지 않습니다.
 - 에러 코드는 `global/error/ErrorCode` 하나에 모읍니다. 이름은 API 정의서·에러 정의서의 코드와 같게 씁니다.
 - 로그인이 필요함(401)과 권한 없음(403)은 Security 필터 단계에서 막혀 `GlobalExceptionHandler`를 거치지 않습니다. `global/security`의 `AuthenticationEntryPoint`(401)와 `AccessDeniedHandler`(403)에서도 같은 모양으로 응답합니다.
-- 생성·차감·확정 POST(레시피 생성, 요리했어요, 영수증 확정 등)는 `Idempotency-Key` 헤더를 받습니다. 같은 키로 다시 오면 처리하지 않고 처음 응답을 그대로 돌려줍니다(24시간, `idempotency_keys` 테이블). 처리는 기능마다 만들지 않고 `global/common`의 공통 필터 하나가 맡습니다.
-  - 대상: `POST /user/recipes/generate`, `/user/meal-plans/generate`, `/user/receipts`, `/user/ingredients/{id}/consume`, `/user/recipes/{id}/cook`. 프론트는 사용자 행동마다 키를 하나 만들고, 다시 시도할 때 같은 키를 씁니다.
+- `Idempotency-Key` 헤더와 중복 요청 키 테이블은 없습니다. 등록·차감 같은 버튼은 프론트가 요청이 끝날 때까지 비활성으로 막습니다.
 - 인증 방식은 [#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42)에서 A안으로 확정했습니다. 액세스(30분)·리프레시(14일) JWT를 모두 HttpOnly 쿠키(`Secure; SameSite=Lax`)로 둡니다. 토큰은 `Authorization` 헤더가 아니라 쿠키에서 읽습니다. 로그인·재발급 응답에는 `accessToken`을 넣지 않습니다.
 
 ### 예시 API
@@ -213,20 +210,21 @@ com.remake
 
 ## AI 생성
 
-- LLM은 `port/out` 인터페이스 하나로 부르고, 구현은 `adapter/out/ai`에 둡니다. 입력은 요청의 ID·enum과 DB 데이터(냉장고 재료, 제외 재료 사전 ID)뿐입니다. **사용자가 입력한 글을 프롬프트에 넣지 않습니다.**
+- LLM은 `port/out` 인터페이스 하나로 부르고, 구현은 `adapter/out/ai`에 둡니다. 입력은 요청의 ID·enum과 DB 데이터(냉장고 재료, 제외 재료 코드)뿐입니다. **사용자가 입력한 글을 프롬프트에 넣지 않습니다.**
 - 응답은 구조화된 JSON으로 받아 검증합니다: 스키마, 단위는 14개 코드 중 하나, 조리 단계가 비어 있지 않음. 검증에 실패하면 `AI_INVALID_RESPONSE`이고, 저장하지 않으며 횟수도 차감하지 않습니다.
-- "레시피 재료 보충" 설정이 ON이면 냉장고에 없는 재료도 쓸 수 있습니다. 제외(알레르기) 재료는 빼고 요청하고, 결과에 그래도 들어 있으면 `allergenWarning`을 켭니다.
-- 식단표: 먼저 메뉴 이름과 칸별 재료(`meal_plan_slot_ingredients`)를 만들고, 부족한 양을 SQL `SUM`으로 계산하고, 재료로 만들 수 있는 일수까지만 생성합니다(BASIC 최대 5일, PREMIUM 7일, 1차는 BASIC 적용). 그다음 부족한 재료를 장바구니에 담습니다. 칸의 상세 레시피는 사용자가 칸을 열 때 만듭니다.
+- "레시피 재료 보충" 설정이 ON이면 냉장고에 없는 재료도 쓸 수 있습니다. OFF면 냉장고 재료로만 만들고, 너무 적으면 `NO_INGREDIENTS`입니다. 제외(알레르기) 재료는 빼고 요청합니다.
+- 식단표: 칸마다 생성 때 레시피 전체를 만듭니다(칸 상세를 나중에 만들지 않음). 같은 재료 수량을 여러 끼니에 겹쳐 쓰지 않게 계산합니다(각 칸 레시피 재료 기준, 칸별 예정 재료 테이블 없음). 재료로 만들 수 있는 일수까지만 생성하고(BASIC 최대 5일, PREMIUM 7일), 그다음 부족한 재료를 장바구니에 담습니다.
 - 성공한 생성만 횟수를 차감합니다. 한도는 [`spec/domain-rules.md`](../agent/spec/domain-rules.md)(영문)에 있습니다.
 
 ## 예약 작업 (한국 시간)
 
 | 작업 | 시각 | 하는 일 |
 | --- | --- | --- |
-| 소비기한 알림 | 매일 09:00 | `EXPIRY_SOON`(3일 이하, 재료마다), `EXPIRED`(하루 한 건) 생성과 웹 푸시. 알림을 끈 사용자는 제외. `ingredient_expired`, `notification_sent` 발행 |
-| 주간 랭킹·보상 | 월요일 0시 | 지난주 TOP 100을 `shared_recipe_weekly_ranks`에 확정하고, 상위 레시피 3개의 작성자에게 레시피 생성 +10/+6/+3회(한 달 유효)를 한 트랜잭션에서 지급. 규칙은 [ERD](erd.md) §24. `weekly_reward_granted` 발행 |
+| 소비기한 알림 | 매일 09:00 | `EXPIRY_SOON`(3일 이하, 재료마다), `EXPIRED`(하루 한 건) 생성(앱 안 알림만, 기기 푸시 없음). 알림을 끈 사용자는 제외. `ingredient_expired`, `notification_sent` 발행 |
+| 주간 랭킹·보상 | 월요일 0시 | 지난주 TOP 100을 `shared_recipe_weekly_ranks`에 확정하고, 상위 레시피 3개의 작성자에게 레시피 생성 +10/+6/+3회(한 달 유효)를 한 트랜잭션에서 지급. 규칙은 [ERD](erd.md) 22번 테이블. `weekly_reward_granted` 발행 |
 | 영수증 정리 | 매일 새벽 | 구매일 기준 6개월 지난 영수증을 이미지·품목과 함께 삭제 |
-| 이벤트 집계 | 매일 새벽 | `events` → `event_daily_stats`, 180일 지난 원본 삭제 |
+| 구독 자동 결제 | 매일 새벽 | 다음 결제일이 오늘인 ACTIVE 구독을 billingKey로 결제하고 한 달 연장, CANCELED 구독은 끝냄(`users.plan` BASIC). 실패 처리는 미결(사용자에게 질문) |
+| 이벤트 보관 | 매일 새벽 | 180일 지난 원본 이벤트 삭제. 일별 집계 테이블 없음 |
 
 - 하루·한 달 횟수 초기화 작업은 없습니다. 남은 횟수는 `usage_logs`로 계산합니다. 그 밖의 정리 작업은 ERD의 구현 규칙에 있습니다.
 
@@ -246,6 +244,6 @@ com.remake
 
 테스트 작성 방법: [백엔드 테스트](backend-testing.md).
 
-- 비즈니스 규칙 단위 테스트: 횟수 계산(성공만 차감, 동시 `PENDING`), 단위 환산(같은 종류끼리만; 큰술 15ml, 작은술 5ml, 컵 200ml; 꼬집·약간은 차감 안 함), 소비기한 상태, 식단표 재료 배정과 부족 계산, 랭킹과 `rankChange`, 영수증 보관.
+- 비즈니스 규칙 단위 테스트: 횟수 계산(성공만 차감, 같은 회원 동시 요청), 단위 환산(같은 종류끼리만; 큰술 15ml, 작은술 5ml, 컵 200ml; 꼬집·약간은 차감 안 함), 소비기한 상태, 식단표 재료 배정과 부족 계산, 랭킹과 `rankChange`, 중복 영수증, 영수증 보관.
 - OCR·LLM 어댑터는 가짜로 바꾸고 시간 초과·잘못된 응답 경우를 테스트합니다.
-- 어드민 API: 어드민이 아니면 403인지, 모든 어드민 조치가 `admin_audit_logs`에 남는지 테스트합니다.
+- 어드민 API(어드민 화면이 나올 때까지 보류): 어드민이 아니면 403인지 테스트합니다.
