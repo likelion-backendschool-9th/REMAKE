@@ -4,6 +4,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties({AuthProperties.class, OAuthProperties.class})
+@EnableConfigurationProperties({AuthProperties.class, OAuthProperties.class, GeminiProperties.class})
 public class RemakePropertiesConfig {
 }

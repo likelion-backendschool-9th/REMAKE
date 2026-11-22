@@ -28,6 +28,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import com.remake.auth.adapter.out.oauth.SocialOAuthAdapter;
 import com.remake.global.config.AsyncConfig;
 import com.remake.ingredient.domain.IngredientStatus;
+import com.remake.recipe.adapter.out.ai.GeminiRecipeAdapter;
 import com.remake.user.domain.AuthProvider;
 
 /**
@@ -94,6 +95,10 @@ public abstract class IntegrationTestSupport {
 	// 외부 서비스 어댑터는 여기서 어댑터 클래스 단위로 가짜로 바꾼다.
 	@MockitoBean
 	protected SocialOAuthAdapter socialOAuthAdapter;
+
+	// AI 레시피 생성. 실제 Gemini를 부르지 않는다. 테스트마다 필요한 응답·예외를 stub한다.
+	@MockitoBean
+	protected GeminiRecipeAdapter geminiRecipeAdapter;
 
 	/** 테스트용 회원 한 명을 넣고 id를 돌려준다. provider_user_id는 호출마다 다르게 만든다. */
 	protected Long createUser() {
