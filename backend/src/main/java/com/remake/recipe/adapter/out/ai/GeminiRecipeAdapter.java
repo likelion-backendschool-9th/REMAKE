@@ -60,6 +60,8 @@ public class GeminiRecipeAdapter implements GenerateRecipeAiPort {
 			6. unit은 다음 코드 중 하나만 쓴다: %s. TO_TASTE는 amount를 null로 둔다.
 			7. steps는 순서대로 한 단계씩, 한 문장 또는 두 문장으로 쓴다. 단계 번호는 붙이지 않는다.
 			8. tips는 한두 문장, 없으면 null.
+			9. ingredients에는 steps에서 실제로 쓰는 재료만, 실제로 쓰는 양만큼 넣는다. 냉장고 재료를 모두 쓸 필요는 없고,
+			   요리에 어울리지 않는 재료는 빼도 된다. ingredients의 모든 재료는 steps 어딘가에 나와야 한다.
 			""".formatted(Arrays.toString(RecipeUnit.values()));
 
 	private final RestClient restClient;
