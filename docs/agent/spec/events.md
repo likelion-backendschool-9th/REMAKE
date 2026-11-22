@@ -2,7 +2,7 @@
 
 Source of truth: the Korean "Remake event definition (Figma-based)" v2 (2026-11-22, Notion "이벤트 v2"; not in the repo). Names are snake_case and fixed; to add or rename an event, update that document first and ask the user.
 
-- Scale: 78 events (P0 36, P1 37, P2 5; CLIENT 44, SERVER 34), 102 properties, 21 metrics (north star + 20 KPIs), 42 screen codes.
+- Scale: 78 events (P0 36, P1 37, P2 5; CLIENT 44, SERVER 34), 102 properties, 21 metrics (north star + 20 KPIs), 41 screen codes.
 - API numbers are the numbers in [`api-summary.md`](api-summary.md); error codes are from [`errors.md`](errors.md).
 - Admin screens are not in Figma, so there are no admin events or dashboards.
 
@@ -19,6 +19,7 @@ Source of truth: the Korean "Remake event definition (Figma-based)" v2 (2026-11-
 - Tracking must never break the user flow (async, swallow errors).
 - **Retention**: raw events are kept 180 days. On account deletion only `user_id` stays (`events.user_id` has no foreign key). There is no daily aggregation table for now: compute the metrics below directly from `events`; decide on a daily table when the admin screens are designed.
 - Decision [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46): `cart_item_added` (E62) is emitted only by `AddCartItemsUseCase`, once per call that inserts rows. Record `cart_source` (`meal_plan`, `own_recipe`, `shared_recipe`) and `item_count` (inserted rows, not groups or summed quantities). Emit nothing if the inserted count is 0. The calling meal-plan and recipe APIs do not emit it themselves. Never record a rolled-back add.
+- Meal-plan generation (API 38) is asynchronous: emit `meal_plan_generated` (E53) and `meal_plan_generate_failed` (E54) when the server job ends, not when API 38 replies 202. E54 `error_code` is `MEAL_PLAN_NO_INGREDIENTS` or an `AI_*` code. Whether `notification_sent` (E66) also covers meal-plan notifications is (open).
 
 ## Common fields and user attributes
 
@@ -132,8 +133,8 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 | E51 | `meal_plan_setup_viewed` | CLIENT | P0 | remaining_quota | M16 | 56 (frontend) | frontend (assigned by 이준호) |
 | E52 | `meal_plan_generate_started` | CLIENT | P0 | meal_purpose, meal_type_count, servings, start_offset_days | M09, M11 | 56 (frontend) | frontend (assigned by 이준호) |
 | E78 | `meal_plan_overlap_answered` | CLIENT | P1 | overlap_day_count, overlap_choice | M11 | 56 (frontend) | frontend (assigned by 이준호) |
-| E53 | `meal_plan_generated` | SERVER | P0 | meal_plan_id, meal_purpose, meal_type_count, generated_days, shortage_count, cart_added_count, was_overwritten, duration_ms, remaining_quota | M09, M10, M11, M16, M17 | 38 `POST /user/meal-plans/generate` | 한윤수 |
-| E54 | `meal_plan_generate_failed` | SERVER | P0 | error_code, duration_ms | M09, M10, M16, M20 | 38 `POST /user/meal-plans/generate` | 한윤수 |
+| E53 | `meal_plan_generated` | SERVER | P0 | meal_plan_id, meal_purpose, meal_type_count, generated_days, shortage_count, cart_added_count, was_overwritten, duration_ms, remaining_quota | M09, M10, M11, M16, M17 | 38 server job end (not the 202 response) | 한윤수 |
+| E54 | `meal_plan_generate_failed` | SERVER | P0 | error_code, duration_ms | M09, M10, M16, M20 | 38 server job end (not the 202 response) | 한윤수 |
 | E56 | `meal_calendar_viewed` | CLIENT | P1 | month_offset, has_plan | M11, M15 | 56 (frontend) | frontend (assigned by 이준호) |
 | E57 | `meal_day_viewed` | CLIENT | P1 | date_relation, slot_count | - | 56 (frontend) | frontend (assigned by 이준호) |
 | E58 | `meal_slot_opened` | CLIENT | P0 | meal_type, date_relation | M11 | 56 (frontend) | frontend (assigned by 이준호) |
@@ -349,13 +350,12 @@ Values for `screen`, `screen_name`, and `previous_screen`. Screens marked "scree
 | `meal_plan_calendar` | p5 meal plan (calendar, bottom sheet, ⋮ sheet, empty state) | meal plan |
 | `meal_plan_setup` | meal plan recipe generation | meal plan |
 | `meal_plan_overlap_modal` | meal plan overlap warning modal (screens to add no. 10) | meal plan |
-| `meal_plan_loading` | AI generation loading (screens to add no. 14) | meal plan |
 | `cart_list` | p7 cart | cart |
 
 ## Differences from the current code
 
 - `EventName` (76 values) must follow the 78 events above. Add: `subscription_checkout_started`, `subscription_started`, `subscription_payment_failed`, `subscription_renewed`, `subscription_canceled`, `subscription_ended`, `recipe_favorited`, `meal_plan_overlap_answered`, `meal_slot_deleted`, `meal_slot_replaced`, `meal_slot_replace_failed`, `cart_moved_to_fridge`. Rename `notification_clicked` to `notification_banner_clicked`. Remove: `pwa_install_prompted`, `pwa_installed`, `push_permission_result`, `camera_unavailable` (use `error_shown` with `CAMERA_UNAVAILABLE`), `meal_plan_shortage_shown`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`, `shared_recipe_saved` (use `recipe_saved` with `save_source=shared`).
 - On hold: `cook_feedback_answered` (E50). Its screen (screens to add no. 6) has no position yet; decide properties when it exists.
-- The `Screen` enum (25 uppercase values) must become the 42 lowercase screen codes above.
+- The `Screen` enum (25 uppercase values) must become the 41 lowercase screen codes above.
 - Properties removed: `permission_result`, `was_skipped`, `skipped_step_count`, `is_expiration_estimated`, `duplicate_suspected`, `allergen_warning`, `needs_check_count`, `feedback_value`, `slot_source`, `has_recipe`, `group_count`, `channel`, `click_from`, `photo_count`.
 - Priorities now follow the source document. Decision [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58) moved sharing, cart, and reward events to P1; the source keeps them P1. Its admin parts (ADMIN gate, analytics APIs) are on hold because admin screens are not in Figma.

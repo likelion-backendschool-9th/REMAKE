@@ -205,7 +205,7 @@ Build new APIs by following the ingredient category list (`GET /api/v1/user/ingr
 
 - Scope every query to the token owner. Another user's resource returns 404 (`*_NOT_FOUND`), not 403, so its existence is not leaked.
 - Generate a `traceId` per request, put it in the MDC log context, and return it in error responses. Never return stack traces, SQL, or provider error text.
-- Time limits: normal requests 10 s, OCR 30 s, AI generation 60 s. Convert upstream timeouts to `OCR_TIMEOUT` / `AI_TIMEOUT` and provider errors to `OCR_UPSTREAM_ERROR` / `AI_UPSTREAM_ERROR`.
+- Time limits: normal requests 10 s, OCR 30 s, AI recipe generation 60 s (meal-plan generation replies 202 and runs as a server job; its limit is (open)). Convert upstream timeouts to `OCR_TIMEOUT` / `AI_TIMEOUT` and provider errors to `OCR_UPSTREAM_ERROR` / `AI_UPSTREAM_ERROR`.
 - Business rules (limits, units, expiry states, receipt retention) are in [`spec/domain-rules.md`](spec/domain-rules.md). Table-level rules (optimistic lock, deletion, retention) are in the [ERD](erd.md).
 
 ## AI generation

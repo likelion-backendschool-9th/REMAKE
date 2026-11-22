@@ -49,11 +49,11 @@ API 60개 전체는 영문 요약 [`docs/agent/spec/api-summary.md`](../../agent
 
 - 경로: `/api/v1/{public|user}/{자원}[/{id}[/{동작}]]`. 자원은 복수형 케밥케이스(`saved-recipes`), 동작은 뒤에 동사(`generate`, `cook`, `scan`). `me`는 쓰지 않습니다(`/user/profile`).
 - `public`은 로그인·토큰 재발급만, `user`는 로그인 사용자(토큰 주인의 데이터만). `admin`은 ADMIN role만(서버에서 검증, 아니면 403)인데 이번 버전에는 어드민 API가 없습니다.
-- 성공 응답은 래퍼 없이 리소스 그대로. 생성 201, 본문 없음 204, 이벤트 수집 202.
+- 성공 응답은 래퍼 없이 리소스 그대로. 생성 201, 본문 없음 204, 이벤트 수집·식단표 생성 접수(38) 202.
 - 날짜 `2026-11-19`, 시각 ISO 8601 `+09:00`, 금액은 원 단위 정수, 페이징 `?page=0&size=20` → `{ content, page, size, totalElements, hasNext }`. 냉장고·장바구니·월 목록은 페이징하지 않습니다.
 - 남의 리소스는 403이 아니라 404(존재 여부를 알리지 않기 위해).
 - 중복 요청 키(`Idempotency-Key`)는 없습니다. 등록·차감 같은 버튼은 요청이 끝날 때까지 비활성으로 막습니다.
-- 시간 제한: 일반 10초, OCR 30초, AI 레시피·식단표 60초. AI는 1회 자동 재시도, OCR은 재시도 없음.
+- 시간 제한: 일반 10초, OCR 30초, AI 레시피 60초(레시피에만 적용, 식단표 생성은 202로 바로 응답하고 서버 작업으로 만듦). AI는 1회 자동 재시도, OCR은 재시도 없음.
 - 모든 요청에 `X-Client-Platform`(TWA/PWA/WEB), `X-App-Version`, `X-Screen`(지금 화면 코드) 헤더. 서버는 이 값을 이벤트의 `platform`, `app_version`, `screen`에 씁니다.
 - 인증([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) A): 액세스·리프레시 JWT를 모두 HttpOnly 쿠키로 둡니다. 운영은 같은 도메인 상대 경로(`/api/...`) + `credentials: 'include'`. 프론트는 토큰을 JS에 두지 않고 `Authorization: Bearer`도 붙이지 않습니다. 자세한 흐름은 [`01_auth-onboarding.md`](01_auth-onboarding.md)·[`../frontend-blueprint.md`](../frontend-blueprint.md) §9.
 

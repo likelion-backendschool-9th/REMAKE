@@ -35,7 +35,7 @@
 | 14 | `recipe_steps` | 레시피 단계 | 만드는 방법 단계 | 4 AI 레시피 | 김종수 | 5 |
 | 15 | `saved_recipes` | 저장한 레시피 | 내 저장 목록. 공유 레시피를 저장하면 사본 없이 원본을 가리킴 | 4 AI 레시피 | 김종수 | 6 |
 | 16 | `usage_logs` | 생성 횟수 사용 | 레시피·식단표 생성에 성공할 때만 한 줄. 남은 횟수 계산 원본 | 4 AI 레시피 | 김종수 | 5 |
-| 17 | `meal_plans` | 식단표 | 식단표 한 번 생성한 결과 | 5 주간 식단표 | 한윤수 | 8 |
+| 17 | `meal_plans` | 식단표 | 식단표 생성 요청 한 번과 그 결과(진행 중·완료·실패) | 5 주간 식단표 | 한윤수 | 9 |
 | 18 | `meal_plan_slots` | 식단 칸 | 날짜·끼니별 레시피 한 칸 | 5 주간 식단표 | 한윤수 | 8 |
 | 19 | `cart_items` | 장바구니 | 부족 재료 목록(공유 레시피 저장, 재료 보충으로 부족 재료가 들어간 내 레시피 저장, 식단표 생성 때 자동으로 담김) | 7 공유 공간·장바구니 | 최유리 | 9 |
 | 20 | `shared_recipes` | 공유 레시피 | 공유 공간에 올린 글(완전 익명) | 7 공유 공간·장바구니 | 최유리 | 7 |
@@ -262,6 +262,7 @@ erDiagram
     varchar meal_types
     int servings
     int generated_days
+    varchar status
     timestamp created_at
   }
   meal_plan_slots {
@@ -373,7 +374,7 @@ erDiagram
 | `household_size` | int |  |  | 예 |  | 가구원 수 1~50. 온보딩 전에는 비어 있음 |
 | `onboarding_completed` | boolean |  |  | 아니오 | false | 온보딩을 마쳤는지 |
 | `recipe_supplement_enabled` | boolean |  |  | 아니오 | false | 레시피 재료 보충. 켜면 냉장고에 재료가 없어도 레시피 생성 |
-| `notification_enabled` | boolean |  |  | 아니오 | true | 알림 받기(앱 안 알림만). 끄면 알림을 만들지 않음 |
+| `notification_enabled` | boolean |  |  | 아니오 | true | 알림 받기(앱 안 알림만). 끄면 소비기한 알림을 만들지 않음. 식단표 알림은 항상 만듦 |
 | `last_meal_purpose` | varchar |  |  | 예 |  | 마지막으로 고른 식단 목적(다음 생성 때 기본값) |
 | `created_at` | timestamp |  |  | 아니오 |  | 가입 시각 |
 | `updated_at` | timestamp |  |  | 아니오 |  | 수정 시각 |
@@ -604,7 +605,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 
 ### 17. `meal_plans` 식단표
 
-식단표 한 번 생성한 결과. 담당 한윤수(5 주간 식단표).
+식단표 생성 요청 한 번과 그 결과. API 38이 접수하면 `GENERATING`으로 만들고, 서버 작업이 `COMPLETED` 또는 `FAILED`로 바꿈. 담당 한윤수(5 주간 식단표).
 
 | 컬럼 | 타입 | 키 | 참조 | NULL | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -614,7 +615,8 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `purpose` | varchar |  |  | 아니오 | BALANCED | BALANCED/DIET/HIGH_PROTEIN/SIMPLE/SAVING |
 | `meal_types` | varchar |  |  | 아니오 |  | 넣을 끼니 여러 개(BREAKFAST,LUNCH,DINNER 쉼표 구분) |
 | `servings` | int |  |  | 아니오 |  | 식사 인원 |
-| `generated_days` | int |  |  | 아니오 |  | 실제 만든 일수(일반 최대 5, 구독 최대 7, 재료가 부족하면 줄어듦) |
+| `generated_days` | int |  |  | 예 |  | 실제 만든 일수(일반 최대 5, 구독 최대 7, 재료가 부족하면 줄어듦). `COMPLETED` 전에는 비어 있음 |
+| `status` | varchar |  |  | 아니오 | GENERATING | GENERATING/COMPLETED/FAILED |
 | `created_at` | timestamp |  |  | 아니오 |  | 만든 시각 |
 
 ### 18. `meal_plan_slots` 식단 칸
@@ -712,7 +714,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | --- | --- | --- | --- | --- | --- | --- |
 | `id` | bigint | PK |  | 아니오 |  | 고유 번호 |
 | `user_id` | bigint | FK | users | 아니오 |  | 회원 |
-| `type` | varchar |  |  | 아니오 |  | EXPIRY_SOON/EXPIRED |
+| `type` | varchar |  |  | 아니오 |  | EXPIRY_SOON/EXPIRED/MEAL_PLAN_COMPLETED/MEAL_PLAN_FAILED |
 | `ingredient_id` | bigint | FK | ingredients | 예 |  | 임박 알림의 재료. 재료가 지워지면 비움 |
 | `message` | varchar |  |  | 아니오 |  | 보여줄 문구 |
 | `read_at` | timestamp |  |  | 예 |  | 읽은 시각. 알림 화면(p6)을 열면 안 읽은 알림을 모두 읽음으로 기록 |
@@ -830,6 +832,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | 장바구니 → 냉장고 | 카테고리의 default_storage·default_shelf_life_days로 보관 위치·소비기한을 채우고 가격은 비움. 카테고리는 장바구니에 담을 때 이미 정해짐. 냉장고로 넘긴 항목은 cart_items에서 지움 |
 | 장바구니 자동 빼기 | 영수증 등록("식재료 N개 등록 하기") 때 등록한 재료와 이름이 같은 장바구니 항목을 지움 |
 | 식단 삭제·교체 | 삭제는 meal_plan_slots 행 삭제, 교체는 새 레시피를 만들어 recipe_id를 바꾸고 하루 레시피 생성 횟수 1회 차감(usage_logs RECIPE 한 줄). 오늘부터의 칸만, 지난 날짜 칸은 안 됨 |
+| 식단표 생성 | API 38이 시작일·횟수·겹침을 확인하고 `meal_plans`를 `GENERATING`으로 만든 뒤 202로 응답. 서버 작업이 칸과 장바구니를 채우고 `COMPLETED`로 바꾼 뒤 `usage_logs` 한 줄 차감, `MEAL_PLAN_COMPLETED` 알림을 만듦. 재료 부족·AI 오류·시간 초과면 `FAILED`, 차감 없음, `MEAL_PLAN_FAILED` 알림. 식단표 알림은 `notification_enabled`와 관계없이 만듦. 미결: 생성 중(`GENERATING`)에 다시 생성 요청하면 어떻게 할지, 생성 중·실패 식단표를 달력(39)·겹침 검사에 넣을지, 덮어쓸 때 기존 칸을 접수 때 지울지 완성 때 지울지, 알림을 누르면 어디로 갈지(지금 `notifications`에는 식단표 연결 칸이 없음) |
 | 식단표 덮어쓰기 | 시작일은 오늘부터만 고를 수 있어서 지난 날 식단은 바뀌지 않음. 새 식단표 기간과 겹치는 날짜의 기존 칸은 지움. 단 오늘 칸 중 이미 요리한 끼니(cooked_at 있음)는 그 레시피로 남기고 새 식단표가 채우지 않음 |
 | 요리 완료 표시 | 오늘 식단 칸에서 연 레시피로 요리 완료하면 그 칸 cooked_at 기록(다른 날 칸에는 기록 안 함) |
 | 영수증 삭제 | receipts·receipt_items 행 삭제(이미지 포함). 식비·소비 패턴에서 빠지고, 등록된 냉장고 재료는 남음(receipt_item_id만 비움) |
@@ -953,10 +956,11 @@ p1.2 칩 순서 그대로예요.
 | recipes.source | QUICK 빠른 레시피 / CUSTOM 커스텀 레시피 / MEAL_PLAN 식단표(생성·교체) |
 | usage_logs.type | RECIPE 레시피 생성(빠른·커스텀·다시 받기·식단 교체) / MEAL_PLAN 식단표 생성 |
 | meal_plans.purpose | BALANCED 균형 잡힌 식단 / DIET 다이어트 식단 / HIGH_PROTEIN 고단백 식단 / SIMPLE 간편 식단 / SAVING 재료 절약 식단 |
+| meal_plans.status | GENERATING 진행 중 / COMPLETED 완료 / FAILED 실패 |
 | meal_type | BREAKFAST 아침 / LUNCH 점심 / DINNER 저녁 |
 | shared_recipes.status | VISIBLE 보임 / HIDDEN 운영자가 숨김 |
 | shared_recipe_reports.reason | OFFENSIVE_IMAGE 불쾌한 이미지 사용 / AD_TITLE 광고성 제목 / DANGEROUS_RECIPE 위험한 조리법 공유 / OTHER 기타 |
 | shared_recipe_reports.status | PENDING 접수 / DONE 처리됨 |
-| notifications.type | EXPIRY_SOON 소비기한 임박 / EXPIRED 기한 지남 |
+| notifications.type | EXPIRY_SOON 소비기한 임박 / EXPIRED 기한 지남 / MEAL_PLAN_COMPLETED 식단표 완성 / MEAL_PLAN_FAILED 식단표 생성 실패 |
 | receipts.store_code | CU / GS25 / SEVEN_ELEVEN / EMART24 / EMART / HOMEPLUS / LOTTE_MART / COSTCO / TRADERS / HANARO / GS_FRESH / LOTTE_SUPER / EMART_EVERYDAY / HOMEPLUS_EXPRESS(못 맞추면 비움) |
 | unit | PRD 부록 A: 냉장고 9개(G·KG·ML·L·EA·PACK·BUNCH·PIECE·SHEET), 레시피는 TBSP·TSP·CUP·PINCH·TO_TASTE 추가. 값은 백엔드가 재료에 맞춰 정함 |

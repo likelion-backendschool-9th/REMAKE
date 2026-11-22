@@ -14,14 +14,14 @@ Source: PRD v4 and policy doc v4 (Figma-based, 2026-11-22; Korean, kept in Notio
 - Tokens: access 30 min, refresh 14 days, both HttpOnly cookies (`Secure; SameSite=Lax`). The frontend never keeps tokens in JS. On access expiry the frontend calls refresh once and retries the request. If refresh fails, go to login, then back to the original screen.
 - Roles `USER` and `ADMIN`. The server allows `/api/v1/admin/**` to ADMIN only (403 otherwise).
 - Paths: backend `/api/v1/{role}/{resource}`, frontend `/{role}/{feature}/{resource}`. Role is `public` (before login) or `user`. Sheets, modals, loading and failure screens have no path of their own.
-- Timeouts: general 10 s, OCR 30 s, AI recipe and meal plan 60 s. AI retries once automatically; OCR does not retry.
+- Timeouts: general 10 s, OCR 30 s, AI recipe 60 s (recipes only; meal-plan generation replies 202 and runs as a server job, see section 5). AI retries once automatically; OCR does not retry.
 - Files (receipt and shared photos): <= 10 MB, jpg/png/heic. The frontend checks first; the server checks last (413, 415).
 - Double clicks: buttons such as register and deduct are disabled until the request ends. No server `Idempotency-Key`.
 - Concurrent edits of the same ingredient: last request wins. Deduction checks the remaining amount first.
 - Errors: `{ code, message, status, traceId, fieldErrors?, details? }` with the 58 codes in [`errors.md`](errors.md). Input errors show as red text under the field (#DC2626). Errors without a screen show the shared toast. Errors with a screen use the OCR failure screen, the generation failure screen, the meal-plan overlap modal, or the quota-used-up screen.
 - Empty data is not an error: return 200 with an empty value. Empty-list screens (8 places) are (screen pending).
-- Loading: lists use skeletons. AI recipe and meal-plan generation use a loading screen (up to 60 s, screen pending).
-- Success toast: after saving a recipe, generating a meal plan, registering a receipt, or moving cart items to the fridge, show how many cart items were added or removed (not shown when 0). Wording is (proposal), toast is (screen pending).
+- Loading: lists use skeletons. AI recipe generation uses a loading screen (up to 60 s, screen pending). Meal-plan generation has no loading screen (section 5).
+- Success toast: after saving a recipe, registering a receipt, or moving cart items to the fridge, show how many cart items were added or removed (not shown when 0). Meal-plan generation is asynchronous, so when to show its cart count is (open). Wording is (proposal), toast is (screen pending).
 - Excluded ingredients (allergies) from settings are never used in recipe or meal-plan generation.
 - No health or medical information is collected. Settings values are visible to the owner only.
 - Terms of service and privacy policy: links on the login screen open a drawer (screen pending). No separate consent screen (proposal).
@@ -103,7 +103,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Login failure: `OAUTH_FAILED` (401) as a toast. A user cancel is not counted as a failure.
 - Logout: confirm modal → delete the refresh token and both cookies.
 - **Account deletion**: settings → confirm modal → Kakao and Google get a 6-digit email code; Naver re-authenticates. On success clear the cookies and go to login.
-  - Code: 6 digits by email, valid 5 min (timer 04:59), "재전송 하기" sends a new code. More than 5 wrong attempts kills that code. Errors show under the 6 boxes.
+  - Code: 6 digits by email, valid 5 min (timer 04:59), "재전송 하기" sends a new code. More than 5 wrong attempts kills that code. Errors (wrong, expired, too many attempts) show as a toast.
   - Email: Kakao requires email consent at login (biz app); Google always provides it. If still missing, `ACCOUNT_EMAIL_MISSING` (contact support).
   - Naver with a different Naver account: do not delete, back to settings (`REAUTH_ACCOUNT_MISMATCH`). Canceling re-authentication: do not delete (proposal).
   - Unlink the provider on deletion; if unlinking fails, still delete and log it (proposal).
@@ -203,8 +203,8 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Setup: start date (from today, not earlier), one purpose, meals (any of breakfast, lunch, dinner), servings (default household size, proposal).
 - Purposes: BALANCED (default), DIET, HIGH_PROTEIN, SIMPLE, SAVING. Remember the last choice as the next default. No medical or calorie targets. No "참고용 식단" label.
 - Days: basic up to 5, premium up to 7. With too few ingredients, only as many days as possible.
-- Short of days but >= 1 day: toast "재료가 부족해 N일치만 만들었어요"; missing ingredients go to the cart with a count toast (one or two toasts is a design choice, screen pending).
-- Not even one day: `MEAL_PLAN_NO_INGREDIENTS` → generation failure screen; no plan, not charged.
+- Short of days but >= 1 day: the completion notification states the days made. Missing ingredients still go to the cart. The earlier toasts ("재료가 부족해 N일치만 만들었어요", cart count) have no moment to show now that generation is asynchronous (open).
+- Not even one day: `MEAL_PLAN_NO_INGREDIENTS` → failure notification; the plan is `FAILED`, not charged.
 - Each meal slot gets a full recipe from the start (no "menu name first, details later").
 - Do not allocate the same ingredient amount to several meals (based on each slot's recipe ingredients; no per-slot planned-ingredient table; method is up to the developer).
 - Overlap: if the new period overlaps an existing plan, show the warning modal (cancel / overwrite). Overwrite deletes the overlapping days' slots and refills them. Meals already cooked today stay and are not refilled. Overlap is not charged (modal pending).
@@ -212,12 +212,17 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Past days are view only. ⋮ stays; tapping it shows the `PAST_DATE_NOT_ALLOWED` toast.
 - Planning does not deduct fridge ingredients; only cook deduction does.
 - Meal plans use the monthly quota; replace uses the daily recipe quota.
-- Target: generation within 30 s (server limit 60 s), tune after measuring. Loading screen only, no per-day progress. No completion notification.
+- **Asynchronous generation**: the overlap modal and the quota-exhausted screen are checked before generation and stay as they are. Then pressing generate sends API 38 (202) and goes straight to the fridge (index) screen with the toast "식단을 완성하면 알림을 보내드려요". There is no "generating" screen and no per-day progress.
+- Completion: in-app notification "11월 24일부터 5일치 식단표가 완성됐어요" (start date and days made).
+- Failure (too few ingredients, AI error, timeout): in-app notification "식단표를 만들지 못했어요. 횟수는 차감되지 않았어요". Not charged.
+- Meal-plan notifications are created even for members who turned notifications off.
+- Target: generation within 30 s, tune after measuring. The 60 s limit is for recipes only; the server job's time limit is (open).
+- (open): a new generate request while one is `GENERATING`; whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap; whether overwrite deletes the old slots at acceptance or at completion; where tapping the notification goes.
 
 ## 6. Notifications (이상호)
 
-- Types: `EXPIRY_SOON` and `EXPIRED`.
-- Text: "OO의 소비기한이 얼마 남지 않았어요. 제품의 포장지에서 사용 기한을 확인해 주세요", "기한이 지난 재료 N개가 있어요. 냉장고를 확인해 주세요".
+- Types: `EXPIRY_SOON`, `EXPIRED`, `MEAL_PLAN_COMPLETED`, `MEAL_PLAN_FAILED`.
+- Text: "OO의 소비기한이 얼마 남지 않았어요. 제품의 포장지에서 사용 기한을 확인해 주세요", "기한이 지난 재료 N개가 있어요. 냉장고를 확인해 주세요". Meal plans (section 5): "11월 24일부터 5일치 식단표가 완성됐어요", "식단표를 만들지 못했어요. 횟수는 차감되지 않았어요".
 - **In-app only** (top banner and notification screen). No device push.
 - Banner: latest notification + red unread count at the top of every tab screen; tap opens the notification screen.
 - Screen: grouped by 오늘, 1일 전, 2일 전. Items have no tap action. Gray text is a text color, not a read marker.
@@ -225,7 +230,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Empty state (screen pending).
 - Expiry soon: each ingredient expiring today to 3 days later (D-3 to D-DAY) gets one notification per day during that period. D-DAY is "danger" on the fridge screen but "soon" in notifications, on purpose.
 - Expired: one notification per day with the count. The expired event fires once, when first found.
-- Daily job at 09:00 KST. No notifications for members who turned them off. Notifications older than 30 days are deleted every early morning. No user-configurable thresholds or times.
+- Daily job at 09:00 KST for expiry notifications. No expiry notifications for members who turned them off. Meal-plan notifications are created when the generation job ends, regardless of the setting. Notifications older than 30 days are deleted every early morning. No user-configurable thresholds or times.
 
 ## 7. Cart and sharing (최유리)
 

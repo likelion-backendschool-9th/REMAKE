@@ -18,7 +18,7 @@ docs/
 │     ├─ domain-rules.md        비즈니스 규칙: 횟수 제한, 단위 14개, 카테고리 12개, 소비기한 상태, 영역별 규칙(구독 포함)
 │     ├─ api-summary.md         도메인별 전체 API 60개와 각 API가 발행하는 이벤트
 │     ├─ errors.md              에러 응답 형식과 에러 코드 58개
-│     └─ events.md              이벤트 트래킹 규칙, 이벤트 78개, 지표 21개, 화면 코드 42개
+│     └─ events.md              이벤트 트래킹 규칙, 이벤트 78개, 지표 21개, 화면 코드 41개
 └─ developer/                   개발자용 (한글)
    ├─ agent-guide.md            루트 AGENTS.md 번역 (레포 공통 규칙, 제품 규칙, 문서 규칙)
    ├─ git-convention.md         agent/git-convention.md 번역

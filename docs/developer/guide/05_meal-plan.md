@@ -15,7 +15,6 @@
 | `meal_plan_calendar` | p5 식단표(달력·바텀 시트·⋮ 시트, 빈 화면 포함) |
 | `meal_plan_setup` | 식단표-식단 레시피 생성 |
 | `meal_plan_overlap_modal` | 식단표 겹침 경고 모달(추가될 페이지 10번) |
-| `meal_plan_loading` | AI 생성 중 로딩(추가될 페이지 14번) |
 
 ## 정책
 
@@ -32,8 +31,8 @@
 | 참고용 문구 | "참고용 식단" 문구는 넣지 않음(피그마대로) | 확정 |
 | 식사 인원 기본값 | 설정의 가구원 수(피그마 예시 1명) | 제안 |
 | 생성 일수 | 일반 최대 5일, 구독 최대 7일. 재료가 부족하면 만들 수 있는 날까지만 | 확정 |
-| 부족 재료 안내 | 하루치 이상 만들었지만 최대 일수를 못 채우면 공통 토스트 "재료가 부족해 N일치만 만들었어요". 부족 재료는 장바구니에 담고 개수 토스트(한 토스트로 합칠지는 디자인에서) | 확정 / 토스트는 화면 대기 |
-| 하루치도 못 채움 | MEAL_PLAN_NO_INGREDIENTS → 생성 실패 화면에 문구만 다르게. 식단표를 만들지 않고 차감 없음 | 확정 / 화면 대기 |
+| 부족 재료 안내 | 하루치 이상 만들었지만 최대 일수를 못 채우면 완성 알림의 "N일치"로 알 수 있음. 부족 재료는 장바구니에 담음. 이전 토스트("재료가 부족해 N일치만 만들었어요", 장바구니 개수)는 생성이 비동기가 되어 띄울 시점이 없음 | 확정 / 토스트는 미결 |
+| 하루치도 못 채움 | MEAL_PLAN_NO_INGREDIENTS → 실패 알림 "식단표를 만들지 못했어요. 횟수는 차감되지 않았어요". 식단표는 `FAILED`, 차감 없음 | 확정 |
 | 칸 생성 방식 | 끼니 칸마다 처음부터 레시피 전체를 만듦(메뉴명 먼저·칸 상세 나중 방식 폐기) | 확정 |
 | 재료 중복 배정 | 같은 재료 수량을 여러 끼니에 겹쳐 쓰지 않게 계산(각 칸 레시피 재료 기준, 칸별 예정 재료 테이블은 없음) | 확정 / 계산 방식은 개발자가 정함 |
 | 제외 재료 | 식단표 생성도 제외 재료를 쓰지 않음 | 확정 |
@@ -42,9 +41,10 @@
 | 지난 날짜 | 지난 날짜 끼니는 보기만 함. ⋮는 그대로 두고, 누르면 PAST_DATE_NOT_ALLOWED 토스트 | 확정 |
 | 재료 차감 | 식단에 배정돼도 냉장고 재료는 빠지지 않음. 요리 완료 차감 때만 빠짐 | 확정 |
 | 생성 횟수 | 식단표 생성은 월 한도, 레시피 교체는 레시피 하루 횟수 | 확정 |
-| 속도 목표 | 식단표 생성 30초 안 목표(서버 제한 60초), 실측 후 조정 | 확정 |
-| 생성 중 표시 | 로딩 화면만, 일별 진행 표시 없음 | 확정 / 화면 대기 |
-| 완료 알림 | 식단표 생성 완료 알림 없음 | 확정 |
+| 속도 목표 | 식단표 생성 30초 안 목표, 실측 후 조정. 60초 제한은 레시피에만 적용하고 서버 작업 시간 제한은 미결 | 확정 / 시간 제한은 미결 |
+| 생성 방식 | 비동기. "식단표 생성 하기"를 누르면 바로 냉장고(인덱스) 화면으로 이동하고 토스트 "식단을 완성하면 알림을 보내드려요". "식단표 생성 중" 화면은 없음. 겹치는 날짜 모달과 횟수 소진 화면은 생성 전에 확인하므로 그대로 | 확정 |
+| 완성·실패 알림 | 완성하면 앱 안 알림 "11월 24일부터 5일치 식단표가 완성됐어요". 실패(재료 부족·AI 오류·시간 초과)하면 "식단표를 만들지 못했어요. 횟수는 차감되지 않았어요". 알림 받기를 꺼도 만듦 | 확정 |
+| 미결 | 생성 중에 다시 생성 요청하면 어떻게 할지, 생성 중·실패 식단표를 달력·겹침 검사에 넣을지, 덮어쓸 때 기존 칸을 접수 때 지울지 완성 때 지울지, 알림을 누르면 어디로 갈지 | 미결 |
 
 ## API
 
@@ -52,7 +52,7 @@
 
 | 번호 | 메서드 | 경로 | 설명 | 요청 | 응답 | 관련 테이블 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 38 | POST | `/user/meal-plans/generate` | 식단표 생성. 시작일은 오늘부터. 기존 식단과 날짜가 겹치면 overwrite 없이 보낸 요청은 겹치는 날짜를 돌려주며 거절하고, 프론트가 경고 모달(추가될 페이지 10번)을 띄운 뒤 overwrite: true로 다시 보냄(API 답 7). 덮어쓸 때 오늘 이미 요리한 끼니는 남김(ERD 답 7·8). 재료가 부족하면 만들 수 있는 날까지만(11/16 결정), 부족 재료는 장바구니로. 성공할 때만 이번 달 횟수 차감 | `{ startDate, purpose: "BALANCED"\|"DIET"\|"HIGH_PROTEIN"\|"SIMPLE"\|"SAVING", mealTypes: ["BREAKFAST","LUNCH","DINNER"] (1개 이상), servings, overwrite?(기본 false) }` | `201 { mealPlanId, startDate, endDate, generatedDays, cartAddedCount } / 겹치면 409 MEAL_PLAN_OVERLAP(details.overlappingDates)` | meal_plans, meal_plan_slots, recipes, usage_logs, cart_items, users.last_meal_purpose |
+| 38 | POST | `/user/meal-plans/generate` | 식단표 생성. 시작일은 오늘부터. 기존 식단과 날짜가 겹치면 overwrite 없이 보낸 요청은 겹치는 날짜를 돌려주며 거절하고, 프론트가 경고 모달(추가될 페이지 10번)을 띄운 뒤 overwrite: true로 다시 보냄(API 답 7). 덮어쓸 때 오늘 이미 요리한 끼니는 남김(ERD 답 7·8). 재료가 부족하면 만들 수 있는 날까지만(11/16 결정), 부족 재료는 장바구니로. **비동기**: 시작일·횟수·겹침을 먼저 확인하고 식단표를 `GENERATING`으로 만든 뒤 바로 202로 응답. 서버 작업이 식단표를 만들고 완성·실패를 앱 안 알림으로 보냄. 재료 부족·AI 오류·시간 초과는 응답이 아니라 실패 알림. 작업이 성공할 때만 이번 달 횟수 차감 | `{ startDate, purpose: "BALANCED"\|"DIET"\|"HIGH_PROTEIN"\|"SIMPLE"\|"SAVING", mealTypes: ["BREAKFAST","LUNCH","DINNER"] (1개 이상), servings, overwrite?(기본 false) }` | `202(본문 없음) / 겹치면 409 MEAL_PLAN_OVERLAP(details.overlappingDates)` | meal_plans, meal_plan_slots, recipes, usage_logs, cart_items, users.last_meal_purpose |
 | 39 | GET | `/user/meal-plans/calendar` | 그 달에 식단이 있는 날짜와 식단표 기간. 지난 달도 조회 | `?month=2026-11` | `200 { month, periods: [{ mealPlanId, startDate, endDate }], datesWithMeals: [] }` | meal_plans, meal_plan_slots |
 | 40 | GET | `/user/meal-plans/days/{date}` | 그날 끼니 | `-` | `200 { date, slots: [{ slotId, mealType, recipeId, title, ingredientSummary, extraIngredientCount, favorite, cooked }] }` | meal_plan_slots, recipes, saved_recipes |
 | 41 | DELETE | `/user/meal-plan-slots/{slotId}` | 식단 칸 삭제(11/21 결정). 오늘부터의 칸만, 지난 날짜는 안 됨(API 답 6) | `-` | `204` | meal_plan_slots |
@@ -67,14 +67,16 @@
 ## 구현 메모
 
 - 식단표 생성은 월 한도(일반 1회·5일, 구독 4회·7일), 레시피 교체는 레시피 하루 횟수 1회예요. 성공할 때만 차감해요.
-- 재료가 부족하면 만들 수 있는 날까지만 만들어요. 하루치도 못 만들면 `MEAL_PLAN_NO_INGREDIENTS`로 식단표를 만들지 않고 차감하지 않아요.
+- 재료가 부족하면 만들 수 있는 날까지만 만들어요. 하루치도 못 만들면 식단표를 `FAILED`로 두고 실패 알림을 보내요(E54 `error_code`는 `MEAL_PLAN_NO_INGREDIENTS`). 차감하지 않아요.
 - 같은 재료 수량을 여러 끼니에 겹쳐 쓰지 않게 계산해요(각 칸 레시피 재료 기준, 칸별 예정 재료 테이블은 없음). 계산 방식은 개발자가 정해요. 가장 어려운 부분이라 테스트를 꼭 써요.
-- 부족 재료는 07의 `AddCartItemsUseCase`로 장바구니에 담고 응답 `cartAddedCount`로 개수를 줘요.
-- 겹침: `overwrite` 없이 온 요청이 기존 식단과 겹치면 409 `MEAL_PLAN_OVERLAP`(details.overlappingDates)로 거절하고 차감하지 않아요. 프론트가 모달을 띄운 뒤 `overwrite: true`로 다시 보내요. 덮어쓰면 겹치는 날의 기존 칸을 지우되, 오늘 이미 요리한 끼니(`cooked_at`)는 남기고 채우지 않아요.
+- 부족 재료는 07의 `AddCartItemsUseCase`로 장바구니에 담아요. 202 응답에는 본문이 없어서 개수는 E53 `cart_added_count`에만 남고, 사용자에게 보여줄 시점은 미결이에요.
+- 겹침: `overwrite` 없이 온 요청이 기존 식단과 겹치면 409 `MEAL_PLAN_OVERLAP`(details.overlappingDates)로 거절하고 차감하지 않아요. 프론트가 모달을 띄운 뒤 `overwrite: true`로 다시 보내요. 덮어쓰면 겹치는 날의 기존 칸을 지우되, 오늘 이미 요리한 끼니(`cooked_at`)는 남기고 채우지 않아요. 기존 칸을 접수 때 지울지 완성 때 지울지는 미결이에요(접수 때 지우면 생성이 실패했을 때 기존 식단이 사라짐).
 - 식단 삭제·교체는 오늘부터의 칸만 돼요. 지난 날짜는 `PAST_DATE_NOT_ALLOWED`.
 - 식단에 배정해도 냉장고 재료는 빠지지 않고, 요리 완료(04) 때만 빠져요.
 - 식단 목적은 마지막 선택을 `users.last_meal_purpose`에 기억해 다음 기본값으로 써요. 의료 목적·칼로리 목표는 없고 "참고용 식단" 문구도 넣지 않아요.
-- 목표는 30초 안 생성(서버 제한 60초), 실측 후 조정. 생성 완료 알림은 없어요.
+- 식단표 생성은 비동기예요. API 38이 시작일·횟수·겹침을 확인하고 `meal_plans`를 `GENERATING`으로 만든 뒤 202로 바로 응답해요. 서버 작업이 칸과 장바구니를 채우고 `COMPLETED`로 바꾼 뒤 차감하고 `MEAL_PLAN_COMPLETED` 알림("11월 24일부터 5일치 식단표가 완성됐어요")을 만들어요. 재료 부족·AI 오류·시간 초과면 `FAILED`로 바꾸고 차감 없이 `MEAL_PLAN_FAILED` 알림("식단표를 만들지 못했어요. 횟수는 차감되지 않았어요")을 만들어요. 알림은 알림 받기 설정과 관계없이 만들어요.
+- 목표는 30초 안 생성, 실측 후 조정. 60초 제한은 레시피에만 적용하고, 서버 작업의 시간 제한은 미결이에요.
+- 미결: 생성 중(`GENERATING`)에 다시 생성 요청하면 어떻게 할지, 생성 중·실패 식단표를 달력(39)·겹침 검사에 넣을지, 덮어쓸 때 기존 칸을 접수 때 지울지 완성 때 지울지, 알림을 누르면 어디로 갈지(지금 `notifications`에는 식단표 연결 칸이 없음).
 
 ## 지금 코드와 다른 점
 
@@ -82,7 +84,7 @@
 
 ## 에러 코드
 
-`INVALID_INPUT`, `AI_UPSTREAM_ERROR`, `AI_TIMEOUT`, `AI_INVALID_RESPONSE`, `MEAL_PLAN_LIMIT_EXCEEDED`, `MEAL_PLAN_NO_INGREDIENTS`, `MEAL_PLAN_OVERLAP`, `PAST_DATE_NOT_ALLOWED`, `SLOT_NOT_FOUND`, `GENERATION_LIMIT_EXCEEDED`. 공통 코드(`UNAUTHORIZED`, `TOKEN_EXPIRED`, `RATE_LIMITED`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`)는 모든 API에 나올 수 있어요. API별 코드와 화면 표시는 [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)에 있어요.
+응답: `INVALID_INPUT`, `MEAL_PLAN_LIMIT_EXCEEDED`, `MEAL_PLAN_OVERLAP`, `PAST_DATE_NOT_ALLOWED`, `SLOT_NOT_FOUND`, `GENERATION_LIMIT_EXCEEDED`, 레시피 교체(42)의 `AI_UPSTREAM_ERROR`·`AI_TIMEOUT`·`AI_INVALID_RESPONSE`. 식단표 생성(38) 실패 알림의 사유(응답 아님): `MEAL_PLAN_NO_INGREDIENTS`, `AI_UPSTREAM_ERROR`, `AI_TIMEOUT`, `AI_INVALID_RESPONSE`. 공통 코드(`UNAUTHORIZED`, `TOKEN_EXPIRED`, `RATE_LIMITED`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`)는 모든 API에 나올 수 있어요. API별 코드와 화면 표시는 [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)에 있어요.
 
 ## 발행 이벤트
 
@@ -93,8 +95,8 @@
 | E51 | `meal_plan_setup_viewed` | 식단표 생성 설정 화면이 열릴 때 | remaining_quota | FE | P0 | 56 POST /user/events(프론트 전송) |
 | E52 | `meal_plan_generate_started` | "식단표 생성 하기"를 눌렀을 때 | meal_purpose, meal_type_count, servings, start_offset_days | FE | P0 | 56 POST /user/events(프론트 전송) |
 | E78 | `meal_plan_overlap_answered` | 겹치는 날짜 경고 모달에서 덮어쓰기·취소를 골랐을 때 | overlap_day_count, overlap_choice | FE | P1 | 56 POST /user/events(프론트 전송) |
-| E53 | `meal_plan_generated` | 식단표 생성에 성공했을 때 | meal_plan_id, meal_purpose, meal_type_count, generated_days, shortage_count, cart_added_count, was_overwritten, duration_ms, remaining_quota | BE | P0 | 38 식단표 생성 |
-| E54 | `meal_plan_generate_failed` | 식단표 생성에 실패했을 때(차감 안 함). 겹침(409)은 실패로 세지 않음 | error_code, duration_ms | BE | P0 | 38 식단표 생성 |
+| E53 | `meal_plan_generated` | 서버 생성 작업이 성공으로 끝났을 때(202 응답 때가 아님) | meal_plan_id, meal_purpose, meal_type_count, generated_days, shortage_count, cart_added_count, was_overwritten, duration_ms, remaining_quota | BE | P0 | 38 식단표 생성(서버 작업 끝) |
+| E54 | `meal_plan_generate_failed` | 서버 생성 작업이 실패로 끝났을 때(재료 부족·AI 오류·시간 초과, 차감 안 함). 겹침(409)은 실패로 세지 않음 | error_code, duration_ms | BE | P0 | 38 식단표 생성(서버 작업 끝) |
 | E56 | `meal_calendar_viewed` | 식단표 달력이 열리거나 달을 바꿨을 때 | month_offset, has_plan | FE | P1 | 56 POST /user/events(프론트 전송) |
 | E57 | `meal_day_viewed` | 날짜를 눌러 그날 식단 바텀 시트를 볼 때 | date_relation, slot_count | FE | P1 | 56 POST /user/events(프론트 전송) |
 | E58 | `meal_slot_opened` | 끼니 행을 눌러 레시피 상세로 갈 때 | meal_type, date_relation | FE | P0 | 56 POST /user/events(프론트 전송) |
@@ -104,7 +106,8 @@
 
 ## 체크리스트
 
-- [ ] 재료 부족 시 일수 줄이기, 하루치도 못 만들면 실패·차감 없음
+- [ ] 재료 부족 시 일수 줄이기, 하루치도 못 만들면 실패 알림·차감 없음
+- [ ] 202 접수 후 서버 작업, `meal_plans.status` GENERATING → COMPLETED/FAILED, 완성·실패 알림(알림 끔과 관계없음)
 - [ ] 끼니 사이 재료 중복 배정 없음
 - [ ] 겹침 409 → 덮어쓰기, 오늘 요리한 끼니 유지
 - [ ] 식단 삭제·교체(하루 횟수 1회), 지난 날짜 거부

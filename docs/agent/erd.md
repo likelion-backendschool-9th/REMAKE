@@ -35,7 +35,7 @@
 | 14 | `recipe_steps` | Recipe steps | Cooking steps | 4 AI recipes | 김종수 | 5 |
 | 15 | `saved_recipes` | Saved recipes | My saved list. Saving a shared recipe points at the original (no copy) | 4 AI recipes | 김종수 | 6 |
 | 16 | `usage_logs` | Generation usage | One row per successful recipe or meal-plan generation. Source of remaining counts | 4 AI recipes | 김종수 | 5 |
-| 17 | `meal_plans` | Meal plans | Result of one meal-plan generation | 5 meal plan | 한윤수 | 8 |
+| 17 | `meal_plans` | Meal plans | One meal-plan generation request and its result (generating, done, failed) | 5 meal plan | 한윤수 | 9 |
 | 18 | `meal_plan_slots` | Meal plan slots | One recipe per date and meal | 5 meal plan | 한윤수 | 8 |
 | 19 | `cart_items` | Cart | Missing ingredients (added automatically by saving a shared recipe, saving my recipe with supplemented ingredients, and meal-plan generation) | 7 sharing/cart | 최유리 | 9 |
 | 20 | `shared_recipes` | Shared recipes | Posts in the shared space (fully anonymous) | 7 sharing/cart | 최유리 | 7 |
@@ -262,6 +262,7 @@ erDiagram
     varchar meal_types
     int servings
     int generated_days
+    varchar status
     timestamp created_at
   }
   meal_plan_slots {
@@ -373,7 +374,7 @@ Social login members and settings screen values. Owner 이준호 (1 login/settin
 | `household_size` | int |  |  | yes |  | Household size 1-50. Empty before onboarding |
 | `onboarding_completed` | boolean |  |  | no | false | Whether onboarding is done |
 | `recipe_supplement_enabled` | boolean |  |  | no | false | Recipe supplement. When on, recipes can be generated with ingredients not in the fridge |
-| `notification_enabled` | boolean |  |  | no | true | Receive notifications (in-app only). When off, no notifications are created |
+| `notification_enabled` | boolean |  |  | no | true | Receive notifications (in-app only). When off, no expiry notifications are created. Meal-plan notifications are always created |
 | `last_meal_purpose` | varchar |  |  | yes |  | Last chosen meal-plan purpose (default for the next generation) |
 | `created_at` | timestamp |  |  | no |  | Signup time |
 | `updated_at` | timestamp |  |  | no |  | Update time |
@@ -604,7 +605,7 @@ One row only per successful recipe or meal-plan generation. Source of the remain
 
 ### 17. `meal_plans` (Meal plans)
 
-Result of one meal-plan generation. Owner 한윤수 (5 meal plan).
+One meal-plan generation request and its result. Created as `GENERATING` when API 38 accepts the request; the server job sets `COMPLETED` or `FAILED`. Owner 한윤수 (5 meal plan).
 
 | Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -614,7 +615,8 @@ Result of one meal-plan generation. Owner 한윤수 (5 meal plan).
 | `purpose` | varchar |  |  | no | BALANCED | BALANCED/DIET/HIGH_PROTEIN/SIMPLE/SAVING |
 | `meal_types` | varchar |  |  | no |  | Several meals (BREAKFAST,LUNCH,DINNER comma separated) |
 | `servings` | int |  |  | no |  | Servings |
-| `generated_days` | int |  |  | no |  | Days actually generated (basic max 5, premium max 7; fewer when ingredients run short) |
+| `generated_days` | int |  |  | yes |  | Days actually generated (basic max 5, premium max 7; fewer when ingredients run short). Empty until `COMPLETED` |
+| `status` | varchar |  |  | no | GENERATING | GENERATING/COMPLETED/FAILED |
 | `created_at` | timestamp |  |  | no |  | Created time |
 
 ### 18. `meal_plan_slots` (Meal plan slots)
@@ -712,7 +714,7 @@ One notification created for a member. Owner 이상호 (6 notifications).
 | --- | --- | --- | --- | --- | --- | --- |
 | `id` | bigint | PK |  | no |  | ID |
 | `user_id` | bigint | FK | users | no |  | Member |
-| `type` | varchar |  |  | no |  | EXPIRY_SOON/EXPIRED |
+| `type` | varchar |  |  | no |  | EXPIRY_SOON/EXPIRED/MEAL_PLAN_COMPLETED/MEAL_PLAN_FAILED |
 | `ingredient_id` | bigint | FK | ingredients | yes |  | Ingredient of an expiring-soon notification. Cleared when the ingredient is deleted |
 | `message` | varchar |  |  | no |  | Text to show |
 | `read_at` | timestamp |  |  | yes |  | Read time. Opening the notification screen marks all unread ones as read |
@@ -830,6 +832,7 @@ These values appear on screens but have no column. They are computed from the so
 | Cart -> fridge | Fill storage and expiry from the category's `default_storage` and `default_shelf_life_days`; leave the price empty. The category was set when the item was added. Delete moved items from `cart_items` |
 | Automatic cart removal | On receipt registration, delete cart items whose name equals a registered ingredient |
 | Meal delete / replace | Delete removes the `meal_plan_slots` row. Replace generates a new recipe, changes `recipe_id`, and uses one daily recipe generation (one `usage_logs` RECIPE row). Only slots from today on; past slots cannot be changed |
+| Meal-plan generation | API 38 checks the start date, quota, and overlap, creates `meal_plans` as `GENERATING`, and replies 202. A server job fills the slots and the cart, sets `COMPLETED`, charges one `usage_logs` row, and creates a `MEAL_PLAN_COMPLETED` notification. Too few ingredients, AI error, or timeout set `FAILED`, charge nothing, and create `MEAL_PLAN_FAILED`. Meal-plan notifications ignore `notification_enabled`. (open): a new generate request while one is `GENERATING`; whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap; whether overwrite deletes the old slots at acceptance or at completion; where tapping the notification goes (no link from `notifications` to the plan yet) |
 | Meal-plan overwrite | The start date can only be today or later, so past days never change. Delete existing slots on dates that overlap the new plan, except today's meals already cooked (`cooked_at` set): they keep their recipe and the new plan does not fill them |
 | Cooked mark | Cooking a recipe opened from today's slot sets that slot's `cooked_at` (never for other days) |
 | Receipt delete | Delete the `receipts` and `receipt_items` rows (image included). It leaves spending and patterns; registered fridge ingredients stay (only `receipt_item_id` is cleared) |
@@ -953,10 +956,11 @@ In the p1.2 chip order.
 | recipes.source | QUICK / CUSTOM / MEAL_PLAN (meal-plan generation and replace) |
 | usage_logs.type | RECIPE (quick, custom, regenerate, meal replace) / MEAL_PLAN |
 | meal_plans.purpose | BALANCED / DIET / HIGH_PROTEIN / SIMPLE / SAVING |
+| meal_plans.status | GENERATING generating / COMPLETED done / FAILED failed |
 | meal_type | BREAKFAST / LUNCH / DINNER |
 | shared_recipes.status | VISIBLE / HIDDEN (hidden by an operator) |
 | shared_recipe_reports.reason | OFFENSIVE_IMAGE / AD_TITLE / DANGEROUS_RECIPE / OTHER |
 | shared_recipe_reports.status | PENDING / DONE |
-| notifications.type | EXPIRY_SOON / EXPIRED |
+| notifications.type | EXPIRY_SOON / EXPIRED / MEAL_PLAN_COMPLETED meal plan done / MEAL_PLAN_FAILED meal plan failed |
 | receipts.store_code | CU / GS25 / SEVEN_ELEVEN / EMART24 / EMART / HOMEPLUS / LOTTE_MART / COSTCO / TRADERS / HANARO / GS_FRESH / LOTTE_SUPER / EMART_EVERYDAY / HOMEPLUS_EXPRESS (empty when not matched) |
 | unit | PRD appendix A: 9 fridge units (G, KG, ML, L, EA, PACK, BUNCH, PIECE, SHEET); recipes add TBSP, TSP, CUP, PINCH, TO_TASTE. The backend picks the value per ingredient |

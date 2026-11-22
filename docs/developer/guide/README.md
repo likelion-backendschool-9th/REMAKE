@@ -32,5 +32,5 @@ AI 코딩 도구(Claude Code 등)는 루트 `AGENTS.md`와 영문 요약 [`docs/
 - API 정의서 v4: API 60개(영문 요약 [`api-summary.md`](../../agent/spec/api-summary.md))
 - 에러·예외 정의서 v2: 에러 코드 58개(영문 요약 [`errors.md`](../../agent/spec/errors.md))
 - ERD v4: 테이블 26개(레포에는 [`../erd.md`](../erd.md))
-- 이벤트 정의서 v2: 이벤트 78개, 속성 102개, 지표 21개, 화면 코드 42개(영문 요약 [`events.md`](../../agent/spec/events.md))
+- 이벤트 정의서 v2: 이벤트 78개, 속성 102개, 지표 21개, 화면 코드 41개(영문 요약 [`events.md`](../../agent/spec/events.md))
 - WBS v2: 일정·담당
