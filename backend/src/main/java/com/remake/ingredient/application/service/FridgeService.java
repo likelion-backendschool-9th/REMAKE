@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import com.remake.ingredient.application.port.in.GetFridgeUseCase;
 import com.remake.ingredient.application.port.out.LoadIngredientCategoryPort;
 import com.remake.ingredient.application.port.out.LoadIngredientPort;
 import com.remake.ingredient.domain.ExpiryPolicy;
+import com.remake.ingredient.domain.ExpiryStatus;
 import com.remake.ingredient.domain.FridgeIngredient;
 import com.remake.ingredient.domain.FridgeSummary;
 import com.remake.ingredient.domain.Ingredient;
@@ -38,7 +40,7 @@ public class FridgeService implements GetFridgeUseCase {
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<FridgeIngredient> getFridgeIngredients(Long userId, StorageLocation storage,
+	public List<FridgeIngredient> getFridgeIngredients(Long userId, ExpiryStatus status, StorageLocation storage,
 			IngredientCategoryCode categoryCode) {
 		List<IngredientCategory> categories = loadIngredientCategoryPort.loadAll();
 		Long categoryId = null;
@@ -47,12 +49,14 @@ public class FridgeService implements GetFridgeUseCase {
 					.findFirst()
 					.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND));
 		}
-		Map<Long, IngredientCategoryCode> codes = categories.stream()
-				.collect(Collectors.toMap(IngredientCategory::id, IngredientCategory::code, (a, b) -> a));
+		Map<Long, IngredientCategory> categoriesById = categories.stream()
+				.collect(Collectors.toMap(IngredientCategory::id, Function.identity(), (a, b) -> a));
 
 		LocalDate today = LocalDate.now(clock);
 		return loadIngredientPort.loadActiveByUserId(userId, storage, categoryId).stream()
-				.map(ingredient -> toFridgeIngredient(ingredient, codes, today))
+				.map(ingredient -> toFridgeIngredient(ingredient, categoriesById, today))
+				// 상태는 오늘 날짜로 계산하는 값이라 DB가 아니라 여기서 거른다. 목록은 페이징이 없어 한 번에 거르면 된다.
+				.filter(item -> status == null || item.status() == status)
 				.toList();
 	}
 
@@ -62,9 +66,10 @@ public class FridgeService implements GetFridgeUseCase {
 		return FridgeSummary.of(loadIngredientPort.loadActiveExpirationDates(userId), LocalDate.now(clock));
 	}
 
-	private FridgeIngredient toFridgeIngredient(Ingredient ingredient, Map<Long, IngredientCategoryCode> codes,
+	private FridgeIngredient toFridgeIngredient(Ingredient ingredient, Map<Long, IngredientCategory> categoriesById,
 			LocalDate today) {
 		long dDay = ExpiryPolicy.dDay(ingredient.expirationDate(), today);
-		return new FridgeIngredient(ingredient, codes.get(ingredient.categoryId()), dDay, ExpiryPolicy.statusOf(dDay));
+		return new FridgeIngredient(ingredient, categoriesById.get(ingredient.categoryId()), dDay,
+				ExpiryPolicy.statusOf(dDay));
 	}
 }

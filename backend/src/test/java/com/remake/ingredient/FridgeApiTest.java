@@ -48,7 +48,7 @@ class FridgeApiTest extends IntegrationTestSupport {
 	void 재료가_없으면_빈_목록과_0_요약을_돌려준다() throws Exception {
 		mockMvc.perform(as(ME, get(URL)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(0));
+				.andExpect(jsonPath("$.items.length()").value(0));
 		mockMvc.perform(as(ME, get(URL + "/summary")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.total").value(0))
@@ -68,22 +68,25 @@ class FridgeApiTest extends IntegrationTestSupport {
 
 		mockMvc.perform(as(ME, get(URL)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(6))
-				.andExpect(jsonPath("$[0].name").value("지남"))
-				.andExpect(jsonPath("$[0].dDay").value(-2))
-				.andExpect(jsonPath("$[0].status").value("DANGER"))
-				.andExpect(jsonPath("$[0].categoryCode").value("MEAT"))
-				.andExpect(jsonPath("$[1].name").value("당일"))
-				.andExpect(jsonPath("$[1].dDay").value(0))
-				.andExpect(jsonPath("$[1].status").value("DANGER"))
-				.andExpect(jsonPath("$[2].status").value("SOON"))
-				.andExpect(jsonPath("$[3].dDay").value(3))
-				.andExpect(jsonPath("$[3].status").value("SOON"))
-				.andExpect(jsonPath("$[4].dDay").value(4))
-				.andExpect(jsonPath("$[4].status").value("OK"))
-				.andExpect(jsonPath("$[5].name").value("여유"))
-				.andExpect(jsonPath("$[0].isExpirationEstimated").value(false))
-				.andExpect(jsonPath("$[0].unit").value("EA"));
+				.andExpect(jsonPath("$.items.length()").value(6))
+				.andExpect(jsonPath("$.items[0].name").value("지남"))
+				.andExpect(jsonPath("$.items[0].dDay").value(-2))
+				.andExpect(jsonPath("$.items[0].status").value("DANGER"))
+				.andExpect(jsonPath("$.items[0].categoryCode").value("MEAT"))
+				.andExpect(jsonPath("$.items[1].name").value("당일"))
+				.andExpect(jsonPath("$.items[1].dDay").value(0))
+				.andExpect(jsonPath("$.items[1].status").value("DANGER"))
+				.andExpect(jsonPath("$.items[2].status").value("SOON"))
+				.andExpect(jsonPath("$.items[3].dDay").value(3))
+				.andExpect(jsonPath("$.items[3].status").value("SOON"))
+				.andExpect(jsonPath("$.items[4].dDay").value(4))
+				.andExpect(jsonPath("$.items[4].status").value("OK"))
+				.andExpect(jsonPath("$.items[5].name").value("여유"))
+				.andExpect(jsonPath("$.items[0].unit").value("EA"))
+				.andExpect(jsonPath("$.items[0].imageUrl").isNotEmpty())
+				// 목록에는 가격과 추정 여부를 주지 않는다(API 12). 가격은 상세(API 13)에만 있다.
+				.andExpect(jsonPath("$.items[0].price").doesNotExist())
+				.andExpect(jsonPath("$.items[0].isExpirationEstimated").doesNotExist());
 	}
 
 	@Test
@@ -102,8 +105,8 @@ class FridgeApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.soon").value(2))
 				.andExpect(jsonPath("$.ok").value(1));
 		mockMvc.perform(as(ME, get(URL)))
-				.andExpect(jsonPath("$.length()").value(5))
-				.andExpect(jsonPath("$[?(@.status=='DANGER')]", hasSize(2)));
+				.andExpect(jsonPath("$.items.length()").value(5))
+				.andExpect(jsonPath("$.items[?(@.status=='DANGER')]", hasSize(2)));
 	}
 
 	@Test
@@ -113,8 +116,8 @@ class FridgeApiTest extends IntegrationTestSupport {
 		add(OTHER, "FRUIT", "남의것", 5);
 
 		mockMvc.perform(as(ME, get(URL)))
-				.andExpect(jsonPath("$.length()").value(1))
-				.andExpect(jsonPath("$[0].name").value("사과"));
+				.andExpect(jsonPath("$.items.length()").value(1))
+				.andExpect(jsonPath("$.items[0].name").value("사과"));
 	}
 
 	@Test
@@ -123,18 +126,42 @@ class FridgeApiTest extends IntegrationTestSupport {
 		jdbcTemplate.update("UPDATE ingredients SET storage = 'FREEZER' WHERE id = ?", frozen);
 		add(ME, "MEAT", "돼지고기", 6);
 
-		mockMvc.perform(as(ME, get(URL).param("storageType", "FREEZER")))
-				.andExpect(jsonPath("$.length()").value(1))
-				.andExpect(jsonPath("$[0].name").value("닭가슴살"));
+		mockMvc.perform(as(ME, get(URL).param("storage", "FREEZER")))
+				.andExpect(jsonPath("$.items.length()").value(1))
+				.andExpect(jsonPath("$.items[0].name").value("닭가슴살"));
 		mockMvc.perform(as(ME, get(URL).param("categoryCode", "MEAT")))
-				.andExpect(jsonPath("$.length()").value(2));
-		mockMvc.perform(as(ME, get(URL).param("categoryCode", "MEAT").param("storageType", "FREEZER")))
-				.andExpect(jsonPath("$.length()").value(1));
+				.andExpect(jsonPath("$.items.length()").value(2));
+		mockMvc.perform(as(ME, get(URL).param("categoryCode", "MEAT").param("storage", "FREEZER")))
+				.andExpect(jsonPath("$.items.length()").value(1));
+	}
+
+	@Test
+	void 상태_카드로_거르고_다른_필터와_함께_쓸_수_있다() throws Exception {
+		add(ME, "MEAT", "지남", -2);
+		add(ME, "FRUIT", "당일", 0);
+		add(ME, "FRUIT", "사흘뒤", 3);
+		add(ME, "VEGETABLE", "여유", 10);
+
+		mockMvc.perform(as(ME, get(URL).param("status", "DANGER")))
+				.andExpect(jsonPath("$.items.length()").value(2))
+				.andExpect(jsonPath("$.items[0].name").value("지남"))
+				.andExpect(jsonPath("$.items[1].name").value("당일"));
+		mockMvc.perform(as(ME, get(URL).param("status", "SOON")))
+				.andExpect(jsonPath("$.items.length()").value(1))
+				.andExpect(jsonPath("$.items[0].name").value("사흘뒤"));
+		mockMvc.perform(as(ME, get(URL).param("status", "OK")))
+				.andExpect(jsonPath("$.items.length()").value(1));
+		mockMvc.perform(as(ME, get(URL).param("status", "DANGER").param("categoryCode", "FRUIT")))
+				.andExpect(jsonPath("$.items.length()").value(1))
+				.andExpect(jsonPath("$.items[0].name").value("당일"));
 	}
 
 	@Test
 	void 잘못된_필터_값은_INVALID_INPUT이다() throws Exception {
-		mockMvc.perform(as(ME, get(URL).param("storageType", "ATTIC")))
+		mockMvc.perform(as(ME, get(URL).param("storage", "ATTIC")))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+		mockMvc.perform(as(ME, get(URL).param("status", "EXPIRED")))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
 		mockMvc.perform(as(ME, get(URL).param("categoryCode", "NOPE")))
@@ -145,13 +172,13 @@ class FridgeApiTest extends IntegrationTestSupport {
 	@Test
 	void 날짜가_지나면_같은_재료의_상태가_바뀐다() throws Exception {
 		add(ME, "FRUIT", "사과", 4);
-		mockMvc.perform(as(ME, get(URL))).andExpect(jsonPath("$[0].status").value("OK"));
+		mockMvc.perform(as(ME, get(URL))).andExpect(jsonPath("$.items[0].status").value("OK"));
 
 		clock.advance(Duration.ofDays(1));
 
 		mockMvc.perform(as(ME, get(URL)))
-				.andExpect(jsonPath("$[0].dDay").value(3))
-				.andExpect(jsonPath("$[0].status").value("SOON"));
+				.andExpect(jsonPath("$.items[0].dDay").value(3))
+				.andExpect(jsonPath("$.items[0].status").value("SOON"));
 		mockMvc.perform(as(ME, get(URL + "/summary"))).andExpect(jsonPath("$.soon").value(1));
 	}
 }
