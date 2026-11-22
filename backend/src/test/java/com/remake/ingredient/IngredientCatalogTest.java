@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.remake.ingredient.application.port.in.GetIngredientCatalogUseCase;
 import com.remake.ingredient.domain.IngredientCatalogItem;
+import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.support.IntegrationTestSupport;
 
 // 재료 사전: Flyway 기준 데이터(V5)와 다른 기능이 쓰는 UseCase를 확인한다. 사전은 서버 안에서만 쓰고 공개 API가 없다.
@@ -46,6 +47,27 @@ class IngredientCatalogTest extends IntegrationTestSupport {
 		assertThat(common).contains("달걀", "쇠고기").doesNotContain("계란", "소고기");
 		assertThat(getIngredientCatalogUseCase.findCatalogItemByName("계란")).isPresent();
 		assertThat(getIngredientCatalogUseCase.findCatalogItemByName("소고기")).isPresent();
+	}
+
+	@Test
+	void 모든_항목에_냉장고_단위가_있고_대표_재료는_흔히_사는_단위다() {
+		Integer withoutUnit = jdbcTemplate.queryForObject(
+				"SELECT count(*) FROM ingredient_catalog WHERE unit NOT IN ('G', 'KG', 'ML', 'L', 'EA', 'PACK', 'BUNCH', 'PIECE', 'SHEET')",
+				Integer.class);
+
+		assertThat(withoutUnit).isZero();
+		assertThat(unitOf("달걀")).isEqualTo(IngredientUnit.EA);
+		assertThat(unitOf("계란")).isEqualTo(IngredientUnit.EA);
+		assertThat(unitOf("우유")).isEqualTo(IngredientUnit.PACK);
+		assertThat(unitOf("두부")).isEqualTo(IngredientUnit.EA);
+		assertThat(unitOf("대파")).isEqualTo(IngredientUnit.BUNCH);
+		assertThat(unitOf("쌀")).isEqualTo(IngredientUnit.KG);
+		assertThat(unitOf("간장")).isEqualTo(IngredientUnit.ML);
+		assertThat(unitOf("돼지고기")).isEqualTo(IngredientUnit.G);
+	}
+
+	private IngredientUnit unitOf(String name) {
+		return getIngredientCatalogUseCase.findCatalogItemByName(name).orElseThrow().unit();
 	}
 
 	@Test

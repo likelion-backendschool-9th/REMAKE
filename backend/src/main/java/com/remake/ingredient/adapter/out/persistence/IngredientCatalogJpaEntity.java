@@ -1,9 +1,12 @@
 package com.remake.ingredient.adapter.out.persistence;
 
 import com.remake.ingredient.domain.IngredientCatalogItem;
+import com.remake.ingredient.domain.IngredientUnit;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -32,6 +35,10 @@ class IngredientCatalogJpaEntity {
 	@Column(nullable = false, unique = true, length = 50)
 	private String name;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 10)
+	private IngredientUnit unit;
+
 	// null이면 카테고리 기본 보관 일수
 	private Integer shelfLifeDays;
 
@@ -39,6 +46,6 @@ class IngredientCatalogJpaEntity {
 	private boolean commonExclusion;
 
 	IngredientCatalogItem toDomain() {
-		return new IngredientCatalogItem(id, categoryId, name, shelfLifeDays, commonExclusion);
+		return new IngredientCatalogItem(id, categoryId, name, unit, shelfLifeDays, commonExclusion);
 	}
 }
