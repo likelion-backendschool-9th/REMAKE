@@ -1,73 +1,130 @@
 # 03. 영수증·OCR·소비 패턴 (이동준)
 
+기준: PRD v4·정책정의서 v4·ERD v4·API 정의서 v4·에러 정의서 v2·이벤트 정의서 v2(모두 피그마 기준, 2026-11-22, 노션). 표는 원본에서 그대로 옮겼고 피그마 노드 근거 칸만 뺐어요.
+
 ## 범위
 
-영수증 스캔(OCR) → 확인·수정 → 확정 저장 → 냉장고 등록, 영수증 목록·상세·삭제, 월별 식비, 소비 패턴("나의 소비").
+영수증 스캔(OCR) → 확인·수정 → 등록(냉장고 재료까지), 중복 영수증 막기, 영수증 목록·상세·삭제, 월 식비, 나의 소비(소비 패턴).
 
-## 화면 (피그마 프레임)
+## 화면
 
-p3-영수증(+스켈레톤, 최대 스크롤), p3.1-카메라, p3.3-ocr 결과(+스켈레톤), p3.3.1-재료 수정(+카테고리·보관 위치·소비 기한·재료명), p3.3.2-재료 추가(+각 수정, 스켈레톤), p3.2-영수증 디테일(+스켈레톤), p3.4-소비 패턴(+스켈레톤, 빈 리스트)
+화면 코드는 이벤트의 `screen` 값이에요. "추가될 페이지"는 아직 피그마에 없는 화면이에요.
 
-## 핵심 흐름 (순서가 중요)
+| 화면 코드 | 피그마 화면 |
+| --- | --- |
+| `receipt_list` | p3 영수증 |
+| `receipt_scan` | p3.1 카메라, 이미지 업로드(추가될 페이지 4번) |
+| `receipt_loading` | p3.3 OCR 결과 스켈레톤 |
+| `receipt_scan_error` | OCR 실패 화면(추가될 페이지 4번) |
+| `receipt_result` | p3.3 OCR 결과 |
+| `receipt_item_edit` | p3.3.1 OCR 재료 수정 |
+| `receipt_item_add` | p3.3.2 OCR 재료 추가 |
+| `receipt_detail` | p3.2 영수증 상세 |
+| `receipt_pattern` | p3.4 소비 패턴 |
 
-```
-스캔 화면 → [POST /receipts/scan] 로딩 화면(동기 대기) → OCR 결과·확인 화면
-   → 수정·추가·삭제·등록 여부 선택 → [POST /receipts] 확정 저장
-```
+## 정책
 
-- **확정 전 OCR 결과는 서버에 저장하지 않습니다.** `scan`은 분석만 하고 결과를 응답으로 돌려줍니다. 사용자가 확인을 마친 뒤 `POST /receipts` 한 번에 영수증·품목·냉장고 재료를 한 트랜잭션으로 저장합니다.
-- **확정한 영수증은 수정할 수 없고 삭제만** 됩니다(PATCH·confirm API 없음). 재료 정보 수정은 냉장고에서.
-- OCR은 **동기 처리**(한 요청). 로딩 화면에서 결과를 기다리고, 스트리밍·완료 알림은 없습니다.
-- 결과에는 **식재료만** 남깁니다. 수세미·냄비·세제 같은 비식재료는 응답에 나오지 않습니다(저장도 안 함).
-- 카테고리는 AI가 추정해 채우고 사용자가 바꿀 수 있습니다. 소비기한이 없으면 카테고리 기본 보관 기간으로 추정하고 `isExpirationEstimated: true`("소비 기한은 카테고리 기본 보관 기간으로 추정했어요" 문구).
-- 수량을 못 읽으면 1개(EA). 단위는 부록 A의 코드로 정규화(포장 단위는 PACK, 낱개는 EA).
-- 영수증 스캔은 **횟수 제한이 없고** 횟수 표시도 없습니다. 호출은 비용·성공률 모니터링을 위해 `usage_logs`(type=OCR)와 이벤트로만 기록합니다.
+상태: 확정 = 그대로 구현, 제안 = 상수로 분리해 구현하고 PR에 적기, 미결 = 구현 전에 준호님께 질문, 화면 대기 = 규칙은 정해졌고 화면이 추가될 예정.
 
-- OCR이 구매일이나 판매처 이름을 읽지 못하면 스캔 응답의 해당 값은 비워 둡니다. 확인 화면에서 사용자가 누락값을 채운 뒤 등록합니다.
+| 항목 | 규칙 | 상태 |
+| --- | --- | --- |
+| 스캔 방법 | "영수증 스캔 하기" → 카메라 촬영, 또는 "첨부 하기"·카메라 갤러리 아이콘 → 이미지 업로드(업로드 이후 화면은 추가 예정) | 확정(피그마) / 업로드 이후는 화면 대기 |
+| 카메라를 못 쓸 때 | 공통 토스트 "카메라를 쓸 수 없어요. 갤러리에서 골라 주세요"(CAMERA_UNAVAILABLE) | 확정 / 문구는 제안 |
+| 스캔 한도 | 없음 | 확정 |
+| OCR 처리 | 동기 처리(최대 30초), 기다리는 동안 OCR 결과 스켈레톤. 분석 완료 알림 없음 | 확정 |
+| OCR 실패 | OCR 실패 화면 하나에 문구만 다르게: 영수증을 읽지 못함(영수증 아님·OCR 오류·시간 초과), 식재료가 하나도 없음, 구매일이 6개월 지남, 이미 등록한 영수증. 다시 찍으면 됨 | 확정 / 화면 대기 |
+| 결과에 나오는 것 | 식재료만(수세미·냄비 같은 비식재료는 걸러 냄). 식재료는 카테고리·보관 위치·수량·가격·소비기한을 채워 보여 줌 | 확정 |
+| 결과 확인·수정 | "영수증 재료" 화면에서 품목 수정(p3.3.1)·추가(p3.3.2). OCR 결과에는 식재료만 보여 주고 품목 빼기는 없음(추가될 페이지 5번 취소, 11/22). 고친 값은 화면 상태로만 두고 등록할 때 함께 보냄 | 확정 |
+| 소비기한 추정 안내 | "소비 기한은 카테고리 기본 보관 기간으로 추정 했어요. 소비기한을 확인 하시고 수정해 주세요" | 확정(피그마) |
+| 등록 | "식재료 N개 등록 하기"를 누를 때 영수증 이미지·영수증·품목·냉장고 재료를 한 번에 저장. 등록 전 OCR 결과는 서버에 저장하지 않고, 등록하지 않고 나가면 정확도 분석용 이벤트만 남음 | 확정 |
+| 구매일·판매처 | OCR이 못 읽으면 비워서 주고, 등록할 때 구매일·판매처 이름은 필수 | 확정 |
+| 6개월 지난 영수증 | 구매일이 6개월 지난 영수증은 등록할 수 없음(스캔 단계에서 OCR 실패로) | 확정 |
+| 중복 등록 | 등록 버튼은 요청이 끝날 때까지 비활성 | 확정 |
+| 중복 영수증 | 판매처·영수증 번호·구매 시각이 모두 같으면 이미 등록한 영수증으로 보고 등록을 막음(번호를 못 읽었으면 판매처·구매일·식재료, 시각을 못 읽었으면 구매일로 비교). 스캔 직후 확인해 OCR 실패 화면에 "이미 등록한 영수증이에요"(RECEIPT_DUPLICATE 409), 등록 때 한 번 더 확인 | 확정 / 화면 대기 |
+| 장바구니 자동 빼기 | 등록한 재료와 이름이 같은 장바구니 항목은 자동으로 빠지고 "장바구니에서 N개를 뺐어요" 토스트 | 확정 / 토스트는 화면 대기 |
+| 영수증 목록 | 월 선택 "2026년 11월 ∨"(최근 6개월), 월 합계, "내 평균보다 N원 더 썼어요", 주차 묶음(주차·기간·합계), 영수증 행(마트 아이콘·판매처·날짜·식재료 N개·금액) | 확정(피그마) |
+| 월 합계 | 그 달 영수증의 식재료 품목 금액 합계(구매일 기준) | 확정 |
+| 평균 비교 | 내 과거 평균(최근 6개월 월평균)과의 금액 차이. 이번 달 제외·기록 있는 달만·과거가 없으면 숨김은 제안 | 확정 / 세부는 제안 |
+| 판매처 아이콘 | 판매처 이름을 14종 코드(CU·GS25·세븐일레븐·이마트24·이마트·홈플러스·롯데마트·코스트코·트레이더스·하나로·GS더프레시·롯데슈퍼·이마트에브리데이·홈플러스익스프레스)에 맞춰 저장, 못 맞추면 비우고 기본 아이콘 | 확정 / 매칭 방식은 제안 |
+| 영수증 상세 | 원본 이미지, "2026년 11월 영수증", 마트·지점명, 품목(이미지·이름·보관 위치·수량·금액), 총 금액(식재료 품목 합계), 삭제 | 확정(피그마) |
+| 수정·삭제 | 등록한 영수증은 수정 없이 삭제만. 냉장고에 들어간 재료는 냉장고에서 따로 고침(구매가를 고쳐도 영수증 금액은 그대로) | 확정 |
+| 영수증 삭제 | 삭제 모달 → 영수증·품목·이미지 삭제, 식비·소비 패턴에서도 빠짐, 냉장고 재료는 남음. 모달 제목·본문은 피그마 수정 대상 | 확정 |
+| 보관 기간 | 구매일부터 6개월, 지나면 매일 새벽 정리 작업이 이미지와 함께 삭제 | 확정 |
+| 이미지 저장 | 저장소 종류는 백엔드가 정함. 응답 이미지 주소는 서버가 만듦 | 확정 |
+| 나의 소비 | "소비 패턴 확인 하기" → 나의 소비 화면: 최근 6개월 월 탭(프론트가 만듦), 그 달 지출(양수), "평균 보다 N원 더 지출", 카테고리 비율 막대·범례, 월~일 날짜 줄(선택일 아래 금액), 선택일 "총 N원"과 식재료 목록 | 확정(피그마) |
+| 소비 패턴 범위 | 영수증 품목 + 영수증 없이 추가했고 가격이 있는 재료(등록일 기준). 가격이 없으면 냉장고에만 넣은 것으로 보고 뺌. 버린 재료도 이미 산 것이라 그대로 포함 | 확정 |
+| 카테고리 비율 | 12개 카테고리별 지출 비율을 막대 하나와 범례로, 지출 0인 카테고리는 빠짐 | 확정(피그마) / 0 제외는 제안 |
+| 날짜 선택 | 기본은 오늘(이번 달이 아니면 그 달 마지막 구매일). 소비가 없으면 "해당 날짜에는 소비가 없습니다" | 확정(피그마) / 기본 날짜는 제안 |
+| 자주 산 품목·구매 주기 | 없음 | 확정 |
 
 ## API
 
-| 메서드 | 경로 | 비고 |
-|---|---|---|
-| POST | `/api/v1/user/receipts/scan` | multipart `image`(10MB, jpg·png·heic). `items[]`, `purchasedOn`, `storeName`, `storeCode`, `duplicateSuspected` |
-| POST | `/api/v1/user/receipts` | multipart `image` + `payload` JSON. 구매일과 공백이 아닌 판매처 이름 필수. `items[].register`가 true인 것만 냉장고에 등록, 수량 소수 셋째 자리까지. 응답 `{ receiptId, registeredCount }` |
-| GET | `/api/v1/user/receipts` | `?month=YYYY-MM`(최근 6개월). 항목 `id, storeName, storeCode, purchasedOn, foodItemCount, foodAmount` |
-| GET | `/api/v1/user/receipts/{id}` | 품목, 총 금액(식재료 합계), 이미지 서명 URL |
-| DELETE | `/api/v1/user/receipts/{id}` | 이미지·품목 삭제, 등록된 재료는 유지 |
-| GET | `/api/v1/user/expenses/monthly` | 월 총액 + 최근 6개월 평균 대비(`comparison.diffAmount`) |
-| GET | `/api/v1/user/expenses/monthly/analysis` | 카테고리 비중 + 버린 재료 금액(`ingredient_logs.cost_amount` 합계. 보여 줄 피그마 화면은 추가 예정) |
-| GET | `/api/v1/user/expenses/patterns` | `?month=`: 6개월 월 탭, 총액·평균 대비, 카테고리 비중, 날짜별 합계 |
-| GET | `/api/v1/user/expenses/daily-items` | `?date=`: 그날 산 식재료 목록(`imageUrl`은 카테고리 이미지) |
+경로의 `/api/v1`은 줄였어요. 요청의 `?`는 선택 값, `|`는 그중 하나예요. 번호는 API 정의서 번호예요(다른 문서도 이 번호로 가리켜요).
+
+| 번호 | 메서드 | 경로 | 설명 | 요청 | 응답 | 관련 테이블 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 20 | POST | `/user/receipts/scan` | OCR 분석만 하고 저장하지 않음(11/20 결정). 동기 처리. 식재료만 돌려줌. 식재료가 하나도 없거나 구매일이 6개월 지난 영수증은 실패로 돌려주고 OCR 실패 화면(추가될 페이지 4번)에서 보여줌(에러 정의서 답 4). 이미 등록한 영수증(판매처(지점명)·영수증 번호·구매 시각이 모두 같은 영수증(번호를 못 읽었으면 판매처·구매일·식재료 이름 목록, 시각을 못 읽었으면 구매일로 비교))도 같은 화면에서 실패로 보여줌(정책 답 8·10) | `multipart image(jpg·png·heic, 10MB)` | `200 { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount, unit, price, expirationDate }] }` | receipts(중복 확인만) |
+| 21 | POST | `/user/receipts` | 영수증·품목·냉장고 재료를 한 번에 저장. 단위는 서버가 재료명으로 정함(ERD 답 5). 등록한 재료와 이름이 같은 장바구니 항목은 자동으로 뺌(API 답 3). 6개월 지난 영수증은 등록 불가(11/20 결정). 이미 등록한 영수증이면 한 번 더 막음(정책 답 8·10) | `multipart image + payload { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount, price, expirationDate }] }` | `201 { receiptId, ingredientCount, cartRemovedCount }` | receipts, receipt_items, ingredients, cart_items |
+| 22 | GET | `/user/receipts` | 그 달 영수증. 월 합계는 영수증 품목만, 평균은 최근 6개월 월 합계 평균 | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, weeks: [{ label, startDate, endDate, totalAmount, receipts: [{ id, storeCode, storeName, purchasedOn, itemCount, totalAmount }] }] }` | receipts, receipt_items |
+| 23 | GET | `/user/receipts/{id}` | 영수증 하나 | `-` | `200 { id, storeCode, storeName, purchasedOn, imageUrl, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }], totalAmount }` | receipts, receipt_items |
+| 24 | DELETE | `/user/receipts/{id}` | 영수증·품목·이미지 삭제. 식비·소비 패턴에서도 빠지고 냉장고 재료는 남음(ERD 답 1) | `-` | `204` | receipts, receipt_items, ingredients |
+| 25 | GET | `/user/expenses/patterns` | 그 달 소비. 영수증 품목 + 영수증 없이 가격을 넣은 재료(등록일 기준, ERD 답 3) | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | receipt_items, ingredients |
+| 26 | GET | `/user/expenses/daily-items` | 고른 날의 품목 | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | receipt_items, ingredients |
+
+등록한 영수증을 고치는 API는 없어요. 이전의 `GET /user/expenses/monthly`·`/monthly/analysis`는 API 22·25에 합쳤어요.
 
 ## 테이블
 
-`receipts`(확정 영수증만, `store_code`, 인덱스 `(user_id, purchased_on)`), `receipt_items`(식재료만). 저장 이미지는 영수증 삭제·계정 삭제 때 함께 지웁니다(저장소는 백엔드가 정함).
+`receipts`, `receipt_items`. 등록할 때 `ingredients`(02)와 `cart_items`(07)도 바꿔요. 컬럼은 [`../erd.md`](../erd.md)를 보세요.
 
-## 구현 규칙
+## 구현 메모
 
-- **보관 6개월**: 영수증에 찍힌 구매일 기준. 매일 새벽 배치가 6개월이 지난 영수증을 이미지·품목과 함께 삭제. 6개월보다 오래된 구매일은 등록 불가(`INVALID_INPUT`). 화면 문구도 6개월입니다(피그마의 "1년 동안 보관"은 고칠 예정).
-- 금액 집계는 확정 영수증의 **식재료 품목만**, 구매일 기준. 영수증을 삭제하면 식비·소비 패턴에서도 빠집니다.
-- 월을 고르면 월 합계와 영수증 목록이 같은 달로 바뀝니다(`month` 파라미터 공유). 최근 6개월 밖·미래 달은 `INVALID_INPUT`, 영수증이 없는 달은 0원·빈 배열 200.
-- 평균 비교는 내 최근 6개월 월평균. 과거 데이터가 없으면 `comparison: null`(문구 숨김). 화면 "내 평균보다 N원 더 썼어요"는 `diffAmount`.
-- 냉장고에서 버린 재료도 영수증 금액에서 빼지 않고 소비 패턴에 구매 소비로 그대로 포함합니다.
-- `storeCode`는 15개 마트 아이콘 코드(`CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC`). 못 맞추면 `ETC`. 아이콘 이미지는 디자인 자료(피그마, 노션/구글 시트 참고)에 있습니다.
-- 중복 의심: 같은 판매처·구매일·식재료 합계의 영수증이 이미 있으면 `duplicateSuspected: true`(막지는 않고 안내).
-- `POST /receipts`는 `Idempotency-Key`로 두 번 눌러도 한 장만 저장.
-- OCR 호출은 타임아웃 30초 → `OCR_TIMEOUT`. 공급자 오류는 `OCR_UPSTREAM_ERROR`. OCR에 AI를 붙이면 그때만 한도를 정합니다(미결).
-- OCR 정확도는 DB가 아니라 이벤트로만 잽니다: `receipt_saved`(OCR 품목 수·수정·삭제·추가 수), 저장 없이 나가면 프론트가 `receipt_result_abandoned`.
+- 흐름: 스캔 → `POST /user/receipts/scan`(동기, 최대 30초, 저장 안 함) → OCR 결과 화면에서 수정·추가(화면 상태로만, 빼기 없음) → `POST /user/receipts`로 영수증·품목·냉장고 재료를 한 트랜잭션에 저장.
+- 등록 전 OCR 결과는 서버에 저장하지 않아요. 등록하지 않고 나가면 `receipt_result_abandoned` 이벤트만 남아요.
+- 결과에는 식재료만 남겨요. 비식재료(수세미·냄비 등)는 응답에 나오지 않아요. 소비기한이 없으면 카테고리 기본 보관 일수로 채워요(별도 추정 표시 없음, 안내 문구만).
+- 단위는 서버가 재료명으로 정해요(02의 재료 사전).
+- OCR 실패 화면 하나에 문구만 달라요: `RECEIPT_NOT_RECOGNIZED`·`OCR_UPSTREAM_ERROR`·`OCR_TIMEOUT`, `RECEIPT_NO_FOOD_ITEMS`, `RECEIPT_TOO_OLD`, `RECEIPT_DUPLICATE`. OCR은 재시도하지 않아요.
+- 중복 영수증: 판매처(지점명)·영수증 번호·구매 시각이 모두 같으면 중복. 번호를 못 읽었으면 판매처·구매일·식재료 이름 목록, 시각을 못 읽었으면 구매일로 비교해요. 스캔 때 확인하고 등록 때 한 번 더 확인해요(409).
+- 구매일·판매처를 못 읽으면 비워서 주고, 등록 때 둘 다 필수예요. 구매일이 6개월 지났으면 스캔 단계에서 실패로 돌려줘요.
+- 등록한 재료와 이름이 같은 장바구니 항목은 자동으로 지우고 응답 `cartRemovedCount`로 개수를 줘요(07 UseCase를 부름).
+- 월 합계는 그 달 영수증의 식재료 품목 금액(구매일 기준). 평균은 최근 6개월 월 합계 평균과의 차이예요(이번 달 제외 등 세부는 제안).
+- 소비 패턴은 영수증 품목 + 영수증 없이 가격을 넣은 재료(등록일 기준)예요. 가격 없는 재료는 빼고, 버린 재료는 이미 산 것이라 포함해요.
+- 판매처 이름을 14종 코드에 맞춰 `store_code`로 저장하고, 못 맞추면 비워요(기본 아이콘). 마트 배지는 영수증 라우트 안 코드 컴포넌트예요.
+- 영수증 이미지 저장소 종류는 백엔드가 정하고, 응답 이미지 주소는 서버가 만들어요. 매일 새벽 정리 작업이 구매일 6개월 지난 영수증을 이미지와 함께 지워요.
+- 영수증 스캔은 횟수 제한이 없어요. 비용·성공률은 이벤트로 봐요.
+
+## 지금 코드와 다른 점
+
+- 아직 이 영역 코드는 없어요. 이전 가이드의 `duplicateSuspected`(의심 표시)는 없어지고 중복은 막아요.
+- `receipts`에 `receipt_number`·`purchased_time`이 새로 있어요(중복 비교용).
 
 ## 에러 코드
 
-`FILE_TOO_LARGE`, `UNSUPPORTED_FILE_TYPE`, `RECEIPT_NOT_RECOGNIZED`, `OCR_UPSTREAM_ERROR`, `OCR_TIMEOUT`, `RECEIPT_NOT_FOUND`, `INVALID_INPUT`, `INVALID_UNIT`. 카메라를 못 쓰면 `camera_unavailable` 화면(프론트).
+`INVALID_INPUT`, `RECEIPT_NOT_RECOGNIZED`, `OCR_UPSTREAM_ERROR`, `OCR_TIMEOUT`, `RECEIPT_NO_FOOD_ITEMS`, `RECEIPT_TOO_OLD`, `RECEIPT_DUPLICATE`, `FILE_TOO_LARGE`, `UNSUPPORTED_FILE_TYPE`, `INGREDIENT_CATEGORY_NOT_FOUND`, `RECEIPT_NOT_FOUND`. 공통 코드(`UNAUTHORIZED`, `TOKEN_EXPIRED`, `RATE_LIMITED`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`)는 모든 API에 나올 수 있어요. API별 코드와 화면 표시는 [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)에 있어요.
 
 ## 발행 이벤트
 
-서버(3개): `receipt_scan_succeeded`, `receipt_scan_failed`, `receipt_saved`(확정 때 재료마다 `ingredient_added`도). 프론트: `receipt_scan_started`, `camera_unavailable`, `receipt_item_edited`, `receipt_item_added_manually`, `receipt_result_abandoned`, `receipt_list_viewed`, `receipt_detail_viewed`, `receipt_deleted`, `consumption_pattern_viewed`.
+발송 FE는 화면 담당 프론트가 API 56으로 보내고, BE는 이 영역 담당이 발행 API가 끝나는 지점에서 `EventTracker`로 기록해요([08](08_event-tracking.md)).
+
+| ID | 이벤트 | 발생 시점 | 속성 | 발송 | 우선순위 | 발행 API |
+| --- | --- | --- | --- | --- | --- | --- |
+| E28 | `receipt_scan_started` | 촬영하거나 갤러리 이미지를 골랐을 때 | scan_method | FE | P0 | 56 POST /user/events(프론트 전송) |
+| E30 | `receipt_scan_succeeded` | OCR이 끝나 식재료 결과가 나왔을 때 | item_count, food_item_count, duration_ms | BE | P0 | 20 영수증 스캔 |
+| E31 | `receipt_scan_failed` | OCR이 실패했을 때(영수증 아님, OCR 오류·시간 초과, 식재료 없음, 6개월 지남, 이미 등록한 영수증) | error_code, duration_ms | BE | P0 | 20 영수증 스캔 |
+| E32 | `receipt_item_edited` | OCR 재료 수정 화면에서 품목을 고쳤을 때(항목마다 1건) | item_index, edit_field | FE | P0 | 56 POST /user/events(프론트 전송) |
+| E33 | `receipt_item_added_manually` | OCR 결과에서 빠진 품목을 직접 추가했을 때 | 공통 속성만 | FE | P1 | 56 POST /user/events(프론트 전송) |
+| E34 | `receipt_saved` | "식재료 N개 등록 하기"로 영수증이 저장됐을 때 | receipt_id, registered_count, ocr_item_count, edited_item_count, added_item_count, duration_sec, food_total_amount, cart_removed_count | BE | P0 | 21 영수증 등록 |
+| E76 | `receipt_result_abandoned` | OCR 결과 화면에서 등록하지 않고 나갔을 때(뒤로·닫기·앱 종료 직전). 등록 전 결과는 서버에 저장하지 않아 OCR 정확도를 이것으로 잼 | ocr_item_count, edited_item_count, added_item_count | FE | P0 | 56 POST /user/events(프론트 전송) |
+| E35 | `receipt_list_viewed` | 영수증 화면이 열리거나 달을 바꿨을 때 | month_offset, has_comparison | FE | P1 | 56 POST /user/events(프론트 전송) |
+| E36 | `receipt_detail_viewed` | 영수증 상세가 열릴 때 | 공통 속성만 | FE | P2 | 56 POST /user/events(프론트 전송) |
+| E37 | `receipt_deleted` | 영수증 삭제 모달에서 삭제했을 때 | 공통 속성만 | FE | P1 | 56 POST /user/events(프론트 전송) |
+| E38 | `consumption_pattern_viewed` | 나의 소비 화면이 열리거나 달을 바꿨을 때 | month_offset | FE | P0 | 56 POST /user/events(프론트 전송) |
 
 ## 체크리스트
 
-- [ ] 스캔 → 결과 → 확정 → 냉장고 등록 전체 흐름(한 트랜잭션)
-- [ ] 비식재료 걸러내기, 카테고리·소비기한 추정, 수량·단위 정규화
-- [ ] 확정 전에는 DB에 아무것도 안 남는지 테스트
-- [ ] 월 선택에 따라 합계·목록·소비 패턴 일치, 영수증 삭제 반영
-- [ ] 6개월 정리 배치, 6개월 초과 구매일 거절
+- [ ] 스캔 → 수정 → 등록 한 트랜잭션, 등록 전 미저장
+- [ ] OCR 실패 4가지 문구, 6개월 지난 영수증 거부
+- [ ] 중복 영수증(번호·시각 없을 때 포함) 스캔·등록 둘 다 막기
+- [ ] 장바구니 자동 빼기와 개수
+- [ ] 월 합계·평균 차이·주차 묶음, 소비 패턴 범위(가격 있는 직접 추가 포함)
+- [ ] 영수증 삭제 뒤 냉장고 재료 유지, 6개월 정리 작업

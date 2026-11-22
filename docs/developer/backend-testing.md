@@ -41,7 +41,7 @@
 - 저장 어댑터 테스트는 직접 쓴 쿼리나 복잡한 변환이 있을 때만 쓴다. 단순한 저장과 조회는 API 테스트가 이미 거쳐 간다.
 - 저장 어댑터가 `LazyInitializationException`으로 실패하면 `transactionTemplate` 안에서 호출한다. 운영에서도 서비스의 트랜잭션 안에서 불리기 때문이다. 매핑을 `EAGER`로 바꾸지 않는다.
 - MockMvc는 Tomcat을 거치지 않는다. 그래서 업로드 크기 제한과 `/error` 응답은 MockMvc로 확인되지 않는다. 설정 값은 공유 앱에서 확인한다(예: `MultipartConfigElement` Bean). 업로드 한도는 파일당(`spring.servlet.multipart.max-file-size`)과 요청 전체(`spring.servlet.multipart.max-request-size`) 두 가지다.
-- `RestClient`를 쓰지 않는 외부 어댑터(웹 푸시 라이브러리, 업체 SDK)는 테스트 방법을 먼저 상의한다(에이전트는 멈추고 사용자에게 묻는다).
+- `RestClient`를 쓰지 않는 외부 어댑터(예: 업체 SDK)는 테스트 방법을 먼저 상의한다(에이전트는 멈추고 사용자에게 묻는다).
 
 ## 통합 테스트 규칙
 
@@ -74,7 +74,7 @@ class IngredientApiTest extends IntegrationTestSupport {
 
 ## 외부 서비스 어댑터
 
-- 외부 서비스 어댑터(`adapter/out/ai`, `ocr`, `oauth`, 웹 푸시, 그리고 파일을 외부 저장소에 둘 때의 `filestorage`)를 추가하는 PR에서, `IntegrationTestSupport`에 그 어댑터 클래스를 `@MockitoBean`으로 바꿔 둔다. 포트 인터페이스를 가짜로 바꾸지 않는다. 어댑터가 포트를 여러 개 구현하면 앱이 뜨지 않는다.
+- 외부 서비스 어댑터(`adapter/out/ai`, `ocr`, `oauth`, 그리고 파일을 외부 저장소에 둘 때의 `filestorage`)를 추가하는 PR에서, `IntegrationTestSupport`에 그 어댑터 클래스를 `@MockitoBean`으로 바꿔 둔다. 포트 인터페이스를 가짜로 바꾸지 않는다. 어댑터가 포트를 여러 개 구현하면 앱이 뜨지 않는다.
 - 가짜로 바꾼 어댑터는 테스트에서 진짜 생성자가 실행되지 않는다. 그래서 의존성이 빠져도(예: `spring-boot-starter-restclient` 없이 `RestClient.Builder`를 받음) 모든 테스트가 통과하고 서버에서만 앱이 뜨지 않는다. `MockedAdapterWiringTest`가 `IntegrationTestSupport`의 `@MockitoBean` 어댑터마다 생성자 인자를 Spring이 생성자를 부를 때와 같은 방식으로 찾아 본다(`@Value`, `@Qualifier`, `Optional`, `List`도 처리하고, 같은 타입의 Bean이 여러 개면 실패한다). 어댑터의 생성자는 하나만 둔다. 이 테스트가 실패하면 테스트가 아니라 앱을 고친다. 빠진 의존성을 `build.gradle`에 추가하거나, 같은 타입의 Bean이 여러 개면 `@Qualifier`를 붙인다.
 - 외부 호출을 거치는 테스트는 필요한 응답을 각자 정한다. 정하지 않은 호출은 기본값을 돌려준다. 객체는 `null`, 컬렉션과 `Optional`은 빈 값, 숫자는 0이다. 정한 응답은 테스트가 끝나면 초기화된다.
 - 어댑터가 쓰는 설정의 가짜 키와 접속되지 않는 주소(`http://localhost:1`)를 `application-test.yml`에 넣는다. 테스트는 `backend/.env`를 읽지 않지만(`local` 프로필만 읽는다), 셸이나 IDE의 환경 변수는 읽는다. 가짜 키가 없으면 그 환경 변수에 있는 진짜 키가 쓰일 수 있다.
