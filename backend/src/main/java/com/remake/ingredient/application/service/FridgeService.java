@@ -32,8 +32,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class FridgeService implements GetFridgeUseCase {
 
-	private static final int MAX_KEYWORD_LENGTH = 50;
-
 	private final LoadIngredientPort loadIngredientPort;
 	private final LoadIngredientCategoryPort loadIngredientCategoryPort;
 	private final Clock clock;
@@ -41,10 +39,7 @@ public class FridgeService implements GetFridgeUseCase {
 	@Override
 	@Transactional(readOnly = true)
 	public List<FridgeIngredient> getFridgeIngredients(Long userId, StorageLocation storage,
-			IngredientCategoryCode categoryCode, String keyword) {
-		if (keyword != null && keyword.strip().length() > MAX_KEYWORD_LENGTH) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT, "검색어는 50자 이하여야 합니다.");
-		}
+			IngredientCategoryCode categoryCode) {
 		List<IngredientCategory> categories = loadIngredientCategoryPort.loadAll();
 		Long categoryId = null;
 		if (categoryCode != null) {
@@ -56,7 +51,7 @@ public class FridgeService implements GetFridgeUseCase {
 				.collect(Collectors.toMap(IngredientCategory::id, IngredientCategory::code, (a, b) -> a));
 
 		LocalDate today = LocalDate.now(clock);
-		return loadIngredientPort.loadActiveByUserId(userId, storage, categoryId, keyword).stream()
+		return loadIngredientPort.loadActiveByUserId(userId, storage, categoryId).stream()
 				.map(ingredient -> toFridgeIngredient(ingredient, codes, today))
 				.toList();
 	}

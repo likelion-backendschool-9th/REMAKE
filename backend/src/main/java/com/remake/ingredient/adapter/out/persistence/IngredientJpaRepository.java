@@ -22,18 +22,15 @@ interface IngredientJpaRepository extends JpaRepository<IngredientJpaEntity, Lon
 	/** 사용자 본인의 재료만 읽는다. 다른 사용자의 재료는 없는 것과 같다. */
 	Optional<IngredientJpaEntity> findByIdAndUserId(Long id, Long userId);
 
-	// pattern은 항상 값이 있다(조건이 없으면 %). 이스케이프 문자는 \\이다.
 	@Query("""
 			select i from IngredientJpaEntity i
 			where i.userId = :userId and i.status = :status
 			  and (:storage is null or i.storage = :storage)
 			  and (:categoryId is null or i.categoryId = :categoryId)
-			  and lower(i.name) like :pattern escape '\\'
 			order by i.expirationDate, i.id
 			""")
 	List<IngredientJpaEntity> search(@Param("userId") Long userId, @Param("status") IngredientStatus status,
-			@Param("storage") StorageLocation storage, @Param("categoryId") Long categoryId,
-			@Param("pattern") String pattern);
+			@Param("storage") StorageLocation storage, @Param("categoryId") Long categoryId);
 
 	@Query("select i.expirationDate from IngredientJpaEntity i where i.userId = :userId and i.status = :status")
 	List<LocalDate> findExpirationDates(@Param("userId") Long userId, @Param("status") IngredientStatus status);

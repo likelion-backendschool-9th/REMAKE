@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Duration;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -117,28 +118,18 @@ class FridgeApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 보관_위치와_카테고리와_검색어로_거른다() throws Exception {
+	void 보관_위치와_카테고리로_거른다() throws Exception {
 		Long frozen = add(ME, "MEAT", "닭가슴살", 5);
 		jdbcTemplate.update("UPDATE ingredients SET storage = 'FREEZER' WHERE id = ?", frozen);
 		add(ME, "MEAT", "돼지고기", 6);
-		add(ME, "VEGETABLE", "Apple 양파", 7);
-		add(ME, "VEGETABLE", "100% 주스", 8);
 
 		mockMvc.perform(as(ME, get(URL).param("storageType", "FREEZER")))
 				.andExpect(jsonPath("$.length()").value(1))
 				.andExpect(jsonPath("$[0].name").value("닭가슴살"));
 		mockMvc.perform(as(ME, get(URL).param("categoryCode", "MEAT")))
 				.andExpect(jsonPath("$.length()").value(2));
-		mockMvc.perform(as(ME, get(URL).param("q", "apple")))
-				.andExpect(jsonPath("$.length()").value(1))
-				.andExpect(jsonPath("$[0].name").value("Apple 양파"));
-		mockMvc.perform(as(ME, get(URL).param("q", "%")))
-				.andExpect(jsonPath("$.length()").value(1))
-				.andExpect(jsonPath("$[0].name").value("100% 주스"));
-		mockMvc.perform(as(ME, get(URL).param("categoryCode", "MEAT").param("storageType", "FREEZER").param("q", "닭")))
+		mockMvc.perform(as(ME, get(URL).param("categoryCode", "MEAT").param("storageType", "FREEZER")))
 				.andExpect(jsonPath("$.length()").value(1));
-		mockMvc.perform(as(ME, get(URL).param("q", "   ")))
-				.andExpect(jsonPath("$.length()").value(4));
 	}
 
 	@Test
@@ -149,11 +140,6 @@ class FridgeApiTest extends IntegrationTestSupport {
 		mockMvc.perform(as(ME, get(URL).param("categoryCode", "NOPE")))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
-		mockMvc.perform(as(ME, get(URL).param("q", " " + "가".repeat(50) + " ")))
-				.andExpect(status().isOk());
-		mockMvc.perform(as(ME, get(URL).param("q", "가".repeat(51))))
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
 	}
 
 	@Test
@@ -161,7 +147,7 @@ class FridgeApiTest extends IntegrationTestSupport {
 		add(ME, "FRUIT", "사과", 4);
 		mockMvc.perform(as(ME, get(URL))).andExpect(jsonPath("$[0].status").value("OK"));
 
-		clock.advance(java.time.Duration.ofDays(1));
+		clock.advance(Duration.ofDays(1));
 
 		mockMvc.perform(as(ME, get(URL)))
 				.andExpect(jsonPath("$[0].dDay").value(3))

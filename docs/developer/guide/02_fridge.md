@@ -21,7 +21,7 @@ p2-냉장고(+스켈레톤, 재료 스크롤, 재료 카테고리 선택, 위치
 | 메서드 | 경로 | 비고 |
 |---|---|---|
 | GET | `/api/v1/user/ingredients/summary` | `{ total, danger, soon, ok }` |
-| GET | `/api/v1/user/ingredients` | `storageType`, `categoryCode`, `q`(이름에 포함, 대소문자 무시, 50자 이하·넘으면 `INVALID_INPUT`). 진행 중 재료만, 소비기한 빠른 순. 항목: `id`, `name`, `categoryCode`, `storage`, `expirationDate`, `isExpirationEstimated`, `dDay`(지났으면 음수), `status`, `amount`, `unit`, `price` |
+| GET | `/api/v1/user/ingredients` | `storageType`, `categoryCode`. 진행 중 재료만, 소비기한 빠른 순. 항목: `id`, `name`, `categoryCode`, `storage`, `expirationDate`, `isExpirationEstimated`, `dDay`(지났으면 음수), `status`, `amount`, `unit`, `price` |
 | GET | `/api/v1/user/ingredients/{id}` | 상세 |
 | POST | `/api/v1/user/ingredients` | 필수 `name, categoryCode, storage, expirationDate, amount, unit`, 선택 `price` |
 | PATCH | `/api/v1/user/ingredients/{id}` | 이름·카테고리·보관 위치·소비기한·가격·수량 (보낸 값만 수정, 단위는 변경 불가) |

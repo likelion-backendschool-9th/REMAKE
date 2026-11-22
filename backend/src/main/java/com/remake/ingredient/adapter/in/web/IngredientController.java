@@ -48,13 +48,12 @@ public class IngredientController {
 	private final GetIngredientCategoriesUseCase getIngredientCategoriesUseCase;
 	private final GetFridgeUseCase getFridgeUseCase;
 
-	@Operation(summary = "냉장고 목록", description = "진행 중인 재료만, 소비기한이 빠른 순입니다. storageType·categoryCode·q는 모두 선택이고 없으면 전체입니다.")
+	@Operation(summary = "냉장고 목록", description = "진행 중인 재료만, 소비기한이 빠른 순입니다. storageType·categoryCode는 모두 선택이고 없으면 전체입니다.")
 	@GetMapping
 	public List<FridgeIngredientResponse> list(@LoginUserId Long userId,
 			@RequestParam(required = false) StorageLocation storageType,
-			@RequestParam(required = false) IngredientCategoryCode categoryCode,
-			@RequestParam(required = false) String q) {
-		return getFridgeUseCase.getFridgeIngredients(userId, storageType, categoryCode, q).stream()
+			@RequestParam(required = false) IngredientCategoryCode categoryCode) {
+		return getFridgeUseCase.getFridgeIngredients(userId, storageType, categoryCode).stream()
 				.map(FridgeIngredientResponse::from)
 				.toList();
 	}

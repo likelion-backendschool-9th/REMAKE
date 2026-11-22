@@ -12,8 +12,8 @@ public interface LoadIngredientPort {
 
 	Optional<Ingredient> loadByIdAndUserId(Long ingredientId, Long userId);
 
-	/** 사용자의 ACTIVE 재료. 조건은 null이면 걸지 않고, 소비기한·id 오름차순이다. keyword는 이름에 포함되는지(대소문자 무시) 본다. */
-	List<Ingredient> loadActiveByUserId(Long userId, StorageLocation storage, Long categoryId, String keyword);
+	/** 사용자의 ACTIVE 재료. 조건은 null이면 걸지 않고, 소비기한·id 오름차순이다. */
+	List<Ingredient> loadActiveByUserId(Long userId, StorageLocation storage, Long categoryId);
 
 	/** 사용자의 모든 ACTIVE 재료의 소비기한 */
 	List<LocalDate> loadActiveExpirationDates(Long userId);

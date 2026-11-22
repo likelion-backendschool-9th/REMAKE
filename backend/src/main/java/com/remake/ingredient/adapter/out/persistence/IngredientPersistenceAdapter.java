@@ -2,7 +2,6 @@ package com.remake.ingredient.adapter.out.persistence;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
@@ -31,8 +30,8 @@ class IngredientPersistenceAdapter implements LoadIngredientPort, SaveIngredient
 	}
 
 	@Override
-	public List<Ingredient> loadActiveByUserId(Long userId, StorageLocation storage, Long categoryId, String keyword) {
-		return repository.search(userId, IngredientStatus.ACTIVE, storage, categoryId, likePattern(keyword)).stream()
+	public List<Ingredient> loadActiveByUserId(Long userId, StorageLocation storage, Long categoryId) {
+		return repository.search(userId, IngredientStatus.ACTIVE, storage, categoryId).stream()
 				.map(IngredientJpaEntity::toDomain)
 				.toList();
 	}
@@ -40,16 +39,6 @@ class IngredientPersistenceAdapter implements LoadIngredientPort, SaveIngredient
 	@Override
 	public List<LocalDate> loadActiveExpirationDates(Long userId) {
 		return repository.findExpirationDates(userId, IngredientStatus.ACTIVE);
-	}
-
-	// 검색어의 %, _, \\는 글자 그대로 찾도록 이스케이프한다. 검색어가 없으면 모든 이름과 맞는 %이다.
-	private static String likePattern(String keyword) {
-		if (keyword == null || keyword.isBlank()) {
-			return "%";
-		}
-		String escaped = keyword.strip().toLowerCase(Locale.ROOT)
-				.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-		return "%" + escaped + "%";
 	}
 
 	@Override

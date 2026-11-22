@@ -12,7 +12,7 @@ public interface GetFridgeUseCase {
 
 	/** 필터는 모두 선택이다. 소비기한이 빠른 순(같으면 id 순)으로 돌려주고, 없으면 빈 목록이다. */
 	List<FridgeIngredient> getFridgeIngredients(Long userId, StorageLocation storage,
-			IngredientCategoryCode categoryCode, String keyword);
+			IngredientCategoryCode categoryCode);
 
 	/** 필터 없이 사용자의 모든 ACTIVE 재료를 센다. 없으면 모두 0이다. */
 	FridgeSummary getFridgeSummary(Long userId);
