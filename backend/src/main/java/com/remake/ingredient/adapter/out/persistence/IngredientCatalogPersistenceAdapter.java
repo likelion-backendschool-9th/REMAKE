@@ -19,13 +19,6 @@ class IngredientCatalogPersistenceAdapter implements LoadIngredientCatalogPort {
 	private final IngredientCatalogJpaRepository repository;
 
 	@Override
-	public List<IngredientCatalogItem> searchByName(String keyword) {
-		return repository.searchByName(LikePattern.contains(keyword)).stream()
-				.map(IngredientCatalogJpaEntity::toDomain)
-				.toList();
-	}
-
-	@Override
 	public List<IngredientCatalogItem> loadByIds(Collection<Long> ids) {
 		return repository.findAllById(ids).stream()
 				.map(IngredientCatalogJpaEntity::toDomain)
