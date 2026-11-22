@@ -11,14 +11,14 @@ docs/
 │  ├─ git-convention.md         브랜치·커밋·PR 규칙
 │  ├─ backend-convention.md     백엔드 코드 규칙 (헥사고날 구조, API 경로, 에러 형식, AI 생성, 이벤트 발행, 예약 작업)
 │  ├─ backend-testing.md        백엔드 테스트 작성법 (공통 통합 테스트 설정, Testcontainers)
-│  ├─ erd.md                    ERD·테이블 정의서 (테이블 32개, 컬럼, 관계, 구현 규칙)
+│  ├─ erd.md                    ERD·테이블 정의서 (테이블 26개, 컬럼, 관계, 구현 규칙)
 │  ├─ ci.md                     PR에서 도는 CI와 결과 읽는 법
 │  ├─ deployment.md             배포 구조, 서버 준비, 배포·롤백, 앱이 지켜야 할 배포 조건
 │  └─ spec/                     기획 문서 영문 요약 (영문만 있음)
-│     ├─ domain-rules.md        비즈니스 규칙: 횟수 제한, 단위 14개, 카테고리 12개, 소비기한 상태, 영수증·식단표·공유 규칙
-│     ├─ api-summary.md         도메인별 전체 API와 각 API가 발행하는 이벤트
-│     ├─ errors.md              에러 응답 형식과 에러 코드 59개 + 코드에만 있는 5개
-│     └─ events.md              이벤트 트래킹 규칙과 이벤트 76개
+│     ├─ domain-rules.md        비즈니스 규칙: 횟수 제한, 단위 14개, 카테고리 12개, 소비기한 상태, 영역별 규칙(구독 포함)
+│     ├─ api-summary.md         도메인별 전체 API 60개와 각 API가 발행하는 이벤트
+│     ├─ errors.md              에러 응답 형식과 에러 코드 58개
+│     └─ events.md              이벤트 트래킹 규칙, 이벤트 78개, 지표 21개, 화면 코드 42개
 └─ developer/                   개발자용 (한글)
    ├─ agent-guide.md            루트 AGENTS.md 번역 (레포 공통 규칙, 제품 규칙, 문서 규칙)
    ├─ git-convention.md         agent/git-convention.md 번역
@@ -32,12 +32,12 @@ docs/
    └─ guide/                    영역별 구현 가이드 (한글만 있음)
       ├─ README.md              가이드 목록과 읽는 순서, 기획 원본 안내
       ├─ 00_common-guide.md     전원: 스택, API·에러 공통 규칙, 패키지 담당
-      ├─ 01_auth-onboarding.md  영역 1: 시작하기·소셜 로그인
+      ├─ 01_auth-onboarding.md  영역 1: 로그인·온보딩·설정·구독
       ├─ 02_fridge.md           영역 2: 냉장고
       ├─ 03_receipt-ocr-spending.md  영역 3: 영수증·OCR·소비 패턴
       ├─ 04_ai-recipe.md        영역 4: AI 레시피
       ├─ 05_meal-plan.md        영역 5: 식단표
-      ├─ 06_notification-admin.md    영역 6: 알림·어드민
+      ├─ 06_notification-admin.md    영역 6: 알림 (어드민은 보류)
       ├─ 07_shared-cart.md      영역 7: 공유 공간·장바구니
       └─ 08_event-tracking.md   전원: 이벤트 트래킹
 ```
