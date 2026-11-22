@@ -29,7 +29,7 @@ Policy and data (tables, limits, units, error codes, events) come from the team'
 | --- | --- |
 | [`docs/agent/spec/domain-rules.md`](docs/agent/spec/domain-rules.md) | Business rules, limits, units, categories, expiry states |
 | [`docs/agent/spec/api-summary.md`](docs/agent/spec/api-summary.md) | Every endpoint by domain, with the events each one publishes |
-| [`docs/agent/erd.md`](docs/agent/erd.md) | The 32 tables: columns, defaults, relationships, implementation rules (the only table document) |
+| [`docs/agent/erd.md`](docs/agent/erd.md) | The 26 tables: columns, defaults, relationships, implementation rules (the only table document) |
 | [`docs/agent/spec/errors.md`](docs/agent/spec/errors.md) | Error codes |
 | [`docs/agent/spec/events.md`](docs/agent/spec/events.md) | Event tracking contract |
 

@@ -153,10 +153,11 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - **API 주소**: 운영 이미지는 `NEXT_PUBLIC_API_BASE_URL`을 빈 값으로 빌드합니다. 그래서 `lib/api/client.ts`가 같은 도메인의 상대 경로(`/api/...`)로 호출하고, 프록시가 Spring으로 넘깁니다. 로그인 쿠키도 CORS 설정 없이 동작합니다. 로컬 개발에서는 기본값 `http://localhost:8080`을 씁니다(출처가 달라서 백엔드에 CORS 설정이 필요합니다).
     - 상대 경로는 브라우저에서만 동작합니다. API는 Client Component(TanStack Query)에서 호출합니다. Server Component에서 백엔드를 불러야 하면 먼저 물어봅니다. 실행할 때 넘기는 서버용 주소가 따로 필요합니다.
 - **서버 데이터**는 전부 TanStack Query로 관리합니다. Zustand에 서버 데이터를 복사하지 않습니다.
-- **OCR과 AI 생성**은 각각 동기 요청 한 번이고, 응답에 결과가 담깁니다. 기다리는 동안 로딩 화면을 보여 줍니다(시간 제한: OCR 30초, AI 60초). 작업 ID, polling, 스트리밍은 없습니다.
+- **OCR과 AI 레시피 생성**은 각각 동기 요청 한 번이고, 응답에 결과가 담깁니다. 기다리는 동안 로딩 화면을 보여 줍니다(시간 제한: OCR 30초, AI 레시피 60초). 작업 ID, polling, 스트리밍은 없습니다.
+- **식단표 생성**은 비동기입니다. API 38이 202로 바로 응답하면 냉장고(인덱스) 화면으로 이동해 토스트 "식단을 완성하면 알림을 보내드려요"를 띄우고, 결과는 앱 안 알림으로 옵니다. 생성 중 화면은 없습니다.
 - **queryKey**는 Query 훅과 같은 곳에 둡니다. 라우트의 `_lib/queries.ts`, 공유되면 `lib/queries/<도메인>.ts`. 예: `fridgeKeys.all`, `fridgeKeys.detail(id)`
-- **API 클라이언트**: 모든 호출은 `lib/api/client.ts`를 거칩니다. 쿠키를 함께 보냅니다(`credentials: "include"`). 타임아웃은 `AbortSignal.timeout`으로 겁니다. 개발 중에는 넉넉하게 기본 30초, OCR 60초, AI 생성 120초로 둡니다. 프론트 타임아웃은 백엔드 제한(위 참고)보다 길어야 합니다. 그래야 프론트가 먼저 끊지 않고 서버의 `OCR_TIMEOUT`·`AI_TIMEOUT` 응답을 화면에서 처리할 수 있습니다. 최종 값은 개발 막바지에 #122에서 정합니다.
-- **재시도**: GET만 1회 재시도합니다. POST·PUT·PATCH·DELETE는 재시도하지 않습니다(`Idempotency-Key`를 쓰는 API는 예외). TanStack Query는 기본으로 3회 재시도하므로 query는 1, mutation은 0으로 설정합니다.
+- **API 클라이언트**: 모든 호출은 `lib/api/client.ts`를 거칩니다. 쿠키를 함께 보냅니다(`credentials: "include"`). 타임아웃은 `AbortSignal.timeout`으로 겁니다. 개발 중에는 넉넉하게 기본 30초, OCR 60초, AI 레시피 생성 120초로 둡니다. 프론트 타임아웃은 백엔드 제한(위 참고)보다 길어야 합니다. 그래야 프론트가 먼저 끊지 않고 서버의 `OCR_TIMEOUT`·`AI_TIMEOUT` 응답을 화면에서 처리할 수 있습니다. 최종 값은 개발 막바지에 #122에서 정합니다.
+- **재시도**: GET만 1회 재시도합니다. POST·PUT·PATCH·DELETE는 재시도하지 않습니다. TanStack Query는 기본으로 3회 재시도하므로 query는 1, mutation은 0으로 설정합니다.
 - **캐싱**: 자주 안 바뀌는 데이터(카테고리, 마트 목록, 알레르기 목록, 금주의 레시피)는 `staleTime`을 길게(수 분~1시간) 둡니다. 자주 바뀌는 데이터(냉장고 재료, 장바구니)는 짧게 두고, 바꾼 뒤에는 `invalidateQueries`를 합니다.
 - **에러**: 백엔드 에러 `code`를 사용자 문구로 바꾸는 표는 `lib/error-messages.ts` 하나로 관리합니다(§10 에러). 401이면 로그인 화면으로 보냅니다.
 - **Zustand**에는 진짜 전역 상태(로그인 사용자 요약, UI 설정)와, props로 내리면 3단계를 넘는 상태만 둡니다.
