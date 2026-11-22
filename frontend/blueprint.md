@@ -21,24 +21,24 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 
 ## 2. Tech stack
 
-| Area            | Technology                             | Why                                                                           |
-| --------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
-| Framework       | Next.js (App Router) + TypeScript      | Screens split per route; frontend handles screens only                        |
-| Package manager | pnpm                                   | Fast installs; lockfile keeps dependency versions identical for all 7 members |
-| Styling         | CSS Modules + CSS variables            | Component-scoped styles without extra libraries; shared design tokens         |
-| Server data     | TanStack Query                         | Caching and refetching server data                                            |
-| Client state    | Zustand                                | Only the minimum, such as login info                                          |
-| URL state       | nuqs                                   | Filters, tabs, sort, and selected month live in the URL                       |
-| API integration | openapi-typescript + openapi-fetch     | Types generated from Spring OpenAPI; type-safe calls                          |
-| Forms           | React Hook Form + Zod                  | Validation for onboarding, custom recipe input, ingredient edits              |
-| Dates           | dayjs                                  | Date display; meal-plan calendar                                              |
-| Icons           | @solar-icons/react (Solar)             | Tree-shakable React components; work offline                                  |
-| Font            | Pretendard (`next/font/local`)         | Korean UI font; no layout shift while loading                                 |
-| PWA & push      | Serwist + Web Push                     | Service worker, offline screen, expiry alerts                                 |
-| Store release   | PWABuilder (TWA)                       | Generates the Android app package                                             |
-| Web deploy      | `output: "standalone"` + nginx         | Node server running behind nginx                                              |
-| Code quality    | ESLint + Prettier, Husky + lint-staged | Unified code style for 7 people; automatic checks before commit               |
-| API mocking     | MSW                                    | Build screens against dummy responses before the backend is ready             |
+| Area            | Technology                                   | Why                                                                                    |
+| --------------- | -------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Framework       | Next.js (App Router) + TypeScript            | Screens split per route; frontend handles screens only                                 |
+| Package manager | pnpm                                         | Fast installs; lockfile keeps dependency versions identical for all 7 members          |
+| Styling         | CSS Modules + CSS variables                  | Component-scoped styles without extra libraries; shared design tokens                  |
+| Server data     | TanStack Query                               | Caching and refetching server data                                                     |
+| Client state    | Zustand                                      | Only the minimum, such as login info                                                   |
+| URL state       | nuqs                                         | Filters, tabs, sort, and selected month live in the URL                                |
+| API integration | openapi-typescript + openapi-fetch           | Types generated from Spring OpenAPI; type-safe calls                                   |
+| Forms           | React Hook Form + Zod                        | Validation for onboarding, custom recipe input, ingredient edits                       |
+| Dates           | dayjs                                        | Date display; meal-plan calendar                                                       |
+| Icons           | @solar-icons/react (Solar)                   | Tree-shakable React components; work offline                                           |
+| Font            | Pretendard + GmarketSans (`next/font/local`) | Pretendard: Korean UI font. GmarketSans: logo text only. No layout shift while loading |
+| PWA & push      | Serwist + Web Push                           | Service worker, offline screen, expiry alerts                                          |
+| Store release   | PWABuilder (TWA)                             | Generates the Android app package                                                      |
+| Web deploy      | `output: "standalone"` + nginx               | Node server running behind nginx                                                       |
+| Code quality    | ESLint + Prettier, Husky + lint-staged       | Unified code style for 7 people; automatic checks before commit                        |
+| API mocking     | MSW                                          | Build screens against dummy responses before the backend is ready                      |
 
 ## 3. Folder structure
 
@@ -46,6 +46,7 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 frontend/
 ├─ app/                  # routes. Each route folder colocates the code only it uses (see §3.1)
 │  ├─ layout.tsx         # root layout, globals.css, home page.tsx
+│  ├─ fonts/             # font files (woff2) + fonts.ts (next/font/local)
 │  ├─ fridge/            # example route — see §3.1
 │  ├─ sw.ts              # service worker (caching, push handling)
 │  ├─ serwist/[path]/    # service-worker serving route
@@ -152,10 +153,11 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 - **API address**: production images are built with an empty `NEXT_PUBLIC_API_BASE_URL`, so `lib/api/client.ts` calls the same domain with relative paths (`/api/...`) and the proxy forwards them to Spring. Login cookies work without CORS. In local development it defaults to `http://localhost:8080` (a different origin, so the backend needs CORS).
   - Relative paths only work in the browser. Call the API from Client Components (TanStack Query). If a Server Component must call the backend, ask first: it needs a separate server-side address set at runtime.
 - **Server data** is managed entirely with TanStack Query. Do not copy server data into Zustand.
-- **OCR and AI generation** are one synchronous request each; the response carries the result. Show a loading screen while waiting (time limits: OCR 30 s, AI 60 s). There is no job ID, polling, or streaming.
+- **OCR and AI recipe generation** are one synchronous request each; the response carries the result. Show a loading screen while waiting (time limits: OCR 30 s, AI recipe 60 s). There is no job ID, polling, or streaming.
+- **Meal-plan generation** is asynchronous: API 38 replies 202, the app goes straight to the fridge (index) screen with the toast "식단을 완성하면 알림을 보내드려요", and the result arrives as an in-app notification. There is no generating screen.
 - **queryKey**s live next to their query hooks: the route's `_lib/queries.ts`, or `lib/queries/<domain>.ts` once shared. Example: `fridgeKeys.all`, `fridgeKeys.detail(id)`
-- **API client**: every call goes through `lib/api/client.ts`. Send cookies (`credentials: "include"`). Set timeouts with `AbortSignal.timeout`. During development use generous values: default 30 s, OCR 60 s, AI generation 120 s. The frontend timeout must stay longer than the backend limit (above), so the screen receives the server's `OCR_TIMEOUT` / `AI_TIMEOUT` response instead of cutting the request first. Final values are decided near the end of development in #122.
-- **Retries**: retry GET once. Never retry POST, PUT, PATCH, or DELETE, except APIs that take an `Idempotency-Key`. TanStack Query retries 3 times by default, so set queries to 1 and mutations to 0.
+- **API client**: every call goes through `lib/api/client.ts`. Send cookies (`credentials: "include"`). Set timeouts with `AbortSignal.timeout`. During development use generous values: default 30 s, OCR 60 s, AI recipe generation 120 s. The frontend timeout must stay longer than the backend limit (above), so the screen receives the server's `OCR_TIMEOUT` / `AI_TIMEOUT` response instead of cutting the request first. Final values are decided near the end of development in #122.
+- **Retries**: retry GET once. Never retry POST, PUT, PATCH, or DELETE. TanStack Query retries 3 times by default, so set queries to 1 and mutations to 0.
 - **Caching**: data that rarely changes (categories, mart list, allergy list, recipes of the week) gets a long `staleTime` (minutes to 1 hour). Data that changes often (fridge ingredients, cart) gets a short `staleTime` and `invalidateQueries` after every change.
 - **Errors**: keep the mapping from backend error `code` to user-facing text in one table, `lib/error-messages.ts` (§10 Errors). On 401, go to the login screen.
 - **Zustand** holds only truly global state (logged-in user summary, UI settings) and state whose props would otherwise pass down more than 3 levels.
@@ -170,7 +172,9 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 - Mobile first. Design for a 360px width. The default max layout width is `--layout-max-width` (480px) and the side gutter is `--layout-gutter`. Wider screens show the 480px container centered.
 - Light theme only; no dark mode.
 - Units: rem (1rem = 16px; never change the root font size). Convert Figma px by dividing by 16 (10px → 0.625rem). Use px only for lines such as borders.
-- Font: load Pretendard with `next/font/local`.
+- Font: both are loaded with `next/font/local` in `app/fonts/fonts.ts` and attached to `<html>` in `app/layout.tsx`. Use woff2 files only.
+  - Pretendard (body text): weights 500/600/700/800 only (the ones Figma uses). CSS variable `--font-pretendard`, used by `--font-family-base` in `tokens.css`.
+  - GmarketSans (logo text only): weights 300/500/700, `preload: false`. Use `font-family: var(--font-family-logo)` (defined in `globals.css`). Do not use it for other text.
 - Full-screen height uses `100dvh`. Bottom-fixed elements add `env(safe-area-inset-bottom)`.
 - Mostly flat. Apply glass effects only to elements that have them in Figma.
 - Put a style file next to its component with the same name. Example: `IngredientCard.tsx` + `IngredientCard.module.css`
