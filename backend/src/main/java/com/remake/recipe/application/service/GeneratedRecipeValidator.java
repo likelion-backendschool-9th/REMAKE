@@ -28,7 +28,10 @@ import com.remake.recipe.domain.RecipeUnit;
  */
 final class GeneratedRecipeValidator {
 
-	/** 재료 보충이 꺼져 있어도 냉장고에 없이 쓸 수 있는 기본 양념. 집에 늘 있다고 보는 것만 둔다. */
+	/**
+	 * 재료 보충이 꺼져 있어도 냉장고에 없이 쓸 수 있는 기본 양념. 집에 늘 있다고 보는 것만 둔다.
+	 * 정책 문서에는 없는 임시 규칙이다. 팀이 기능 공통의 기본 양념 기준을 정하면 그 결정에 맞춰 바꾸거나 없앤다.
+	 */
 	static final Set<String> BASIC_PANTRY = Set.of("물", "소금", "후추", "설탕", "식용유");
 
 	private static final int AMOUNT_SCALE = 3;
