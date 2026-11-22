@@ -2,7 +2,7 @@
 
 이 프로젝트의 핵심 기능입니다. 사용자 행동을 이벤트로 쌓고 지표(KPI)·퍼널로 모니터링합니다. 팀원 모두 "이벤트 데이터를 남기는 API/모듈을 활용"했다고 쓸 수 있도록 **이준호가 공통 `EventTracker` 모듈과 수집 API**를 만들고, 각 담당자가 **자기 API에서 서버 이벤트를 발행**합니다.
 
-기준 문서: 이벤트 정의서 v2(피그마 기준, 2026-11-22, 노션. 이벤트 78개, 속성 102개, 지표 21개, 화면 코드 41개). 영문 전체 목록은 [`docs/agent/spec/events.md`](../../agent/spec/events.md), 영역별 이벤트 표는 각 영역 문서(01~07)의 "발행 이벤트"에 있습니다.
+기준 문서: 이벤트 정의서 v2(피그마 기준, 2026-11-22, 노션. 이벤트 79개, 속성 102개, 지표 21개, 화면 코드 41개). 영문 전체 목록은 [`docs/agent/spec/events.md`](../../agent/spec/events.md), 영역별 이벤트 표는 각 영역 문서(01~07)의 "발행 이벤트"에 있습니다.
 
 ## 1. 구조
 
@@ -24,7 +24,7 @@
 ```json
 { "name": "receipt_saved", "screen": "receipt_result",
   "properties": { "registered_count": 8, "ocr_item_count": 9, "edited_item_count": 2,
-                  "deleted_item_count": 1, "added_item_count": 0, "cart_removed_count": 1,
+                  "added_item_count": 0, "cart_removed_count": 1,
                   "duration_sec": 74 } }
 ```
 
@@ -96,9 +96,9 @@ track('receipt_item_edited', { item_index: 2, edit_field: 'amount' });
 
 ## 8. 지금 코드와 다른 점
 
-- `EventName`(76개)을 정의서 78개에 맞춰야 합니다. 추가 12개(구독 6개, `recipe_favorited`, `meal_plan_overlap_answered`, `meal_slot_deleted`, `meal_slot_replaced`, `meal_slot_replace_failed`, `cart_moved_to_fridge`), 이름 변경 `notification_clicked` → `notification_banner_clicked`, 삭제 9개(`pwa_install_prompted`, `pwa_installed`, `push_permission_result`, `camera_unavailable`, `meal_plan_shortage_shown`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`, `shared_recipe_saved`). `cook_feedback_answered`는 보류(화면 위치 미정).
+- `EventName`(76개)을 정의서 79개에 맞춰야 합니다. 추가 12개(구독 6개, `recipe_favorited`, `meal_plan_overlap_answered`, `meal_slot_deleted`, `meal_slot_replaced`, `meal_slot_replace_failed`, `cart_moved_to_fridge`), 이름 변경 `notification_clicked` → `notification_banner_clicked`, 삭제 9개(`pwa_install_prompted`, `pwa_installed`, `push_permission_result`, `camera_unavailable`, `meal_plan_shortage_shown`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`, `shared_recipe_saved`). `cook_feedback_answered`(E50)는 보류에서 풀림(11/22, 차감 뒤 냉장고 바텀 시트). 속성 `feedback_value`를 `recipe_id`·`recommended`로 바꿔야 합니다.
 - `Screen` enum(대문자 25개)을 소문자 화면 코드 41개로 바꿔야 합니다.
-- 속성 14개가 빠지고(`was_skipped`, `is_expiration_estimated`, `duplicate_suspected`, `allergen_warning`, `channel`, `photo_count` 등) 18개가 새로 생겼습니다. 목록은 영문 [`events.md`](../../agent/spec/events.md).
+- 속성 15개가 빠지고(`deleted_item_count`, `was_skipped`, `is_expiration_estimated`, `duplicate_suspected`, `allergen_warning`, `channel`, `photo_count` 등) 19개가 새로 생겼습니다(`recommended` 포함). 목록은 영문 [`events.md`](../../agent/spec/events.md).
 - 우선순위는 정의서를 따릅니다. 결정 [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58)대로 공유·장바구니·보상 이벤트는 P1이고, #58의 어드민 부분(ADMIN 접근 제어 선행, 분석 API)은 어드민 화면이 없어 보류입니다.
 
 ## 9. 체크리스트

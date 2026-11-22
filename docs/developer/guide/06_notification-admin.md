@@ -23,10 +23,10 @@
 | 항목 | 규칙 | 상태 |
 | --- | --- | --- |
 | 알림 종류 | 소비기한 임박(EXPIRY_SOON), 기한 지난 재료(EXPIRED), 식단표 완성(MEAL_PLAN_COMPLETED), 식단표 생성 실패(MEAL_PLAN_FAILED) 네 가지 | 확정 |
-| 알림 문구 | "OO의 소비기한이 얼마 남지 않았어요. 제품의 포장지에서 사용 기한을 확인해 주세요", "기한이 지난 재료 N개가 있어요. 냉장고를 확인해 주세요". 식단표(05): "11월 24일부터 5일치 식단표가 완성됐어요", "식단표를 만들지 못했어요. 횟수는 차감되지 않았어요" | 확정 |
+| 알림 문구 | "OO의 소비기한이 얼마 남지 않았어요. 제품의 포장지에서 사용 기한을 확인해 주세요", "기한이 지난 재료 N개가 있어요. 냉장고를 확인해 주세요". 식단표(05): "11월 24일부터 5일치 식단표가 완성됐어요"(제안), "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요", "냉장고 재료가 부족해 식단표를 만들지 못했어요. 생성 횟수는 차감되지 않았어요" | 확정 / 완성 문구는 제안 |
 | 채널 | 앱 안에서만(상단 알림 띠·알림 화면). 기기 푸시 없음 | 확정 |
 | 알림 띠 | 모든 탭 화면 상단에 최신 알림 한 줄 + 안 읽은 개수 빨간 숫자. 누르면 알림 화면 | 확정 |
-| 알림 화면 | 오늘·1일 전·2일 전 묶음. 항목을 누르는 동작 없음. 회색 글자는 읽음 표시가 아니라 글자 색 | 확정 |
+| 알림 화면 | 오늘·1일 전·2일 전 묶음. 소비기한 알림 항목은 누르는 동작 없음. 식단표 완성 알림은 p5에서 그 식단표 시작일, 실패 알림은 식단표 생성 설정 화면으로 이동. 회색 글자는 읽음 표시가 아니라 글자 색 | 확정 |
 | 읽음 처리 | 알림 화면을 열면 모두 읽음. 개별 읽음·모두 읽음 버튼 없음 | 확정 |
 | 빈 화면 | 알림 0건 빈 화면(추가 예정) | 화면 대기 |
 | 임박 기준 | 소비기한이 오늘~3일 뒤(D-3~D-DAY)인 재료는 그동안 매일 재료마다 한 건. 냉장고 화면에서 D-DAY는 "위험"이지만 알림은 "임박"(의도한 차이) | 확정 |
@@ -53,7 +53,7 @@
 | 번호 | 메서드 | 경로 | 설명 | 요청 | 응답 | 관련 테이블 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 43 | GET | `/user/notifications/summary` | 가장 최근 알림 문구와 안 읽은 수(11/21 답 30) | `-` | `200 { latestMessage, unreadCount }` | notifications |
-| 44 | GET | `/user/notifications` | 알림 목록(최근 것부터). 누르는 동작 없음. 이 목록을 불러오면 안 읽은 알림이 모두 읽음이 됨(따로 읽음 처리 API 없음, API 답 4) | `?page=0&size=20` | `200 { content: [{ id, type, message, createdAt }], page, size, totalElements, hasNext }` | notifications |
+| 44 | GET | `/user/notifications` | 알림 목록(최근 것부터). 종류 EXPIRY_SOON·EXPIRED·MEAL_PLAN_COMPLETED·MEAL_PLAN_FAILED. 소비기한 알림은 누르는 동작 없음, 식단표 완성은 p5 시작일(`mealPlanId`), 실패는 생성 설정 화면. 이 목록을 불러오면 안 읽은 알림이 모두 읽음이 됨(따로 읽음 처리 API 없음, API 답 4) | `?page=0&size=20` | `200 { content: [{ id, type, message, mealPlanId, createdAt }], page, size, totalElements, hasNext }`(`mealPlanId`는 MEAL_PLAN_COMPLETED만, 나머지는 null) | notifications |
 
 기기 푸시가 없어 푸시 구독 API는 없어요. 어드민 API도 이번 버전에 없어요.
 
@@ -65,9 +65,9 @@
 
 - 매일 오전 9시(한국 시간) 정기 작업이 알림을 만들어요. 임박(`EXPIRY_SOON`)은 D-3~D-DAY 재료마다 매일 한 건, 기한 지남(`EXPIRED`)은 하루 한 건으로 묶어 개수만 적어요.
 - 알림 받기를 끈 회원(`users.notification_enabled = false`)은 소비기한 알림을 만들지 않아요. 식단표 완성·실패 알림은 끈 회원에게도 만들어요.
-- 식단표 알림은 05의 생성 작업이 끝날 때 만들어요. 알림을 누르면 어디로 갈지(식단표 연결), `notification_sent`(E66)를 식단표 알림에도 보낼지는 미결이에요.
+- 식단표 알림은 05의 생성 작업이 끝날 때 만들어요. 완성 알림은 `notifications.meal_plan_id`에 식단표를 연결하고, 누르면 p5에서 그 식단표 시작일을 열어요. 실패 알림은 식단표 생성 설정 화면으로 가요. `notification_sent`(E66)는 식단표 알림에도 보내요(`notification_type` `meal_plan_completed`·`meal_plan_failed`, `batch_count` 1).
 - `ingredient_expired` 이벤트는 기한 지난 재료를 처음 찾았을 때 한 번만 발행해요. `notification_sent`도 이 작업이 발행해요.
-- 알림 목록(API 44)을 불러오면 안 읽은 알림을 모두 읽음으로 바꿔요. 따로 읽음 API는 없어요. 항목을 누르는 동작도 없어요.
+- 알림 목록(API 44)을 불러오면 안 읽은 알림을 모두 읽음으로 바꿔요. 따로 읽음 API는 없어요. 소비기한 알림 항목은 누르는 동작이 없고, 식단표 알림만 이동해요.
 - 30일 지난 알림은 매일 새벽 정리 작업이 지워요.
 - 어드민은 보류예요. 화면이 디자인되면 신고 처리, 계정 제한(SUSPENDED), 횟수 조정, 공유 레시피 숨김(HIDDEN)을 다시 정해요. 그 전에는 어드민 코드를 만들지 않아요.
 
@@ -85,7 +85,7 @@
 
 | ID | 이벤트 | 발생 시점 | 속성 | 발송 | 우선순위 | 발행 API |
 | --- | --- | --- | --- | --- | --- | --- |
-| E66 | `notification_sent` | 소비기한 알림 작업이 앱 안 알림을 만들었을 때(알림 1건당 1건) | notification_type, batch_count | BE | P0 | 서버 정기 작업 소비기한 알림(API 정의서 5장) |
+| E66 | `notification_sent` | 소비기한 알림 작업이나 식단표 생성 작업(05)이 앱 안 알림을 만들었을 때(알림 1건당 1건) | notification_type, batch_count | BE | P0 | 서버 정기 작업 소비기한 알림(API 정의서 5장) |
 | E67 | `notification_banner_clicked` | 상단 알림 띠를 눌러 알림 화면으로 갈 때 | unread_count | FE | P0 | 56 POST /user/events(프론트 전송) |
 | E68 | `notification_list_viewed` | 알림 화면이 열릴 때(열면 모두 읽음) | unread_count | FE | P1 | 56 POST /user/events(프론트 전송) |
 

@@ -34,7 +34,7 @@
 | OCR 처리 | 동기 처리(최대 30초), 기다리는 동안 OCR 결과 스켈레톤. 분석 완료 알림 없음 | 확정 |
 | OCR 실패 | OCR 실패 화면 하나에 문구만 다르게: 영수증을 읽지 못함(영수증 아님·OCR 오류·시간 초과), 식재료가 하나도 없음, 구매일이 6개월 지남, 이미 등록한 영수증. 다시 찍으면 됨 | 확정 / 화면 대기 |
 | 결과에 나오는 것 | 식재료만(수세미·냄비 같은 비식재료는 걸러 냄). 식재료는 카테고리·보관 위치·수량·가격·소비기한을 채워 보여 줌 | 확정 |
-| 결과 확인·수정 | "영수증 재료" 화면에서 품목 수정(p3.3.1)·추가(p3.3.2)·빼기(추가 예정). 고친 값은 화면 상태로만 두고 등록할 때 함께 보냄 | 확정 / 빼기는 화면 대기 |
+| 결과 확인·수정 | "영수증 재료" 화면에서 품목 수정(p3.3.1)·추가(p3.3.2). OCR 결과에는 식재료만 보여 주고 품목 빼기는 없음(추가될 페이지 5번 취소, 11/22). 고친 값은 화면 상태로만 두고 등록할 때 함께 보냄 | 확정 |
 | 소비기한 추정 안내 | "소비 기한은 카테고리 기본 보관 기간으로 추정 했어요. 소비기한을 확인 하시고 수정해 주세요" | 확정(피그마) |
 | 등록 | "식재료 N개 등록 하기"를 누를 때 영수증 이미지·영수증·품목·냉장고 재료를 한 번에 저장. 등록 전 OCR 결과는 서버에 저장하지 않고, 등록하지 않고 나가면 정확도 분석용 이벤트만 남음 | 확정 |
 | 구매일·판매처 | OCR이 못 읽으면 비워서 주고, 등록할 때 구매일·판매처 이름은 필수 | 확정 |
@@ -79,7 +79,7 @@
 
 ## 구현 메모
 
-- 흐름: 스캔 → `POST /user/receipts/scan`(동기, 최대 30초, 저장 안 함) → OCR 결과 화면에서 수정·추가·빼기(화면 상태로만) → `POST /user/receipts`로 영수증·품목·냉장고 재료를 한 트랜잭션에 저장.
+- 흐름: 스캔 → `POST /user/receipts/scan`(동기, 최대 30초, 저장 안 함) → OCR 결과 화면에서 수정·추가(화면 상태로만, 빼기 없음) → `POST /user/receipts`로 영수증·품목·냉장고 재료를 한 트랜잭션에 저장.
 - 등록 전 OCR 결과는 서버에 저장하지 않아요. 등록하지 않고 나가면 `receipt_result_abandoned` 이벤트만 남아요.
 - 결과에는 식재료만 남겨요. 비식재료(수세미·냄비 등)는 응답에 나오지 않아요. 소비기한이 없으면 카테고리 기본 보관 일수로 채워요(별도 추정 표시 없음, 안내 문구만).
 - 단위는 서버가 재료명으로 정해요(02의 재료 사전).
@@ -113,8 +113,8 @@
 | E31 | `receipt_scan_failed` | OCR이 실패했을 때(영수증 아님, OCR 오류·시간 초과, 식재료 없음, 6개월 지남, 이미 등록한 영수증) | error_code, duration_ms | BE | P0 | 20 영수증 스캔 |
 | E32 | `receipt_item_edited` | OCR 재료 수정 화면에서 품목을 고쳤을 때(항목마다 1건) | item_index, edit_field | FE | P0 | 56 POST /user/events(프론트 전송) |
 | E33 | `receipt_item_added_manually` | OCR 결과에서 빠진 품목을 직접 추가했을 때 | 공통 속성만 | FE | P1 | 56 POST /user/events(프론트 전송) |
-| E34 | `receipt_saved` | "식재료 N개 등록 하기"로 영수증이 저장됐을 때 | receipt_id, registered_count, ocr_item_count, edited_item_count, deleted_item_count, added_item_count, duration_sec, food_total_amount, cart_removed_count | BE | P0 | 21 영수증 등록 |
-| E76 | `receipt_result_abandoned` | OCR 결과 화면에서 등록하지 않고 나갔을 때(뒤로·닫기·앱 종료 직전). 등록 전 결과는 서버에 저장하지 않아 OCR 정확도를 이것으로 잼 | ocr_item_count, edited_item_count, deleted_item_count, added_item_count | FE | P0 | 56 POST /user/events(프론트 전송) |
+| E34 | `receipt_saved` | "식재료 N개 등록 하기"로 영수증이 저장됐을 때 | receipt_id, registered_count, ocr_item_count, edited_item_count, added_item_count, duration_sec, food_total_amount, cart_removed_count | BE | P0 | 21 영수증 등록 |
+| E76 | `receipt_result_abandoned` | OCR 결과 화면에서 등록하지 않고 나갔을 때(뒤로·닫기·앱 종료 직전). 등록 전 결과는 서버에 저장하지 않아 OCR 정확도를 이것으로 잼 | ocr_item_count, edited_item_count, added_item_count | FE | P0 | 56 POST /user/events(프론트 전송) |
 | E35 | `receipt_list_viewed` | 영수증 화면이 열리거나 달을 바꿨을 때 | month_offset, has_comparison | FE | P1 | 56 POST /user/events(프론트 전송) |
 | E36 | `receipt_detail_viewed` | 영수증 상세가 열릴 때 | 공통 속성만 | FE | P2 | 56 POST /user/events(프론트 전송) |
 | E37 | `receipt_deleted` | 영수증 삭제 모달에서 삭제했을 때 | 공통 속성만 | FE | P1 | 56 POST /user/events(프론트 전송) |

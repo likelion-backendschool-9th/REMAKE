@@ -42,7 +42,7 @@
 | 21 | `shared_recipe_reports` | Shared recipe reports | One report | 7 sharing/cart | 최유리 | 6 |
 | 22 | `shared_recipe_weekly_ranks` | Weekly ranking records | Last week's final ranks (for rank change arrows) | 7 sharing/cart | 최유리 | 6 |
 | 23 | `generation_quota_grants` | Reward generation grants | Extra recipe generations for the weekly top 1-3 | 7 sharing/cart | 최유리 | 9 |
-| 24 | `notifications` | Notifications | One notification for a member | 6 notifications | 이상호 | 7 |
+| 24 | `notifications` | Notifications | One notification for a member | 6 notifications | 이상호 | 8 |
 | 25 | `events` | Events | Raw behavior events (frontend and server). Names and properties in `spec/events.md` | common (events) | 이준호 | 12 |
 | 26 | `ingredient_catalog` | Ingredient unit dictionary | Ingredient name -> unit, category, shelf life. Used only inside the server to pick units (API 14, 15, 16, 21). Never exposed by screens or APIs | 2 fridge | 김재연 | 6 |
 
@@ -89,6 +89,7 @@ erDiagram
   shared_recipes |o--o{ generation_quota_grants : "shared_recipe_id"
   users ||--o{ notifications : "user_id"
   ingredients |o--o{ notifications : "ingredient_id"
+  meal_plans |o--o{ notifications : "meal_plan_id"
   ingredient_categories ||--o{ ingredient_catalog : "category_id"
   users {
     bigint id PK
@@ -327,6 +328,7 @@ erDiagram
     bigint user_id FK
     varchar type
     bigint ingredient_id FK
+    bigint meal_plan_id FK
     varchar message
     timestamp read_at
     timestamp created_at
@@ -716,6 +718,7 @@ One notification created for a member. Owner 이상호 (6 notifications).
 | `user_id` | bigint | FK | users | no |  | Member |
 | `type` | varchar |  |  | no |  | EXPIRY_SOON/EXPIRED/MEAL_PLAN_COMPLETED/MEAL_PLAN_FAILED |
 | `ingredient_id` | bigint | FK | ingredients | yes |  | Ingredient of an expiring-soon notification. Cleared when the ingredient is deleted |
+| `meal_plan_id` | bigint | FK | meal_plans | yes |  | Plan of a `MEAL_PLAN_COMPLETED` notification; tapping opens p5 at its start date. Cleared when the plan is deleted |
 | `message` | varchar |  |  | no |  | Text to show |
 | `read_at` | timestamp |  |  | yes |  | Read time. Opening the notification screen marks all unread ones as read |
 | `created_at` | timestamp |  |  | no |  | Notification time |
@@ -795,6 +798,7 @@ Internal reference data that maps an ingredient name to a unit, category and she
 | `shared_recipes` | `generation_quota_grants` | shared_recipe_id | 1:N | yes | SET NULL |
 | `users` | `notifications` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `ingredients` | `notifications` | ingredient_id | 1:N | yes | SET NULL |
+| `meal_plans` | `notifications` | meal_plan_id | 1:N | yes | SET NULL |
 | `ingredient_categories` | `ingredient_catalog` | category_id | 1:N | no | RESTRICT (reference data) |
 
 ## Screen values computed instead of stored
@@ -832,7 +836,7 @@ These values appear on screens but have no column. They are computed from the so
 | Cart -> fridge | Fill storage and expiry from the category's `default_storage` and `default_shelf_life_days`; leave the price empty. The category was set when the item was added. Delete moved items from `cart_items` |
 | Automatic cart removal | On receipt registration, delete cart items whose name equals a registered ingredient |
 | Meal delete / replace | Delete removes the `meal_plan_slots` row. Replace generates a new recipe, changes `recipe_id`, and uses one daily recipe generation (one `usage_logs` RECIPE row). Only slots from today on; past slots cannot be changed |
-| Meal-plan generation | API 38 checks the start date, quota, and overlap, creates `meal_plans` as `GENERATING`, and replies 202. A server job fills the slots and the cart, sets `COMPLETED`, charges one `usage_logs` row, and creates a `MEAL_PLAN_COMPLETED` notification. Too few ingredients, AI error, or timeout set `FAILED`, charge nothing, and create `MEAL_PLAN_FAILED`. Meal-plan notifications ignore `notification_enabled`. (open): a new generate request while one is `GENERATING`; whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap; whether overwrite deletes the old slots at acceptance or at completion; where tapping the notification goes (no link from `notifications` to the plan yet) |
+| Meal-plan generation | API 38 checks the start date, quota, and overlap, creates `meal_plans` as `GENERATING`, and replies 202. A server job fills the slots and the cart, sets `COMPLETED`, charges one `usage_logs` row, and creates a `MEAL_PLAN_COMPLETED` notification. Too few ingredients, AI error, or timeout set `FAILED`, charge nothing, and create `MEAL_PLAN_FAILED`. Meal-plan notifications ignore `notification_enabled`. A new request while one is `GENERATING` → `MEAL_PLAN_IN_PROGRESS` (409). `MEAL_PLAN_COMPLETED` sets `notifications.meal_plan_id` (tap opens p5 at the start date); `MEAL_PLAN_FAILED` opens the setup screen. No failure-reason column. (open): whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap; whether overwrite deletes the old slots at acceptance or at completion |
 | Meal-plan overwrite | The start date can only be today or later, so past days never change. Delete existing slots on dates that overlap the new plan, except today's meals already cooked (`cooked_at` set): they keep their recipe and the new plan does not fill them |
 | Cooked mark | Cooking a recipe opened from today's slot sets that slot's `cooked_at` (never for other days) |
 | Receipt delete | Delete the `receipts` and `receipt_items` rows (image included). It leaves spending and patterns; registered fridge ingredients stay (only `receipt_item_id` is cleared) |
@@ -878,7 +882,7 @@ Summary: 17 changed, 7 kept, 7 removed, 1 on hold, 2 added -> 26 tables in the n
 | `recipe_steps` | kept | - | - | Same structure |
 | `recipe_catalog_items` | removed | - | (whole table) | No recipe allergy warning screen |
 | `saved_recipes` | kept | - | - | Same structure, but saving a shared recipe stores the original `recipe_id`, not a copy |
-| `recipe_cook_logs` | removed | - | (whole table) | No cook history screen. Cook deduction is `ingredient_logs` (USED); cooking is recorded as events. A "would you recommend" screen is to be added |
+| `recipe_cook_logs` | removed | - | (whole table) | No cook history screen. Cook deduction is `ingredient_logs` (USED); cooking is recorded as events. The recommend question is a fridge bottom sheet after the cook deduction, collected only as event E50 (no table) |
 | `meal_plans` | kept | - | - | Same structure |
 | `meal_plan_slots` | changed | cooked_at | user_id, menu_name, source | Slots always belong to a plan and get a full recipe (no manual slots). `meal_plan_id` and `recipe_id` required. `cooked_at` keeps cooked meals on overwrite |
 | `meal_plan_slot_ingredients` | removed | - | (whole table) | No per-slot planned-ingredient screen |

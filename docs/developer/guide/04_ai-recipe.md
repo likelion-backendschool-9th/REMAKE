@@ -53,7 +53,7 @@
 | 재료 차감 화면 | "총 N개의 재료를 차감해 주세요", 내 냉장고에 있는 레시피 재료를 체크, 행 > 로 수량 변경 시트, "N개의 재료 차감 하기"(N = 체크 개수). 냉장고에 있는 재료가 없으면 빈 화면(추가 예정) | 확정(피그마) |
 | 단위 환산 | 같은 종류 단위끼리만 자동 환산, 종류가 다르면 사용자가 사용량 확인, 꼬집·약간은 차감 안 함 | 확정 |
 | 식단에서 요리 | 오늘 식단 칸에서 연 레시피로 요리 완료하면 그 칸을 요리함으로 표시(다른 날 칸은 안 함) | 확정 |
-| 레시피 추천 여부 | 사용자가 레시피를 추천하는지 묻는 화면. 위치 미정 | 화면 대기 |
+| 레시피 추천 여부 | 재료 차감 뒤 냉장고(p2)로 이동해 바텀 시트 "이 레시피 어땠나요?"(추천해요 / 추천하지 않아요 → 보내기). 기능에 쓰지 않는 추적 데이터(성공률 확인·고도화용)라 이벤트 E50으로만 수집, 새 API·테이블 없음 | 확정(11/22) |
 
 ## API
 
@@ -66,7 +66,7 @@
 | 29 | POST | `/user/recipes/{id}/regenerate` | 같은 조건으로 새 레시피. 언제든 누를 수 있고 하루 횟수 차감(11/21 답 18) | `본문 없음` | `201 (레시피 상세 모양)` | recipes, usage_logs |
 | 30 | GET | `/user/recipes/{id}` | 레시피 상세. "AI가 생성한 레시피" 문구는 넣지 않음(PRD 답 2). 공유 가능 여부는 그 주에 공유했는지(11/21 답 17) | `-` | `200 { id, title, servings, cookMinutes, tips, ingredients: [{ name, amount, unit }], steps: [{ stepNo, content }], saved, favorite, shareable }` | recipes, recipe_ingredients, recipe_steps, saved_recipes, shared_recipes |
 | 31 | GET | `/user/recipes/{id}/cook-preview` | 차감할 내 냉장고 재료와 레시피 양 | `?mealPlanSlotId=(식단 칸에서 열었으면)` | `200 { items: [{ ingredientId, name, imageUrl, amount, unit, remainingAmount }] }` | recipe_ingredients, ingredients |
-| 32 | POST | `/user/recipes/{id}/cook` | 체크한 재료를 USED로 차감. 오늘 식단 칸에서 열었으면 그 칸에 요리 완료 표시(ERD 답 8) | `{ items: [{ ingredientId, amount }], mealPlanSlotId? }` | `200 { deductedCount }` | ingredient_logs, ingredients, meal_plan_slots |
+| 32 | POST | `/user/recipes/{id}/cook` | 체크한 재료를 USED로 차감. 오늘 식단 칸에서 열었으면 그 칸에 요리 완료 표시(ERD 답 8). 차감 뒤 냉장고(p2)로 이동해 추천 여부 바텀 시트를 띄움(답은 E50 이벤트로만) | `{ items: [{ ingredientId, amount }], mealPlanSlotId? }` | `200 { deductedCount }` | ingredient_logs, ingredients, meal_plan_slots |
 | 33 | GET | `/user/saved-recipes` | 저장 목록. 바로 가능 = 지금 냉장고 재료로 만들 수 있는 것(11/21 답 15) | `?filter=ALL\|FAVORITE\|AVAILABLE &sort=SAVED_DESC\|SAVED_ASC(최신 저장순·오래된 순, 선택 화면은 추가될 페이지 9번) &page=0&size=20` | `200 { totalCount, content: [{ recipeId, title, ingredientSummary, extraIngredientCount, favorite }], page, size, totalElements, hasNext }` | saved_recipes, recipes, recipe_ingredients, ingredients |
 | 34 | PUT | `/user/saved-recipes/{recipeId}` | 내 레시피 저장(이미 저장돼 있어도 같은 결과). 재료 보충으로 들어간 부족 재료는 장바구니에 자동으로 담김(API 답 2) | `본문 없음` | `200 { saved: true, cartAddedCount }` | saved_recipes, cart_items |
 | 35 | DELETE | `/user/saved-recipes/{recipeId}` | 저장 목록에서만 뺌. 공유 글은 그대로(ERD 답 6) | `-` | `204` | saved_recipes |
@@ -118,6 +118,7 @@
 | E47 | `step_play_started` | "만드는 방법 재생하기"를 눌렀을 때(기기 음성 읽기) | recipe_id | FE | P2 | 56 POST /user/events(프론트 전송) |
 | E48 | `cook_deduct_viewed` | 요리 완료 재료 차감 화면이 열릴 때 | recipe_id, deduct_item_count | FE | P1 | 56 POST /user/events(프론트 전송) |
 | E49 | `cook_completed` | "N개의 재료 차감 하기"로 차감이 끝났을 때 | recipe_id, deducted_count, adjusted_count, from_meal_plan | BE | P0 | 32 요리 완료 |
+| E50 | `cook_feedback_answered` | 차감 뒤 냉장고 바텀 시트에서 추천 여부를 보냈을 때 | recipe_id, recommended | FE | 미결 | 56 POST /user/events(프론트 전송) |
 | E77 | `recipe_favorited` | 즐겨찾기 별을 켜거나 껐을 때 | is_favorite | FE | P2 | 56 POST /user/events(프론트 전송) |
 
 ## 체크리스트
@@ -127,4 +128,5 @@
 - [ ] 보상 횟수를 만료 가까운 것부터 사용
 - [ ] 재료 보충 ON 저장 때 장바구니 담기
 - [ ] 요리 완료 차감(단위 환산, 꼬집·약간 제외), 오늘 식단 칸 요리 표시
+- [ ] 차감 뒤 냉장고 이동 + 추천 여부 바텀 시트(E50 `cook_feedback_answered` 전송)
 - [ ] 저장 목록 필터·정렬, 즐겨찾기

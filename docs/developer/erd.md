@@ -42,7 +42,7 @@
 | 21 | `shared_recipe_reports` | 공유 레시피 신고 | 신고 한 건 | 7 공유 공간·장바구니 | 최유리 | 6 |
 | 22 | `shared_recipe_weekly_ranks` | 주간 순위 기록 | 지난주 최종 순위(순위 변동 ↑↓ 계산용) | 7 공유 공간·장바구니 | 최유리 | 6 |
 | 23 | `generation_quota_grants` | 보상 생성 횟수 | 금주의 레시피 1~3위 보상으로 준 추가 레시피 생성 횟수 | 7 공유 공간·장바구니 | 최유리 | 9 |
-| 24 | `notifications` | 알림 | 회원에게 만든 알림 한 건 | 6 알림 | 이상호 | 7 |
+| 24 | `notifications` | 알림 | 회원에게 만든 알림 한 건 | 6 알림 | 이상호 | 8 |
 | 25 | `events` | 이벤트 | 사용자 행동 이벤트 원본(프론트·서버). 이름·속성은 이벤트 정의서 | 공통(이벤트) | 이준호 | 12 |
 | 26 | `ingredient_catalog` | 재료 단위 사전 | 재료명 → 단위·카테고리·보관 일수. 재료명으로 단위를 정할 때(API 14·15·16·21) 서버 안에서만 씀. 화면·API로 노출하지 않음 | 2 냉장고 | 김재연 | 6 |
 
@@ -89,6 +89,7 @@ erDiagram
   shared_recipes |o--o{ generation_quota_grants : "shared_recipe_id"
   users ||--o{ notifications : "user_id"
   ingredients |o--o{ notifications : "ingredient_id"
+  meal_plans |o--o{ notifications : "meal_plan_id"
   ingredient_categories ||--o{ ingredient_catalog : "category_id"
   users {
     bigint id PK
@@ -327,6 +328,7 @@ erDiagram
     bigint user_id FK
     varchar type
     bigint ingredient_id FK
+    bigint meal_plan_id FK
     varchar message
     timestamp read_at
     timestamp created_at
@@ -716,6 +718,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `user_id` | bigint | FK | users | 아니오 |  | 회원 |
 | `type` | varchar |  |  | 아니오 |  | EXPIRY_SOON/EXPIRED/MEAL_PLAN_COMPLETED/MEAL_PLAN_FAILED |
 | `ingredient_id` | bigint | FK | ingredients | 예 |  | 임박 알림의 재료. 재료가 지워지면 비움 |
+| `meal_plan_id` | bigint | FK | meal_plans | 예 |  | 식단표 완성 알림(`MEAL_PLAN_COMPLETED`)의 식단표. 누르면 p5에서 그 식단표 시작일을 엶. 식단표가 지워지면 비움 |
 | `message` | varchar |  |  | 아니오 |  | 보여줄 문구 |
 | `read_at` | timestamp |  |  | 예 |  | 읽은 시각. 알림 화면(p6)을 열면 안 읽은 알림을 모두 읽음으로 기록 |
 | `created_at` | timestamp |  |  | 아니오 |  | 알림 시각 |
@@ -795,6 +798,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `shared_recipes` | `generation_quota_grants` | shared_recipe_id | 1:N | 예 | SET NULL |
 | `users` | `notifications` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `ingredients` | `notifications` | ingredient_id | 1:N | 예 | SET NULL |
+| `meal_plans` | `notifications` | meal_plan_id | 1:N | 예 | SET NULL |
 | `ingredient_categories` | `ingredient_catalog` | category_id | 1:N | 아니오 | RESTRICT(기준 데이터) |
 
 ## 화면 값 중 저장하지 않고 계산하는 것
@@ -832,7 +836,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | 장바구니 → 냉장고 | 카테고리의 default_storage·default_shelf_life_days로 보관 위치·소비기한을 채우고 가격은 비움. 카테고리는 장바구니에 담을 때 이미 정해짐. 냉장고로 넘긴 항목은 cart_items에서 지움 |
 | 장바구니 자동 빼기 | 영수증 등록("식재료 N개 등록 하기") 때 등록한 재료와 이름이 같은 장바구니 항목을 지움 |
 | 식단 삭제·교체 | 삭제는 meal_plan_slots 행 삭제, 교체는 새 레시피를 만들어 recipe_id를 바꾸고 하루 레시피 생성 횟수 1회 차감(usage_logs RECIPE 한 줄). 오늘부터의 칸만, 지난 날짜 칸은 안 됨 |
-| 식단표 생성 | API 38이 시작일·횟수·겹침을 확인하고 `meal_plans`를 `GENERATING`으로 만든 뒤 202로 응답. 서버 작업이 칸과 장바구니를 채우고 `COMPLETED`로 바꾼 뒤 `usage_logs` 한 줄 차감, `MEAL_PLAN_COMPLETED` 알림을 만듦. 재료 부족·AI 오류·시간 초과면 `FAILED`, 차감 없음, `MEAL_PLAN_FAILED` 알림. 식단표 알림은 `notification_enabled`와 관계없이 만듦. 미결: 생성 중(`GENERATING`)에 다시 생성 요청하면 어떻게 할지, 생성 중·실패 식단표를 달력(39)·겹침 검사에 넣을지, 덮어쓸 때 기존 칸을 접수 때 지울지 완성 때 지울지, 알림을 누르면 어디로 갈지(지금 `notifications`에는 식단표 연결 칸이 없음) |
+| 식단표 생성 | API 38이 시작일·횟수·겹침을 확인하고 `meal_plans`를 `GENERATING`으로 만든 뒤 202로 응답. 서버 작업이 칸과 장바구니를 채우고 `COMPLETED`로 바꾼 뒤 `usage_logs` 한 줄 차감, `MEAL_PLAN_COMPLETED` 알림을 만듦. 재료 부족·AI 오류·시간 초과면 `FAILED`, 차감 없음, `MEAL_PLAN_FAILED` 알림. 식단표 알림은 `notification_enabled`와 관계없이 만듦. 생성 중(`GENERATING`)에 다시 요청하면 `MEAL_PLAN_IN_PROGRESS`(409). `MEAL_PLAN_COMPLETED`는 `notifications.meal_plan_id`에 식단표를 연결(누르면 p5에서 시작일), `MEAL_PLAN_FAILED`는 생성 설정 화면으로. 실패 사유 칸은 두지 않음. 미결: 생성 중·실패 식단표를 달력(39)·겹침 검사에 넣을지, 덮어쓸 때 기존 칸을 접수 때 지울지 완성 때 지울지 |
 | 식단표 덮어쓰기 | 시작일은 오늘부터만 고를 수 있어서 지난 날 식단은 바뀌지 않음. 새 식단표 기간과 겹치는 날짜의 기존 칸은 지움. 단 오늘 칸 중 이미 요리한 끼니(cooked_at 있음)는 그 레시피로 남기고 새 식단표가 채우지 않음 |
 | 요리 완료 표시 | 오늘 식단 칸에서 연 레시피로 요리 완료하면 그 칸 cooked_at 기록(다른 날 칸에는 기록 안 함) |
 | 영수증 삭제 | receipts·receipt_items 행 삭제(이미지 포함). 식비·소비 패턴에서 빠지고, 등록된 냉장고 재료는 남음(receipt_item_id만 비움) |
@@ -878,7 +882,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `recipe_steps` | 유지 | - | - | 같은 구조 |
 | `recipe_catalog_items` | 삭제 | - | (테이블 전체) | 레시피 알레르기 경고 화면 없음 |
 | `saved_recipes` | 유지 | - | - | 같은 구조. 단 공유 레시피 저장은 사본이 아니라 원본 recipe_id(ERD 답 6) |
-| `recipe_cook_logs` | 삭제 | - | (테이블 전체) | 요리 기록 화면 없음. 요리 완료 차감은 ingredient_logs(USED), 요리 기록은 이벤트로(11/16 결정). 레시피 추천 여부 화면은 추가 예정 |
+| `recipe_cook_logs` | 삭제 | - | (테이블 전체) | 요리 기록 화면 없음. 요리 완료 차감은 ingredient_logs(USED), 요리 기록은 이벤트로(11/16 결정). 레시피 추천 여부는 차감 뒤 냉장고 바텀 시트, 이벤트 E50으로만 수집(테이블 없음) |
 | `meal_plans` | 유지 | - | - | 같은 구조 |
 | `meal_plan_slots` | 변경 | cooked_at | user_id, menu_name, source | user_id·menu_name·source 뺌. 칸은 항상 식단표 안에 있고 레시피 전체를 바로 만듦(직접 추가 칸 없음, ERD 답 8). meal_plan_id·recipe_id 필수. cooked_at 추가(요리한 칸은 덮어써도 남김, ERD 답 8) |
 | `meal_plan_slot_ingredients` | 삭제 | - | (테이블 전체) | 칸별 예정 재료 화면 없음 |

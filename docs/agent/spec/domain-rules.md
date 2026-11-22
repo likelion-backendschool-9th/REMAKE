@@ -18,10 +18,11 @@ Source: PRD v4 and policy doc v4 (Figma-based, 2026-11-22; Korean, kept in Notio
 - Files (receipt and shared photos): <= 10 MB, jpg/png/heic. The frontend checks first; the server checks last (413, 415).
 - Double clicks: buttons such as register and deduct are disabled until the request ends. No server `Idempotency-Key`.
 - Concurrent edits of the same ingredient: last request wins. Deduction checks the remaining amount first.
-- Errors: `{ code, message, status, traceId, fieldErrors?, details? }` with the 58 codes in [`errors.md`](errors.md). Input errors show as red text under the field (#DC2626). Errors without a screen show the shared toast. Errors with a screen use the OCR failure screen, the generation failure screen, the meal-plan overlap modal, or the quota-used-up screen.
+- Errors: `{ code, message, status, traceId, fieldErrors?, details? }` with the 59 codes in [`errors.md`](errors.md). Input errors show as red text under the field (#DC2626). Errors without a screen show the shared toast. Errors with a screen use the OCR failure screen, the generation failure screen, the meal-plan overlap modal, or the quota-used-up screen.
 - Empty data is not an error: return 200 with an empty value. Empty-list screens (8 places) are (screen pending).
 - Loading: lists use skeletons. AI recipe generation uses a loading screen (up to 60 s, screen pending). Meal-plan generation has no loading screen (section 5).
-- Success toast: after saving a recipe, registering a receipt, or moving cart items to the fridge, show how many cart items were added or removed (not shown when 0). Meal-plan generation is asynchronous, so when to show its cart count is (open). Wording is (proposal), toast is (screen pending).
+- Success toast: after saving a recipe, registering a receipt, or moving cart items to the fridge, show how many cart items were added or removed (not shown when 0). Meal-plan generation is asynchronous, so its cart count goes into the completion notification (section 5). Wording is (proposal).
+- Toasts use the design-system component `토스트` with three types: default, success, error (decided 11/22).
 - Excluded ingredients (allergies) from settings are never used in recipe or meal-plan generation.
 - No health or medical information is collected. Settings values are visible to the owner only.
 - Terms of service and privacy policy: links on the login screen open a drawer (screen pending). No separate consent screen (proposal).
@@ -103,7 +104,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Login failure: `OAUTH_FAILED` (401) as a toast. A user cancel is not counted as a failure.
 - Logout: confirm modal → delete the refresh token and both cookies.
 - **Account deletion**: settings → confirm modal → Kakao and Google get a 6-digit email code; Naver re-authenticates. On success clear the cookies and go to login.
-  - Code: 6 digits by email, valid 5 min (timer 04:59), "재전송 하기" sends a new code. More than 5 wrong attempts kills that code. Errors (wrong, expired, too many attempts) show as a toast.
+  - Code: 6 digits by email, valid 5 min (timer 04:59), "재전송 하기" sends a new code. More than 5 wrong attempts kills that code. Errors (wrong, expired, too many attempts) show as an error toast with the texts in errors.md (11/22; replaces the red text under the 6 boxes).
   - Email: Kakao requires email consent at login (biz app); Google always provides it. If still missing, `ACCOUNT_EMAIL_MISSING` (contact support).
   - Naver with a different Naver account: do not delete, back to settings (`REAUTH_ACCOUNT_MISMATCH`). Canceling re-authentication: do not delete (proposal).
   - Unlink the provider on deletion; if unlinking fails, still delete and log it (proposal).
@@ -148,7 +149,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - No scan limit. OCR is synchronous (up to 30 s) with the OCR result skeleton. No "analysis done" notification.
 - OCR failure: one failure screen with different wording for: unreadable (not a receipt, OCR error, timeout), no food items, purchase date older than 6 months, already registered. The user rescans (screen pending).
 - Results contain food only (non-food such as 수세미, 냄비 is filtered out). Each item is filled with category, storage, amount, price, and expiry.
-- Review on "영수증 재료": edit (p3.3.1), add (p3.3.2), remove (screen pending). Edits stay in screen state and are sent with registration.
+- Review on "영수증 재료": edit (p3.3.1), add (p3.3.2). The OCR result shows food items only, so there is no item removal (screens to add no. 5 canceled, 11/22). Edits stay in screen state and are sent with registration.
 - Notice: "소비 기한은 카테고리 기본 보관 기간으로 추정 했어요. 소비기한을 확인 하시고 수정해 주세요".
 - Register ("식재료 N개 등록 하기"): save the image, receipt, items, and fridge ingredients at once. Unregistered OCR results are never stored; leaving without registering records only an accuracy event.
 - Purchase date and store name: empty if OCR cannot read them; both are required at registration.
@@ -190,6 +191,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - ⋮ "삭제 하기" removes it from my saved list only; shared posts and others' saves stay.
 - ⋮ "공유 하기" opens shared write. Disabled if already shared this week (weeks start Monday).
 - Cook: "요리 완료" → deduction screen. No cooking history table; recorded only as event `cook_completed`.
+- After the cook deduction go to the fridge (p2) and show the bottom sheet "이 레시피 어땠나요?" (추천해요 / 추천하지 않아요 → 보내기). The answer is tracking data only (success rate, later improvements), not used by any feature: the frontend sends E50 `cook_feedback_answered` through API 56. No new API or table.
 - Deduction screen: "총 N개의 재료를 차감해 주세요", check recipe ingredients I have, `>` opens the amount sheet, "N개의 재료 차감 하기" (N = checked). Empty state when none are in the fridge (screen pending).
 - Cooking from today's meal slot marks that slot cooked (not other days).
 - "Recommend this recipe?" screen: position not decided (screen pending).
@@ -203,7 +205,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Setup: start date (from today, not earlier), one purpose, meals (any of breakfast, lunch, dinner), servings (default household size, proposal).
 - Purposes: BALANCED (default), DIET, HIGH_PROTEIN, SIMPLE, SAVING. Remember the last choice as the next default. No medical or calorie targets. No "참고용 식단" label.
 - Days: basic up to 5, premium up to 7. With too few ingredients, only as many days as possible.
-- Short of days but >= 1 day: the completion notification states the days made. Missing ingredients still go to the cart. The earlier toasts ("재료가 부족해 N일치만 만들었어요", cart count) have no moment to show now that generation is asynchronous (open).
+- Short of days but >= 1 day: missing ingredients still go to the cart. The completion notification adds "재료가 부족해 N일치만 만들었어요" and "부족한 재료 N개를 장바구니에 담았어요" (wording is a proposal). No separate toasts.
 - Not even one day: `MEAL_PLAN_NO_INGREDIENTS` → failure notification; the plan is `FAILED`, not charged.
 - Each meal slot gets a full recipe from the start (no "menu name first, details later").
 - Do not allocate the same ingredient amount to several meals (based on each slot's recipe ingredients; no per-slot planned-ingredient table; method is up to the developer).
@@ -213,19 +215,20 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Planning does not deduct fridge ingredients; only cook deduction does.
 - Meal plans use the monthly quota; replace uses the daily recipe quota.
 - **Asynchronous generation**: the overlap modal and the quota-exhausted screen are checked before generation and stay as they are. Then pressing generate sends API 38 (202) and goes straight to the fridge (index) screen with the toast "식단을 완성하면 알림을 보내드려요". There is no "generating" screen and no per-day progress.
-- Completion: in-app notification "11월 24일부터 5일치 식단표가 완성됐어요" (start date and days made).
-- Failure (too few ingredients, AI error, timeout): in-app notification "식단표를 만들지 못했어요. 횟수는 차감되지 않았어요". Not charged.
+- Completion: in-app notification "11월 24일부터 5일치 식단표가 완성됐어요" (start date and days made; wording is a proposal). Tapping it opens p5 at the plan's start date.
+- Failure: in-app notification, not charged, no failure screen. AI error or timeout: "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요". Not even one day (`MEAL_PLAN_NO_INGREDIENTS`): "냉장고 재료가 부족해 식단표를 만들지 못했어요. 생성 횟수는 차감되지 않았어요". Tapping it opens the meal-plan setup screen. Recipe generation failures keep the failure screen (screens to add no. 8).
 - Meal-plan notifications are created even for members who turned notifications off.
-- Target: generation within 30 s, tune after measuring. The 60 s limit is for recipes only; the server job's time limit is (open).
-- (open): a new generate request while one is `GENERATING`; whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap; whether overwrite deletes the old slots at acceptance or at completion; where tapping the notification goes.
+- Target: generation within 30 s, tune after measuring (to confirm: whether this is measured up to the completion notification). The 60 s limit is for recipes only; the server job's time limit is (open).
+- A new generate request while one of mine is `GENERATING` is rejected with `MEAL_PLAN_IN_PROGRESS` (409, error toast).
+- (open): whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap; whether overwrite deletes the old slots at acceptance or at completion.
 
 ## 6. Notifications (이상호)
 
 - Types: `EXPIRY_SOON`, `EXPIRED`, `MEAL_PLAN_COMPLETED`, `MEAL_PLAN_FAILED`.
-- Text: "OO의 소비기한이 얼마 남지 않았어요. 제품의 포장지에서 사용 기한을 확인해 주세요", "기한이 지난 재료 N개가 있어요. 냉장고를 확인해 주세요". Meal plans (section 5): "11월 24일부터 5일치 식단표가 완성됐어요", "식단표를 만들지 못했어요. 횟수는 차감되지 않았어요".
+- Text: "OO의 소비기한이 얼마 남지 않았어요. 제품의 포장지에서 사용 기한을 확인해 주세요", "기한이 지난 재료 N개가 있어요. 냉장고를 확인해 주세요". Meal plans (section 5): "11월 24일부터 5일치 식단표가 완성됐어요" (proposal), "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요", "냉장고 재료가 부족해 식단표를 만들지 못했어요. 생성 횟수는 차감되지 않았어요".
 - **In-app only** (top banner and notification screen). No device push.
 - Banner: latest notification + red unread count at the top of every tab screen; tap opens the notification screen.
-- Screen: grouped by 오늘, 1일 전, 2일 전. Items have no tap action. Gray text is a text color, not a read marker.
+- Screen: grouped by 오늘, 1일 전, 2일 전. Expiry items have no tap action; meal-plan items open p5 at the plan's start date (completed) or the meal-plan setup screen (failed). Gray text is a text color, not a read marker.
 - Opening the screen marks all as read. No per-item or mark-all button.
 - Empty state (screen pending).
 - Expiry soon: each ingredient expiring today to 3 days later (D-3 to D-DAY) gets one notification per day during that period. D-DAY is "danger" on the fridge screen but "soon" in notifications, on purpose.

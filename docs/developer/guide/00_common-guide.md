@@ -59,11 +59,11 @@ API 60개 전체는 영문 요약 [`docs/agent/spec/api-summary.md`](../../agent
 
 ## 5. 에러 공통 규칙
 
-응답 형식은 항상 `{ code, message, status, traceId, fieldErrors?, details? }`입니다. 프론트는 `code`로 분기하고 `message`는 사용자에게 보여줄 한국어 문장입니다. 코드 58개와 API별 코드는 [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)에 있습니다.
+응답 형식은 항상 `{ code, message, status, traceId, fieldErrors?, details? }`입니다. 프론트는 `code`로 분기하고 `message`는 사용자에게 보여줄 한국어 문장입니다. 코드 59개와 API별 코드는 [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)에 있습니다.
 
 백엔드: `BusinessException(ErrorCode)` 하나를 던지고 `@RestControllerAdvice`가 변환합니다. 스택 트레이스·SQL·외부 서비스 에러 문구는 응답에 넣지 않습니다. 요청마다 `traceId`를 만들어 로그(MDC)에 같이 남깁니다. 실패와 롤백은 횟수를 차감하지 않습니다. 데이터가 없는 조회는 에러가 아니라 200과 빈 값입니다.
 
-프론트: 에러 코드별 화면 처리를 `lib/api`의 매핑표 한 곳에서 정합니다. 입력 오류는 입력칸 아래 빨간 글자, 따로 화면이 없는 오류는 공통 토스트, 화면이 있는 오류는 OCR 실패·생성 실패 화면, 식단표 겹침 모달, 횟수 소진 화면입니다. 모르는 코드는 `INTERNAL_ERROR`로 처리하고 `traceId`는 문의용으로만 보관합니다.
+프론트: 에러 코드별 화면 처리를 `lib/api`의 매핑표 한 곳에서 정합니다. 입력 오류는 입력칸 아래 빨간 글자, 따로 화면이 없는 오류는 공통 토스트(디자인 시스템 `토스트` 컴포넌트, 종류는 기본·성공·오류로 확정), 화면이 있는 오류는 OCR 실패·생성 실패 화면, 식단표 겹침 모달, 횟수 소진 화면입니다. 모르는 코드는 `INTERNAL_ERROR`로 처리하고 `traceId`는 문의용으로만 보관합니다.
 
 ## 6. 정책에서 온 공통 제약
 

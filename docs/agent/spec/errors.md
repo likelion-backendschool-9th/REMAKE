@@ -1,6 +1,6 @@
 # Error contract
 
-Source: error and exception definition v2 (Figma-based, Korean, kept in Notion; not in the repo). 58 codes. Codes are fixed UPPER_SNAKE_CASE; never rename. Clients branch on `code`; `message` is Korean user-facing text (the texts below are proposals; screens may change wording, codes do not change). API numbers refer to `api-summary.md`. Admin codes are on hold (no admin screens in Figma).
+Source: error and exception definition v2 (Figma-based, Korean, kept in Notion; not in the repo). 59 codes. Codes are fixed UPPER_SNAKE_CASE; never rename. Clients branch on `code`; `message` is Korean user-facing text (the texts below are proposals; screens may change wording, codes do not change). API numbers refer to `api-summary.md`. Admin codes are on hold (no admin screens in Figma).
 
 ## Response body
 
@@ -75,9 +75,9 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 | 15 | login/settings (이준호) | `REFRESH_TOKEN_INVALID` | 401 | 2 | Refresh token expired (14 days), removed, or forged | 로그인 시간이 만료됐어요. 다시 로그인해 주세요 | Clear local cache, go to login (p1) | - |
 | 16 | login/settings (이준호) | `REAUTH_ACCOUNT_MISMATCH` | 403 | 10 | Naver withdrawal re-auth with a different Naver account | 지금 로그인한 계정으로 다시 인증해 주세요 | Back to settings (p1.3), nothing deleted. Common toast | - |
 | 17 | login/settings (이준호) | `ACCOUNT_EMAIL_MISSING` | 422 | 9 | Kakao/Google member has no email to send the code to | 인증번호를 보낼 이메일이 없어요 | Should not happen (Kakao requires email consent at login, Google always provides it). Show support guidance | Nothing sent |
-| 18 | login/settings (이준호) | `DELETION_CODE_INVALID` | 400 | 10 | Wrong code, or no code was sent. `details.remainingAttempts` | 인증번호가 맞지 않아요 | Toast on p1.3.3 (not red text under the boxes) | `account_deletion_requests.attempts` +1 |
-| 19 | login/settings (이준호) | `DELETION_CODE_EXPIRED` | 400 | 10 | More than 5 minutes after sending | 인증번호 유효 시간이 지났어요. 다시 받아 주세요 | Get a new code with "resend". Toast | - |
-| 20 | login/settings (이준호) | `DELETION_CODE_LOCKED` | 429 | 10 | More than 5 wrong attempts on the same code | 입력 횟수를 넘었어요. 인증번호를 다시 받아 주세요 | "Resend" gives a new code (new row, attempts from 0). Toast | That code can no longer be used |
+| 18 | login/settings (이준호) | `DELETION_CODE_INVALID` | 400 | 10 | Wrong code, or no code was sent. `details.remainingAttempts` | 인증번호가 맞지 않아요 | Error toast on p1.3.3 (11/22; replaces red text under the boxes) | `account_deletion_requests.attempts` +1 |
+| 19 | login/settings (이준호) | `DELETION_CODE_EXPIRED` | 400 | 10 | More than 5 minutes after sending | 인증번호 유효 시간이 지났어요. 다시 받아 주세요 | Get a new code with "resend". Error toast | - |
+| 20 | login/settings (이준호) | `DELETION_CODE_LOCKED` | 429 | 10 | More than 5 wrong attempts on the same code | 입력 횟수를 넘었어요. 인증번호를 다시 받아 주세요 | "Resend" gives a new code (new row, attempts from 0). Error toast | That code can no longer be used |
 | 21 | login/settings (이준호) | `ALREADY_SUBSCRIBED` | 409 | 58, 59 | Subscribing again while ACTIVE or CANCELED (scheduled) | 이미 구독 중이에요 | Rare (the subscribed screen has no subscribe button). Common toast, then reload subscription management | No charge |
 | 22 | login/settings (이준호) | `SUBSCRIPTION_NOT_FOUND` | 404 | 60 | Cancel without a subscription | 구독 중인 멤버십이 없어요 | Does not happen in the normal flow. Common toast | - |
 | 23 | login/settings (이준호) | `BILLING_AUTH_FAILED` | 400 | 59 | No billingKey from the returned `authKey`/`customerKey` (expired, forged, another member's key) | 카드 등록에 실패했어요. 다시 시도해 주세요 | Back to the p1.3.4 before-subscribe screen with the common toast | No subscription created |
@@ -101,11 +101,11 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 | 41 | AI recipes (김종수) | `RECIPE_NOT_FOUND` | 404 | 29, 30, 31, 32, 34-37, 51 | Missing or not visible (neither generated nor saved by me) | 레시피를 찾을 수 없어요 | Back to recipes (p4.1) and reload | - |
 | 42 | AI recipes (김종수) | `COOK_ITEM_INVALID` | 400 | 32 | A deduction item is not my ingredient, or amount <= 0 | 차감할 재료를 확인해 주세요 | Re-check items on p4.1.1.2 | No change |
 | 43 | AI recipes (김종수) | `SAVED_RECIPE_NOT_FOUND` | 404 | 35, 36, 37 | Unsave or favorite on a recipe that is not saved | 저장된 레시피가 아니에요 | Reload the saved list | - |
-| 44 | AI recipes (김종수) | `AI_UPSTREAM_ERROR` | 502 | 28, 29, 42 (38: failure notification) | AI service error or refusal | 레시피를 만들지 못했어요. 횟수는 차감되지 않았어요 | Keep the input and retry. Generation failure screen, different text | Not charged; nothing in `usage_logs` |
-| 45 | AI recipes (김종수) | `AI_TIMEOUT` | 504 | 28, 29, 42 (38: failure notification) | No AI response within 60 s (recipes). Meal plan: the server job's limit is (open) | 생성이 오래 걸리고 있어요. 횟수는 차감되지 않았어요 | Same as above | Not charged |
-| 46 | AI recipes (김종수) | `AI_INVALID_RESPONSE` | 502 | 28, 29, 42 (38: failure notification) | AI output failed validation (missing fields, unusable unit) | 레시피를 만들지 못했어요. 횟수는 차감되지 않았어요 | Same as above | Not charged |
+| 44 | AI recipes (김종수) | `AI_UPSTREAM_ERROR` | 502 | 28, 29, 42 (38: failure notification "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요") | AI service error or refusal | 레시피를 만들지 못했어요. 횟수는 차감되지 않았어요 | Keep the input and retry. Generation failure screen, different text | Not charged; nothing in `usage_logs` |
+| 45 | AI recipes (김종수) | `AI_TIMEOUT` | 504 | 28, 29, 42 (38: failure notification "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요") | No AI response within 60 s (recipes). Meal plan: the server job's limit is (open) | 생성이 오래 걸리고 있어요. 횟수는 차감되지 않았어요 | Same as above | Not charged |
+| 46 | AI recipes (김종수) | `AI_INVALID_RESPONSE` | 502 | 28, 29, 42 (38: failure notification "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요") | AI output failed validation (missing fields, unusable unit) | 레시피를 만들지 못했어요. 횟수는 차감되지 않았어요 | Same as above | Not charged |
 | 47 | meal plan (한윤수) | `MEAL_PLAN_LIMIT_EXCEEDED` | 429 | 38 | Monthly meal-plan count used up (basic 1, premium 4) | 이번 달 식단표 생성 횟수를 모두 사용했어요 | Quota exhausted screen | Not charged |
-| 48 | meal plan (한윤수) | `MEAL_PLAN_NO_INGREDIENTS` | - (not a response) | 38 (failure notification) | Ingredients cannot fill even one day, found by the server job after 202 | 식단표를 만들지 못했어요. 횟수는 차감되지 않았어요 | In-app failure notification (`MEAL_PLAN_FAILED`), no screen | Plan `FAILED`, not charged |
+| 48 | meal plan (한윤수) | `MEAL_PLAN_NO_INGREDIENTS` | - (not a response) | 38 (failure notification) | Ingredients cannot fill even one day, found by the server job after 202 | 냉장고 재료가 부족해 식단표를 만들지 못했어요. 생성 횟수는 차감되지 않았어요 | In-app failure notification (`MEAL_PLAN_FAILED`), no screen | Plan `FAILED`, not charged |
 | 49 | meal plan (한윤수) | `MEAL_PLAN_OVERLAP` | 409 | 38 | Without `overwrite`, the period overlaps an existing plan. `details.overlappingDates` | 이미 식단이 있는 날짜가 있어요. 덮어쓸까요? | Warning modal; on "overwrite" resend with `overwrite: true` | Not saved or charged |
 | 50 | meal plan (한윤수) | `PAST_DATE_NOT_ALLOWED` | 400 | 38, 41, 42 | Start date before today, or deleting/replacing a past slot | 지난 날짜는 바꿀 수 없어요 | The start-date sheet blocks past dates. Past meals keep the ⋮ menu; delete/replace shows this text. Common toast | No change |
 | 51 | meal plan (한윤수) | `SLOT_NOT_FOUND` | 404 | 41, 42 | Missing or not owned slot (including slots removed by overwrite) | 식단을 찾을 수 없어요 | Reload the calendar (p5) | - |
@@ -116,6 +116,7 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 | 56 | sharing/cart (최유리) | `SHARED_RECIPE_NOT_FOUND` | 404 | 52, 53, 54, 55 | Missing or hidden (HIDDEN) shared recipe | 삭제되었거나 볼 수 없는 레시피예요 | Back to the weekly popular list (p4.1.4) | - |
 | 57 | sharing/cart (최유리) | `REPORT_ALREADY_EXISTS` | 409 | 55 | Already reported (UK reporter_id + shared_recipe_id) | 이미 신고한 레시피예요 | Common toast | Not saved |
 | 58 | events (이준호) | `EVENT_BATCH_TOO_LARGE` | 413 | 56 | More than 50 events in one batch | (not shown) | Split and resend. Never affects the screen | - |
+| 59 | meal plan (한윤수) | `MEAL_PLAN_IN_PROGRESS` | 409 | 38 | A new generate request while one of my plans is `GENERATING` (11/22; numbered last so other codes keep their numbers) | 식단표를 만들고 있어요. 완성되면 알림을 보내드려요 (proposal) | Error toast | Not saved or charged |
 
 ## Codes per API
 
@@ -160,7 +161,7 @@ Every `user` API can also return the common codes (`UNAUTHORIZED`, `TOKEN_EXPIRE
 | 35 | `DELETE /user/saved-recipes/{recipeId}` | RECIPE_NOT_FOUND, SAVED_RECIPE_NOT_FOUND |
 | 36 | `PUT /user/saved-recipes/{recipeId}/favorite` | RECIPE_NOT_FOUND, SAVED_RECIPE_NOT_FOUND |
 | 37 | `DELETE /user/saved-recipes/{recipeId}/favorite` | RECIPE_NOT_FOUND, SAVED_RECIPE_NOT_FOUND |
-| 38 | `POST /user/meal-plans/generate` | INVALID_INPUT, MEAL_PLAN_LIMIT_EXCEEDED, MEAL_PLAN_OVERLAP, PAST_DATE_NOT_ALLOWED. Failure notification after 202 (not a response): MEAL_PLAN_NO_INGREDIENTS, AI_UPSTREAM_ERROR, AI_TIMEOUT, AI_INVALID_RESPONSE |
+| 38 | `POST /user/meal-plans/generate` | INVALID_INPUT, MEAL_PLAN_LIMIT_EXCEEDED, MEAL_PLAN_OVERLAP, MEAL_PLAN_IN_PROGRESS, PAST_DATE_NOT_ALLOWED. Failure notification after 202 (not a response): MEAL_PLAN_NO_INGREDIENTS, AI_UPSTREAM_ERROR, AI_TIMEOUT, AI_INVALID_RESPONSE |
 | 39 | `GET /user/meal-plans/calendar` | INVALID_INPUT |
 | 40 | `GET /user/meal-plans/days/{date}` | INVALID_INPUT |
 | 41 | `DELETE /user/meal-plan-slots/{slotId}` | PAST_DATE_NOT_ALLOWED, SLOT_NOT_FOUND |
