@@ -73,14 +73,18 @@ final class GeneratedRecipeValidator {
 	}
 
 	private static RecipeIngredient toIngredient(Long ingredientId, String name, BigDecimal amount, RecipeUnit unit) {
-		BigDecimal normalized = unit == RecipeUnit.TO_TASTE || amount == null
-				? null
-				: amount.setScale(AMOUNT_SCALE, RoundingMode.HALF_UP).stripTrailingZeros();
+		BigDecimal normalized = unit == RecipeUnit.TO_TASTE || amount == null ? null : normalizeAmount(amount);
 		try {
 			return new RecipeIngredient(ingredientId, name, normalized, unit);
 		} catch (IllegalArgumentException e) {
 			throw invalid();
 		}
+	}
+
+	/** 소수 셋째 자리로 반올림하고 끝의 0을 지운다. 300이 3E+2로 바뀌지 않게 정수는 소수 자리 0으로 둔다. */
+	private static BigDecimal normalizeAmount(BigDecimal amount) {
+		BigDecimal stripped = amount.setScale(AMOUNT_SCALE, RoundingMode.HALF_UP).stripTrailingZeros();
+		return stripped.scale() < 0 ? stripped.setScale(0) : stripped;
 	}
 
 	private static boolean allowedWithoutFridge(String name, RecipeUnit unit) {

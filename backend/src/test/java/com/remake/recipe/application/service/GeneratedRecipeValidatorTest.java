@@ -108,6 +108,9 @@ class GeneratedRecipeValidatorTest {
 				generated(item(EGG_ID, "계란", "1.23456", "EA")));
 
 		assertThat(recipe.ingredients().get(0).amount()).isEqualByComparingTo("1.235");
+		BigDecimal whole = GeneratedRecipeValidator.toRecipe(USER_ID, quickRequest(false),
+				generated(item(EGG_ID, "계란", "300.000", "EA"))).ingredients().get(0).amount();
+		assertThat(whole.toString()).as("지수 표기(3E+2)가 아니라 300").isEqualTo("300");
 		assertInvalid(quickRequest(false), generated(item(EGG_ID, "계란", "0.0001", "EA")));
 		assertInvalid(quickRequest(false), generated(item(EGG_ID, "계란", "-1", "EA")));
 	}
