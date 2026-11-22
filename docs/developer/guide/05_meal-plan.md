@@ -1,61 +1,112 @@
-# 05. 식단표 (한윤수)
+# 05. 주간 식단표 (한윤수)
+
+기준: PRD v4·정책정의서 v4·ERD v4·API 정의서 v4·에러 정의서 v2·이벤트 정의서 v2(모두 피그마 기준, 2026-11-22, 노션). 표는 원본에서 그대로 옮겼고 피그마 노드 근거 칸만 뺐어요.
 
 ## 범위
 
-월 달력 식단표 생성·조회, 식단 추가, 칸 상세 레시피 지연 생성, 부족 재료 계산과 장바구니 연결.
+식단표 생성(시작일·목적·끼니·인원), 월 달력과 날짜별 식단, 겹침 경고와 덮어쓰기, 식단 삭제·레시피 교체.
 
-## 화면 (피그마 프레임)
+## 화면
 
-식단표-없을 경우, 식단표, 식단표-식단 레시피 설정(2개 상태, 끼니 선택 포함)
+화면 코드는 이벤트의 `screen` 값이에요. "추가될 페이지"는 아직 피그마에 없는 화면이에요.
 
-## 화면 규칙
+| 화면 코드 | 피그마 화면 |
+| --- | --- |
+| `meal_plan_calendar` | p5 식단표(달력·바텀 시트·⋮ 시트, 빈 화면 포함) |
+| `meal_plan_setup` | 식단표-식단 레시피 생성 |
+| `meal_plan_overlap_modal` | 식단표 겹침 경고 모달(추가될 페이지 10번) |
+| `meal_plan_loading` | AI 생성 중 로딩(추가될 페이지 14번) |
 
-- 월 달력. 날짜를 누르면 그날 점심·저녁(설정에 따라 아침 포함) 칸을 보여줍니다. 지난 달·지난 날짜도 조회.
-- 식단이 없으면 생성 안내 화면. 생성 설정: **시작일, 식단 목적 1개, 넣을 끼니, 식사 인원**, "이번 달 남은 N회" 표시(`GET /user/usage-quotas`의 `mealPlan`, 식단표 부분은 이 영역이 만듦).
-- 식단 목적 5개: `BALANCED`(균형 잡힌, 기본), `DIET`, `HIGH_PROTEIN`, `SIMPLE`, `SAVING`. 생성 직전에 고르고 마지막 선택을 기억(`profile.lastMealPurpose`). 의료 목적·칼로리 목표는 없고 "참고용 식단" 문구를 보여줍니다.
-- 칸을 누르면 바로 레시피 상세. **칸 메뉴 교체·칸 재생성·식단 삭제는 없습니다.**
-- **식단 추가는 필수**: 빈 끼니에 저장한 레시피를 넣습니다(AI 재생성 없음, 방식은 제안).
-- 재료가 부족하면 7일을 채우지 않고 **만들 수 있는 일수까지만** 생성하고 "재료가 부족해 N일치만 만들었어요" 안내 → 부족한 재료는 장바구니로.
+## 정책
+
+상태: 확정 = 그대로 구현, 제안 = 상수로 분리해 구현하고 PR에 적기, 미결 = 구현 전에 준호님께 질문, 화면 대기 = 규칙은 정해졌고 화면이 추가될 예정.
+
+| 항목 | 규칙 | 상태 |
+| --- | --- | --- |
+| 빈 화면 | "이번 주 식단표가 아직 없어요", "냉장고 재료를 활용해서 식단을 만들어 드려요", 남은 생성 횟수, 식단표 만들기 | 확정(피그마) |
+| 달력 | "2026년 11월 ∨"(누르면 캘린더 선택 시트로 월 바꾸기), 월 달력(일~토, 오늘 표시, 식단 기간 하이라이트). 지난 달·지난 날짜 식단도 봄 | 확정(피그마) |
+| 날짜 식단 | 날짜를 누르면 바텀 시트 "N월 N일 식단": 끼니 행(끼니 라벨·레시피명·★·재료 요약 +N·⋮). 끼니 행을 누르면 레시피 상세. 그날 식단이 없으면 빈 화면(추가 예정) | 확정(피그마) / 빈 화면은 화면 대기 |
+| 식단표 추가 | 바텀 시트 제목 옆 "+" → 식단표 추가 시트(남은 횟수 + 식단표 만들기) → 생성 설정. 빈 끼니에 직접 넣는 기능은 없음 | 확정 |
+| 생성 설정 | 시작일(오늘부터, 오늘 이전은 못 고름), 식단 목적(5개 중 1개), 넣을 끼니(아침·점심·저녁 중 여러 개), 식사 인원 | 확정 |
+| 식단 목적 | 균형 잡힌 식단(기본)·다이어트 식단·고단백 식단·간편 식단·재료 절약 식단. 마지막 선택을 기억해 다음 기본값으로. 의료 목적·칼로리 목표 없음 | 확정 |
+| 참고용 문구 | "참고용 식단" 문구는 넣지 않음(피그마대로) | 확정 |
+| 식사 인원 기본값 | 설정의 가구원 수(피그마 예시 1명) | 제안 |
+| 생성 일수 | 일반 최대 5일, 구독 최대 7일. 재료가 부족하면 만들 수 있는 날까지만 | 확정 |
+| 부족 재료 안내 | 하루치 이상 만들었지만 최대 일수를 못 채우면 공통 토스트 "재료가 부족해 N일치만 만들었어요". 부족 재료는 장바구니에 담고 개수 토스트(한 토스트로 합칠지는 디자인에서) | 확정 / 토스트는 화면 대기 |
+| 하루치도 못 채움 | MEAL_PLAN_NO_INGREDIENTS → 생성 실패 화면에 문구만 다르게. 식단표를 만들지 않고 차감 없음 | 확정 / 화면 대기 |
+| 칸 생성 방식 | 끼니 칸마다 처음부터 레시피 전체를 만듦(메뉴명 먼저·칸 상세 나중 방식 폐기) | 확정 |
+| 재료 중복 배정 | 같은 재료 수량을 여러 끼니에 겹쳐 쓰지 않게 계산(각 칸 레시피 재료 기준, 칸별 예정 재료 테이블은 없음) | 확정 / 계산 방식은 개발자가 정함 |
+| 제외 재료 | 식단표 생성도 제외 재료를 쓰지 않음 | 확정 |
+| 겹치는 날짜 | 새 기간이 기존 식단과 겹치면 경고 모달(취소 / 덮어쓰기). 덮어쓰면 겹치는 날의 기존 칸을 지우고 새로 채움. 오늘 이미 요리한 끼니는 남고 새 식단표가 채우지 않음. 겹침은 차감 없음 | 확정 / 모달은 화면 대기 |
+| 식단 삭제·레시피 교체 | 끼니 ⋮ 시트에서 "식단 삭제" 또는 "레시피 교체" + 확인. 삭제는 그 칸만 지움. 교체는 새 레시피를 만들고 레시피 하루 횟수 1회 차감("레시피를 교체하게 될 경우 레시피 사용 횟수를 1회 차감 합니다"), 실패하면 차감 없음 | 확정 |
+| 지난 날짜 | 지난 날짜 끼니는 보기만 함. ⋮는 그대로 두고, 누르면 PAST_DATE_NOT_ALLOWED 토스트 | 확정 |
+| 재료 차감 | 식단에 배정돼도 냉장고 재료는 빠지지 않음. 요리 완료 차감 때만 빠짐 | 확정 |
+| 생성 횟수 | 식단표 생성은 월 한도, 레시피 교체는 레시피 하루 횟수 | 확정 |
+| 속도 목표 | 식단표 생성 30초 안 목표(서버 제한 60초), 실측 후 조정 | 확정 |
+| 생성 중 표시 | 로딩 화면만, 일별 진행 표시 없음 | 확정 / 화면 대기 |
+| 완료 알림 | 식단표 생성 완료 알림 없음 | 확정 |
 
 ## API
 
-| 메서드 | 경로 | 비고 |
-|---|---|---|
-| POST | `/api/v1/user/meal-plans/generate` | `{ startDate, purpose, mealTypes, servings, overwrite? }` → `{ mealPlanId, generatedDays, shortage[], cartAddedCount }` |
-| GET | `/api/v1/user/meal-plans/calendar` | `?month=YYYY-MM` 날짜별 끼니 요약(점 표시) |
-| GET | `/api/v1/user/meal-plans/days/{date}` | 그날 칸 목록 |
-| POST | `/api/v1/user/meal-plan-slots` | 식단 추가 `{ date, mealType, recipeId }` |
-| POST | `/api/v1/user/meal-plan-slots/{slotId}/detail` | 메뉴명만 있는 칸의 상세 레시피 생성 → `recipeId` |
+경로의 `/api/v1`은 줄였어요. 요청의 `?`는 선택 값, `|`는 그중 하나예요. 번호는 API 정의서 번호예요(다른 문서도 이 번호로 가리켜요).
+
+| 번호 | 메서드 | 경로 | 설명 | 요청 | 응답 | 관련 테이블 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 38 | POST | `/user/meal-plans/generate` | 식단표 생성. 시작일은 오늘부터. 기존 식단과 날짜가 겹치면 overwrite 없이 보낸 요청은 겹치는 날짜를 돌려주며 거절하고, 프론트가 경고 모달(추가될 페이지 10번)을 띄운 뒤 overwrite: true로 다시 보냄(API 답 7). 덮어쓸 때 오늘 이미 요리한 끼니는 남김(ERD 답 7·8). 재료가 부족하면 만들 수 있는 날까지만(11/16 결정), 부족 재료는 장바구니로. 성공할 때만 이번 달 횟수 차감 | `{ startDate, purpose: "BALANCED"\|"DIET"\|"HIGH_PROTEIN"\|"SIMPLE"\|"SAVING", mealTypes: ["BREAKFAST","LUNCH","DINNER"] (1개 이상), servings, overwrite?(기본 false) }` | `201 { mealPlanId, startDate, endDate, generatedDays, cartAddedCount } / 겹치면 409 MEAL_PLAN_OVERLAP(details.overlappingDates)` | meal_plans, meal_plan_slots, recipes, usage_logs, cart_items, users.last_meal_purpose |
+| 39 | GET | `/user/meal-plans/calendar` | 그 달에 식단이 있는 날짜와 식단표 기간. 지난 달도 조회 | `?month=2026-11` | `200 { month, periods: [{ mealPlanId, startDate, endDate }], datesWithMeals: [] }` | meal_plans, meal_plan_slots |
+| 40 | GET | `/user/meal-plans/days/{date}` | 그날 끼니 | `-` | `200 { date, slots: [{ slotId, mealType, recipeId, title, ingredientSummary, extraIngredientCount, favorite, cooked }] }` | meal_plan_slots, recipes, saved_recipes |
+| 41 | DELETE | `/user/meal-plan-slots/{slotId}` | 식단 칸 삭제(11/21 결정). 오늘부터의 칸만, 지난 날짜는 안 됨(API 답 6) | `-` | `204` | meal_plan_slots |
+| 42 | POST | `/user/meal-plan-slots/{slotId}/replace` | 새 레시피로 교체. 하루 레시피 횟수 1회 차감(ERD 답 9). 오늘부터의 칸만, 지난 날짜는 안 됨(API 답 6) | `본문 없음` | `200 { slotId, recipeId, title, ingredientSummary, extraIngredientCount }` | meal_plan_slots, recipes, usage_logs |
+
+빈 끼니에 직접 넣는 API와 칸 상세를 나중에 만드는 API는 없어요. 칸마다 생성 때 레시피 전체를 만들어요.
 
 ## 테이블
 
-`meal_plans`(생성 한 번), `meal_plan_slots`(`source` AI/MANUAL), `meal_plan_slot_ingredients`(칸별 예정 재료·수량).
+`meal_plans`, `meal_plan_slots`. 칸 레시피는 `recipes` 등(04), 부족 재료는 `cart_items`(07), 횟수는 `usage_logs`(04). 컬럼은 [`../erd.md`](../erd.md)를 보세요.
 
-## 구현 규칙
+## 구현 메모
 
-- **가장 어려운 부분: 재료 수량 중복 배정 방지.** 같은 재료를 여러 칸에 쓰면 가진 양을 넘기지 않게 합니다. `meal_plan_slot_ingredients`에 칸별 재료·수량을 저장하고 SQL `SUM`으로 "냉장고 재고 − 이미 배정된 양"을 계산합니다. 단순한 규칙(소비기한 임박 재료 우선)부터 만들고, 부족하면 일수를 줄이는 부분 생성으로 보완하세요.
-- **2단계 생성**: ① 메뉴명과 칸별 재료만 먼저 생성(목표 30초 이내) ② 칸을 눌렀을 때 상세 레시피를 생성(`slots/{id}/detail`). 상세 생성은 레시피 하루 2회에서 차감하지 않는 안(제안).
-- 횟수: 기본 월 1회·최대 5일(구독 월 4회·7일). 성공했을 때만 차감하고 실패는 차감 없음. `usage_logs`로 동시 클릭 방지(04와 같은 방식). 한도 초과는 `MEAL_PLAN_LIMIT_EXCEEDED`와 `quota_exceeded` 이벤트.
-- 같은 기간에 이미 식단표가 있으면 `MEAL_PLAN_OVERLAP`(`overwrite`로 덮어쓰기 가능). 재료로 하루도 못 채우면 `MEAL_PLAN_NO_INGREDIENTS`(422).
-- 식단 추가: 이미 찬 칸은 `SLOT_ALREADY_EXISTS`, 지난 날짜는 `PAST_DATE_NOT_ALLOWED`, 레시피가 없으면 `RECIPE_NOT_FOUND`.
-- 알레르기(제외 재료)와 가구원 수·식사 인원을 생성에 반영. AI 입력은 id·enum만(자유 입력 금지), 응답 검증은 04와 같은 클라이언트·검증기를 재사용.
-- 부족 재료는 [07의 공통 계약](07_shared-cart.md#장바구니-구현-규칙-46-확정)에 따라 `AddCartItemsUseCase.add(userId, CartSource.MEAL_PLAN, groups)`로 담습니다(#46 확정). 칸마다 묶음 하나로 `recipeId = null`, `mealPlanId`, `mealPlanSlotId`, `groupName = 메뉴명`, `items`를 전달하며 합산하지 않습니다. 부족 재료가 없는 칸은 제외하고, 반환된 실제 추가 행 수를 `cartAddedCount`로 응답합니다.
-- `overwrite`는 교체할 칸만 대상으로 같은 트랜잭션에서 `RemoveCartItemsByMealPlanSlotsUseCase.remove(userId, slotIds)` → 기존 칸 삭제 → 새 칸 저장 → 담기 순서로 처리합니다. 유지되는 칸의 장바구니 항목은 보존하고 교체 대상 칸의 항목은 수량 수정 여부와 관계없이 삭제합니다. 장바구니 변경도 함께 롤백하며, 자동 정리에는 사용자 삭제 이벤트를 보내지 않습니다.
-- 식단표 생성의 동일 요청 재시도는 공통 `Idempotency-Key` 처리에 맡깁니다. 장바구니 담기 UseCase에 별도 재시도 중복 방지를 추가하지 않습니다.
-- 프론트는 60초 타임아웃과 생성 중 화면이 필요합니다(진행 표시 방식은 미결).
+- 식단표 생성은 월 한도(일반 1회·5일, 구독 4회·7일), 레시피 교체는 레시피 하루 횟수 1회예요. 성공할 때만 차감해요.
+- 재료가 부족하면 만들 수 있는 날까지만 만들어요. 하루치도 못 만들면 `MEAL_PLAN_NO_INGREDIENTS`로 식단표를 만들지 않고 차감하지 않아요.
+- 같은 재료 수량을 여러 끼니에 겹쳐 쓰지 않게 계산해요(각 칸 레시피 재료 기준, 칸별 예정 재료 테이블은 없음). 계산 방식은 개발자가 정해요. 가장 어려운 부분이라 테스트를 꼭 써요.
+- 부족 재료는 07의 `AddCartItemsUseCase`로 장바구니에 담고 응답 `cartAddedCount`로 개수를 줘요.
+- 겹침: `overwrite` 없이 온 요청이 기존 식단과 겹치면 409 `MEAL_PLAN_OVERLAP`(details.overlappingDates)로 거절하고 차감하지 않아요. 프론트가 모달을 띄운 뒤 `overwrite: true`로 다시 보내요. 덮어쓰면 겹치는 날의 기존 칸을 지우되, 오늘 이미 요리한 끼니(`cooked_at`)는 남기고 채우지 않아요.
+- 식단 삭제·교체는 오늘부터의 칸만 돼요. 지난 날짜는 `PAST_DATE_NOT_ALLOWED`.
+- 식단에 배정해도 냉장고 재료는 빠지지 않고, 요리 완료(04) 때만 빠져요.
+- 식단 목적은 마지막 선택을 `users.last_meal_purpose`에 기억해 다음 기본값으로 써요. 의료 목적·칼로리 목표는 없고 "참고용 식단" 문구도 넣지 않아요.
+- 목표는 30초 안 생성(서버 제한 60초), 실측 후 조정. 생성 완료 알림은 없어요.
+
+## 지금 코드와 다른 점
+
+- 아직 이 영역 코드는 없어요. 이전 가이드의 식단 추가(빈 끼니), 칸 상세 생성, `meal_plan_slot_ingredients`는 없어졌고, 식단 삭제·레시피 교체가 새로 생겼어요.
 
 ## 에러 코드
 
-`MEAL_PLAN_LIMIT_EXCEEDED`, `MEAL_PLAN_NO_INGREDIENTS`, `MEAL_PLAN_OVERLAP`, `SLOT_ALREADY_EXISTS`, `SLOT_NOT_FOUND`, `PAST_DATE_NOT_ALLOWED`, `RECIPE_NOT_FOUND`, `AI_UPSTREAM_ERROR`, `AI_TIMEOUT`, `AI_INVALID_RESPONSE`, `INVALID_INPUT`.
+`INVALID_INPUT`, `AI_UPSTREAM_ERROR`, `AI_TIMEOUT`, `AI_INVALID_RESPONSE`, `MEAL_PLAN_LIMIT_EXCEEDED`, `MEAL_PLAN_NO_INGREDIENTS`, `MEAL_PLAN_OVERLAP`, `PAST_DATE_NOT_ALLOWED`, `SLOT_NOT_FOUND`, `GENERATION_LIMIT_EXCEEDED`. 공통 코드(`UNAUTHORIZED`, `TOKEN_EXPIRED`, `RATE_LIMITED`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`)는 모든 API에 나올 수 있어요. API별 코드와 화면 표시는 [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)에 있어요.
 
 ## 발행 이벤트
 
-서버(5개): `meal_plan_generated`, `meal_plan_generate_failed`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`(+ `quota_exceeded`). 부족 재료를 장바구니에 담을 때의 `cart_item_added`는 장바구니 담기 UseCase(07)가 보내므로 여기서는 보내지 않습니다. 프론트: `meal_plan_setup_viewed`, `meal_plan_generate_started`, `meal_plan_shortage_shown`, `meal_calendar_viewed`, `meal_day_viewed`, `meal_slot_opened`.
+발송 FE는 화면 담당 프론트가 API 56으로 보내고, BE는 이 영역 담당이 발행 API가 끝나는 지점에서 `EventTracker`로 기록해요([08](08_event-tracking.md)).
+
+| ID | 이벤트 | 발생 시점 | 속성 | 발송 | 우선순위 | 발행 API |
+| --- | --- | --- | --- | --- | --- | --- |
+| E51 | `meal_plan_setup_viewed` | 식단표 생성 설정 화면이 열릴 때 | remaining_quota | FE | P0 | 56 POST /user/events(프론트 전송) |
+| E52 | `meal_plan_generate_started` | "식단표 생성 하기"를 눌렀을 때 | meal_purpose, meal_type_count, servings, start_offset_days | FE | P0 | 56 POST /user/events(프론트 전송) |
+| E78 | `meal_plan_overlap_answered` | 겹치는 날짜 경고 모달에서 덮어쓰기·취소를 골랐을 때 | overlap_day_count, overlap_choice | FE | P1 | 56 POST /user/events(프론트 전송) |
+| E53 | `meal_plan_generated` | 식단표 생성에 성공했을 때 | meal_plan_id, meal_purpose, meal_type_count, generated_days, shortage_count, cart_added_count, was_overwritten, duration_ms, remaining_quota | BE | P0 | 38 식단표 생성 |
+| E54 | `meal_plan_generate_failed` | 식단표 생성에 실패했을 때(차감 안 함). 겹침(409)은 실패로 세지 않음 | error_code, duration_ms | BE | P0 | 38 식단표 생성 |
+| E56 | `meal_calendar_viewed` | 식단표 달력이 열리거나 달을 바꿨을 때 | month_offset, has_plan | FE | P1 | 56 POST /user/events(프론트 전송) |
+| E57 | `meal_day_viewed` | 날짜를 눌러 그날 식단 바텀 시트를 볼 때 | date_relation, slot_count | FE | P1 | 56 POST /user/events(프론트 전송) |
+| E58 | `meal_slot_opened` | 끼니 행을 눌러 레시피 상세로 갈 때 | meal_type, date_relation | FE | P0 | 56 POST /user/events(프론트 전송) |
+| E79 | `meal_slot_deleted` | ⋮ 시트에서 식단을 삭제했을 때 | meal_type, date_relation | BE | P1 | 41 식단 칸 삭제 |
+| E80 | `meal_slot_replaced` | ⋮ 시트에서 레시피 교체에 성공했을 때(레시피 횟수 차감) | meal_type, date_relation, duration_ms, remaining_quota | BE | P1 | 42 레시피 교체 |
+| E81 | `meal_slot_replace_failed` | 레시피 교체에 실패했을 때(차감 안 함) | error_code, duration_ms | BE | P1 | 42 레시피 교체 |
 
 ## 체크리스트
 
-- [ ] 재료 중복 배정 방지와 부분 생성(일수 줄이기) 테스트
-- [ ] 목적 5개·끼니·인원 반영, 마지막 목적 기억
-- [ ] 월 달력 조회(지난 달 포함), 칸 → 레시피 상세
-- [ ] 식단 추가(빈 끼니), 삭제·재생성 없음
-- [ ] 월 한도·실패 시 차감 없음
+- [ ] 재료 부족 시 일수 줄이기, 하루치도 못 만들면 실패·차감 없음
+- [ ] 끼니 사이 재료 중복 배정 없음
+- [ ] 겹침 409 → 덮어쓰기, 오늘 요리한 끼니 유지
+- [ ] 식단 삭제·교체(하루 횟수 1회), 지난 날짜 거부
+- [ ] 부족 재료 장바구니 담기와 개수
+- [ ] 월 달력·날짜별 식단 조회(지난 달 포함)

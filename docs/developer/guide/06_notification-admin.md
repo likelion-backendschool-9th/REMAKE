@@ -1,65 +1,96 @@
-# 06. 알림 + 어드민 백엔드 (이상호)
+# 06. 알림 (이상호)
+
+기준: PRD v4·정책정의서 v4·ERD v4·API 정의서 v4·에러 정의서 v2·이벤트 정의서 v2(모두 피그마 기준, 2026-11-22, 노션). 표는 원본에서 그대로 옮겼고 피그마 노드 근거 칸만 뺐어요.
 
 ## 범위
 
-소비기한 알림(웹 푸시·알림 목록·상단 알림 띠), 알림 배치, 어드민 중 신고·사용자·호출 관리와 감사 로그(`admin_audit_logs`). KPI·퍼널·이벤트 로그 API는 이준호(01·08).
+소비기한 알림(앱 안 알림 띠·알림 화면)과 알림 정기 작업. 어드민(신고·사용자·호출 관리)은 피그마에 화면이 없어 보류예요. 파일 이름은 그대로 두었어요.
 
-## 화면 (피그마 프레임)
+## 화면
 
-p6-알람(+스켈레톤), 상단 알림 띠(냉장고·영수증 등 각 탭 상단, 안 읽은 개수 배지), p1.3-설정의 "알림 받기". **어드민 화면은 피그마에 아직 없습니다**(PRD §6 기획안 기준, 디자인은 이후).
+화면 코드는 이벤트의 `screen` 값이에요. "추가될 페이지"는 아직 피그마에 없는 화면이에요.
 
-## 알림 규칙
+| 화면 코드 | 피그마 화면 |
+| --- | --- |
+| `notification_list` | p6 알림 |
 
-- 종류는 2개: `EXPIRY_SOON`(소비기한 임박, 재료별), `EXPIRED`(기한 지난 재료 N개, 하루 한 건). **"영수증 분석 완료" 알림은 없습니다**(OCR 동기). 피그마 알림 화면의 해당 줄은 삭제 예정.
-- 임박 기준은 3일 고정, 알림 시각은 매일 오전 9시(KST) 고정(사용자 설정 없음).
-- 설정은 "알림 받기" ON/OFF 하나. OFF인 사용자는 배치에서 제외.
-- 알림 목록은 최근 30일을 오늘·1일 전·2일 전 식으로 묶고, 누르면 해당 재료/냉장고로 이동(`target`). 읽음 처리.
-- iOS는 홈 화면에 추가한 PWA만 웹 푸시를 받습니다 → 설치 안내 필요, 출시 전 실측.
+## 정책
+
+상태: 확정 = 그대로 구현, 제안 = 상수로 분리해 구현하고 PR에 적기, 미결 = 구현 전에 준호님께 질문, 화면 대기 = 규칙은 정해졌고 화면이 추가될 예정.
+
+### 8. 알림
+
+| 항목 | 규칙 | 상태 |
+| --- | --- | --- |
+| 알림 종류 | 소비기한 임박(EXPIRY_SOON), 기한 지난 재료(EXPIRED) 두 가지 | 확정(피그마) |
+| 알림 문구 | "OO의 소비기한이 얼마 남지 않았어요. 제품의 포장지에서 사용 기한을 확인해 주세요", "기한이 지난 재료 N개가 있어요. 냉장고를 확인해 주세요" | 확정(피그마) |
+| 채널 | 앱 안에서만(상단 알림 띠·알림 화면). 기기 푸시 없음 | 확정 |
+| 알림 띠 | 모든 탭 화면 상단에 최신 알림 한 줄 + 안 읽은 개수 빨간 숫자. 누르면 알림 화면 | 확정 |
+| 알림 화면 | 오늘·1일 전·2일 전 묶음. 항목을 누르는 동작 없음. 회색 글자는 읽음 표시가 아니라 글자 색 | 확정 |
+| 읽음 처리 | 알림 화면을 열면 모두 읽음. 개별 읽음·모두 읽음 버튼 없음 | 확정 |
+| 빈 화면 | 알림 0건 빈 화면(추가 예정) | 화면 대기 |
+| 임박 기준 | 소비기한이 오늘~3일 뒤(D-3~D-DAY)인 재료는 그동안 매일 재료마다 한 건. 냉장고 화면에서 D-DAY는 "위험"이지만 알림은 "임박"(의도한 차이) | 확정 |
+| 기한 지남 | 기한 지난 재료는 하루 한 건으로 묶어 개수로 알림. 기한 지남 이벤트는 처음 찾았을 때 한 번 | 확정 |
+| 알림 시각 | 매일 오전 9시(한국 시간) 정기 작업 | 확정 |
+| 알림 끔 | 알림 받기를 끈 회원은 알림을 만들지 않음 | 확정 |
+| 보관 | 30일 지난 알림은 매일 새벽 삭제 | 확정 |
+| 기준일 설정 | 사용자가 바꿀 수 있는 기준일·알림 시각 설정 없음 | 확정 |
+
+### 10. 어드민
+
+| 항목 | 규칙 | 상태 |
+| --- | --- | --- |
+| 접근 | 소셜 로그인 + ADMIN role로 /admin. 별도 로그인 없음 | 확정 |
+| 지표 갱신·기준·로그 조회·임계치 알림·사용자 관리·신고 관리 | v3.2 어드민 정책 7줄 | 보류 |
+| 계정 제한(SUSPENDED) | 제한 계정 차단 | 보류 |
+| 횟수 조정 | 어드민이 회원별 생성 횟수 증감 | 보류 |
+| 숨김 | 운영자가 숨긴 공유 레시피(HIDDEN)는 목록·랭킹에서 빠짐 | 보류 |
 
 ## API
 
-| 메서드 | 경로 | 비고 |
-|---|---|---|
-| GET | `/api/v1/user/notifications/summary` | `{ latest, unreadCount }` 상단 띠 |
-| GET | `/api/v1/user/notifications` | 목록 |
-| PATCH | `/api/v1/user/notifications/{id}/read` | 읽음 |
-| POST | `/api/v1/user/push-subscriptions` | `{ endpoint, keys }` |
-| DELETE | `/api/v1/user/push-subscriptions/{id}` | 구독 해제 |
+경로의 `/api/v1`은 줄였어요. 요청의 `?`는 선택 값, `|`는 그중 하나예요. 번호는 API 정의서 번호예요(다른 문서도 이 번호로 가리켜요).
 
-어드민(`/api/v1/admin/**`, ADMIN만): 신고 `GET /reports`, `PATCH /reports/{id}`(`HIDDEN`/`DELETED`/`DISMISSED`=문제 없음), 공유 레시피 `GET·PATCH /shared-recipes[/{id}]`, 사용자 `GET /users`(이메일 비노출), `PATCH /users/{id}/generation-quota`(`{ delta, reason }`), `PATCH /users/{id}/status`(`ACTIVE`/`SUSPENDED`+사유), `GET /usage/daily`(AI·OCR 호출 현황), `GET /audit-logs`, `GET /weekly-rewards`. 전체 목록은 API 정의서 v3(노션/구글 시트 참고)나 영문 요약 [`docs/agent/spec/api-summary.md`](../../agent/spec/api-summary.md).
+| 번호 | 메서드 | 경로 | 설명 | 요청 | 응답 | 관련 테이블 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 43 | GET | `/user/notifications/summary` | 가장 최근 알림 문구와 안 읽은 수(11/21 답 30) | `-` | `200 { latestMessage, unreadCount }` | notifications |
+| 44 | GET | `/user/notifications` | 알림 목록(최근 것부터). 누르는 동작 없음. 이 목록을 불러오면 안 읽은 알림이 모두 읽음이 됨(따로 읽음 처리 API 없음, API 답 4) | `?page=0&size=20` | `200 { content: [{ id, type, message, createdAt }], page, size, totalElements, hasNext }` | notifications |
+
+기기 푸시가 없어 푸시 구독 API는 없어요. 어드민 API도 이번 버전에 없어요.
 
 ## 테이블
 
-`notifications`, `push_subscriptions`, `admin_audit_logs`(어드민 조치 이력).
+`notifications`. 재료 조회는 02 UseCase로 해요. 컬럼은 [`../erd.md`](../erd.md)를 보세요.
 
-## 배치 (`@Scheduled`)
+## 구현 메모
 
-**소비기한 알림**(매일 09:00): 오늘부터 3일 뒤까지(오늘이 기한인 D-DAY 포함) 재료는 기간 안에 있는 동안 매일 `EXPIRY_SOON`을, 기한이 오늘보다 이전인 재료는 `EXPIRED`(하루 한 건)를 생성 + 푸시. 재료 조회는 재료 쪽 UseCase(`GetExpiryAlertIngredientsUseCase`)가 판정해서 돌려줍니다. 화면(02 영역)은 D-DAY를 위험으로 보고 알림은 임박으로 봅니다(의도한 차이). 알림 OFF 사용자 제외. 같은 재료의 기한 지남은 처음 발견했을 때 한 번만 `ingredient_expired` 이벤트(재료당 1회).
+- 매일 오전 9시(한국 시간) 정기 작업이 알림을 만들어요. 임박(`EXPIRY_SOON`)은 D-3~D-DAY 재료마다 매일 한 건, 기한 지남(`EXPIRED`)은 하루 한 건으로 묶어 개수만 적어요.
+- 알림 받기를 끈 회원(`users.notification_enabled = false`)은 알림을 만들지 않아요.
+- `ingredient_expired` 이벤트는 기한 지난 재료를 처음 찾았을 때 한 번만 발행해요. `notification_sent`도 이 작업이 발행해요.
+- 알림 목록(API 44)을 불러오면 안 읽은 알림을 모두 읽음으로 바꿔요. 따로 읽음 API는 없어요. 항목을 누르는 동작도 없어요.
+- 30일 지난 알림은 매일 새벽 정리 작업이 지워요.
+- 어드민은 보류예요. 화면이 디자인되면 신고 처리, 계정 제한(SUSPENDED), 횟수 조정, 공유 레시피 숨김(HIDDEN)을 다시 정해요. 그 전에는 어드민 코드를 만들지 않아요.
 
-## 어드민 우선순위와 선행 관계 ([#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58) 확정)
+## 지금 코드와 다른 점
 
-- 8.2 KPI·퍼널·이벤트 로그 분석 API는 P0를 유지합니다. 해당 API에 필요한 **ADMIN 권한 검사·비관리자 접근 차단 → 8.2 분석 API** 순서로 진행합니다. 8.1 접근 제어 중 이 선행 범위만 P0로 조정하며, 그 외 어드민 기능은 P1을 유지합니다.
-- 접근 제어 구현은 [#84](https://github.com/likelion-backendschool-9th/REMAKE/issues/84), 분석 API 구현은 [#93](https://github.com/likelion-backendschool-9th/REMAKE/issues/93)에서 진행합니다. 분석 API를 구현·시연하기 전에 실제 보안 필터를 통과하는 요청으로 ADMIN 허용, 일반 사용자 403 `FORBIDDEN`, 비로그인 차단을 검증합니다. 프론트의 `/admin` 차단만으로 완료하지 않습니다.
-
-## 어드민 구현 규칙
-
-- 일반 사용자와 같은 소셜 로그인을 쓰고 `role=ADMIN`인 계정만 통과. 보안 설정에서 `/api/v1/admin/**`를 막고 권한이 없으면 403 `FORBIDDEN`. 프론트 `/admin`도 막지만 서버 검증이 기준.
-- **모든 조작은 `admin_audit_logs`에 기록**(누가·무엇을·사유). 횟수 조정과 계정 제한은 **사유 필수**(`ADMIN_REASON_REQUIRED`).
-- 신고는 자동으로 숨기지 않고 어드민이 처리합니다. `HIDDEN`·`DELETED` 처리 시 공유 레시피 상태도 함께 바뀌고, 숨김·삭제된 공유 레시피 상세는 일반 사용자에게 404.
-- 사용자 조회에는 이메일 등 개인정보를 노출하지 않습니다(내부 ID·제공자·상태·가입·탈퇴 현황만).
-- 제한된 계정은 로그인 뒤 API 호출에서 `ACCOUNT_SUSPENDED`(403).
+- 아직 이 영역 코드는 없어요. 이전 가이드의 웹 푸시(`push_subscriptions`), 영수증 완료 알림, 어드민 API·`admin_audit_logs`는 없어졌어요.
 
 ## 에러 코드
 
-`NOTIFICATION_NOT_FOUND`, `PUSH_SUBSCRIPTION_INVALID`, `REPORT_NOT_FOUND`, `USER_NOT_FOUND`, `ADMIN_REASON_REQUIRED`, `QUOTA_ADJUST_INVALID`, `SHARED_RECIPE_NOT_FOUND`, `FORBIDDEN`.
+`INVALID_INPUT`. 공통 코드(`UNAUTHORIZED`, `TOKEN_EXPIRED`, `RATE_LIMITED`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`)는 모든 API에 나올 수 있어요. API별 코드와 화면 표시는 [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)에 있어요.
 
 ## 발행 이벤트
 
-서버(2개): `ingredient_expired`, `notification_sent`(묶음당 1건, 속성 `notification_type`, `channel`, `batch_count`). 프론트: `notification_clicked`(푸시·알림 띠·목록, `click_from`), `notification_list_viewed`, `push_permission_result`.
+발송 FE는 화면 담당 프론트가 API 56으로 보내고, BE는 이 영역 담당이 발행 API가 끝나는 지점에서 `EventTracker`로 기록해요([08](08_event-tracking.md)).
+
+| ID | 이벤트 | 발생 시점 | 속성 | 발송 | 우선순위 | 발행 API |
+| --- | --- | --- | --- | --- | --- | --- |
+| E66 | `notification_sent` | 소비기한 알림 작업이 앱 안 알림을 만들었을 때(알림 1건당 1건) | notification_type, batch_count | BE | P0 | 서버 정기 작업 소비기한 알림(API 정의서 5장) |
+| E67 | `notification_banner_clicked` | 상단 알림 띠를 눌러 알림 화면으로 갈 때 | unread_count | FE | P0 | 56 POST /user/events(프론트 전송) |
+| E68 | `notification_list_viewed` | 알림 화면이 열릴 때(열면 모두 읽음) | unread_count | FE | P1 | 56 POST /user/events(프론트 전송) |
 
 ## 체크리스트
 
-- [ ] 09시 배치, 알림 OFF 제외, 푸시 발송·실패 구독 정리
-- [ ] 상단 띠 `summary`와 목록·읽음 처리
-- [ ] 어드민 403, 감사 로그 기록, 사유 필수 검증
-- [ ] 신고 처리 → 공유 레시피 상태 연동
+- [ ] 오전 9시 작업: 임박은 재료마다, 기한 지남은 하루 한 건
+- [ ] 알림 끈 회원 제외
+- [ ] 목록 조회로 모두 읽음, 알림 띠 안 읽은 수
+- [ ] 30일 지난 알림 정리
