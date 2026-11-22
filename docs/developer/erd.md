@@ -836,8 +836,8 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | 장바구니 → 냉장고 | 카테고리의 default_storage·default_shelf_life_days로 보관 위치·소비기한을 채우고 가격은 비움. 카테고리는 장바구니에 담을 때 이미 정해짐. 냉장고로 넘긴 항목은 cart_items에서 지움 |
 | 장바구니 자동 빼기 | 영수증 등록("식재료 N개 등록 하기") 때 등록한 재료와 이름이 같은 장바구니 항목을 지움 |
 | 식단 삭제·교체 | 삭제는 meal_plan_slots 행 삭제, 교체는 새 레시피를 만들어 recipe_id를 바꾸고 하루 레시피 생성 횟수 1회 차감(usage_logs RECIPE 한 줄). 오늘부터의 칸만, 지난 날짜 칸은 안 됨 |
-| 식단표 생성 | API 38이 시작일·횟수·겹침을 확인하고 `meal_plans`를 `GENERATING`으로 만든 뒤 202로 응답. 서버 작업이 칸과 장바구니를 채우고 `COMPLETED`로 바꾼 뒤 `usage_logs` 한 줄 차감, `MEAL_PLAN_COMPLETED` 알림을 만듦. 재료 부족·AI 오류·시간 초과면 `FAILED`, 차감 없음, `MEAL_PLAN_FAILED` 알림. 식단표 알림은 `notification_enabled`와 관계없이 만듦. 생성 중(`GENERATING`)에 다시 요청하면 `MEAL_PLAN_IN_PROGRESS`(409). `MEAL_PLAN_COMPLETED`는 `notifications.meal_plan_id`에 식단표를 연결(누르면 p5에서 시작일), `MEAL_PLAN_FAILED`는 생성 설정 화면으로. 실패 사유 칸은 두지 않음. 미결: 생성 중·실패 식단표를 달력(39)·겹침 검사에 넣을지, 덮어쓸 때 기존 칸을 접수 때 지울지 완성 때 지울지 |
-| 식단표 덮어쓰기 | 시작일은 오늘부터만 고를 수 있어서 지난 날 식단은 바뀌지 않음. 새 식단표 기간과 겹치는 날짜의 기존 칸은 지움. 단 오늘 칸 중 이미 요리한 끼니(cooked_at 있음)는 그 레시피로 남기고 새 식단표가 채우지 않음 |
+| 식단표 생성 | API 38이 시작일·횟수·겹침을 확인하고 `meal_plans`를 `GENERATING`으로 만든 뒤 202로 응답. 서버 작업이 칸과 장바구니를 채우고 `COMPLETED`로 바꾼 뒤 `usage_logs` 한 줄 차감, `MEAL_PLAN_COMPLETED` 알림을 만듦. 재료 부족·AI 오류·시간 초과면 `FAILED`, 차감 없음, `MEAL_PLAN_FAILED` 알림. 식단표 알림은 `notification_enabled`와 관계없이 만듦. 생성 중(`GENERATING`)에 다시 요청하면 `MEAL_PLAN_IN_PROGRESS`(409). `MEAL_PLAN_COMPLETED`는 `notifications.meal_plan_id`에 식단표를 연결(누르면 p5에서 시작일), `MEAL_PLAN_FAILED`는 생성 설정 화면으로. 실패 사유 칸은 두지 않음. 덮어쓸 때 겹치는 기존 칸은 작업이 완성될 때 지움(실패하면 기존 식단 유지). 보류(#144): 생성 중·실패 식단표를 달력(39)·겹침 검사에 넣을지 |
+| 식단표 덮어쓰기 | 시작일은 오늘부터만 고를 수 있어서 지난 날 식단은 바뀌지 않음. 새 식단표 기간과 겹치는 날짜의 기존 칸은 지움. 단 오늘 칸 중 이미 요리한 끼니(cooked_at 있음)는 그 레시피로 남기고 새 식단표가 채우지 않음. 지우는 시점은 접수가 아니라 생성 작업이 완성될 때 |
 | 요리 완료 표시 | 오늘 식단 칸에서 연 레시피로 요리 완료하면 그 칸 cooked_at 기록(다른 날 칸에는 기록 안 함) |
 | 영수증 삭제 | receipts·receipt_items 행 삭제(이미지 포함). 식비·소비 패턴에서 빠지고, 등록된 냉장고 재료는 남음(receipt_item_id만 비움) |
 | 레시피 삭제 하기 | 저장 목록(saved_recipes)에서만 지움. 공유 글과 남이 저장한 것은 그대로 |

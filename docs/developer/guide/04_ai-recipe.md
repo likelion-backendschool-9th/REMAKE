@@ -118,7 +118,7 @@
 | E47 | `step_play_started` | "만드는 방법 재생하기"를 눌렀을 때(기기 음성 읽기) | recipe_id | FE | P2 | 56 POST /user/events(프론트 전송) |
 | E48 | `cook_deduct_viewed` | 요리 완료 재료 차감 화면이 열릴 때 | recipe_id, deduct_item_count | FE | P1 | 56 POST /user/events(프론트 전송) |
 | E49 | `cook_completed` | "N개의 재료 차감 하기"로 차감이 끝났을 때 | recipe_id, deducted_count, adjusted_count, from_meal_plan | BE | P0 | 32 요리 완료 |
-| E50 | `cook_feedback_answered` | 차감 뒤 냉장고 바텀 시트에서 추천 여부를 보냈을 때 | recipe_id, recommended | FE | 미결 | 56 POST /user/events(프론트 전송) |
+| E50 | `cook_feedback_answered` | 차감 뒤 냉장고 바텀 시트에서 추천 여부를 보냈을 때 | recipe_id, recommended | FE | 미결(#144) | 56 POST /user/events(프론트 전송) |
 | E77 | `recipe_favorited` | 즐겨찾기 별을 켜거나 껐을 때 | is_favorite | FE | P2 | 56 POST /user/events(프론트 전송) |
 
 ## 체크리스트

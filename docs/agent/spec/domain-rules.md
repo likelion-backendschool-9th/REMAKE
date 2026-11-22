@@ -209,7 +209,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Not even one day: `MEAL_PLAN_NO_INGREDIENTS` → failure notification; the plan is `FAILED`, not charged.
 - Each meal slot gets a full recipe from the start (no "menu name first, details later").
 - Do not allocate the same ingredient amount to several meals (based on each slot's recipe ingredients; no per-slot planned-ingredient table; method is up to the developer).
-- Overlap: if the new period overlaps an existing plan, show the warning modal (cancel / overwrite). Overwrite deletes the overlapping days' slots and refills them. Meals already cooked today stay and are not refilled. Overlap is not charged (modal pending).
+- Overlap: if the new period overlaps an existing plan, show the warning modal (cancel / overwrite). Overwrite deletes the overlapping days' slots and refills them when the generation job completes (a failed job keeps the existing plan). Meals already cooked today stay and are not refilled. Overlap is not charged (modal pending).
 - Slot ⋮: "식단 삭제" or "레시피 교체" + confirm. Delete removes that slot only. Replace generates a new recipe and charges 1 daily recipe ("레시피를 교체하게 될 경우 레시피 사용 횟수를 1회 차감 합니다"); not charged on failure.
 - Past days are view only. ⋮ stays; tapping it shows the `PAST_DATE_NOT_ALLOWED` toast.
 - Planning does not deduct fridge ingredients; only cook deduction does.
@@ -218,9 +218,9 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Completion: in-app notification "11월 24일부터 5일치 식단표가 완성됐어요" (start date and days made; wording is a proposal). Tapping it opens p5 at the plan's start date.
 - Failure: in-app notification, not charged, no failure screen. AI error or timeout: "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요". Not even one day (`MEAL_PLAN_NO_INGREDIENTS`): "냉장고 재료가 부족해 식단표를 만들지 못했어요. 생성 횟수는 차감되지 않았어요". Tapping it opens the meal-plan setup screen. Recipe generation failures keep the failure screen (screens to add no. 8).
 - Meal-plan notifications are created even for members who turned notifications off.
-- Target: generation within 30 s, tune after measuring (to confirm: whether this is measured up to the completion notification). The 60 s limit is for recipes only; the server job's time limit is (open).
+- Target: generation within 30 s, tune after measuring (measured from acceptance to job completion; the completion notification is sent at that moment). The 60 s limit is for recipes only; the server job's time limit is (open, #144).
 - A new generate request while one of mine is `GENERATING` is rejected with `MEAL_PLAN_IN_PROGRESS` (409, error toast).
-- (open): whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap; whether overwrite deletes the old slots at acceptance or at completion.
+- Overwrite deletes the old overlapping slots when the job completes, so a failed job keeps the existing plan. (deferred, #144): whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap.
 
 ## 6. Notifications (이상호)
 

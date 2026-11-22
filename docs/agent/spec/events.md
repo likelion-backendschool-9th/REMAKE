@@ -2,7 +2,7 @@
 
 Source of truth: the Korean "Remake event definition (Figma-based)" v2 (2026-11-22, Notion "이벤트 v2"; not in the repo). Names are snake_case and fixed; to add or rename an event, update that document first and ask the user.
 
-- Scale: 79 events (P0 36, P1 37, P2 5, plus E50 with priority (open); CLIENT 45, SERVER 34), 102 properties, 21 metrics (north star + 20 KPIs), 41 screen codes.
+- Scale: 79 events (P0 36, P1 37, P2 5, plus E50 with priority (open, #144); CLIENT 45, SERVER 34), 102 properties, 21 metrics (north star + 20 KPIs), 41 screen codes.
 - API numbers are the numbers in [`api-summary.md`](api-summary.md); error codes are from [`errors.md`](errors.md).
 - Admin screens are not in Figma, so there are no admin events or dashboards.
 
@@ -124,7 +124,7 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 | E47 | `step_play_started` | CLIENT | P2 | recipe_id | - | 56 (frontend) | frontend (assigned by 이준호) |
 | E48 | `cook_deduct_viewed` | CLIENT | P1 | recipe_id, deduct_item_count | M08 | 56 (frontend) | frontend (assigned by 이준호) |
 | E49 | `cook_completed` | SERVER | P0 | recipe_id, deducted_count, adjusted_count, from_meal_plan | M08, M11, M17 | 32 `POST /user/recipes/{id}/cook` | 김종수 |
-| E50 | `cook_feedback_answered` | CLIENT | (open) | recipe_id, recommended | - | 56 (frontend). Fridge (p2) bottom sheet "이 레시피 어땠나요?" after the cook deduction | frontend (assigned by 이준호) |
+| E50 | `cook_feedback_answered` | CLIENT | (open, #144) | recipe_id, recommended | - | 56 (frontend). Fridge (p2) bottom sheet "이 레시피 어땠나요?" after the cook deduction | frontend (assigned by 이준호) |
 | E77 | `recipe_favorited` | CLIENT | P2 | is_favorite | - | 56 (frontend) | frontend (assigned by 이준호) |
 
 ### Meal plan
@@ -293,7 +293,7 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 | M07 | Expiring ingredient use rate | `ingredient_used` with `expiry_status` danger or soon / (used + discarded + `ingredient_expired` in the same states) | E19, E25, E26, E27 | >= 70% |
 | M08 | Recipe generation to cook rate | `cook_completed(recipe_id)` / `recipe_generated`. Middle steps `recipe_detail_viewed`, `cook_deduct_viewed` | E39, E40, E43, E48, E49 | >= 30% |
 | M09 | AI generation success rate | success / (success + failure), separately for recipes (E40/E41), meal plans (E53/E54), slot replace (E80/E81). Count `NO_INGREDIENTS` separately from AI quality | E39, E40, E41, E42, E52, E53, E54, E80, E81 | >= 95% |
-| M10 | AI and OCR response time | p50 and p95 of `duration_ms` (recipe, meal plan, slot replace, OCR separately) | E30, E31, E40, E41, E53, E54, E80, E81 | meal plan within 30 s (PRD; E53/E54 job duration from acceptance to job end; to confirm whether the target counts up to the completion notification); recipe server limit 60 s |
+| M10 | AI and OCR response time | p50 and p95 of `duration_ms` (recipe, meal plan, slot replace, OCR separately) | E30, E31, E40, E41, E53, E54, E80, E81 | meal plan within 30 s (PRD; E53/E54 job duration from acceptance to job completion, when the notification is sent); recipe server limit 60 s |
 | M11 | Meal plan to slot open rate | users with `meal_slot_opened` / users with `meal_plan_generated` (within 7 days). Delete and replace are secondary | E43, E52, E53, E56, E58, E78, E79, E49 | >= 60% |
 | M12 | Cart to fridge conversion | (sum of `cart_moved_to_fridge.moved_count` + sum of `receipt_saved.cart_removed_count`) / sum of `cart_item_added.item_count` (same period). User-deleted share (`cart_items_deleted.deleted_count`) is secondary | E34, E62, E65, E82 | trend only |
 | M13 | Shared recipe write completion | `shared_recipe_published` / `shared_write_started` | E71, E72 | >= 50% |
@@ -356,7 +356,7 @@ Values for `screen`, `screen_name`, and `previous_screen`. Screens marked "scree
 ## Differences from the current code
 
 - `EventName` (76 values) must follow the 79 events above. Add: `subscription_checkout_started`, `subscription_started`, `subscription_payment_failed`, `subscription_renewed`, `subscription_canceled`, `subscription_ended`, `recipe_favorited`, `meal_plan_overlap_answered`, `meal_slot_deleted`, `meal_slot_replaced`, `meal_slot_replace_failed`, `cart_moved_to_fridge`. Rename `notification_clicked` to `notification_banner_clicked`. Remove: `pwa_install_prompted`, `pwa_installed`, `push_permission_result`, `camera_unavailable` (use `error_shown` with `CAMERA_UNAVAILABLE`), `meal_plan_shortage_shown`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`, `shared_recipe_saved` (use `recipe_saved` with `save_source=shared`).
-- `cook_feedback_answered` (E50) is no longer on hold (11/22): the frontend sends it from the fridge (p2) bottom sheet shown after the cook deduction. Tracking data only (success rate, later improvements); no API or table. In the code, change its property `feedback_value` to `recipe_id` and `recommended`. Priority is (open).
+- `cook_feedback_answered` (E50) is no longer on hold (11/22): the frontend sends it from the fridge (p2) bottom sheet shown after the cook deduction. Tracking data only (success rate, later improvements); no API or table. In the code, change its property `feedback_value` to `recipe_id` and `recommended`. Priority is (open, #144).
 - The `Screen` enum (25 uppercase values) must become the 41 lowercase screen codes above.
 - Properties removed: `permission_result`, `was_skipped`, `skipped_step_count`, `is_expiration_estimated`, `duplicate_suspected`, `allergen_warning`, `needs_check_count`, `feedback_value` (E50 now uses `recipe_id`, `recommended`), `deleted_item_count` (no item removal on the OCR result), `slot_source`, `has_recipe`, `group_count`, `channel`, `click_from`, `photo_count`.
 - Priorities now follow the source document. Decision [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58) moved sharing, cart, and reward events to P1; the source keeps them P1. Its admin parts (ADMIN gate, analytics APIs) are on hold because admin screens are not in Figma.
