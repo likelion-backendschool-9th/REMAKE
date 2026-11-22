@@ -126,7 +126,8 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - First screen: "냉장고에 재료가 N개 있어요", "AI를 활용해 레시피 생성하기 →" (to recipe home), danger / soon / ok cards, ingredient list.
 - Ingredient fields: name, category, storage (refrigerated, frozen, room temperature), expiry date, price (optional), amount. Manual add and OCR item edit/add use the same fields. All but price are required; the button is disabled until they are filled.
 - Name is the ingredient, not the product ("비비고 냉동 만두" ✗ → "만두" ✓).
-- Unit: the server picks it from the name. The amount field is disabled until the name is set. Changing the name re-picks only the unit; the number stays.
+- Unit: the server picks it from the name. The amount field is disabled until the name is set. Changing the name re-picks only the unit; the number stays. This applies on add and on edit, also when the ingredient already has use/discard logs (each log keeps the name and unit recorded at that time).
+- Amount edit: it fixes an input mistake, so it changes `amount` and `initial_amount` together (the discarded cost divides by `initial_amount`). Reject it with `INVALID_INPUT` once the ingredient has any use/discard log (#128).
 - Expiry status: danger = expired or today (D-DAY); soon = D-1 to D-3; ok = later. Shown as `D-N`, `D-DAY`, `폐기-N`.
 - Filter and sort: tapping a status card shows only that status; "재료 위치" and "재료 종류" sheets filter one at a time. Sorted by nearest expiry. List title "N개의 위험/임박/여유 재료". **No ingredient search.**
 - Row tap opens the used/discarded sheet; the trailing `>` opens edit.

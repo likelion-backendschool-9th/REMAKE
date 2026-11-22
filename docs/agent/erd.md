@@ -480,8 +480,8 @@ One fridge ingredient. The row is deleted when the amount reaches 0. Owner ê¹€ìž
 | `storage` | varchar |  |  | no |  | FRIDGE/FREEZER/PANTRY |
 | `expiration_date` | date |  |  | no |  | Expiry date |
 | `amount` | numeric(10,3) |  |  | no |  | Remaining amount. Decimals only for kg/L in 0.5 steps |
-| `initial_amount` | numeric(10,3) |  |  | no |  | Initial amount (for the discarded cost) |
-| `unit` | varchar |  |  | no |  | Unit code (Appendix C). The backend picks it from the ingredient name and picks it again when the name changes |
+| `initial_amount` | numeric(10,3) |  |  | no |  | Initial amount (for the discarded cost). Same as `amount` at registration. An amount edit changes both; it is rejected once a use/discard log exists (#128) |
+| `unit` | varchar |  |  | no |  | Unit code (Appendix C). The backend picks it from the ingredient name and picks it again when the name changes, also when logs exist (logs keep their own unit) |
 | `price` | bigint |  |  | yes |  | Price (KRW). Empty when not entered or when it came from the cart |
 | `created_at` | timestamp |  |  | no |  | Registered time |
 | `updated_at` | timestamp |  |  | no |  | Update time |
@@ -823,6 +823,7 @@ These values appear on screens but have no column. They are computed from the so
 | --- | --- |
 | Withdrawal | Clear `provider_user_id` and `email`, set `deleted_at`. Delete excluded ingredients, tokens, deletion codes, fridge ingredients, use logs, receipts, meal plans, cart, and notifications. Keep the `users` row, recipes, and shared recipes (anonymous). Events keep only the member number |
 | Amount reaches 0 | When "used / discarded" or cooking brings the amount to 0, delete the `ingredients` row. The record stays in `ingredient_logs` with the name |
+| Amount edit | Editing the amount (input mistake) sets `amount` and `initial_amount` together. Reject with `INVALID_INPUT` if the ingredient has any `ingredient_logs` row (#128) |
 | Ingredient delete | The delete icon on the edit screen (to be added) deletes the row. Links from logs, recipe ingredients, and notifications are only cleared |
 | Receipt registration | OCR results are not stored before registration. "Register N food items" creates `receipts`, `receipt_items`, and `ingredients` at once |
 | Duplicate receipt | Block registration if one of my receipts has the same store (branch name), receipt number, and purchase time (if the number is unreadable compare store, purchase date, and the list of food names; if the time is unreadable compare by purchase date). Check at scan and again at registration |
