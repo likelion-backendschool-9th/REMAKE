@@ -1,31 +1,49 @@
 # API summary
 
-Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the repo). The login response and cookie auth differ from the original per #42. Base `/api/v1/{public|user|admin}`. All `user` and `admin` calls need a logged-in session. Auth is JWT in HttpOnly cookies for both access and refresh ([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) option A). The frontend calls the same domain with relative `/api/...` paths and `credentials: 'include'`; do not send `Authorization: Bearer` or put tokens in JS-readable storage. Error codes are in `errors.md`. "Events" lists the events the endpoint publishes (see `events.md`). Owner = feature-area owner.
+Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo). 60 APIs, numbered 1-60; other spec files refer to APIs by these numbers. Admin APIs are on hold because admin screens are not in Figma yet. Error codes per API are in `errors.md`; events are in `events.md`.
 
 ## Common
 
-- JSON UTF-8; success returns the resource directly; 201 create, 204 delete, 202 event ingest.
-- Paging `?page=0&size=20` -> `{ content, page, size, totalElements, hasNext }`.
-- Dates `YYYY-MM-DD`; timestamps ISO 8601 `+09:00`; money = integer KRW.
-- `Idempotency-Key` header on create/deduct/confirm POSTs (24 h replay).
-- Timeouts: 10 s default, OCR 30 s, AI 60 s. Headers `X-Client-Platform`, `X-App-Version` on every call.
-- "Events" lists what happens during the call. `cart_item_added` is emitted once by the cart's add UseCase, not by the calling API (see `events.md`).
+| Item | Rule |
+| --- | --- |
+| Path | `/api/v1/{role}/{resource}[/{id}[/{action}]]`. Role `public` (before login) or `user` (after login). Resources are plural kebab-case; actions are trailing verbs (`generate`, `cook`). No `me` under `user` |
+| Format | REST + JSON (UTF-8). Only photo uploads use `multipart/form-data` |
+| Auth | Access (30 min) and refresh (14 days) JWTs, both in HttpOnly cookies (`Secure; SameSite=Lax`) ([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) option A). No `Authorization` header. Same domain `/api/...` + `credentials: 'include'` |
+| Success | Return the resource directly (no wrapper). Create 201, no body 204, event ingest and meal-plan generation acceptance (38) 202 |
+| Errors | `{ code, message, status, traceId, fieldErrors?, details? }`. Codes and `details` are in `errors.md` |
+| Paging | `?page=0&size=20` -> `{ content, page, size, totalElements, hasNext }`. Fridge, cart, and month lists are not paged |
+| Dates and money | Date `2026-11-19`, time ISO 8601 (`+09:00`), money integer KRW |
+| Codes | Units, categories, meal purposes, etc. are the ERD Appendix C codes |
+| Images | `imageUrl` in responses is a server-made URL (storage is the backend's choice). Ingredient and item images are the category image |
+| Client headers | Every request sends `X-Client-Platform` (TWA/PWA/WEB), `X-App-Version`, and `X-Screen` (current screen code). The server writes them to `events.platform`, `app_version`, `screen` |
+| Timeouts | 10 s default, OCR 30 s, AI recipe generation 60 s (recipes only; meal-plan generation replies 202 at once and runs as a server job). Failed or timed-out generation is never charged |
+| Admin | Not in this version (no admin screens in Figma) |
+| Payments (Toss Payments) | Card auto-billing. The frontend only opens the card registration window with the client key. The server issues the billingKey (`POST /v1/billing/authorizations/issue`) and charges (`POST /v1/billing/{billingKey}`) with the secret key. Never send the billingKey or secret key to the frontend. The server makes the `orderId` |
+| Numbering | Subscription APIs (57-60) belong to area 1 but are numbered last so other documents keep their API numbers |
+| Removed | No `Idempotency-Key` header rule (the duplicate-request key table was removed) |
 
-## 1. Start and social login (owner: 이준호)
+## 1. Login, onboarding, settings (owner: 이준호)
 
-| Method | Path | Notes |
-|---|---|---|
-| POST | `/public/auth/oauth/{provider}` | provider `kakao`/`naver`/`google`. Body `{ code, redirectUri, state? }` -> `{ onboardingCompleted }`. `state` is optional; **required for Naver** (missing -> `OAUTH_FAILED`). Sets access (30 min) and refresh (14 d) as HttpOnly cookies (`Secure; SameSite=Lax`). Events: login_succeeded, login_failed, signup_completed |
-| POST | `/public/auth/refresh` | Reissue **access** cookie only from refresh cookie (no refresh rotation; body empty / 204). Invalid refresh -> `REFRESH_TOKEN_INVALID`; suspended account -> `ACCOUNT_SUSPENDED` |
-| POST | `/user/auth/logout` | Revoke refresh token and clear both cookies |
-| GET/PUT | `/user/profile` | `provider, householdSize, onboardingCompleted, lastMealPurpose, excludedCount`; PUT `{ householdSize, onboardingCompleted }` (skip allowed). Event: onboarding_completed |
-| GET/PATCH | `/user/settings` | `{ recipeSupplementEnabled, notificationEnabled, provider }` |
-| GET/PUT | `/user/excluded-ingredients` | PUT replaces all: `{ catalogIds: [] }` |
-| POST | `/user/account/deletion-codes` | Send 6-digit email code (resend = same call). Event: account_deletion_requested |
-| POST | `/user/account/deletion-codes/verify` | `{ code }`; correct code deletes account (204). Event: account_deleted |
+| No. | Method | Path | Description | Request | Response | Events |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | POST | `/public/auth/oauth/{provider}` | Social login and signup. provider = kakao, naver, google. Sets access and refresh tokens as HttpOnly cookies | `{ code, redirectUri }` | `200 { onboardingCompleted }` | login_succeeded, login_failed, signup_completed |
+| 2 | POST | `/public/auth/refresh` | Reissue the access cookie from the refresh cookie | no body (refresh cookie) | `204` | |
+| 3 | POST | `/user/auth/logout` | Delete the refresh token row and both cookies | no body | `204` | |
+| 4 | PUT | `/user/onboarding` | Save onboarding. Sent once when p1.2 is completed, with both screens' values. Zero allergies allowed | `{ householdSize (1-50), allergenCodes: [] }` | `204` | onboarding_completed |
+| 5 | GET | `/user/profile` | All settings screen values | - | `200 { provider, plan, householdSize, excludedIngredientCount, recipeSupplementEnabled, notificationEnabled, lastMealPurpose, onboardingCompleted }` | |
+| 6 | PATCH | `/user/profile` | Send only the changed values among household size, recipe supplement, notifications | `{ householdSize? (1-50), recipeSupplementEnabled?, notificationEnabled? }` | `200` (same shape as API 5) | |
+| 7 | GET | `/user/excluded-ingredients` | My excluded-ingredient codes | - | `200 { allergenCodes: [] }` | |
+| 8 | PUT | `/user/excluded-ingredients` | Replace the whole set. Zero allowed (settings "done" stays enabled) | `{ allergenCodes: [] }` | `200 { allergenCodes }` | |
+| 9 | POST | `/user/account/deletion-code` | Send a 6-digit code to the Kakao/Google member's email (valid 5 minutes). Resend uses the same API | no body | `201 { expiresAt }` | |
+| 10 | POST | `/user/account/deletion` | Delete the account. Kakao/Google confirm with the email code, Naver with a re-authentication code. Clears cookies on success | Kakao/Google `{ method: "EMAIL_CODE", code }` / Naver `{ method: "REAUTH", oauthCode, redirectUri }` | `204` | account_deletion_requested, account_deleted, subscription_ended |
+| 57 | GET | `/user/subscription` | My subscription. NONE -> before-subscribe screen, ACTIVE -> subscribed screen. Before subscribing, the next billing date is today + 1 month | - | `200 { status: NONE\|ACTIVE\|CANCELED, price, nextBillingDate, currentPeriodEnd? }` | |
+| 58 | POST | `/user/subscription/billing-auth` | Values to open the Toss card registration window. The frontend calls Toss SDK `requestBillingAuth`; Toss returns to the frontend success URL with `authKey` and `customerKey` | no body | `200 { customerKey, orderName, amount }` | |
+| 59 | POST | `/user/subscription` | Start the subscription: issue a billingKey with `authKey`, charge the first month (9,900 KRW), and on success start it (`users.plan` PREMIUM, next billing date = today + 1 month). If the first payment fails, no subscription is created | `{ authKey, customerKey }` | `201` (same shape as API 57) | subscription_started, subscription_payment_failed |
+| 60 | POST | `/user/subscription/cancel` | Schedule cancellation. Benefits stay until the day before the next billing date; on that date no charge and the plan becomes BASIC. Already scheduled -> 200 unchanged | no body | `200` (same shape as API 57, status CANCELED) | subscription_canceled |
 
 ## 2. Fridge (owner: 김재연)
 
+<<<<<<< HEAD
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/user/ingredients/summary` | `{ total, danger, soon, ok }` |
@@ -37,111 +55,135 @@ Source: API definition v3.1 (Korean, kept in Notion / Google Sheets; not in the 
 | DELETE | `/user/ingredients/{id}` | Blocked with `INGREDIENT_HAS_LOGS` if history exists |
 | GET | `/user/ingredient-catalog` | Autocomplete / exclusion search `?q=&commonExclusion=true`. `q`: name contains, case-insensitive, max 50 chars (longer is `INVALID_INPUT`), optional (omitted = all); prefix matches first, then by name, max 50 items. `commonExclusion=true` puts common allergy items (`isCommonExclusion`) on top. Item: `id`, `name`, `categoryCode`, `shelfLifeDays` (category default when the item has none), `isCommonExclusion` |
 | GET | `/user/ingredient-categories` | 12 categories with defaults |
+=======
+| No. | Method | Path | Description | Request | Response | Events |
+| --- | --- | --- | --- | --- | --- | --- |
+| 11 | GET | `/user/ingredients/summary` | Total and per-status counts (independent of filters) | - | `200 { total, danger, soon, ok }` | |
+| 12 | GET | `/user/ingredients` | My ingredients, soonest expiry first. **No search** (not in Figma). Not paged | `?status=DANGER\|SOON\|OK &storage=FRIDGE\|FREEZER\|PANTRY &categoryCode=` | `200 { items: [{ id, name, categoryCode, imageUrl, storage, amount, unit, expirationDate, dDay, status }] }` | |
+| 13 | GET | `/user/ingredients/{id}` | One ingredient | - | `200 { id, name, categoryCode, imageUrl, storage, amount, unit, expirationDate, dDay, status, price }` | |
+| 14 | GET | `/user/ingredient-units` | The backend picks the unit for an ingredient name. The quantity field stays disabled until a name is chosen; then the frontend calls this and enables it. Call again when the name changes, including on the OCR item edit screen (p3.3.1) before registration. Uses `ingredient_catalog` | `?name=대파` | `200 { unit }` | |
+| 15 | POST | `/user/ingredients` | Manual add. Category required (no "all"). The server picks the unit. Price optional (included in consumption patterns when set) | `{ name, categoryCode, storage, expirationDate, amount, price? }` | `201` (one-ingredient shape) | ingredient_added |
+| 16 | PATCH | `/user/ingredients/{id}` | Send only changed values. Changing the name makes the server pick the unit again and return it (e.g. 대파 1 BUNCH -> 양파 1 EA; the number stays), also when the ingredient has use/discard logs (logs keep their own name and unit). `amount` fixes an input mistake: it sets both `amount` and `initial_amount`, and is rejected with `INVALID_INPUT` if the ingredient has any use/discard log (#128) | `{ name?, categoryCode?, storage?, expirationDate?, price?, amount? }` | `200` (one-ingredient shape) | |
+| 17 | DELETE | `/user/ingredients/{id}` | Delete the ingredient. Use/discard logs stay with the name | - | `204` | |
+| 18 | POST | `/user/ingredients/{id}/consume` | Use or discard. Discarding computes the cost when a price exists. Deletes the ingredient at 0 | `{ type: "USED"\|"DISCARDED", amount }` | `200 { remainingAmount, deleted, costAmount? }` | ingredient_used, ingredient_discarded |
+| 19 | GET | `/user/ingredient-categories` | 12 categories | - | `200 { items: [{ code, name, imageUrl }] }` | |
+>>>>>>> dev
 
-## 3. Receipts and spending (owner: 이동준)
+`GET /user/ingredient-catalog` (autocomplete) is not part of the API. `ingredient_catalog` is used only inside the server (11/22 decision).
 
-| Method | Path | Notes |
-|---|---|---|
-| POST | `/user/receipts/scan` | Multipart `image` (10 MB; jpg/png/heic). **Analysis only, nothing stored.** Returns `items[]` (food only: name, categoryCode, amount, unit, price, storage, expirationDate, isExpirationEstimated), `purchasedOn` and `storeName` (nullable when unreadable), `storeCode` (15 codes, `ETC` fallback), `duplicateSuspected`. No scan limit. Events: receipt_scan_succeeded, receipt_scan_failed |
-| POST | `/user/receipts` | Confirm + save (multipart `image` + `payload` JSON with required `purchasedOn`, nonblank `storeName`, and `items[].register`). One transaction; only items with `register: true` become fridge ingredients. Response `{ receiptId, registeredCount }`. Purchase date older than 6 months -> INVALID_INPUT. Events: ingredient_added, receipt_saved |
-| GET | `/user/receipts` | `?month=YYYY-MM` (within last 6 months). Item `{ id, storeName, storeCode, purchasedOn, foodItemCount, foodAmount }` |
-| GET | `/user/receipts/{id}` | Items, total, signed image URL |
-| DELETE | `/user/receipts/{id}` | Removes image/items; fridge ingredients stay; amounts leave spending stats |
-| GET | `/user/expenses/monthly` | `?month=` -> `{ month, totalAmount, receiptCount, comparison }`; comparison = last-6-month average `{ baselineMonths, baselineAverage, diffAmount, diffRate }` or null |
-| GET | `/user/expenses/monthly/analysis` | Category share + discarded amount (sum of `ingredient_logs.cost_amount`; the Figma screen for it will be added) |
-| GET | `/user/expenses/patterns` | `?month=` -> `{ months[], month, totalAmount, comparison, categoryShares[], dailyTotals[] }` (food items of confirmed receipts, by purchase date) |
-| GET | `/user/expenses/daily-items` | `?date=` -> items bought that day |
+## 3. Receipts and consumption patterns (owner: 이동준)
 
-No update endpoint for confirmed receipts. No "analysis finished" notification.
+| No. | Method | Path | Description | Request | Response | Events |
+| --- | --- | --- | --- | --- | --- | --- |
+| 20 | POST | `/user/receipts/scan` | OCR analysis only, nothing stored. Synchronous. Returns food only. A receipt with no food items, older than 6 months, or already registered (same store (branch name), receipt number, and purchase time; if the number is unreadable compare store, purchase date, and food names; if the time is unreadable compare by purchase date) fails and is shown on the OCR failure screen | multipart `image` (jpg, png, heic, 10 MB) | `200 { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount, unit, price, expirationDate }] }` | receipt_scan_succeeded, receipt_scan_failed |
+| 21 | POST | `/user/receipts` | Save receipt, items, and fridge ingredients at once. The server picks units from names. Cart items with the same name as a registered ingredient are removed. Receipts older than 6 months cannot be registered. Duplicates are blocked again | multipart `image` + `payload { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount, price, expirationDate }] }` | `201 { receiptId, ingredientCount, cartRemovedCount }` | ingredient_added, receipt_saved |
+| 22 | GET | `/user/receipts` | Receipts of the month. Month total from receipt items only; average = average monthly total of the last 6 months | `?month=2026-11` (within the last 6 months) | `200 { month, totalAmount, averageDiffAmount, weeks: [{ label, startDate, endDate, totalAmount, receipts: [{ id, storeCode, storeName, purchasedOn, itemCount, totalAmount }] }] }` | |
+| 23 | GET | `/user/receipts/{id}` | One receipt | - | `200 { id, storeCode, storeName, purchasedOn, imageUrl, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }], totalAmount }` | |
+| 24 | DELETE | `/user/receipts/{id}` | Delete receipt, items, image. It leaves spending and patterns; fridge ingredients stay | - | `204` | |
+| 25 | GET | `/user/expenses/patterns` | Consumption of the month: receipt items + ingredients added without a receipt with a price (by registration date) | `?month=2026-11` (within the last 6 months) | `200 { month, totalAmount, averageDiffAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | |
+| 26 | GET | `/user/expenses/daily-items` | Items of the chosen day | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | |
 
-## Usage quotas (owners: 김종수 recipe part, 한윤수 meal-plan part)
-
-Not related to receipts. The recipe screens and the meal-plan setup screen ("이번 달 남은 N회") read it.
-
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/user/usage-quotas` | Remaining counts for recipes and meal plans, computed from `usage_logs` and `generation_quota_grants` |
-
-Response:
-```json
-{ "recipe": { "limit": 2, "used": 1, "remaining": 1, "bonus": 0, "bonusExpiresAt": null, "resetsAt": "2026-11-20T00:00:00+09:00" },
-  "mealPlan": { "limit": 1, "used": 0, "remaining": 1, "maxDays": 5, "resetsAt": "2026-12-01T00:00:00+09:00" } }
-```
+No update endpoint for registered receipts. `GET /user/expenses/monthly` and `/monthly/analysis` were removed (merged into API 22 and 25).
 
 ## 4. AI recipes (owner: 김종수)
 
-| Method | Path | Notes |
-|---|---|---|
-| POST | `/user/recipes/generate` | `{ mode: "QUICK"|"CUSTOM", servings, options? }`; custom options `{ ingredientIds, tastes, maxMinutes, tools, methods, cuisineTypes, excludeCatalogIds }` all selections. One response (no streaming). Charged only on success. Events: quota_exceeded, recipe_generated, recipe_generate_failed |
-| GET | `/user/recipes/{id}` | Ingredients (`have`: HAVE/SHORT/NONE), servings, cookMinutes, tips, steps, `aiGenerated: true`, `isFavorite`, `allergenWarning` |
-| GET | `/user/recipes/{id}/cook-preview` | Deduction candidates; same-kind units auto-converted, otherwise `needsCheck: true`; pinch/to-taste excluded |
-| POST | `/user/recipes/{id}/cook` | `{ items: [{ ingredientId, amount, unit }], servings, feedback? }` -> marks USED + cook log. Events: ingredient_used, cook_completed |
-| GET | `/user/saved-recipes` | Newest saved first; `q`, `favorite=true` |
-| PUT/DELETE | `/user/saved-recipes/{recipeId}` | Save/unsave; PUT returns `{ cartAddedCount }`. Events: recipe_saved, cart_item_added |
-| PUT/DELETE | `/user/saved-recipes/{recipeId}/favorite` | Star on/off -> `{ isFavorite }` |
+| No. | Method | Path | Description | Request | Response | Events |
+| --- | --- | --- | --- | --- | --- | --- |
+| 27 | GET | `/user/usage-quotas` | Remaining counts. Recipes per day (basic 2, premium 4, + rewards); meal plans this month (basic 1, premium 4) | - | `200 { recipe: { limit, used, bonusRemaining, remaining }, mealPlan: { limit, used, remaining, maxDays } }` | |
+| 28 | POST | `/user/recipes/generate` | Generate a recipe (one response, no streaming). Charged only on success. Quick uses the household size as servings. Custom options are single choices. With recipe supplement off, only my fridge ingredients are used and too few ingredients fail (not charged; failure screen to be added). With it on, missing ingredients are added | Quick `{ mode: "QUICK" }` / Custom `{ mode: "CUSTOM", servings, ingredientIds: [], taste?, cookTime?, tool?, method?, cuisine?, allergenCodes: [] }` | `201` (recipe detail shape) | quota_exceeded, recipe_generated, recipe_generate_failed |
+| 29 | POST | `/user/recipes/{id}/regenerate` | New recipe with the same conditions. Always allowed; uses the daily count | no body | `201` (recipe detail shape) | quota_exceeded, recipe_generated, recipe_generate_failed |
+| 30 | GET | `/user/recipes/{id}` | Recipe detail. No "AI가 생성한 레시피" text. `shareable` = not shared this week | - | `200 { id, title, servings, cookMinutes, tips, ingredients: [{ name, amount, unit }], steps: [{ stepNo, content }], saved, favorite, shareable }` | |
+| 31 | GET | `/user/recipes/{id}/cook-preview` | My fridge ingredients to deduct and recipe amounts | `?mealPlanSlotId=` (when opened from a meal slot) | `200 { items: [{ ingredientId, name, imageUrl, amount, unit, remainingAmount }] }` | |
+| 32 | POST | `/user/recipes/{id}/cook` | Deduct checked ingredients as USED. Opened from today's meal slot -> mark that slot cooked. After deduction the app goes to the fridge (p2) and shows the bottom sheet "이 레시피 어땠나요?" (추천해요 / 추천하지 않아요 → 보내기); the answer is collected only as event E50 through API 56 (no API or table) | `{ items: [{ ingredientId, amount }], mealPlanSlotId? }` | `200 { deductedCount }` | ingredient_used, cook_completed |
+| 33 | GET | `/user/saved-recipes` | Saved list. AVAILABLE = can be made with the current fridge | `?filter=ALL\|FAVORITE\|AVAILABLE &sort=SAVED_DESC\|SAVED_ASC &page=0&size=20` | `200 { totalCount, content: [{ recipeId, title, ingredientSummary, extraIngredientCount, favorite }], page, size, totalElements, hasNext }` | |
+| 34 | PUT | `/user/saved-recipes/{recipeId}` | Save my recipe (idempotent). Missing ingredients added by the supplement go to the cart | no body | `200 { saved: true, cartAddedCount }` | recipe_saved, cart_item_added |
+| 35 | DELETE | `/user/saved-recipes/{recipeId}` | Remove from the saved list only. Shared posts stay | - | `204` | |
+| 36 | PUT | `/user/saved-recipes/{recipeId}/favorite` | Favorite on | no body | `200 { favorite: true }` | |
+| 37 | DELETE | `/user/saved-recipes/{recipeId}/favorite` | Favorite off (stays saved) | - | `200 { favorite: false }` | |
+
+Custom option codes (one per item):
+
+| Item | Codes |
+| --- | --- |
+| taste | MILD / SPICY / SWEET / SALTY / SOUR / NUTTY |
+| cookTime | ANY / WITHIN_15 / WITHIN_30 / WITHIN_60 |
+| tool | FRYING_PAN / POT / MICROWAVE / AIR_FRYER / OVEN / RICE_COOKER |
+| method | STIR_FRY / GRILL / STEAM / BRAISE / SOUP_STEW / SEASONED / DEEP_FRY |
+| cuisine | KOREAN / WESTERN / CHINESE / JAPANESE / BUNSIK / SIMPLE |
+| Others | Units, categories, excluded ingredients, meal purposes, meals, report reasons, notification types: ERD Appendix C |
 
 ## 5. Meal plan (owner: 한윤수)
 
-| Method | Path | Notes |
-|---|---|---|
-| POST | `/user/meal-plans/generate` | `{ startDate, purpose, mealTypes: ["LUNCH","DINNER"], servings, overwrite? }`; purpose `BALANCED`(default)/`DIET`/`HIGH_PROTEIN`/`SIMPLE`/`SAVING`. Generates only as many days as ingredients allow. Returns `{ mealPlanId, generatedDays, shortage[], cartAddedCount }`. Events: quota_exceeded, meal_plan_generated, meal_plan_generate_failed, cart_item_added |
-| GET | `/user/meal-plans/calendar` | `?month=YYYY-MM`, past months allowed |
-| GET | `/user/meal-plans/days/{date}` | Slots `{ slotId, mealType, menuName, recipeId?, ingredientChips, source }` |
-| POST | `/user/meal-plan-slots` | Add meal `{ date, mealType, recipeId }` (saved recipe into an empty slot). Event: meal_added |
-| POST | `/user/meal-plan-slots/{slotId}/detail` | Lazily generate the recipe for a name-only slot; does not use the daily recipe quota (proposal). Events: meal_slot_detail_generated/failed |
+| No. | Method | Path | Description | Request | Response | Events |
+| --- | --- | --- | --- | --- | --- | --- |
+| 38 | POST | `/user/meal-plans/generate` | Generate a plan **asynchronously**: check the start date, quota, and overlap, create the plan as `GENERATING`, and reply `202` at once. A server job generates it and sends an in-app notification on completion (`MEAL_PLAN_COMPLETED`) or failure (`MEAL_PLAN_FAILED`). Too few ingredients, AI error, and timeout are failure notifications, not responses. Start date today or later. If dates overlap an existing plan and `overwrite` is not true, reject with the overlapping dates; the frontend shows a warning modal and resends with `overwrite: true`. Overwriting keeps today's meals already cooked. With too few ingredients, generate only the days possible; missing ingredients go to the cart. Charged (monthly count) only when the job succeeds. A new request while one of mine is `GENERATING` is rejected with `409 MEAL_PLAN_IN_PROGRESS` (error toast). Overwrite deletes the old overlapping slots when the job completes, so a failed job keeps the existing plan. (deferred, #144): whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap | `{ startDate, purpose: "BALANCED"\|"DIET"\|"HIGH_PROTEIN"\|"SIMPLE"\|"SAVING", mealTypes: ["BREAKFAST","LUNCH","DINNER"] (1+), servings, overwrite? (default false) }` | `202 { mealPlanId, status: "GENERATING" }` / overlap `409 MEAL_PLAN_OVERLAP` (`details.overlappingDates`) / already generating `409 MEAL_PLAN_IN_PROGRESS` | quota_exceeded, meal_plan_generated / meal_plan_generate_failed (when the job ends), cart_item_added |
+| 39 | GET | `/user/meal-plans/calendar` | Dates with meals and plan periods in the month. Past months allowed | `?month=2026-11` | `200 { month, periods: [{ mealPlanId, startDate, endDate }], datesWithMeals: [] }` | |
+| 40 | GET | `/user/meal-plans/days/{date}` | Meals of the day | - | `200 { date, slots: [{ slotId, mealType, recipeId, title, ingredientSummary, extraIngredientCount, favorite, cooked }] }` | |
+| 41 | DELETE | `/user/meal-plan-slots/{slotId}` | Delete a slot. Today or later only | - | `204` | meal_slot_deleted |
+| 42 | POST | `/user/meal-plan-slots/{slotId}/replace` | Replace with a new recipe. Uses one daily recipe count. Today or later only | no body | `200 { slotId, recipeId, title, ingredientSummary, extraIngredientCount }` | quota_exceeded, meal_slot_replaced, meal_slot_replace_failed |
 
-No delete, no slot regeneration/replacement.
+No manual "add meal to an empty slot" and no lazy slot-detail generation: every slot gets a full recipe at generation.
 
-## 6. Notifications and cart (owners: 이상호 notifications, 최유리 cart)
+## 6. Notifications (owner: 이상호)
 
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/user/notifications/summary` | Top banner `{ latest, unreadCount }` |
-| GET | `/user/notifications` | Last 30 days, types `EXPIRY_SOON`/`EXPIRED`, with `target` |
-| PATCH | `/user/notifications/{id}/read` | Mark read |
-| POST/DELETE | `/user/push-subscriptions[/{id}]` | Web push subscription |
-| GET | `/user/cart-items` | `{ groups: [{ recipeId, groupName, items: [{ id, name, amount, unit }] }] }` |
-| PATCH | `/user/cart-items/{id}` | Change amount |
-| POST | `/user/cart-items/delete` | `{ ids: [] }` |
+| No. | Method | Path | Description | Request | Response | Events |
+| --- | --- | --- | --- | --- | --- | --- |
+| 43 | GET | `/user/notifications/summary` | Latest notification text and unread count | - | `200 { latestMessage, unreadCount }` | |
+| 44 | GET | `/user/notifications` | Notification list, newest first. Types `EXPIRY_SOON`, `EXPIRED`, `MEAL_PLAN_COMPLETED`, `MEAL_PLAN_FAILED`. Tap: expiry items do nothing; `MEAL_PLAN_COMPLETED` opens p5 at the plan's start date (`mealPlanId`); `MEAL_PLAN_FAILED` opens the meal-plan setup screen. Loading this list marks all unread as read (no separate read API) | `?page=0&size=20` | `200 { content: [{ id, type, message, mealPlanId, createdAt }], page, size, totalElements, hasNext }` (`mealPlanId` only for `MEAL_PLAN_COMPLETED`, otherwise null) | |
 
-Cart items cannot be added manually; they are added by meal-plan generation and by saving a recipe (own or shared).
+In-app only: no push subscription APIs.
 
-## 7. Sharing (owner: 최유리)
+## 7. Sharing and cart (owner: 최유리)
 
-Fully anonymous: no author info in any response.
+| No. | Method | Path | Description | Request | Response | Events |
+| --- | --- | --- | --- | --- | --- | --- |
+| 45 | GET | `/user/cart-items` | Cart list | - | `200 { items: [{ id, recipeId, recipeTitle, name, categoryCode, imageUrl, amount, unit }] }` | |
+| 46 | PATCH | `/user/cart-items/{id}` | Change amount | `{ amount }` | `200 { id, amount, unit }` | |
+| 47 | POST | `/user/cart-items/move-to-fridge` | Put the chosen items into the fridge without input. Storage and expiry from category defaults, no price. Moved items leave the cart | `{ ids: [] }` | `200 { addedCount }` | ingredient_added, cart_moved_to_fridge |
+| 48 | POST | `/user/cart-items/delete` | Delete selected | `{ ids: [] }` | `204` | |
+| 49 | GET | `/user/shared-recipes/weekly-top` | TOP 3 by saves this week | - | `200 { items: [{ rank, id, title, imageUrl, ingredientSummary, extraIngredientCount }] }` | |
+| 50 | GET | `/user/shared-recipes/ranking` | Popular = TOP 100 by saves this week, rank change vs last week's rank. Latest = by shared time, "—" instead of a rank | `?sort=popular\|latest &q= &page=0&size=20` | `200 { weekLabel, content: [{ id, rank?, rankChange?, title, imageUrl, ingredientSummary, extraIngredientCount, sharedAt }], page, size, totalElements, hasNext }` | |
+| 51 | POST | `/user/shared-recipes` | Share. Title and one photo required, no confirm modal. The same recipe once per week | multipart `image` + `payload { recipeId, title }` | `201 { id }` | shared_recipe_published |
+| 52 | GET | `/user/shared-recipes/{id}` | Shared detail. Fully anonymous (no author info). `have` per ingredient (red border when I do not have it) | - | `200 { id, title, imageUrl, servings, cookMinutes, tips, ingredients: [{ name, amount, unit, have }], steps: [{ stepNo, content }], saveCount, saved }` | |
+| 53 | PUT | `/user/shared-recipes/{id}/save` | Save (the original goes into my list, no copy). Missing ingredients go to the cart | no body | `200 { saveCount, saved: true, cartAddedCount }` | recipe_saved, cart_item_added |
+| 54 | DELETE | `/user/shared-recipes/{id}/save` | Unsave (cart items stay) | - | `200 { saveCount, saved: false }` | |
+| 55 | POST | `/user/shared-recipes/{id}/reports` | Report. No text input even for OTHER; an operator reviews. One report per post per member | `{ reason: "OFFENSIVE_IMAGE"\|"AD_TITLE"\|"DANGEROUS_RECIPE"\|"OTHER" }` | `201` | shared_recipe_reported |
 
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/user/shared-recipes/weekly-top` | TOP 3 `{ rank, id, title, ingredientChips, photoUrl }` (no rank change) |
-| GET | `/user/shared-recipes/ranking` | TOP 100; `?q=`, `?sort=popular|latest`; popular item has `rankChange` (last rank - this rank, null if none/same), latest item has `sharedAt` and no rank |
-| POST | `/user/shared-recipes` | Multipart `recipeId`, `title` (required), `photos[]` (>= 1). Only Remake-generated own recipes. Event: shared_recipe_published |
-| GET | `/user/shared-recipes/{id}` | Detail incl. `aiGenerated`, `saveCount`, `saved`; hidden/deleted -> 404 |
-| DELETE | `/user/shared-recipes/{id}` | Author takes it down (screen undecided) |
-| PUT/DELETE | `/user/shared-recipes/{id}/save` | Save makes a copy in own saved list; returns `{ saveCount, cartAddedCount }`. Events: recipe_saved, cart_item_added, shared_recipe_saved |
-| POST | `/user/shared-recipes/{id}/reports` | `{ reason: PHOTO|OFFENSIVE|DANGEROUS|OTHER, detail? }`; not auto-hidden. Event: shared_recipe_reported |
+Cart items cannot be added manually. No "take down my shared post" API.
 
-## Events (common)
+## Common: events (owner: 이준호)
 
-`POST /user/events` — `{ events: [{ name, screen, properties, occurredAt, sessionId }] }`, max 50; unknown names dropped; returns 202 `{ accepted, rejected }`.
+| No. | Method | Path | Description | Request | Response |
+| --- | --- | --- | --- | --- | --- |
+| 56 | POST | `/user/events` | Frontend event batch (max 50). Names and properties in `events.md`. `platform` and `app_version` come from the common headers | `{ events: [{ name, sessionId, screen, properties, occurredAt }] }` | `202 { accepted, rejected }` |
 
-## Admin (all under `/admin`, ADMIN only; every action writes `admin_audit_logs`)
+## Handled without an API
 
-Decision [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58): WBS 8.2 analytics APIs (dashboard, metrics, funnels, event log/catalog) remain P0. The ADMIN authorization check and non-admin blocking required by these APIs are P0 prerequisites from WBS 8.1, not an upgrade of all admin features. Implement and verify this gate first: ADMIN allowed, authenticated non-admin 403 `FORBIDDEN`, unauthenticated requests rejected through server security filters. Other admin features remain P1. Access control is tracked in [#84](https://github.com/likelion-backendschool-9th/REMAKE/issues/84), analytics in [#93](https://github.com/likelion-backendschool-9th/REMAKE/issues/93).
+| Screen | Handling |
+| --- | --- |
+| p1 "recent login" bubble | Last provider stored on the device (localStorage) |
+| p1.2, p1.3.2 allergy chips (19) | Frontend constants (ERD Appendix B codes) |
+| Terms and privacy drawers | Static text |
+| p4.1.1 "play steps" | Device speech synthesis reads the step text |
+| p3.4 month tabs | The frontend builds the last 6 months from today |
+| p3.3.1, p3.3.2 OCR item edit/add | Not stored before registration; screen state only, sent with API 21 |
+| p7 select all, delete mode | Frontend state |
+| p1.3.4 payment terms checkbox, "details" | Bottom button disabled until checked (frontend). Payment terms text in the terms drawer |
+| Toss payment window cancel or failure | Toss returns to the frontend failure URL with `code` and `message`. No server call; go back to the p1.3.4 before-subscribe screen with the common toast |
 
-WBS 11.8 P0 event verification covers only first-demo features. Sharing/cart/reward events follow their P1 feature schedules; see [the event priority rules](events.md#demo-implementation-and-verification-priority-decision-58). Event names and payloads are unchanged.
+## Scheduled server jobs (not APIs)
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/admin/dashboard/summary` | North-star metric, KPI cards, alerts (`?from&to&includeSeed`) |
-| GET | `/admin/metrics` | KPI time series `?kpi&from&to&interval` |
-| GET | `/admin/funnels/{funnelCode}` | Funnel conversion |
-| GET | `/admin/events`, `/admin/events/catalog` | Raw event log (internal user id only), event catalog with 24 h volume |
-| GET | `/admin/usage/daily` | AI/OCR calls, success rate, latency, top users, limit-hit ratio |
-| GET/PATCH | `/admin/reports`, `/admin/reports/{id}` | Report queue; result `HIDDEN`/`DELETED`/`DISMISSED` |
-| GET/PATCH | `/admin/shared-recipes[/{id}]` | Shared recipe status `VISIBLE`/`HIDDEN`/`DELETED` |
-| GET | `/admin/users` | Search (no email shown) |
-| PATCH | `/admin/users/{id}/generation-quota` | `{ delta, reason }` reason required |
-| PATCH | `/admin/users/{id}/status` | `ACTIVE`/`SUSPENDED` + reason |
-| GET | `/admin/audit-logs`, `/admin/weekly-rewards` | Action history, weekly TOP 3 and reward history |
+| Job | When | What | Tables | Events |
+| --- | --- | --- | --- | --- |
+| Expiry notifications | Daily 09:00 | EXPIRY_SOON per ingredient (D-3 to D-DAY), EXPIRED for expired ingredients (one per day). Skip members with notifications off. In-app only | notifications | notification_sent, ingredient_expired |
+| Weekly recipe reward | Monday 00:00 | +10 / +6 / +3 to the members who shared last week's top 1-3 recipes by saves (per recipe rank), valid one month. Store last week's TOP 100 as rank records | generation_quota_grants, shared_recipe_weekly_ranks | weekly_reward_granted |
+| Receipt cleanup | Daily early morning | Delete receipts older than 6 months by purchase date with items and images | receipts, receipt_items | |
+| Notification and code cleanup | Daily early morning | Delete notifications older than 30 days and deletion codes older than a day | notifications, account_deletion_requests | |
+| Subscription auto-payment | Daily early morning | Charge 9,900 KRW with the billingKey for ACTIVE subscriptions whose next billing date is today; on success extend by a month. CANCELED subscriptions are not charged and end (ENDED, `users.plan` BASIC, billingKey cleared). Failure handling is an open question | subscriptions, subscription_payments, users | subscription_renewed, subscription_payment_failed, subscription_ended |
 
-Admin screens are a proposal (no Figma yet): A1 dashboard, A2 funnel, A3 feature monitoring, A4 event log (P0); A5 reports, A6 users, A7 usage/cost, A9 ranking/rewards (P1); A8 anomaly alerts (P2, via `alerts` in dashboard summary).
+## Open questions (do not decide in code; ask the PO)
+
+- Auto-payment failure handling (card limit, suspended card, etc.).
+- What the subscription screen shows after scheduling cancellation, and whether a confirm modal is needed.
+- Whether the demo uses Toss test keys only (real auto-billing needs a separate contract with Toss).
+- The unit for an ingredient name that is not in `ingredient_catalog`.
