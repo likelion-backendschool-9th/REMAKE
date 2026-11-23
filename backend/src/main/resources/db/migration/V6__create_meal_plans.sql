@@ -14,6 +14,8 @@ CREATE TABLE meal_plans (
     generated_days  int,
     status          varchar(20) NOT NULL DEFAULT 'GENERATING',
     created_at      timestamp   NOT NULL,
+    -- 생성 작업이 끝나 status·generated_days가 바뀐 시각
+    updated_at      timestamp   NOT NULL,
     CONSTRAINT fk_meal_plans_user FOREIGN KEY (user_id) REFERENCES users (id),
     CONSTRAINT ck_meal_plans_purpose CHECK (purpose IN ('BALANCED', 'DIET', 'HIGH_PROTEIN', 'SIMPLE', 'SAVING')),
     CONSTRAINT ck_meal_plans_meal_types CHECK (meal_types ~ '^(BREAKFAST|LUNCH|DINNER)(,(BREAKFAST|LUNCH|DINNER)){0,2}$'),

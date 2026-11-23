@@ -265,6 +265,7 @@ erDiagram
     int generated_days
     varchar status
     timestamp created_at
+    timestamp updated_at
   }
   meal_plan_slots {
     bigint id PK
@@ -607,7 +608,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 
 ### 17. `meal_plans` 식단표
 
-식단표 생성 요청 한 번과 그 결과. API 38이 접수하면 `GENERATING`으로 만들고, 서버 작업이 `COMPLETED` 또는 `FAILED`로 바꿈. 담당 한윤수(5 주간 식단표).
+식단표 생성 요청 한 번과 그 결과. API 38이 접수하면 `GENERATING`으로 만들고, 서버 작업이 `COMPLETED` 또는 `FAILED`로 바꿈. 회원당 `GENERATING` 식단표는 하나(부분 유니크 인덱스 `uk_meal_plans_user_generating`). 담당 한윤수(5 주간 식단표).
 
 | 컬럼 | 타입 | 키 | 참조 | NULL | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -620,6 +621,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `generated_days` | int |  |  | 예 |  | 실제 만든 일수(일반 최대 5, 구독 최대 7, 재료가 부족하면 줄어듦). `COMPLETED` 전에는 비어 있음 |
 | `status` | varchar |  |  | 아니오 | GENERATING | GENERATING/COMPLETED/FAILED |
 | `created_at` | timestamp |  |  | 아니오 |  | 만든 시각 |
+| `updated_at` | timestamp |  |  | 아니오 |  | 작업이 `status`와 `generated_days`를 바꾼 시각 |
 
 ### 18. `meal_plan_slots` 식단 칸
 

@@ -65,6 +65,8 @@ class MealPlanPersistenceTest extends IntegrationTestSupport {
 				.isEqualTo("BREAKFAST,DINNER");
 		assertThat(jdbcTemplate.queryForObject("SELECT created_at FROM meal_plans WHERE id = ?",
 				LocalDateTime.class, id)).isEqualTo(LocalDateTime.of(2026, 3, 4, 10, 0));
+		assertThat(jdbcTemplate.queryForObject("SELECT updated_at FROM meal_plans WHERE id = ?",
+				LocalDateTime.class, id)).isEqualTo(LocalDateTime.of(2026, 3, 4, 10, 0));
 	}
 
 	@Test
@@ -168,9 +170,12 @@ class MealPlanPersistenceTest extends IntegrationTestSupport {
 		Long userId = createUser();
 		LocalDateTime now = LocalDateTime.of(2026, 3, 4, 10, 0);
 		String insert = """
-				INSERT INTO meal_plans (user_id, start_date, purpose, meal_types, servings, generated_days, status, created_at)
-				VALUES (?, ?, ?, ?, ?, ?, 'COMPLETED', ?)
+				INSERT INTO meal_plans (user_id, start_date, purpose, meal_types, servings, generated_days, status,
+				                        created_at, updated_at)
+				VALUES (?, ?, ?, ?, ?, ?, 'COMPLETED', ?, ?)
 				""";
+		// 올바른 값은 저장된다. 그래서 아래 실패는 updated_at 누락 같은 다른 이유가 아니다
+		jdbcTemplate.update(insert, userId, TODAY, "BALANCED", "DINNER", 1, 1, now, now);
 
 		assertThatThrownBy(() -> jdbcTemplate.update(insert, userId, TODAY, "KETO", "DINNER", 1, 1, now))
 				.isInstanceOf(DataIntegrityViolationException.class);

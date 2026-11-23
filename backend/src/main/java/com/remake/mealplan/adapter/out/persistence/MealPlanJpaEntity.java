@@ -3,7 +3,7 @@ package com.remake.mealplan.adapter.out.persistence;
 import java.time.LocalDate;
 import java.util.Set;
 
-import com.remake.global.common.BaseCreatedEntity;
+import com.remake.global.common.BaseTimeEntity;
 import com.remake.mealplan.domain.MealPlan;
 import com.remake.mealplan.domain.MealPlanStatus;
 import com.remake.mealplan.domain.MealPurpose;
@@ -24,14 +24,14 @@ import lombok.NoArgsConstructor;
 
 /**
  * meal_plans 테이블. 테이블은 Flyway(V6__create_meal_plans.sql)가 만들고, JPA는 validate로 모양만 검사한다.
- * ERD v4에 updated_at이 없어 BaseCreatedEntity를 상속한다(상태가 바뀌어도 수정 시각은 남기지 않는다).
+ * 생성 작업이 끝나면 status와 generated_days가 바뀌므로 BaseTimeEntity를 상속한다(updated_at).
  * 회원(users)은 연관 관계 없이 ID로만 갖는다. 도메인 객체와 바꾸는 메서드는 from, apply, toDomain이다.
  */
 @Entity
 @Table(name = "meal_plans")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-class MealPlanJpaEntity extends BaseCreatedEntity {
+class MealPlanJpaEntity extends BaseTimeEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

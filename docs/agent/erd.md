@@ -265,6 +265,7 @@ erDiagram
     int generated_days
     varchar status
     timestamp created_at
+    timestamp updated_at
   }
   meal_plan_slots {
     bigint id PK
@@ -607,7 +608,7 @@ One row only per successful recipe or meal-plan generation. Source of the remain
 
 ### 17. `meal_plans` (Meal plans)
 
-One meal-plan generation request and its result. Created as `GENERATING` when API 38 accepts the request; the server job sets `COMPLETED` or `FAILED`. Owner 한윤수 (5 meal plan).
+One meal-plan generation request and its result. Created as `GENERATING` when API 38 accepts the request; the server job sets `COMPLETED` or `FAILED`. One `GENERATING` plan per member (partial unique index `uk_meal_plans_user_generating`). Owner 한윤수 (5 meal plan).
 
 | Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -620,6 +621,7 @@ One meal-plan generation request and its result. Created as `GENERATING` when AP
 | `generated_days` | int |  |  | yes |  | Days actually generated (basic max 5, premium max 7; fewer when ingredients run short). Empty until `COMPLETED` |
 | `status` | varchar |  |  | no | GENERATING | GENERATING/COMPLETED/FAILED |
 | `created_at` | timestamp |  |  | no |  | Created time |
+| `updated_at` | timestamp |  |  | no |  | Time the job set `status` and `generated_days` |
 
 ### 18. `meal_plan_slots` (Meal plan slots)
 
