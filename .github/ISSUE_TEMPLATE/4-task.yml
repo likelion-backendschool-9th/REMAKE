@@ -1,0 +1,60 @@
+name: 설정·문서 작업
+description: 설정·CI·배포·문서에서 바꿀 내용과 완료 기준을 정리합니다.
+title: "[chore] "
+labels: []
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 배경
+      description: 현재 어떤 문제가 있고 왜 바꿔야 하는지 적어 주세요. 제목·유형 라벨은 설정·CI·배포에 [chore]/chore, 문서에 [docs]/docs를 사용합니다. 바뀐 규칙과 어긋난 코드·문구를 바로잡는 작업은 버그 템플릿을 씁니다.
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: 요구사항
+      description: 작업이 끝나면 문서·설정·배포가 어떤 상태여야 하는지, 무엇을 확인하면 완료인지 적습니다.
+    validations:
+      required: true
+  - type: textarea
+    id: decisions
+    attributes:
+      label: 정한 것
+      description: 합의된 설정값·운영 방식·문서 기준과 근거를 적습니다. 미확정 값은 확인할 것으로 구분합니다.
+    validations:
+      required: false
+  - type: textarea
+    id: scope
+    attributes:
+      label: 작업 범위
+      description: 변경할 파일·환경·문서와 이번에 다루지 않을 작업을 구분합니다.
+      placeholder: |
+        - 포함: …
+        - 제외: …(#이슈번호)
+    validations:
+      required: true
+  - type: textarea
+    id: todo
+    attributes:
+      label: 할 일
+      description: 이번 범위에서 바꿀 내용과 필요한 확인 작업을 체크리스트로 적습니다. 문서 작업은 영문·한글 짝 문서도 포함합니다.
+      placeholder: |
+        - [ ] …을 …로 변경한다.
+        - [ ] …환경에서 …결과가 나오는지 확인한다.
+    validations:
+      required: true
+  - type: textarea
+    id: questions
+    attributes:
+      label: 확인할 것
+      description: 필요한 승인·환경 값·선행 작업 등 미해결 항목과 확인할 사람·필요한 시점을 적습니다. 없으면 생략합니다.
+    validations:
+      required: false
+  - type: textarea
+    id: references
+    attributes:
+      label: 참고
+      description: 관련 문서·이슈·PR을 연결합니다. API는 번호 대신 기능명·HTTP 메서드·전체 경로를 적습니다. 후속이면 원인 PR과 follow-up 라벨을 연결하고 영역·파트·우선순위는 라벨로 표시합니다.
+    validations:
+      required: false
