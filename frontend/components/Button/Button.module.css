@@ -14,6 +14,11 @@
   font: var(--font-header);
 }
 
+/* 입력 시트 안 버튼(피그마 높이 44) */
+.button[data-size="md"] {
+  min-height: 2.75rem;
+}
+
 .button[data-tone="danger"] {
   background: var(--color-bg-danger);
 }

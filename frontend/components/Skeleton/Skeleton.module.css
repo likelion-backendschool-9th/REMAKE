@@ -1,0 +1,33 @@
+/* 피그마 7. 목록 행·카드 > 스켈레톤 블록: 120×16, bg/skeleton, radius/xs. 반짝임은 bg/skeleton-highlight */
+.skeleton {
+  display: block;
+  width: var(--skeleton-width, 7.5rem);
+  max-width: 100%;
+  height: var(--skeleton-height, 1rem);
+  border-radius: var(--skeleton-radius, var(--radius-xs));
+  background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--color-bg-skeleton-highlight) 50%,
+      transparent 100%
+    )
+    var(--color-bg-skeleton) no-repeat;
+  background-size: 50% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -100% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--color-bg-skeleton);
+  }
+}

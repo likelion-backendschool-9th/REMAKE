@@ -1,0 +1,52 @@
+/* 피그마 7. 목록 행·카드 > 안내 박스
+   회색: bg/subtle, 여백 12/14, radius/md, 아이콘 14 + Remake/content·text/assist, 간격 6
+   팁: 같은 상자, 위에 "Tips!"(Remake/content-strong·brand/complementary), 본문 Remake/assist
+   한 줄: 상자 없음, 아이콘 14 + Remake/assist·text/assist, 간격 4 */
+.box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+  width: 100%;
+  padding: var(--space-12) var(--space-14);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-assist);
+  font: var(--font-content);
+}
+
+.icon {
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  /* 첫 줄 글자 가운데에 맞춘다(14px × 1.4 = 19.6px 줄) */
+  margin-top: 0.1625rem;
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-line;
+}
+
+.box[data-variant="tip"] {
+  flex-direction: column;
+  font: var(--font-assist);
+}
+
+.tipTitle {
+  color: var(--color-brand-complementary);
+  font: var(--font-content-strong);
+}
+
+.box[data-variant="inline"] {
+  align-items: center;
+  gap: var(--space-4);
+  width: auto;
+  padding: 0;
+  background: none;
+  font: var(--font-assist);
+}
+
+.box[data-variant="inline"] .icon {
+  margin-top: 0;
+}
