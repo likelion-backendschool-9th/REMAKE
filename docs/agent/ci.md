@@ -80,6 +80,7 @@ CI stores the following in the GitHub cache and reuses them in later runs. Cache
 | pnpm | Downloaded packages | When `frontend/pnpm-lock.yaml` changes |
 | Next.js build | `.next/cache` (Turbopack build output) | When `frontend/pnpm-lock.yaml` changes. Otherwise the most recent one is restored |
 | Docker layers | Image build steps | Managed by the Docker build |
+| Gradle in the backend Docker build | The Gradle distribution and libraries in the Dockerfile's cache mount (`/root/.gradle`). Without it, every Docker build downloads them again from Maven Central and can hit its request limit (429) | When `backend/build.gradle`, `backend/settings.gradle`, or the Gradle wrapper version changes. The previous one is restored and only new libraries are downloaded. On that `dev` run, the Dockerfile's build stage runs without the layer cache so Gradle actually fills the cache |
 
 If a cache seems to cause an odd build failure, delete it under the repository's **Actions** tab → **Caches** on the left and run again. Without the cache the build starts from scratch and produces the same result.
 

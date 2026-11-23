@@ -32,7 +32,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ErrorResponse> handleBusiness(BusinessException e) {
-		return respond(ErrorResponse.of(e.getErrorCode(), e.getMessage()));
+		return respond(ErrorResponse.of(e.getErrorCode(), e.getMessage(), e.getDetails()));
 	}
 
 	// JPA @Version이 다른 요청의 수정을 감지함

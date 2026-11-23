@@ -92,7 +92,6 @@
 - `ingredients`: `is_expiration_estimated`, `status`(ACTIVE/FINISHED), `version` 삭제. 수량이 0이면 행 삭제.
 - `ingredient_catalog`(PR #140, V5): `unit` 추가, 자동완성 API는 빼기.
 - 재료 추가 요청에 `unit`이 없어요(서버가 정함). 단위 변경 금지 규칙은 없어졌어요(이름을 바꾸면 단위도 다시 정함).
-- 수량 수정 규칙(#128)은 유지해요. 거절 기준만 `FINISHED`·`ACTIVE` 상태 대신 "사용·버림 기록이 있는 재료"로 바뀌어요.
 - `GET /user/ingredients`의 `q`(검색)는 없어요(피그마에 검색 없음).
 - 에러 코드 `INVALID_UNIT`, `INGREDIENT_ALREADY_FINISHED`, `INGREDIENT_HAS_LOGS`, `CONCURRENT_UPDATE`, `CATALOG_ITEM_NOT_FOUND`는 v2에 없어요.
 
@@ -122,7 +121,7 @@
 - [x] 상태 카드·위치·종류 필터 (API)
 - [ ] 빈 목록 화면 (API는 빈 목록·0 요약을 돌려줌, 화면은 프론트 #99)
 - [ ] 재료명으로 단위 받기, 이름 바꾸면 단위만 다시(기록이 있어도)
-- [ ] 수량 수정 시 `initial_amount`도 같이 변경, 기록이 있으면 `INVALID_INPUT`
-- [ ] 사용·버림 후 수량 0이면 행 삭제, 버린 금액 계산
-- [ ] 기록 있는 재료 삭제
+- [x] 수량 수정 시 `initial_amount`도 같이 변경, 기록이 있으면 `INVALID_INPUT`
+- [x] 사용·버림 후 수량 0이면 행 삭제, 버린 금액 계산
+- [x] 기록 있는 재료 삭제
 - [ ] 카테고리·재료 사전 마이그레이션

@@ -166,7 +166,12 @@ class IngredientServiceTest extends IntegrationTestSupport {
 		assertThat(jdbcTemplate.queryForObject("SELECT initial_amount FROM ingredients WHERE id = ?",
 				java.math.BigDecimal.class, id)).isEqualByComparingTo("5");
 
+		// 쓰거나 버린 기록이 생기면 수량을 고칠 수 없다.
 		jdbcTemplate.update("UPDATE ingredients SET amount = 2 WHERE id = ?", id);
+		jdbcTemplate.update("""
+				INSERT INTO ingredient_logs (user_id, ingredient_id, type, name, amount, unit, created_at)
+				VALUES (?, ?, 'USED', '사과', 3, 'EA', ?)
+				""", OWNER, id, java.time.LocalDateTime.now(clock));
 		assertThatThrownBy(() -> updateUseCase.updateIngredient(new UpdateIngredientCommand(OWNER, id, null, null, null,
 				null, null, new java.math.BigDecimal("9"))))
 				.isInstanceOf(BusinessException.class)
