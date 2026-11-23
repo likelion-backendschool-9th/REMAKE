@@ -21,7 +21,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * recipes 테이블. 테이블은 Flyway(V6__create_recipes.sql)가 만들고, JPA는 validate로 모양만 검사한다.
+ * recipes 테이블. 테이블은 Flyway(V7__create_recipes.sql)가 만들고, JPA는 validate로 모양만 검사한다.
  * 레시피는 고치지 않으므로 created_at만 있다. 재료·단계는 따로 저장하고 어댑터가 합친다.
  */
 @Entity

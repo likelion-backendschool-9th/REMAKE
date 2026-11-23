@@ -166,6 +166,19 @@ public abstract class IntegrationTestSupport {
 				""", Long.class, userId, categoryId(categoryCode), name, expirationDate, price, status.name(), now, now);
 	}
 
+	/**
+	 * 레시피 한 건(빠른 생성, 1인분, 10분)을 넣고 id를 돌려준다. 재료·단계는 넣지 않는다.
+	 * 식단 칸·장바구니·저장 목록처럼 레시피 id만 필요한 테스트가 쓴다(레시피 FK가 있어 없는 번호는 넣을 수 없다).
+	 */
+	protected Long createRecipe(Long userId) {
+		ensureUser(userId);
+		return jdbcTemplate.queryForObject("""
+				INSERT INTO recipes (user_id, source, title, servings, cook_minutes, created_at)
+				VALUES (?, 'QUICK', '테스트 레시피', 1, 10, ?)
+				RETURNING id
+				""", Long.class, userId, LocalDateTime.now(clock));
+	}
+
 	@AfterEach
 	void cleanUp() {
 		awaitEventWrites();
