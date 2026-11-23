@@ -1,10 +1,11 @@
 package com.remake.ingredient.domain;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 /**
- * 소비기한 판정 기준. 임박 기준 3일은 여기 한 곳에만 둔다. 지금은 알림용 기준만 있고,
- * 냉장고 화면의 위험·임박·여유 판정을 만들 때 이 클래스에 함께 두어 SOON_DAYS를 같이 쓴다.
+ * 소비기한 판정 기준. 임박 기준 3일은 여기 한 곳에만 둔다. 알림용 기준과 냉장고 화면의
+ * 위험·임박·여유 판정(dDay, statusOf)이 SOON_DAYS를 같이 쓴다.
  * 알림 쪽은 이 숫자를 모르고, UseCase가 돌려주는 결과만 받는다.
  * <ul>
  *   <li>임박: 오늘부터 3일 뒤까지(오늘이 기한인 D-DAY 포함). 알림의 EXPIRY_SOON</li>
@@ -37,6 +38,19 @@ public final class ExpiryPolicy {
 
 	public static LocalDate expiredYesterday(LocalDate today) {
 		return today.minusDays(1);
+	}
+
+	/** 오늘부터 소비기한까지 남은 일수. 오늘이 기한이면 0, 지났으면 음수 */
+	public static long dDay(LocalDate expirationDate, LocalDate today) {
+		return ChronoUnit.DAYS.between(today, expirationDate);
+	}
+
+	/** 냉장고 화면 상태: 지났거나 D-DAY면 DANGER, D-1~D-3이면 SOON, 그 외 OK */
+	public static ExpiryStatus statusOf(long dDay) {
+		if (dDay <= 0) {
+			return ExpiryStatus.DANGER;
+		}
+		return dDay <= SOON_DAYS ? ExpiryStatus.SOON : ExpiryStatus.OK;
 	}
 
 	/**

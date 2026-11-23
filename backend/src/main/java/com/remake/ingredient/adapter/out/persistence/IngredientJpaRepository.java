@@ -12,6 +12,7 @@ import com.remake.ingredient.domain.ExpiredIngredient;
 import com.remake.ingredient.domain.ExpiredIngredientCount;
 import com.remake.ingredient.domain.ExpiringIngredient;
 import com.remake.ingredient.domain.IngredientStatus;
+import com.remake.ingredient.domain.StorageLocation;
 
 /**
  * 알림 배치가 부르는 조회는 엔티티를 메모리에 올리지 않고 필요한 값만 읽는다(재료가 많아져도 열 몇 개만 읽는다).
@@ -20,6 +21,19 @@ interface IngredientJpaRepository extends JpaRepository<IngredientJpaEntity, Lon
 
 	/** 사용자 본인의 재료만 읽는다. 다른 사용자의 재료는 없는 것과 같다. */
 	Optional<IngredientJpaEntity> findByIdAndUserId(Long id, Long userId);
+
+	@Query("""
+			select i from IngredientJpaEntity i
+			where i.userId = :userId and i.status = :status
+			  and (:storage is null or i.storage = :storage)
+			  and (:categoryId is null or i.categoryId = :categoryId)
+			order by i.expirationDate, i.id
+			""")
+	List<IngredientJpaEntity> search(@Param("userId") Long userId, @Param("status") IngredientStatus status,
+			@Param("storage") StorageLocation storage, @Param("categoryId") Long categoryId);
+
+	@Query("select i.expirationDate from IngredientJpaEntity i where i.userId = :userId and i.status = :status")
+	List<LocalDate> findExpirationDates(@Param("userId") Long userId, @Param("status") IngredientStatus status);
 
 	@Query("""
 			select new com.remake.ingredient.domain.ExpiringIngredient(i.userId, i.id, i.name, i.expirationDate)

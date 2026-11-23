@@ -26,7 +26,7 @@ com.remake
 │       │   └── scheduler       Scheduled jobs (only where needed)
 │       └── out
 │           ├── persistence     JPA entities, repositories, Port implementations
-│           └── ai / ocr / oauth / filestorage / push / mail  External service calls (only where needed)
+│           └── ai / ocr / oauth / filestorage / mail  External service calls (only where needed)
 │
 └── global                      Shared by all features
     ├── error                   ErrorCode, BusinessException, GlobalExceptionHandler
@@ -39,19 +39,18 @@ Feature folders and tables (ERD v3):
 
 | Feature folder | Tables |
 |---|---|
-| `user` | users, user_excluded_ingredients, account_deletion_requests |
+| `user` | users, user_excluded_ingredients, account_deletion_requests, subscriptions, subscription_payments |
 | `auth` | refresh_tokens |
 | `ingredient` | ingredient_categories, ingredient_catalog, ingredients, ingredient_logs |
 | `receipt` | receipts, receipt_items |
-| `recipe` | recipes, recipe_ingredients, recipe_steps, recipe_catalog_items, saved_recipes, recipe_cook_logs |
-| `mealplan` | meal_plans, meal_plan_slots, meal_plan_slot_ingredients |
+| `recipe` | recipes, recipe_ingredients, recipe_steps, saved_recipes |
+| `mealplan` | meal_plans, meal_plan_slots |
 | `cart` | cart_items |
-| `share` | shared_recipes, shared_recipe_photos, shared_recipe_reports, shared_recipe_weekly_ranks |
+| `share` | shared_recipes, shared_recipe_reports, shared_recipe_weekly_ranks |
 | `quota` | usage_logs, generation_quota_grants |
-| `notification` | notifications, push_subscriptions |
-| `event` | events, event_daily_stats |
-| `admin` | admin_audit_logs. Admin screen actions (handling reports, adjusting quota, suspending accounts) call each feature's UseCase |
-| `global/common` | idempotency_keys |
+| `notification` | notifications |
+| `event` | events |
+| `admin` | On hold: admin screens are not in Figma, so there are no admin tables. When designed, admin actions call each feature's UseCase |
 
 Rules:
 
@@ -81,9 +80,8 @@ When a feature needs a connection other than `adapter/in/web` and `adapter/out/p
 | OCR (reading receipt text) | `adapter/out/ocr` | `receipt/adapter/out/ocr` |
 | Social login | `adapter/out/oauth` | `auth/adapter/out/oauth` |
 | File storage (receipt photos, cooking photos) | `adapter/out/filestorage` | `receipt/adapter/out/filestorage` |
-| Web push delivery | `adapter/out/push` | `notification/adapter/out/push` |
 | Social unlink (Kakao unlink / Naver delete) | `adapter/out/oauth` | `user/adapter/out/oauth` |
-| Email delivery (Google account deletion code) | `adapter/out/mail` | `user/adapter/out/mail` |
+| Email delivery (Kakao/Google account deletion code) | `adapter/out/mail` | `user/adapter/out/mail` |
 
 - Schedulers call only `UseCase` interfaces, like controllers. Running a job twice must give the same result; block concurrent duplicates with a DB unique key.
 - Services never call external services directly; they call `port/out` interfaces only. External call code implements those interfaces in the adapter folders above.
@@ -185,8 +183,7 @@ On failure, every API returns this shape. Include `fieldErrors` (`{ field, messa
 - Services only throw `BusinessException(ErrorCode.XXX)`. `GlobalExceptionHandler` in `global/error` builds every error response in one place. Do not build error responses with try-catch in controllers or services.
 - Keep all error codes in the single `global/error/ErrorCode`. Use the same names as the API and error definition documents.
 - 401 (login required) and 403 (forbidden) are rejected in the Security filter chain and never reach `GlobalExceptionHandler`. Return the same shape from `AuthenticationEntryPoint` (401) and `AccessDeniedHandler` (403) in `global/security`.
-- Create, deduct, and confirm POSTs (recipe generation, cook, receipt confirm, etc.) accept an `Idempotency-Key` header. When the same key arrives again, do not process it; return the first response (24 hours, `idempotency_keys` table). One shared filter in `global/common` handles this, not each feature.
-  - Endpoints: `POST /user/recipes/generate`, `/user/meal-plans/generate`, `/user/receipts`, `/user/ingredients/{id}/consume`, `/user/recipes/{id}/cook`. The frontend creates one key per user action and reuses it on retry.
+- There is no `Idempotency-Key` header and no duplicate-request key table. The frontend disables buttons such as register and deduct until the request ends.
 - Authentication is decided in [#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) (option A): the access (30 min) and refresh (14 d) JWTs are both HttpOnly cookies (`Secure; SameSite=Lax`). Read the token from the cookie, not the `Authorization` header. Login and refresh responses do not include `accessToken`.
 
 ### Example API
@@ -208,25 +205,26 @@ Build new APIs by following the ingredient category list (`GET /api/v1/user/ingr
 
 - Scope every query to the token owner. Another user's resource returns 404 (`*_NOT_FOUND`), not 403, so its existence is not leaked.
 - Generate a `traceId` per request, put it in the MDC log context, and return it in error responses. Never return stack traces, SQL, or provider error text.
-- Time limits: normal requests 10 s, OCR 30 s, AI generation 60 s. Convert upstream timeouts to `OCR_TIMEOUT` / `AI_TIMEOUT` and provider errors to `OCR_UPSTREAM_ERROR` / `AI_UPSTREAM_ERROR`.
+- Time limits: normal requests 10 s, OCR 30 s, AI recipe generation 60 s (meal-plan generation replies 202 and runs as a server job; its limit is (open, #144)). Convert upstream timeouts to `OCR_TIMEOUT` / `AI_TIMEOUT` and provider errors to `OCR_UPSTREAM_ERROR` / `AI_UPSTREAM_ERROR`.
 - Business rules (limits, units, expiry states, receipt retention) are in [`spec/domain-rules.md`](spec/domain-rules.md). Table-level rules (optimistic lock, deletion, retention) are in the [ERD](erd.md).
 
 ## AI generation
 
-- Call the LLM through one `port/out` interface implemented in `adapter/out/ai`. Its input is IDs and enums from the request plus DB data (fridge ingredients, excluded catalog IDs). **Never put text the user typed into a prompt.**
+- Call the LLM through one `port/out` interface implemented in `adapter/out/ai`. Its input is IDs and enums from the request plus DB data (fridge ingredients, excluded allergen codes). **Never put text the user typed into a prompt.**
 - Ask for structured JSON and validate it: schema, unit codes from the 14-unit list, non-empty steps. Invalid output → `AI_INVALID_RESPONSE`; do not store it and do not count it toward the quota.
-- With the "recipe supplement" setting ON, recipes may use ingredients that are not in the fridge. Request without excluded (allergy) ingredients; if the result still contains one, set `allergenWarning`.
-- Meal plans: first generate menu names and per-slot ingredients (`meal_plan_slot_ingredients`), compute shortages with SQL `SUM`, generate only as many days as the ingredients allow (max 5 for BASIC, 7 for PREMIUM; release 1 applies BASIC), then add the shortages to the cart. Generate a slot's detail recipe only when the user opens the slot.
+- With the "recipe supplement" setting ON, recipes may use ingredients that are not in the fridge. With it OFF, use only fridge ingredients; too few → `NO_INGREDIENTS`. Request without excluded (allergy) ingredients.
+- Meal plans: every slot gets a full recipe at generation (no lazy slot detail). Do not allocate the same ingredient amount to several meals (based on each slot's recipe ingredients; no per-slot planned-ingredient table). Generate only as many days as the ingredients allow (max 5 for BASIC, 7 for PREMIUM), then add the shortages to the cart.
 - Only successful generations count toward the quota. Limits are in [`spec/domain-rules.md`](spec/domain-rules.md).
 
 ## Scheduled jobs (Korea time)
 
 | Job | When | What |
 | --- | --- | --- |
-| Expiry notifications | Daily 09:00 | `EXPIRY_SOON` (3 days or less, one per ingredient) and `EXPIRED` (one per day) with web push. Skip users with notifications off. Emit `ingredient_expired` and `notification_sent` |
-| Weekly ranking and reward | Monday 00:00 | Fix last week's TOP 100 in `shared_recipe_weekly_ranks` and give the authors of the top 3 recipes +10/+6/+3 recipe generations (valid one month), in one transaction. Rules in the [ERD](erd.md) §24. Emit `weekly_reward_granted` |
+| Expiry notifications | Daily 09:00 | `EXPIRY_SOON` (3 days or less, one per ingredient) and `EXPIRED` (one per day) (in-app only, no device push). Skip users with notifications off. Emit `ingredient_expired` and `notification_sent` |
+| Weekly ranking and reward | Monday 00:00 | Fix last week's TOP 100 in `shared_recipe_weekly_ranks` and give the authors of the top 3 recipes +10/+6/+3 recipe generations (valid one month), in one transaction. Rules in the [ERD](erd.md) table 22. Emit `weekly_reward_granted` |
 | Receipt cleanup | Daily early morning | Delete receipts older than 6 months by purchase date, with images and items |
-| Event aggregation | Daily early morning | `events` → `event_daily_stats`; delete raw events older than 180 days |
+| Subscription auto-payment | Daily early morning | Charge ACTIVE subscriptions whose next billing date is today with the billingKey and extend one month; end CANCELED ones (`users.plan` BASIC). Failure handling is open (ask the user) |
+| Event retention | Daily early morning | Delete raw events older than 180 days. No daily aggregation table |
 
 - Daily and monthly quota resets need no job: remaining counts are computed from `usage_logs`. Other cleanups are listed in the ERD implementation rules.
 
@@ -246,6 +244,6 @@ The event contract is [`spec/events.md`](spec/events.md). Each API's events are 
 
 How to write tests: [backend testing](backend-testing.md).
 
-- Unit tests for business rules: quota counting (success only, concurrent `PENDING`), unit conversion (same kind only; TBSP 15 ml, TSP 5 ml, CUP 200 ml; PINCH and TO_TASTE never deducted), expiry status, meal-plan ingredient allocation and shortage, ranking and `rankChange`, receipt retention.
+- Unit tests for business rules: quota counting (success only, concurrent requests per member), unit conversion (same kind only; TBSP 15 ml, TSP 5 ml, CUP 200 ml; PINCH and TO_TASTE never deducted), expiry status, meal-plan ingredient allocation and shortage, ranking and `rankChange`, duplicate receipts, receipt retention.
 - Mock the OCR and LLM adapters and cover the timeout and invalid-response cases.
-- Admin endpoints: test 403 for non-admins and that every admin action writes `admin_audit_logs`.
+- Admin endpoints (on hold until admin screens exist): test 403 for non-admins.

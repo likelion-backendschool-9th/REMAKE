@@ -1,1123 +1,970 @@
-# Remake ERD and Table Definition v3
+# Remake ERD and Table Definition v4 (Figma-based)
 
 > Korean version for developers: [`docs/developer/erd.md`](../developer/erd.md)
 
-2026-11-19 · Kim Jongsu (updated 2026-11-20 to policy v3.1: see the "11/20 decision" rows below)
+2026-11-22 · 이준호. Source: Notion "ERD v4" (Figma-based, with a screen-evidence column). This file carries the same content for development; see the source for the Figma node evidence.
 
-## Changes from v2
-
-| Area | What changed | Why |
-| --- | --- | --- |
-| New table | `recipe_catalog_items` (replaces `recipe_ingredients.catalog_id`) | Grouped items such as "crustaceans" do not map to one recipe ingredient line, so allergy warnings were missed |
-| New table | `meal_plan_slot_ingredients` (replaces the `meal_plan_slots.planned_ingredients` JSON) | Count duplicate assignments in SQL and clean up links when an ingredient is deleted |
-| New table | `idempotency_keys` | Storage for the API `Idempotency-Key` rule (in the DB, no Redis) |
-| Saving a shared recipe | Saving creates a copy; `saved_recipes.recipe_id` points to the copy. `recipes.origin` gains SHARED_COPY | API v3 says "copy". Pointing at the original would deduct the creator's fridge ingredients when someone else cooks it |
-| 11/17 issues | `users.provider_user_id` set to null on withdrawal, `refresh_tokens.token_hash` UK, `usage_logs.status` PENDING, `ingredient_logs.unit` added | Re-signup and de-identification, duplicate tokens, double clicks exceeding the quota, log meaning changing when a unit changes |
-| Ingredient deletion | Cannot delete an ingredient that has use/discard logs (add `INGREDIENT_HAS_LOGS` to the API) | Deleting it would change the wasted-money statistics |
-| Types and timestamps | `datetime` → `timestamp`. Every table has `created_at`; only the 7 updated tables have `updated_at` | PostgreSQL has no `datetime`. Java `LocalDateTime` |
-| Added columns | `ingredients.version`, `saved_recipes.is_favorite` (add a star on/off API), `generation_quota_grants.shared_recipe_id` | Concurrent update error, Figma star, showing the rewarded recipe |
-| Removed columns | `recipes.description`, `recipes.difficulty` | Not in Figma or the API |
-| NULL and defaults | `recipes.mode` and `receipts.image_key` nullable, `meal_plan_slots.menu_name` NOT NULL, `notification_enabled` default true, `ingredients.unit` default EA | Detail and copied recipes have no mode, images are deleted after one year, alerts work right after signup |
-| Events | `events.user_id` has no foreign key and stays after withdrawal | Keeps past statistics. Personal identifiers are cleared in `users` |
-| 11/20 decision | New table `shared_recipe_weekly_ranks` (32 tables) | The ranking shows the change from last week (`rankChange`), so the weekly job keeps last week's final TOP 100 |
-| 11/20 decision | `users.plan` (BASIC/PREMIUM) added | Limits differ by plan. Release 1 applies BASIC only (premium is UI only) |
-| 11/20 decision | `receipts.status` (SCANNED/CONFIRMED) removed. Only confirmed receipts are stored; `receipts.image_key` NOT NULL | The scan API only analyzes and stores nothing. The confirm API saves the receipt, items, and fridge ingredients in one transaction |
-| 11/20 decision | `receipts.store_code` added | Store icon (15 codes, `ETC` fallback) |
-| 11/20 decision | `receipts.total_price` removed; `receipts` and `receipt_items` drop `updated_at` and extend `BaseCreatedEntity` (5 tables now have `updated_at`) | Spending is always the sum of food items, so the printed total is never used. A confirmed receipt is never edited |
-| 11/20 decision | Receipt retention: 6 months by purchase date, then deleted with images and items. The 7-day unconfirmed cleanup and 1-year image retention are removed | Spending comparison uses the last 6 months. Nothing unconfirmed is stored |
-| 11/20 decision | `receipt_items` stores food items only; `category_id` NOT NULL | OCR returns food items only (non-food lines are filtered out) |
-| 11/20 decision | `notifications.receipt_id` and type `RECEIPT_DONE` removed (EXPIRY_SOON/EXPIRED only) | OCR is synchronous, so there is no "analysis finished" notification |
-| 11/20 decision | `generation_quota_grants.expires_at` added (one month after the grant) | Weekly rewards must be used within one month |
-| 11/20 decision | OCR counting in `usage_logs` removed from the remaining-count rule | Receipt scans have no limit. OCR rows are kept for monitoring. Decide again if AI is added to OCR |
-| 11/20 decision | `shared_recipes.save_count` is the cumulative count for the detail screen; weekly popularity counts `saved_recipes.saved_at` | The ranking is "saves this week" |
-| 11/20 decision | `cart_items.meal_plan_slot_id` added (nullable FK, `ON DELETE SET NULL`; [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46)) | Identify items by source slot so meal-plan overwrite removes only replaced slots' cart items and preserves those from untouched slots |
-| 11/20 decision | Account deletion: **Kakao/Naver use social re-authentication** (reuse OAuth callback, then unlink; unlink failure does not block service deletion). **Google uses a 6-digit email code** (`account_deletion_requests`). Identify by `(provider, provider_user_id)` only ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). Soft-delete unchanged (`deleted_at`, clear PII) | Kakao/Naver do not guarantee email but can force re-login. Google always gives a verified email but cannot force re-login (`auth_time` stays old) |
+- 26 tables: the 25 Figma-based tables + the unit dictionary `ingredient_catalog` (11/22 decision; internal reference data with no screen).
+- Admin screens are not in Figma, so there are no admin-only columns or tables (only `users.role`, report `status`, and shared post `status`).
+- Notifications are in-app only (no device push).
 
 ## Common rules
 
-- **Types**: quantity `numeric(10,3)`, money `bigint` (won), timestamps `timestamp` (Korea time, Java `LocalDateTime`), JSON `jsonb`.
-- **Timestamp columns**: every row the app creates has `created_at` (`BaseCreatedEntity`). Only tables whose values are updated also have `updated_at` (`BaseTimeEntity`). The server `Clock` sets the times; do not use `DEFAULT now()`.
-- **Reference data**: `ingredient_categories` and `ingredient_catalog` are filled only by Flyway migrations.
-
-## ERD diagrams
-
-The Mermaid code blocks below render as diagrams on GitHub and in Notion. When you change a table, update the diagram too.
-
-### Overview
-
-```mermaid
-erDiagram
-  users ||--o{ user_excluded_ingredients : ""
-  ingredient_catalog ||--o{ user_excluded_ingredients : ""
-  users ||--o{ refresh_tokens : ""
-  users ||--o{ account_deletion_requests : ""
-  ingredient_categories ||--o{ ingredient_catalog : ""
-  users ||--o{ ingredients : ""
-  ingredient_categories ||--o{ ingredients : ""
-  receipt_items |o--o| ingredients : ""
-  ingredients ||--o{ ingredient_logs : ""
-  recipe_cook_logs |o--o{ ingredient_logs : ""
-  users ||--o{ receipts : ""
-  receipts ||--o{ receipt_items : ""
-  ingredient_categories ||--o{ receipt_items : ""
-  users ||--o{ recipes : ""
-  recipes ||--o{ recipe_ingredients : ""
-  ingredients |o--o{ recipe_ingredients : ""
-  recipes ||--o{ recipe_steps : ""
-  recipes ||--o{ recipe_catalog_items : ""
-  ingredient_catalog ||--o{ recipe_catalog_items : ""
-  users ||--o{ saved_recipes : ""
-  recipes ||--o{ saved_recipes : ""
-  shared_recipes |o--o{ saved_recipes : ""
-  users ||--o{ recipe_cook_logs : ""
-  recipes ||--o{ recipe_cook_logs : ""
-  users ||--o{ meal_plans : ""
-  users ||--o{ meal_plan_slots : ""
-  meal_plans |o--o{ meal_plan_slots : ""
-  recipes |o--o{ meal_plan_slots : ""
-  meal_plan_slots ||--o{ meal_plan_slot_ingredients : ""
-  ingredients |o--o{ meal_plan_slot_ingredients : ""
-  users ||--o{ cart_items : ""
-  recipes |o--o{ cart_items : ""
-  meal_plans |o--o{ cart_items : ""
-  meal_plan_slots |o--o{ cart_items : ""
-  recipes ||--o| shared_recipes : ""
-  shared_recipes ||--o{ shared_recipe_photos : ""
-  shared_recipes ||--o{ shared_recipe_reports : ""
-  shared_recipes ||--o{ shared_recipe_weekly_ranks : ""
-  users ||--o{ shared_recipe_reports : "신고자"
-  users |o--o{ shared_recipe_reports : "처리"
-  users ||--o{ generation_quota_grants : "받음"
-  users |o--o{ generation_quota_grants : "조정"
-  shared_recipes |o--o{ generation_quota_grants : ""
-  users ||--o{ usage_logs : ""
-  generation_quota_grants |o--o{ usage_logs : ""
-  users ||--o{ notifications : ""
-  ingredients |o--o{ notifications : ""
-  users ||--o{ push_subscriptions : ""
-  users ||--o{ admin_audit_logs : ""
-  users ||--o{ idempotency_keys : ""
-  events {
-    bigint id PK
-  }
-  event_daily_stats {
-    bigint id PK
-  }
-```
-
-Tables: relationships of all 32 tables (columns omitted)
-
-### Members and settings
-
-```mermaid
-erDiagram
-  users ||--o{ user_excluded_ingredients : ""
-  ingredient_catalog ||--o{ user_excluded_ingredients : ""
-  users ||--o{ refresh_tokens : ""
-  users ||--o{ account_deletion_requests : ""
-  users ||--o{ ingredients : ""
-  users ||--o{ receipts : ""
-  users ||--o{ recipes : ""
-  users ||--o{ saved_recipes : ""
-  users ||--o{ recipe_cook_logs : ""
-  users ||--o{ meal_plans : ""
-  users ||--o{ meal_plan_slots : ""
-  users ||--o{ cart_items : ""
-  users ||--o{ shared_recipe_reports : "신고자"
-  users |o--o{ shared_recipe_reports : "처리"
-  users ||--o{ generation_quota_grants : "받음"
-  users |o--o{ generation_quota_grants : "조정"
-  users ||--o{ usage_logs : ""
-  users ||--o{ notifications : ""
-  users ||--o{ push_subscriptions : ""
-  users ||--o{ admin_audit_logs : ""
-  users ||--o{ idempotency_keys : ""
-  users {
-    bigint id PK "ID"
-    string provider "NAVER/KAKAO/GOOGLE"
-    string provider_user_id UK "Social provider user ID. UK(provider + th…"
-    string email "For sending the account deletion code. Nu…"
-    string role "USER/ADMIN"
-    string status "ACTIVE/SUSPENDED"
-    string plan "BASIC/PREMIUM. Release 1 applies BASIC…"
-    int household_size "Household size. Null if skipped"
-    boolean onboarding_completed "Whether onboarding was finished or skipped"
-    boolean recipe_supplement_enabled "Recipe ingredient supplement (setting). W…"
-    boolean notification_enabled "Receive notifications (setting)"
-    string last_meal_purpose "Last chosen meal plan purpose"
-    timestamp created_at "Signup time"
-    timestamp updated_at "Update time"
-    timestamp deleted_at "Withdrawal time"
-  }
-  user_excluded_ingredients {
-    bigint user_id PK, FK "Member"
-    bigint catalog_id PK, FK "Ingredient to exclude (ingredient diction…"
-  }
-  refresh_tokens {
-    bigint id PK "ID"
-    bigint user_id FK "Member"
-    string token_hash UK "Token hash. Looked up on every refresh"
-    timestamp expires_at "Expiry time (issued + 14 days)"
-    timestamp revoked_at "Logout time"
-    timestamp created_at "Issue time"
-  }
-  account_deletion_requests {
-    bigint id PK "ID"
-    bigint user_id FK "Member"
-    string code_hash "Code hash (the code itself is never store…"
-    timestamp expires_at "Expiry time (5 minutes after sending)"
-    int attempts "Input attempts (locked after more than 5)"
-    timestamp verified_at "Verification time"
-    timestamp created_at "Send time (used for the resend interval c…"
-  }
-```
-
-Tables: users, user_excluded_ingredients, refresh_tokens, account_deletion_requests
-
-### Fridge and receipts
-
-```mermaid
-erDiagram
-  ingredient_catalog ||--o{ user_excluded_ingredients : ""
-  ingredient_categories ||--o{ ingredient_catalog : ""
-  users ||--o{ ingredients : ""
-  ingredient_categories ||--o{ ingredients : ""
-  receipt_items |o--o| ingredients : ""
-  ingredients ||--o{ ingredient_logs : ""
-  recipe_cook_logs |o--o{ ingredient_logs : ""
-  users ||--o{ receipts : ""
-  receipts ||--o{ receipt_items : ""
-  ingredient_categories ||--o{ receipt_items : ""
-  ingredients |o--o{ recipe_ingredients : ""
-  ingredient_catalog ||--o{ recipe_catalog_items : ""
-  ingredients |o--o{ meal_plan_slot_ingredients : ""
-  ingredients |o--o{ notifications : ""
-  ingredient_categories {
-    bigint id PK "ID"
-    string code UK "12 codes such as MEAT (Appendix B)"
-    string name "Name (as on the Figma 'ingredient type' s…"
-    string image_url "Category image URL"
-    string default_storage "FRIDGE/FREEZER/PANTRY"
-    string default_unit "Default unit on the add-ingredient screen"
-    int default_shelf_life_days "Default days for estimating expiration (v…"
-  }
-  ingredient_catalog {
-    bigint id PK "ID"
-    bigint category_id FK "Category"
-    string name UK "Ingredient name for autocomplete"
-    int shelf_life_days "Null means the category default"
-    boolean is_common_exclusion "Common allergy item shown at the top of t…"
-  }
-  ingredients {
-    bigint id PK "ID"
-    bigint user_id FK "Member"
-    bigint category_id FK "Category"
-    bigint receipt_item_id FK, UK "Set when registered from a receipt. Null …"
-    string name "Ingredient name"
-    string storage "FRIDGE/FREEZER/PANTRY"
-    date expiration_date "Expiration date"
-    boolean is_expiration_estimated "Whether the date is an estimate. False on…"
-    decimal amount "Remaining amount"
-    decimal initial_amount "Initial amount (for the wasted-money calc…"
-    string unit "One of the 9 fridge units (G, KG, ML, L, …"
-    bigint price "Purchase price (won). Optional for manual…"
-    string status "ACTIVE/FINISHED. FINISHED when the amount…"
-    bigint version "Concurrent update protection (JPA @Versio…"
-    timestamp created_at "Registration time"
-    timestamp updated_at "Update time"
-  }
-  ingredient_logs {
-    bigint id PK "ID"
-    bigint ingredient_id FK "Fridge ingredient"
-    bigint cook_log_id FK "Cook log when deducted after cooking. Nul…"
-    string type "USED/DISCARDED"
-    decimal amount "Deducted amount"
-    string unit "The ingredient's unit at that time (keeps…"
-    bigint cost_amount "Money at that time (price × deducted amou…"
-    timestamp created_at "Log time"
-  }
-  receipts {
-    bigint id PK "ID"
-    bigint user_id FK "Member"
-    date purchased_on "Purchase date (basis of the monthly total…"
-    string store_name "Store"
-    string store_code "Store icon code (15 codes, ETC fallback)"
-    string image_key "Storage path. Deleted with the receipt"
-    timestamp created_at "Save (confirm) time"
-  }
-  receipt_items {
-    bigint id PK "ID"
-    bigint receipt_id FK "Receipt. Deleted together with the receipt"
-    bigint category_id FK "Category (food items only)"
-    string name "Item name"
-    decimal amount "Amount. 1 if unknown"
-    string unit "One of the 9 fridge units"
-    bigint price "Item price (won)"
-    string storage "FRIDGE/FREEZER/PANTRY"
-    date expiration_date "Expiration date"
-    boolean is_expiration_estimated "Whether the date is an estimate"
-    timestamp created_at "Creation time"
-  }
-```
-
-Tables: ingredient_categories, ingredient_catalog, ingredients, ingredient_logs, receipts, receipt_items
-
-### Recipes, meal plans, cart, cook logs
-
-```mermaid
-erDiagram
-  recipe_cook_logs |o--o{ ingredient_logs : ""
-  users ||--o{ recipes : ""
-  recipes ||--o{ recipe_ingredients : ""
-  ingredients |o--o{ recipe_ingredients : ""
-  recipes ||--o{ recipe_steps : ""
-  recipes ||--o{ recipe_catalog_items : ""
-  ingredient_catalog ||--o{ recipe_catalog_items : ""
-  users ||--o{ saved_recipes : ""
-  recipes ||--o{ saved_recipes : ""
-  shared_recipes |o--o{ saved_recipes : ""
-  users ||--o{ recipe_cook_logs : ""
-  recipes ||--o{ recipe_cook_logs : ""
-  users ||--o{ meal_plans : ""
-  users ||--o{ meal_plan_slots : ""
-  meal_plans |o--o{ meal_plan_slots : ""
-  recipes |o--o{ meal_plan_slots : ""
-  meal_plan_slots ||--o{ meal_plan_slot_ingredients : ""
-  ingredients |o--o{ meal_plan_slot_ingredients : ""
-  users ||--o{ cart_items : ""
-  recipes |o--o{ cart_items : ""
-  meal_plans |o--o{ cart_items : ""
-  meal_plan_slots |o--o{ cart_items : ""
-  recipes ||--o| shared_recipes : ""
-  recipes {
-    bigint id PK "ID"
-    bigint creator_id FK "Creator (for a copy, the member who saved…"
-    string title "Title"
-    int servings "Servings"
-    int cook_minutes "Cooking time (minutes)"
-    string tips "Tips! text"
-    string origin "RECIPE_GEN (recipe generation)/MEAL_DETAI…"
-    string mode "QUICK/CUSTOM. Only when origin is RECIPE_…"
-    jsonb custom_options "Custom choices (ingredients, taste, cooki…"
-    boolean supplement_used "Whether it was generated with ingredient …"
-    timestamp created_at "Creation time"
-  }
-  recipe_ingredients {
-    bigint id PK "ID"
-    bigint recipe_id FK "Recipe"
-    bigint ingredient_id FK "Fridge ingredient intended at generation.…"
-    string name "Ingredient name"
-    decimal amount "Null means 'a little'"
-    string unit "One of the 14 recipe units (Appendix A)"
-    int sort_order "Order"
-    timestamp created_at "Creation time"
-  }
-  recipe_steps {
-    bigint id PK "ID"
-    bigint recipe_id FK "Recipe. UK(recipe_id + step_no)"
-    int step_no "Step number"
-    string content "Text"
-    timestamp created_at "Creation time"
-  }
-  recipe_catalog_items {
-    bigint recipe_id PK, FK "Recipe"
-    bigint catalog_id PK, FK "Excluded-ingredient item the recipe conta…"
-  }
-  saved_recipes {
-    bigint id PK "ID"
-    bigint user_id FK "Member"
-    bigint recipe_id FK "Saved recipe. My copy for a shared recipe…"
-    bigint shared_recipe_id FK "The shared post when a shared recipe was …"
-    boolean is_favorite "Favorite (star). The ★ in Figma's saved l…"
-    timestamp saved_at "Save time (latest-saved order, weekly ran…"
-  }
-  recipe_cook_logs {
-    bigint id PK "ID"
-    bigint user_id FK "Member who cooked"
-    bigint recipe_id FK "Recipe"
-    int servings "Servings cooked"
-    string feedback "Recommend this recipe LIKE/DISLIKE (behav…"
-    timestamp cooked_at "Cooking time"
-  }
-  meal_plans {
-    bigint id PK "ID"
-    bigint user_id FK "Member"
-    date start_date "Start date"
-    string purpose "BALANCED/DIET/HIGH_PROTEIN/SIMPLE/SAVING"
-    string meal_types "Meals to include (from BREAKFAST,LUNCH,DI…"
-    int servings "Number of people"
-    int generated_days "Days actually generated (1–7)"
-    timestamp created_at "Creation time"
-  }
-  meal_plan_slots {
-    bigint id PK "ID"
-    bigint user_id FK "Member"
-    bigint meal_plan_id FK "The meal plan for a generated slot; null …"
-    date slot_date "Date"
-    string meal_type UK "BREAKFAST/LUNCH/DINNER. UK(user_id + slot…"
-    string menu_name "Menu name (the recipe title for a manual …"
-    bigint recipe_id FK "Null means a menu-name-only slot (tapping…"
-    string source "AI (meal plan generation)/MANUAL (added m…"
-    timestamp created_at "Creation time"
-    timestamp updated_at "Update time (when detail generation fills…"
-  }
-  meal_plan_slot_ingredients {
-    bigint id PK "ID"
-    bigint slot_id FK "Meal plan slot. Deleted with the slot"
-    bigint ingredient_id FK "Assigned fridge ingredient. Null for a mi…"
-    string name "Ingredient name"
-    decimal amount "Amount"
-    string unit "Unit"
-    timestamp created_at "Creation time"
-  }
-  cart_items {
-    bigint id PK "ID"
-    bigint user_id FK "Member"
-    bigint recipe_id FK "Recipe the group is based on (null for a …"
-    bigint meal_plan_id FK "Set when it came from a meal plan"
-    bigint meal_plan_slot_id FK "Source slot; nullable, ON DELETE SET NULL"
-    string group_name "Group name on screen (recipe title or men…"
-    string name "Ingredient name"
-    decimal amount "Amount (editable)"
-    string unit "Unit"
-    timestamp created_at "Added time"
-    timestamp updated_at "Amount change time"
-  }
-```
-
-Tables: recipes, recipe_ingredients, recipe_steps, recipe_catalog_items, saved_recipes, recipe_cook_logs, meal_plans, meal_plan_slots, meal_plan_slot_ingredients, cart_items
-
-### Shared space, quota, notifications
-
-```mermaid
-erDiagram
-  shared_recipes |o--o{ saved_recipes : ""
-  recipes ||--o| shared_recipes : ""
-  shared_recipes ||--o{ shared_recipe_photos : ""
-  shared_recipes ||--o{ shared_recipe_reports : ""
-  shared_recipes ||--o{ shared_recipe_weekly_ranks : ""
-  users ||--o{ shared_recipe_reports : "신고자"
-  users |o--o{ shared_recipe_reports : "처리"
-  users ||--o{ generation_quota_grants : "받음"
-  users |o--o{ generation_quota_grants : "조정"
-  shared_recipes |o--o{ generation_quota_grants : ""
-  users ||--o{ usage_logs : ""
-  generation_quota_grants |o--o{ usage_logs : ""
-  users ||--o{ notifications : ""
-  ingredients |o--o{ notifications : ""
-  users ||--o{ push_subscriptions : ""
-  shared_recipes {
-    bigint id PK "ID"
-    bigint recipe_id FK, UK "Original shared recipe. A recipe can be s…"
-    string title "Shared title (required)"
-    string status "VISIBLE/HIDDEN/DELETED"
-    int save_count "Cumulative save count (detail screen)"
-    timestamp created_at "Share time"
-    timestamp updated_at "Status or save count change time"
-  }
-  shared_recipe_photos {
-    bigint id PK "ID"
-    bigint shared_recipe_id FK "Shared recipe"
-    string image_key "Storage path"
-    int sort_order "Order (at least one photo required)"
-    timestamp created_at "Upload time"
-  }
-  shared_recipe_reports {
-    bigint id PK "ID"
-    bigint shared_recipe_id FK "Shared recipe"
-    bigint reporter_id FK, UK "Reporter. UK(shared_recipe_id + reporter_…"
-    string reason "PHOTO/OFFENSIVE/DANGEROUS/OTHER"
-    string reason_detail "Text written for OTHER"
-    string status "PENDING/DONE"
-    string result "HIDDEN/DELETED/DISMISSED (no problem)"
-    bigint handled_by FK "Admin who handled it"
-    timestamp handled_at "Handling time"
-    timestamp created_at "Report time"
-  }
-  shared_recipe_weekly_ranks {
-    bigint id PK "ID"
-    date week_start "Ranking week (Monday). UK(week_start + r…"
-    bigint shared_recipe_id FK "Shared recipe"
-    int rank_no "Rank 1–100"
-    int save_count "Saves in that week"
-    timestamp created_at "Save time (weekly job)"
-  }
-  generation_quota_grants {
-    bigint id PK "ID"
-    bigint user_id FK "Recipient"
-    int amount "Granted count (negative when an admin red…"
-    int remaining "Remaining count"
-    timestamp expires_at "Expiry (grant time + 1 month)"
-    string reason "WEEKLY_REWARD/ADMIN"
-    date week_start "Reward week"
-    int rank_no UK "1–3. UK(week_start + rank_no), so a rerun…"
-    bigint shared_recipe_id FK "Rewarded shared recipe (admin ranking and…"
-    bigint admin_id FK "Adjusting admin"
-    string memo "Adjustment reason"
-    timestamp created_at "Grant time"
-  }
-  usage_logs {
-    bigint id PK "ID"
-    bigint user_id FK "Member"
-    string type "RECIPE/MEAL_PLAN/MEAL_DETAIL/OCR"
-    string status "PENDING/SUCCESS/FAILED. Insert PENDING be…"
-    string error_code "Failure code"
-    int duration_ms "Response time (ms)"
-    bigint grant_id FK "The grant used, if a reward or adjustment…"
-    timestamp created_at "Call start time"
-  }
-  notifications {
-    bigint id PK "ID"
-    bigint user_id FK "Member"
-    bigint ingredient_id FK "Ingredient of an expiring alert. Null aft…"
-    string type "EXPIRY_SOON/EXPIRED"
-    string dedupe_key UK "UK(user_id + this). Example: EXPIRY_SOON:…"
-    string title "Title"
-    string body "Body"
-    timestamp read_at "Read time"
-    timestamp created_at "Notification time (today / N days ago gro…"
-  }
-  push_subscriptions {
-    bigint id PK "ID"
-    bigint user_id FK "Member"
-    string endpoint UK "Push endpoint"
-    string p256dh_key "Push encryption public key"
-    string auth_key "Push auth key"
-    timestamp created_at "Subscription time"
-  }
-```
-
-Tables: shared_recipes, shared_recipe_photos, shared_recipe_reports, shared_recipe_weekly_ranks, generation_quota_grants, usage_logs, notifications, push_subscriptions
-
-### Events, admin, common
-
-```mermaid
-erDiagram
-  users ||--o{ admin_audit_logs : ""
-  users ||--o{ idempotency_keys : ""
-  events {
-    bigint id PK "ID"
-    string event_name "Event name (snake_case name from the even…"
-    bigint user_id "Internal user ID. No foreign key. Kept af…"
-    string session_id "App session"
-    string source "CLIENT/SERVER"
-    string screen "Screen code"
-    jsonb properties "Event properties. No personal data such a…"
-    string platform "PWA/TWA/WEB"
-    string app_version "App version"
-    boolean is_seed "Whether it is a demo seed event"
-    timestamp occurred_at "Time the action happened (the frontend's …"
-    timestamp created_at "Insert time"
-  }
-  event_daily_stats {
-    date stat_date PK "Aggregate date (Korea time)"
-    string event_name PK "Event name"
-    boolean is_seed PK "Whether it aggregates demo data"
-    bigint event_count "Event count"
-    int user_count "Number of users"
-  }
-  admin_audit_logs {
-    bigint id PK "ID"
-    bigint admin_id FK "Acting admin"
-    string action "HIDE_RECIPE/DELETE_RECIPE/DISMISS_REPORT/…"
-    string target_type "SHARED_RECIPE/REPORT/USER"
-    bigint target_id "Target ID"
-    jsonb detail "Reason and before/after values"
-    timestamp created_at "Action time"
-  }
-  idempotency_keys {
-    bigint user_id PK, FK "Requesting member (the same key is separa…"
-    string idempotency_key PK "Key sent by the frontend in the header"
-    string request_path "API of the first request. A different API…"
-    int response_status "HTTP status of the first response"
-    jsonb response_body "Body of the first response (null for a re…"
-    timestamp created_at "First request time. Deleted by the cleanu…"
-  }
-```
-
-Tables: events, event_daily_stats, admin_audit_logs, idempotency_keys
+- **Types**: amounts `numeric(10,3)`, money `bigint` (KRW), time `timestamp` (Korea time, Java `LocalDateTime`), JSON `jsonb`.
+- **Time columns**: every row the app creates has `created_at` (`BaseCreatedEntity`). Only tables whose values change also have `updated_at` (`BaseTimeEntity`). The server `Clock` sets times; do not use `DEFAULT now()`.
+- **Reference data**: `ingredient_categories` and `ingredient_catalog` are inserted only by Flyway migrations. Never edit a merged migration file; add a new numbered one.
+- **Code values**: Appendix C. Enum names equal the code values.
 
 ## Table list
 
-| No. | Table | Korean name | Description | Feature folder | Base class | Columns |
+| No. | Table | Name | Description | Area | Owner | Columns |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | users | 회원 | Social-login members. Admins are told apart by role. Also holds settings screen values (household size, notifications, ingredient supplement) and the plan (BASIC/PREMIUM) | user | BaseTimeEntity | 15 |
-| 2 | user_excluded_ingredients | 제외 재료(알레르기) | "Ingredients to exclude from recipes" chosen in onboarding and settings (N:N between members and the ingredient dictionary) | user | none | 2 |
-| 3 | refresh_tokens | 리프레시 토큰 | Login refresh tokens (stored as hashes), revoked on logout | auth | BaseCreatedEntity | 6 |
-| 4 | account_deletion_requests | 계정 삭제 인증 | 6-digit email code for **Google** account deletion only (5 minutes, resend, lock after 5 tries; [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)) | user | BaseCreatedEntity | 7 |
-| 5 | ingredient_categories | 재료 카테고리 | 12 category codes with default storage, unit, and shelf life (reference data) | ingredient | none | 7 |
-| 6 | ingredient_catalog | 재료 사전 | Autocomplete, category estimation, excluded-ingredient list (reference data) | ingredient | none | 5 |
-| 7 | ingredients | 냉장고 재료 | One ingredient line in the fridge. Kept as FINISHED when used up | ingredient | BaseTimeEntity | 16 |
-| 8 | ingredient_logs | 재료 사용·폐기 이력 | "Used" and "Discarded" records. Source of the wasted-money statistics | ingredient | BaseCreatedEntity | 8 |
-| 9 | receipts | 영수증 | One confirmed receipt (unconfirmed OCR results are never stored). Kept 6 months by purchase date | receipt | BaseCreatedEntity | 7 |
-| 10 | receipt_items | 영수증 품목 | One food line of a confirmed receipt (non-food lines are not stored) | receipt | BaseCreatedEntity | 11 |
-| 11 | recipes | 레시피 | AI-generated recipes and copies of shared recipes. Never edited after creation | recipe | BaseCreatedEntity | 11 |
-| 12 | recipe_ingredients | 레시피 재료 | Ingredients and amounts in a recipe | recipe | BaseCreatedEntity | 8 |
-| 13 | recipe_steps | 레시피 조리 단계 | Cooking steps of a recipe | recipe | BaseCreatedEntity | 5 |
-| 14 | recipe_catalog_items | 레시피 알레르기 재료 | Excluded-ingredient items a recipe contains (for allergy warnings) | recipe | none | 2 |
-| 15 | saved_recipes | 저장한 레시피 | My saved list. Also records the shared post when a shared recipe is saved (source of save counts) | recipe | none (`saved_at`) | 6 |
-| 16 | recipe_cook_logs | 요리 기록 | Records of cooking and deducting ingredients | recipe | none (`cooked_at`) | 6 |
-| 17 | meal_plans | 식단표 | One meal plan generation (up to 7 days from the start date) | mealplan | BaseCreatedEntity | 8 |
-| 18 | meal_plan_slots | 식단표 칸 | Slots per date and meal. Generated slots (AI) and manually added slots (MANUAL) | mealplan | BaseTimeEntity | 10 |
-| 19 | meal_plan_slot_ingredients | 칸별 예정 재료 | Ingredients and amounts planned for each slot. Used to prevent duplicate assignment and compute shortages | mealplan | BaseCreatedEntity | 7 |
-| 20 | cart_items | 장바구니 | Missing ingredients grouped by recipe (added automatically only) | cart | BaseTimeEntity | 11 |
-| 21 | shared_recipes | 공유 레시피 | Recipes posted to the shared space (fully anonymous) | share | BaseTimeEntity | 7 |
-| 22 | shared_recipe_photos | 공유 조리 사진 | Cooking photos uploaded when sharing (one or more) | share | BaseCreatedEntity | 5 |
-| 23 | shared_recipe_reports | 공유 레시피 신고 | Reports and the admin's handling result | share | BaseCreatedEntity | 10 |
-| 24 | shared_recipe_weekly_ranks | 주간 랭킹 기록 | Last week's final TOP 100 saved by the Monday job (source of `rankChange`) | share | BaseCreatedEntity | 6 |
-| 25 | generation_quota_grants | 생성 횟수 지급 | Extra recipe generations granted by the weekly recipe reward or by admins (valid one month) | quota | BaseCreatedEntity | 12 |
-| 26 | usage_logs | 호출 이력 | AI and OCR call records. Source of remaining-count calculation and admin call statistics | quota | BaseCreatedEntity | 8 |
-| 27 | notifications | 알림 | One notification sent to a member | notification | BaseCreatedEntity | 9 |
-| 28 | push_subscriptions | 푸시 구독 | Web push subscription per device | notification | BaseCreatedEntity | 6 |
-| 29 | events | 이벤트 | Raw user behavior events (frontend and server) | event | direct (`occurred_at`, `created_at`) | 12 |
-| 30 | event_daily_stats | 이벤트 일별 집계 | Events counted per day (for the dashboard) | event | none | 5 |
-| 31 | admin_audit_logs | 어드민 조치 이력 | Admin actions such as handling reports, adjusting quota, suspending accounts | admin | BaseCreatedEntity | 7 |
-| 32 | idempotency_keys | 중복 요청 방지 키 | `Idempotency-Key` of create, deduct, and confirm POSTs with the first response (kept 24 hours) | global | direct (`created_at`) | 6 |
+| 1 | `users` | Members | Social login members and settings screen values | 1 login/settings | 이준호 | 14 |
+| 2 | `user_excluded_ingredients` | Excluded ingredients (allergies) | "Ingredients to exclude from recipes" chosen in onboarding/settings | 1 login/settings | 이준호 | 2 |
+| 3 | `refresh_tokens` | Refresh tokens | Login refresh tokens (hash). Deleted on logout | 1 login/settings | 이준호 | 5 |
+| 4 | `account_deletion_requests` | Account deletion codes | 6-digit email codes for Kakao/Google withdrawal | 1 login/settings | 이준호 | 7 |
+| 5 | `subscriptions` | Subscriptions | Premium subscription (Toss Payments card auto-billing). One row per subscription; at most one unfinished subscription per member | 1 login/settings | 이준호 | 12 |
+| 6 | `subscription_payments` | Subscription payments | One row per first payment and per monthly auto-payment (success or failure) | 1 login/settings | 이준호 | 12 |
+| 7 | `ingredient_categories` | Ingredient categories | 12 categories (image, default storage, default shelf life) | 2 fridge | 김재연 | 7 |
+| 8 | `ingredients` | Fridge ingredients | One fridge ingredient. Deleted when the amount reaches 0 | 2 fridge | 김재연 | 13 |
+| 9 | `ingredient_logs` | Ingredient use and discard logs | "Used / discarded" and cook deductions. Source of the discarded cost | 2 fridge | 김재연 | 9 |
+| 10 | `receipts` | Receipts | One registered receipt. Kept 6 months. Deleting removes it from spending and patterns (fridge ingredients stay) | 3 receipts | 이동준 | 9 |
+| 11 | `receipt_items` | Receipt items | One food line of a receipt | 3 receipts | 이동준 | 9 |
+| 12 | `recipes` | Recipes | AI-generated recipe. Never edited after creation | 4 AI recipes | 김종수 | 9 |
+| 13 | `recipe_ingredients` | Recipe ingredients | Ingredients and amounts | 4 AI recipes | 김종수 | 8 |
+| 14 | `recipe_steps` | Recipe steps | Cooking steps | 4 AI recipes | 김종수 | 5 |
+| 15 | `saved_recipes` | Saved recipes | My saved list. Saving a shared recipe points at the original (no copy) | 4 AI recipes | 김종수 | 6 |
+| 16 | `usage_logs` | Generation usage | One row per successful recipe or meal-plan generation. Source of remaining counts | 4 AI recipes | 김종수 | 5 |
+| 17 | `meal_plans` | Meal plans | One meal-plan generation request and its result (generating, done, failed) | 5 meal plan | 한윤수 | 9 |
+| 18 | `meal_plan_slots` | Meal plan slots | One recipe per date and meal | 5 meal plan | 한윤수 | 8 |
+| 19 | `cart_items` | Cart | Missing ingredients (added automatically by saving a shared recipe, saving my recipe with supplemented ingredients, and meal-plan generation) | 7 sharing/cart | 최유리 | 9 |
+| 20 | `shared_recipes` | Shared recipes | Posts in the shared space (fully anonymous) | 7 sharing/cart | 최유리 | 7 |
+| 21 | `shared_recipe_reports` | Shared recipe reports | One report | 7 sharing/cart | 최유리 | 6 |
+| 22 | `shared_recipe_weekly_ranks` | Weekly ranking records | Last week's final ranks (for rank change arrows) | 7 sharing/cart | 최유리 | 6 |
+| 23 | `generation_quota_grants` | Reward generation grants | Extra recipe generations for the weekly top 1-3 | 7 sharing/cart | 최유리 | 9 |
+| 24 | `notifications` | Notifications | One notification for a member | 6 notifications | 이상호 | 8 |
+| 25 | `events` | Events | Raw behavior events (frontend and server). Names and properties in `spec/events.md` | common (events) | 이준호 | 12 |
+| 26 | `ingredient_catalog` | Ingredient unit dictionary | Ingredient name -> unit, category, shelf life. Used only inside the server to pick units (API 14, 15, 16, 21). Never exposed by screens or APIs | 2 fridge | 김재연 | 6 |
 
-## Relationships
+## ERD diagram
 
-"On delete" is what happens to the child when the parent row is deleted. Blank means the parent is never deleted (members keep their row after withdrawal).
+The Mermaid block below renders on GitHub and Notion. Update it when tables change.
 
-| Parent | Child | Relation | Description | Link column (child) | On delete |
-| --- | --- | --- | --- | --- | --- |
-| users | user_excluded_ingredients | 1:N | Excluded ingredients | user_id | |
-| ingredient_catalog | user_excluded_ingredients | 1:N | Excluded item | catalog_id | |
-| users | refresh_tokens | 1:N | | user_id | |
-| users | account_deletion_requests | 1:N | Account deletion code | user_id | |
-| ingredient_categories | ingredient_catalog | 1:N | Category | category_id | |
-| users | ingredients | 1:N | Owns | user_id | |
-| ingredient_categories | ingredients | 1:N | Category | category_id | |
-| receipt_items | ingredients | 1:0..1 | Registered from a receipt / none if added manually | receipt_item_id | SET NULL |
-| ingredients | ingredient_logs | 1:N | Use and discard | ingredient_id | RESTRICT (cannot delete an ingredient with logs) |
-| recipe_cook_logs | ingredient_logs | 1:N | Cooking deduction / may be empty | cook_log_id | |
-| users | receipts | 1:N | Scanned | user_id | |
-| receipts | receipt_items | 1:N | Items | receipt_id | CASCADE |
-| ingredient_categories | receipt_items | 1:N | Category | category_id | |
-| users | recipes | 1:N | Created | creator_id | |
-| recipes | recipe_ingredients | 1:N | | recipe_id | |
-| ingredients | recipe_ingredients | 1:N | Planned fridge ingredient / may be empty | ingredient_id | SET NULL |
-| recipes | recipe_steps | 1:N | | recipe_id | |
-| recipes | recipe_catalog_items | 1:N | Allergy items | recipe_id | |
-| ingredient_catalog | recipe_catalog_items | 1:N | | catalog_id | |
-| users | saved_recipes | 1:N | Saved | user_id | |
-| recipes | saved_recipes | 1:N | Saved recipe (a copy for shared recipes) | recipe_id | |
-| shared_recipes | saved_recipes | 1:N | Shared recipe saved / may be empty | shared_recipe_id | SET NULL |
-| users | recipe_cook_logs | 1:N | Cooked | user_id | |
-| recipes | recipe_cook_logs | 1:N | Cook log | recipe_id | |
-| users | meal_plans | 1:N | | user_id | |
-| users | meal_plan_slots | 1:N | | user_id | |
-| meal_plans | meal_plan_slots | 1:N | Generated slots / none for manual slots | meal_plan_id | |
-| recipes | meal_plan_slots | 1:N | Assigned / may be empty | recipe_id | |
-| meal_plan_slots | meal_plan_slot_ingredients | 1:N | Slot ingredients | slot_id | CASCADE |
-| ingredients | meal_plan_slot_ingredients | 1:N | Assigned ingredient / may be empty | ingredient_id | SET NULL |
-| users | cart_items | 1:N | | user_id | |
-| recipes | cart_items | 1:N | Group / may be empty | recipe_id | SET NULL |
-| meal_plans | cart_items | 1:N | Missing ingredients / may be empty | meal_plan_id | SET NULL |
-| meal_plan_slots | cart_items | 1:N | Source slot / none for recipe saves | meal_plan_slot_id | SET NULL |
-| recipes | shared_recipes | 1:0..1 | Shared | recipe_id | |
-| shared_recipes | shared_recipe_photos | 1:N | Cooking photos | shared_recipe_id | CASCADE |
-| shared_recipes | shared_recipe_reports | 1:N | Reports | shared_recipe_id | |
-| shared_recipes | shared_recipe_weekly_ranks | 1:N | Last week's rank | shared_recipe_id | |
-| users | shared_recipe_reports | 1:N | Reporter | reporter_id | |
-| users | shared_recipe_reports | 1:N | Handling admin / may be empty | handled_by | |
-| users | generation_quota_grants | 1:N | Recipient | user_id | |
-| users | generation_quota_grants | 1:N | Adjusting admin / may be empty | admin_id | |
-| shared_recipes | generation_quota_grants | 1:N | Rewarded recipe / may be empty | shared_recipe_id | |
-| users | usage_logs | 1:N | Calls | user_id | |
-| generation_quota_grants | usage_logs | 1:N | Reward count used / may be empty | grant_id | |
-| users | notifications | 1:N | | user_id | |
-| ingredients | notifications | 1:N | Expiring ingredient / may be empty | ingredient_id | SET NULL |
-| users | push_subscriptions | 1:N | | user_id | |
-| users | admin_audit_logs | 1:N | Admin action | admin_id | |
-| users | idempotency_keys | 1:N | Duplicate request prevention | user_id | |
-
-`events.user_id` has no foreign key (bulk inserts; the internal ID keeps statistics after withdrawal).
+```mermaid
+erDiagram
+  users ||--o{ user_excluded_ingredients : "user_id"
+  users ||--o{ refresh_tokens : "user_id"
+  users ||--o{ account_deletion_requests : "user_id"
+  users ||--o{ subscriptions : "user_id"
+  subscriptions ||--o{ subscription_payments : "subscription_id"
+  users ||--o{ subscription_payments : "user_id"
+  users ||--o{ ingredients : "user_id"
+  ingredient_categories ||--o{ ingredients : "category_id"
+  receipt_items |o--o| ingredients : "receipt_item_id"
+  users ||--o{ ingredient_logs : "user_id"
+  ingredients |o--o{ ingredient_logs : "ingredient_id"
+  users ||--o{ receipts : "user_id"
+  receipts ||--o{ receipt_items : "receipt_id"
+  ingredient_categories ||--o{ receipt_items : "category_id"
+  users ||--o{ recipes : "user_id"
+  recipes ||--o{ recipe_ingredients : "recipe_id"
+  ingredients |o--o{ recipe_ingredients : "ingredient_id"
+  recipes ||--o{ recipe_steps : "recipe_id"
+  users ||--o{ saved_recipes : "user_id"
+  recipes ||--o{ saved_recipes : "recipe_id"
+  shared_recipes |o--o{ saved_recipes : "shared_recipe_id"
+  users ||--o{ usage_logs : "user_id"
+  generation_quota_grants |o--o{ usage_logs : "grant_id"
+  users ||--o{ meal_plans : "user_id"
+  meal_plans ||--o{ meal_plan_slots : "meal_plan_id"
+  recipes ||--o{ meal_plan_slots : "recipe_id"
+  users ||--o{ cart_items : "user_id"
+  recipes |o--o{ cart_items : "recipe_id"
+  ingredient_categories ||--o{ cart_items : "category_id"
+  recipes ||--o{ shared_recipes : "recipe_id"
+  shared_recipes ||--o{ shared_recipe_reports : "shared_recipe_id"
+  users ||--o{ shared_recipe_reports : "reporter_id"
+  shared_recipes ||--o{ shared_recipe_weekly_ranks : "shared_recipe_id"
+  users ||--o{ generation_quota_grants : "user_id"
+  shared_recipes |o--o{ generation_quota_grants : "shared_recipe_id"
+  users ||--o{ notifications : "user_id"
+  ingredients |o--o{ notifications : "ingredient_id"
+  meal_plans |o--o{ notifications : "meal_plan_id"
+  ingredient_categories ||--o{ ingredient_catalog : "category_id"
+  users {
+    bigint id PK
+    varchar provider
+    varchar provider_user_id UK
+    varchar email
+    varchar role
+    varchar plan
+    int household_size
+    boolean onboarding_completed
+    boolean recipe_supplement_enabled
+    boolean notification_enabled
+    varchar last_meal_purpose
+    timestamp created_at
+    timestamp updated_at
+    timestamp deleted_at
+  }
+  user_excluded_ingredients {
+    bigint user_id PK, FK
+    varchar allergen_code PK
+  }
+  refresh_tokens {
+    bigint id PK
+    bigint user_id FK
+    varchar token_hash UK
+    timestamp expires_at
+    timestamp created_at
+  }
+  account_deletion_requests {
+    bigint id PK
+    bigint user_id FK
+    varchar code_hash
+    timestamp expires_at
+    int attempts
+    timestamp verified_at
+    timestamp created_at
+  }
+  subscriptions {
+    bigint id PK
+    bigint user_id FK
+    varchar status
+    varchar customer_key UK
+    varchar billing_key
+    bigint price
+    date current_period_start
+    date next_billing_date
+    timestamp canceled_at
+    timestamp ended_at
+    timestamp created_at
+    timestamp updated_at
+  }
+  subscription_payments {
+    bigint id PK
+    bigint subscription_id FK
+    bigint user_id FK
+    varchar order_id UK
+    varchar payment_key
+    bigint amount
+    varchar status
+    varchar failure_code
+    date period_start
+    date period_end
+    timestamp approved_at
+    timestamp created_at
+  }
+  ingredient_categories {
+    bigint id PK
+    varchar code UK
+    varchar name
+    varchar image_url
+    varchar default_storage
+    int default_shelf_life_days
+    int sort_order
+  }
+  ingredients {
+    bigint id PK
+    bigint user_id FK
+    bigint category_id FK
+    bigint receipt_item_id FK, UK
+    varchar name
+    varchar storage
+    date expiration_date
+    numeric amount
+    numeric initial_amount
+    varchar unit
+    bigint price
+    timestamp created_at
+    timestamp updated_at
+  }
+  ingredient_logs {
+    bigint id PK
+    bigint user_id FK
+    bigint ingredient_id FK
+    varchar type
+    varchar name
+    numeric amount
+    varchar unit
+    bigint cost_amount
+    timestamp created_at
+  }
+  receipts {
+    bigint id PK
+    bigint user_id FK
+    varchar store_code
+    varchar store_name
+    date purchased_on
+    time purchased_time
+    varchar receipt_number
+    varchar image_key
+    timestamp created_at
+  }
+  receipt_items {
+    bigint id PK
+    bigint receipt_id FK
+    bigint category_id FK
+    varchar name
+    varchar storage
+    numeric amount
+    varchar unit
+    bigint price
+    timestamp created_at
+  }
+  recipes {
+    bigint id PK
+    bigint user_id FK
+    varchar source
+    varchar title
+    int servings
+    int cook_minutes
+    varchar tips
+    jsonb custom_options
+    timestamp created_at
+  }
+  recipe_ingredients {
+    bigint id PK
+    bigint recipe_id FK
+    bigint ingredient_id FK
+    varchar name
+    numeric amount
+    varchar unit
+    int sort_order
+    timestamp created_at
+  }
+  recipe_steps {
+    bigint id PK
+    bigint recipe_id FK
+    int step_no
+    varchar content
+    timestamp created_at
+  }
+  saved_recipes {
+    bigint id PK
+    bigint user_id FK
+    bigint recipe_id FK
+    bigint shared_recipe_id FK
+    boolean is_favorite
+    timestamp saved_at
+  }
+  usage_logs {
+    bigint id PK
+    bigint user_id FK
+    varchar type
+    bigint grant_id FK
+    timestamp created_at
+  }
+  meal_plans {
+    bigint id PK
+    bigint user_id FK
+    date start_date
+    varchar purpose
+    varchar meal_types
+    int servings
+    int generated_days
+    varchar status
+    timestamp created_at
+  }
+  meal_plan_slots {
+    bigint id PK
+    bigint meal_plan_id FK
+    date slot_date
+    varchar meal_type
+    bigint recipe_id FK
+    timestamp cooked_at
+    timestamp created_at
+    timestamp updated_at
+  }
+  cart_items {
+    bigint id PK
+    bigint user_id FK
+    bigint recipe_id FK
+    bigint category_id FK
+    varchar name
+    numeric amount
+    varchar unit
+    timestamp created_at
+    timestamp updated_at
+  }
+  shared_recipes {
+    bigint id PK
+    bigint recipe_id FK
+    varchar title
+    varchar image_key
+    varchar status
+    timestamp created_at
+    timestamp updated_at
+  }
+  shared_recipe_reports {
+    bigint id PK
+    bigint shared_recipe_id FK
+    bigint reporter_id FK
+    varchar reason
+    varchar status
+    timestamp created_at
+  }
+  shared_recipe_weekly_ranks {
+    bigint id PK
+    date week_start
+    bigint shared_recipe_id FK
+    int rank_no
+    int save_count
+    timestamp created_at
+  }
+  generation_quota_grants {
+    bigint id PK
+    bigint user_id FK
+    bigint shared_recipe_id FK
+    date week_start
+    int rank_no
+    int amount
+    int remaining
+    timestamp expires_at
+    timestamp created_at
+  }
+  notifications {
+    bigint id PK
+    bigint user_id FK
+    varchar type
+    bigint ingredient_id FK
+    bigint meal_plan_id FK
+    varchar message
+    timestamp read_at
+    timestamp created_at
+  }
+  events {
+    bigint id PK
+    varchar event_name
+    bigint user_id
+    varchar session_id
+    varchar source
+    varchar screen
+    jsonb properties
+    varchar platform
+    varchar app_version
+    boolean is_seed
+    timestamp occurred_at
+    timestamp created_at
+  }
+  ingredient_catalog {
+    bigint id PK
+    bigint category_id FK
+    varchar name UK
+    varchar unit
+    int shelf_life_days
+    boolean is_common_exclusion
+  }
+```
 
 ## Table columns
 
-### 1. users (Members)
+Notation: PK primary key, FK foreign key, UK unique. Null "yes" means the column may be empty.
 
-Social-login members. Admins are told apart by role. Also holds settings screen values (household size, notifications, ingredient supplement)
+### 1. `users` (Members)
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+Social login members and settings screen values. Owner 이준호 (1 login/settings).
+
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| provider | varchar | | | No | | NAVER/KAKAO/GOOGLE |
-| provider_user_id | varchar | UK | | Yes | | Social provider user ID. UK(provider + this). **Set to null on withdrawal** |
-| email | varchar | | | Yes | | Email from the provider when granted (store Google's only when `email_verified`). Never used to identify the account. Used only to send the Google account deletion code ([#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)). Set to null on withdrawal |
-| role | varchar | | | No | USER | USER/ADMIN |
-| status | varchar | | | No | ACTIVE | ACTIVE/SUSPENDED |
-| plan | varchar | | | No | BASIC | BASIC/PREMIUM. Release 1 applies BASIC limits only (the premium screen is UI only) |
-| household_size | int | | | Yes | | Household size. Null if skipped |
-| onboarding_completed | boolean | | | No | false | Whether onboarding was finished or skipped |
-| recipe_supplement_enabled | boolean | | | No | false | Recipe ingredient supplement (setting). When ON, recipes may include ingredients not in the fridge |
-| notification_enabled | boolean | | | No | true | Receive notifications (setting) |
-| last_meal_purpose | varchar | | | Yes | | Last chosen meal plan purpose |
-| created_at | timestamp | | | No | | Signup time |
-| updated_at | timestamp | | | No | | Update time |
-| deleted_at | timestamp | | | Yes | | Withdrawal time |
+| `id` | bigint | PK |  | no |  | ID |
+| `provider` | varchar |  |  | no |  | KAKAO/NAVER/GOOGLE |
+| `provider_user_id` | varchar | UK |  | yes |  | Social ID. UK(provider + this). Cleared on withdrawal |
+| `email` | varchar |  |  | yes |  | Address for the Kakao/Google withdrawal code (Kakao requires email consent at login, Google always provides it). May be empty for Naver. Cleared on withdrawal |
+| `role` | varchar |  |  | no | USER | USER/ADMIN |
+| `plan` | varchar |  |  | no | BASIC | BASIC/PREMIUM. PREMIUM while the subscription is ACTIVE or CANCELED (cancel scheduled), BASIC once it ends. Used for quota limits |
+| `household_size` | int |  |  | yes |  | Household size 1-50. Empty before onboarding |
+| `onboarding_completed` | boolean |  |  | no | false | Whether onboarding is done |
+| `recipe_supplement_enabled` | boolean |  |  | no | false | Recipe supplement. When on, recipes can be generated with ingredients not in the fridge |
+| `notification_enabled` | boolean |  |  | no | true | Receive notifications (in-app only). When off, no expiry notifications are created. Meal-plan notifications are always created |
+| `last_meal_purpose` | varchar |  |  | yes |  | Last chosen meal-plan purpose (default for the next generation) |
+| `created_at` | timestamp |  |  | no |  | Signup time |
+| `updated_at` | timestamp |  |  | no |  | Update time |
+| `deleted_at` | timestamp |  |  | yes |  | Withdrawal time |
 
-- Withdrawal: keep the row, fill `deleted_at`, and clear `provider_user_id` and `email`. The row stays because shared recipes and copies point to it through `recipes.creator_id`. After clearing, the person cannot be identified, and the same social account can sign up again (PostgreSQL does not treat nulls as duplicates).
+### 2. `user_excluded_ingredients` (Excluded ingredients, allergies)
 
-### 2. user_excluded_ingredients (Excluded ingredients, allergies)
+"Ingredients to exclude from recipes" chosen in onboarding/settings. Owner 이준호 (1 login/settings).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| user_id | bigint | PK,FK | users | No | | Member |
-| catalog_id | bigint | PK,FK | ingredient_catalog | No | | Ingredient to exclude (ingredient dictionary) |
+| `user_id` | bigint | PK,FK | users | no |  | Member |
+| `allergen_code` | varchar | PK |  | no |  | One of the 19 chip codes (Appendix B) |
 
-### 3. refresh_tokens (Refresh tokens)
+### 3. `refresh_tokens` (Refresh tokens)
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+Login refresh tokens (stored as a hash). The row is deleted on logout. Owner 이준호 (1 login/settings).
+
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Member |
-| token_hash | varchar | UK | | No | | Token hash. Looked up on every refresh |
-| expires_at | timestamp | | | No | | Expiry time (issued + 14 days) |
-| revoked_at | timestamp | | | Yes | | Logout time |
-| created_at | timestamp | | | No | | Issue time |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member |
+| `token_hash` | varchar | UK |  | no |  | Token hash |
+| `expires_at` | timestamp |  |  | no |  | Expiry (issued + 14 days) |
+| `created_at` | timestamp |  |  | no |  | Issued time |
 
-### 4. account_deletion_requests (Account deletion codes) — Google users only after [#54](https://github.com/likelion-backendschool-9th/REMAKE/issues/54)
+### 4. `account_deletion_requests` (Account deletion codes)
 
-Kakao/Naver users delete through social re-authentication and never create rows here.
+6-digit email codes for Kakao/Google withdrawal. Owner 이준호 (1 login/settings).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Member |
-| code_hash | varchar | | | No | | Code hash (the code itself is never stored) |
-| expires_at | timestamp | | | No | | Expiry time (5 minutes after sending) |
-| attempts | int | | | No | 0 | Input attempts (locked after more than 5) |
-| verified_at | timestamp | | | Yes | | Verification time |
-| created_at | timestamp | | | No | | Send time (used for the resend interval check) |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member |
+| `code_hash` | varchar |  |  | no |  | Code hash (never store the code) |
+| `expires_at` | timestamp |  |  | no |  | Expiry (5 minutes after sending) |
+| `attempts` | int |  |  | no | 0 | Wrong attempts (locked after more than 5). No screen text for it |
+| `verified_at` | timestamp |  |  | yes |  | Successful verification time |
+| `created_at` | timestamp |  |  | no |  | Sent time. A resend creates a new row |
 
-- A resend creates a new row; verification uses only the latest row.
+### 5. `subscriptions` (Subscriptions)
 
-### 5. ingredient_categories (Ingredient categories, reference data)
+Premium membership subscription (Toss Payments card auto-billing). One row per subscription; at most one unfinished subscription per member. Owner 이준호 (1 login/settings).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| code | varchar | UK | | No | | 12 codes such as MEAT (Appendix B) |
-| name | varchar | | | No | | Name (as on the Figma "ingredient type" screen) |
-| image_url | varchar | | | No | | Category image URL |
-| default_storage | varchar | | | No | | FRIDGE/FREEZER/PANTRY |
-| default_unit | varchar | | | No | | Default unit on the add-ingredient screen |
-| default_shelf_life_days | int | | | No | | Default days for estimating expiration (values not final) |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member |
+| `status` | varchar |  |  | no |  | ACTIVE subscribed / CANCELED cancel scheduled (benefits until the day before the next billing date) / ENDED |
+| `customer_key` | varchar | UK |  | no |  | Toss customer key. Random value made by the server (never the user id or email) |
+| `billing_key` | varchar |  |  | yes |  | Toss billing key (stored encrypted). Cleared when the subscription ends |
+| `price` | bigint |  |  | no | 9900 | Monthly price (KRW) |
+| `current_period_start` | date |  |  | no |  | Start of the current period |
+| `next_billing_date` | date |  |  | no |  | Next billing date (start + 1 month; if that day does not exist, the last day of that month). If cancel is scheduled, the subscription ends on this day |
+| `canceled_at` | timestamp |  |  | yes |  | Cancel request time |
+| `ended_at` | timestamp |  |  | yes |  | End time |
+| `created_at` | timestamp |  |  | no |  | Subscription start time |
+| `updated_at` | timestamp |  |  | no |  | Update time |
 
-### 6. ingredient_catalog (Ingredient dictionary, reference data)
+### 6. `subscription_payments` (Subscription payments)
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+One row per payment attempt: the first payment and each monthly auto-payment, success or failure. Owner 이준호 (1 login/settings).
+
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| category_id | bigint | FK | ingredient_categories | No | | Category |
-| name | varchar | UK | | No | | Ingredient name for autocomplete |
-| shelf_life_days | int | | | Yes | | Null means the category default |
-| is_common_exclusion | boolean | | | No | false | Common allergy item shown at the top of the excluded-ingredient screen (eggs, crustaceans, etc.) |
+| `id` | bigint | PK |  | no |  | ID |
+| `subscription_id` | bigint | FK | subscriptions | no |  | Subscription |
+| `user_id` | bigint | FK | users | no |  | Member |
+| `order_id` | varchar | UK |  | no |  | Order number made by the server (Toss orderId) |
+| `payment_key` | varchar |  |  | yes |  | Toss payment key (received on success) |
+| `amount` | bigint |  |  | no |  | Amount (KRW) |
+| `status` | varchar |  |  | no |  | DONE / FAILED |
+| `failure_code` | varchar |  |  | yes |  | Toss error code on failure |
+| `period_start` | date |  |  | no |  | Start of the period this payment covers |
+| `period_end` | date |  |  | no |  | End of the period (next billing date) |
+| `approved_at` | timestamp |  |  | yes |  | Approval time |
+| `created_at` | timestamp |  |  | no |  | Attempt time |
 
-### 7. ingredients (Fridge ingredients)
+### 7. `ingredient_categories` (Ingredient categories, reference data)
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+12 categories (image, default storage, default shelf life). Owner 김재연 (2 fridge).
+
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Member |
-| category_id | bigint | FK | ingredient_categories | No | | Category |
-| receipt_item_id | bigint | FK,UK | receipt_items | Yes | | Set when registered from a receipt. Null means added manually. Set to null when the receipt is deleted |
-| name | varchar | | | No | | Ingredient name |
-| storage | varchar | | | No | | FRIDGE/FREEZER/PANTRY |
-| expiration_date | date | | | No | | Expiration date |
-| is_expiration_estimated | boolean | | | No | false | Whether the date is an estimate. False once the user edits it |
-| amount | numeric(10,3) | | | No | | Remaining amount |
-| initial_amount | numeric(10,3) | | | No | | Initial amount (for the wasted-money calculation) |
-| unit | varchar | | | No | EA | One of the 9 fridge units (G, KG, ML, L, EA, PACK, BUNCH, PIECE, SHEET) |
-| price | bigint | | | Yes | | Purchase price (won). Optional for manually added items; null if not entered |
-| status | varchar | | | No | ACTIVE | ACTIVE/FINISHED. FINISHED when the amount reaches 0 |
-| version | bigint | | | No | 0 | Concurrent update protection (JPA `@Version`, API `CONCURRENT_UPDATE`) |
-| created_at | timestamp | | | No | | Registration time |
-| updated_at | timestamp | | | No | | Update time |
+| `id` | bigint | PK |  | no |  | ID |
+| `code` | varchar | UK |  | no |  | VEGETABLE etc., 12 codes (Appendix A) |
+| `name` | varchar |  |  | no |  | Display name (middle-dot style, e.g. 달걀·유제품) |
+| `image_url` | varchar |  |  | no |  | Category image |
+| `default_storage` | varchar |  |  | no |  | Storage used when an item goes into the fridge without input (cart -> fridge) |
+| `default_shelf_life_days` | int |  |  | no |  | Days used to estimate the expiry date |
+| `sort_order` | int |  |  | no |  | Order shown in the category sheet |
 
-- Deletion (API DELETE) is allowed only for ingredients **without** use/discard logs. With logs, block it (`INGREDIENT_HAS_LOGS`) and ask the user to record the rest as "used" or "discarded", because deleting would change this month's wasted money.
+### 8. `ingredients` (Fridge ingredients)
 
-### 8. ingredient_logs (Ingredient use and discard logs)
+One fridge ingredient. The row is deleted when the amount reaches 0. Owner 김재연 (2 fridge).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| ingredient_id | bigint | FK | ingredients | No | | Fridge ingredient |
-| cook_log_id | bigint | FK | recipe_cook_logs | Yes | | Cook log when deducted after cooking. Null when recorded directly in the fridge |
-| type | varchar | | | No | | USED/DISCARDED |
-| amount | numeric(10,3) | | | No | | Deducted amount |
-| unit | varchar | | | No | | The ingredient's unit at that time (keeps the log meaning if the unit changes later) |
-| cost_amount | bigint | | | Yes | | Money at that time (price × deducted amount ÷ initial amount). Null if there is no price |
-| created_at | timestamp | | | No | | Log time |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member |
+| `category_id` | bigint | FK | ingredient_categories | no |  | Category (required; no "all" except in custom recipe) |
+| `receipt_item_id` | bigint | FK,UK | receipt_items | yes |  | Receipt item it came from. Empty for manual and cart additions |
+| `name` | varchar |  |  | no |  | Ingredient name (not the product name) |
+| `storage` | varchar |  |  | no |  | FRIDGE/FREEZER/PANTRY |
+| `expiration_date` | date |  |  | no |  | Expiry date |
+| `amount` | numeric(10,3) |  |  | no |  | Remaining amount. Decimals only for kg/L in 0.5 steps |
+| `initial_amount` | numeric(10,3) |  |  | no |  | Initial amount (for the discarded cost). Same as `amount` at registration. An amount edit changes both; it is rejected once a use/discard log exists (#128) |
+| `unit` | varchar |  |  | no |  | Unit code (Appendix C). The backend picks it from the ingredient name and picks it again when the name changes, also when logs exist (logs keep their own unit) |
+| `price` | bigint |  |  | yes |  | Price (KRW). Empty when not entered or when it came from the cart |
+| `created_at` | timestamp |  |  | no |  | Registered time |
+| `updated_at` | timestamp |  |  | no |  | Update time |
 
-### 9. receipts (Receipts)
+### 9. `ingredient_logs` (Ingredient use and discard logs)
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+"Used / discarded" and cook-deduction records. Source of the discarded cost. Owner 김재연 (2 fridge).
+
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Member |
-| purchased_on | date | | | No | | Purchase date (basis of the monthly total and the 6-month retention) |
-| store_name | varchar | | | No | | Store |
-| store_code | varchar | | | Yes | | Store icon code (15 codes: CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS, ETC). `ETC` if not matched; the screen then shows `store_name` (the confirmed store name) with the default icon |
-| image_key | varchar | | | No | | Storage path. Deleted together with the receipt |
-| created_at | timestamp | | | No | | Save (confirm) time |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member (counted by month even after the ingredient is deleted) |
+| `ingredient_id` | bigint | FK | ingredients | yes |  | Ingredient. Cleared when it is deleted |
+| `type` | varchar |  |  | no |  | USED/DISCARDED |
+| `name` | varchar |  |  | no |  | Ingredient name at logging time |
+| `amount` | numeric(10,3) |  |  | no |  | Amount taken out |
+| `unit` | varchar |  |  | no |  | Unit at logging time |
+| `cost_amount` | bigint |  |  | yes |  | Discarded cost (price x amount / initial amount). Empty without a price |
+| `created_at` | timestamp |  |  | no |  | Logged time |
 
-- Spending amounts are always the sum of food items (`receipt_items.price`), not the total printed on the receipt.
-- Only confirmed receipts are stored. `POST /receipts/scan` analyzes and stores nothing; `POST /receipts` saves the receipt, its items, and the registered fridge ingredients in one transaction. A confirmed receipt cannot be edited, only deleted.
-- Purchase date and store name are required at final registration. The user enters any value OCR could not read on the review screen.
-- Retention: 6 months from `purchased_on`. A daily job deletes older receipts with their images and items. A purchase date older than 6 months cannot be registered (`INVALID_INPUT`). Index `(user_id, purchased_on)` for spending queries.
+### 10. `receipts` (Receipts)
 
-### 10. receipt_items (Receipt items)
+One registered receipt. Kept 6 months. Deleting it also removes it from spending and consumption patterns (fridge ingredients stay). Owner 이동준 (3 receipts).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| receipt_id | bigint | FK | receipts | No | | Receipt. Deleted together with the receipt |
-| category_id | bigint | FK | ingredient_categories | No | | Category. Only food items are stored (OCR filters out non-food lines) |
-| name | varchar | | | No | | Item name |
-| amount | numeric(10,3) | | | No | 1 | Amount. 1 if unknown |
-| unit | varchar | | | No | EA | One of the 9 fridge units |
-| price | bigint | | | Yes | | Item price (won) |
-| storage | varchar | | | No | | FRIDGE/FREEZER/PANTRY |
-| expiration_date | date | | | Yes | | Expiration date |
-| is_expiration_estimated | boolean | | | No | false | Whether the date is an estimate |
-| created_at | timestamp | | | No | | Creation time |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member |
+| `store_code` | varchar |  |  | yes |  | Store logo code (14 codes; empty when not matched) |
+| `store_name` | varchar |  |  | no |  | Branch name |
+| `purchased_on` | date |  |  | no |  | Receipt date (printed date, else the registration date). Basis for month/week groups and the 6-month retention |
+| `purchased_time` | time |  |  | yes |  | Purchase time on the receipt (OCR; empty when unreadable). For duplicate checks |
+| `receipt_number` | varchar |  |  | yes |  | Receipt number (OCR; empty when unreadable). For duplicate checks, INDEX(user_id + store_name + receipt_number) |
+| `image_key` | varchar |  |  | no |  | Original image path |
+| `created_at` | timestamp |  |  | no |  | Registered time |
 
-### 11. recipes (Recipes)
+### 11. `receipt_items` (Receipt items)
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+One food line of a receipt. Owner 이동준 (3 receipts).
+
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| creator_id | bigint | FK | users | No | | Creator (for a copy, the member who saved it). Never shown to other users |
-| title | varchar | | | No | | Title |
-| servings | int | | | No | | Servings |
-| cook_minutes | int | | | No | | Cooking time (minutes) |
-| tips | varchar | | | Yes | | Tips! text |
-| origin | varchar | | | No | | RECIPE_GEN (recipe generation)/MEAL_DETAIL (meal slot detail)/SHARED_COPY (copy of a saved shared recipe) |
-| mode | varchar | | | Yes | | QUICK/CUSTOM. Only when origin is RECIPE_GEN, otherwise null |
-| custom_options | jsonb | | | Yes | | Custom choices (ingredients, taste, cooking time, tools, method, cuisine, excluded ingredients). Null for QUICK |
-| supplement_used | boolean | | | No | false | Whether it was generated with ingredient supplement ON |
-| created_at | timestamp | | | No | | Creation time |
+| `id` | bigint | PK |  | no |  | ID |
+| `receipt_id` | bigint | FK | receipts | no |  | Receipt |
+| `category_id` | bigint | FK | ingredient_categories | no |  | Category (required) |
+| `name` | varchar |  |  | no |  | Item name |
+| `storage` | varchar |  |  | no |  | FRIDGE/FREEZER/PANTRY |
+| `amount` | numeric(10,3) |  |  | no |  | Amount |
+| `unit` | varchar |  |  | no |  | Unit |
+| `price` | bigint |  |  | yes |  | Item price (KRW) |
+| `created_at` | timestamp |  |  | no |  | Created time |
 
-### 12. recipe_ingredients (Recipe ingredients)
+### 12. `recipes` (Recipes)
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+AI-generated recipe. Never edited after creation. Owner 김종수 (4 AI recipes).
+
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| recipe_id | bigint | FK | recipes | No | | Recipe |
-| ingredient_id | bigint | FK | ingredients | Yes | | Fridge ingredient intended at generation. Null for copies. Set to null when the ingredient is deleted |
-| name | varchar | | | No | | Ingredient name |
-| amount | numeric(10,3) | | | Yes | | Null means "a little" |
-| unit | varchar | | | No | | One of the 14 recipe units (Appendix A) |
-| sort_order | int | | | No | | Order |
-| created_at | timestamp | | | No | | Creation time |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member who generated it |
+| `source` | varchar |  |  | no |  | QUICK/CUSTOM/MEAL_PLAN |
+| `title` | varchar |  |  | no |  | Recipe name |
+| `servings` | int |  |  | no |  | Servings |
+| `cook_minutes` | int |  |  | no |  | Cooking time (minutes). Shown as "within N minutes" |
+| `tips` | varchar |  |  | yes |  | Tips text |
+| `custom_options` | jsonb |  |  | yes |  | Custom selections (servings, ingredients, taste, time, tool, method, cuisine, allergens). Reused for "regenerate" |
+| `created_at` | timestamp |  |  | no |  | Created time |
 
-- Deduction order for "cooked it": (1) if `ingredient_id` is set and it is an ACTIVE ingredient of the cooking user, use it; (2) otherwise use the cooking user's fridge ingredient with the same name, nearest expiration first; (3) otherwise the user chooses. Convert automatically only between units of the same kind; never deduct "a pinch" or "a little".
+### 13. `recipe_ingredients` (Recipe ingredients)
 
-### 13. recipe_steps (Recipe steps)
+Ingredients and amounts of a recipe. Owner 김종수 (4 AI recipes).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| recipe_id | bigint | FK | recipes | No | | Recipe. UK(recipe_id + step_no) |
-| step_no | int | | | No | | Step number |
-| content | varchar | | | No | | Text |
-| created_at | timestamp | | | No | | Creation time |
+| `id` | bigint | PK |  | no |  | ID |
+| `recipe_id` | bigint | FK | recipes | no |  | Recipe |
+| `ingredient_id` | bigint | FK | ingredients | yes |  | My fridge ingredient used at generation (cook-deduction target). Cleared when the ingredient is deleted |
+| `name` | varchar |  |  | no |  | Ingredient name |
+| `amount` | numeric(10,3) |  |  | yes |  | Amount. Empty means "to taste" |
+| `unit` | varchar |  |  | no |  | Unit |
+| `sort_order` | int |  |  | no |  | Order |
+| `created_at` | timestamp |  |  | no |  | Created time |
 
-### 14. recipe_catalog_items (Recipe allergy items)
+### 14. `recipe_steps` (Recipe steps)
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+Cooking steps. Owner 김종수 (4 AI recipes).
+
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| recipe_id | bigint | PK,FK | recipes | No | | Recipe |
-| catalog_id | bigint | PK,FK | ingredient_catalog | No | | Excluded-ingredient item the recipe contains (an `is_common_exclusion` item) |
+| `id` | bigint | PK |  | no |  | ID |
+| `recipe_id` | bigint | FK | recipes | no |  | Recipe. UK(recipe_id + step_no) |
+| `step_no` | int |  |  | no |  | Step number |
+| `content` | varchar |  |  | no |  | Text (read aloud by "play steps") |
+| `created_at` | timestamp |  |  | no |  | Created time |
 
-- The warning is computed by intersecting with the viewer's `user_excluded_ingredients`. Some excluded items are groups such as "crustaceans" or "eggs" rather than ingredient names, so the recipe lists the items it contains instead of linking each ingredient line to the dictionary. The AI picks from the excluded list and the server double-checks by ingredient name.
+### 15. `saved_recipes` (Saved recipes)
 
-### 15. saved_recipes (Saved recipes)
+My saved list. Saving a shared recipe points at the original; no copy. Owner 김종수 (4 AI recipes).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Member |
-| recipe_id | bigint | FK | recipes | No | | Saved recipe. **My copy** for a shared recipe. UK(user_id + recipe_id) |
-| shared_recipe_id | bigint | FK | shared_recipes | Yes | | The shared post when a shared recipe was saved. Null for my own recipes. UK(user_id + shared_recipe_id) |
-| is_favorite | boolean | | | No | false | Favorite (star). The ★ in Figma's saved list, recipe detail, and meal plan |
-| saved_at | timestamp | | | No | | Save time (latest-saved order, weekly ranking) |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member |
+| `recipe_id` | bigint | FK | recipes | no |  | Saved recipe. UK(user_id + recipe_id). Shared recipes point at the original too |
+| `shared_recipe_id` | bigint | FK | shared_recipes | yes |  | The shared post it was saved from (source of heart count and popularity) |
+| `is_favorite` | boolean |  |  | no | false | Favorite (star) |
+| `saved_at` | timestamp |  |  | no |  | Saved time |
 
-- Saving a shared recipe (1) creates my copy of the recipe and (2) inserts a row here with the copy's `recipe_id` and the original `shared_recipe_id`. Save counts and this week's ranking count by `shared_recipe_id` (the author's own saves excluded). Unsaving deletes only this row.
+### 16. `usage_logs` (Generation usage)
 
-### 16. recipe_cook_logs (Cook logs)
+One row only per successful recipe or meal-plan generation. Source of the remaining-count calculation. Owner 김종수 (4 AI recipes).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Member who cooked |
-| recipe_id | bigint | FK | recipes | No | | Recipe |
-| servings | int | | | No | | Servings cooked |
-| feedback | varchar | | | Yes | | Recommend this recipe LIKE/DISLIKE (behavior not final) |
-| cooked_at | timestamp | | | No | | Cooking time |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member |
+| `type` | varchar |  |  | no |  | RECIPE (quick, custom, regenerate, meal-slot replace) / MEAL_PLAN |
+| `grant_id` | bigint | FK | generation_quota_grants | yes |  | Reward grant used, if any |
+| `created_at` | timestamp |  |  | no |  | Success time (failures are never inserted = not charged) |
 
-### 17. meal_plans (Meal plans)
+### 17. `meal_plans` (Meal plans)
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+One meal-plan generation request and its result. Created as `GENERATING` when API 38 accepts the request; the server job sets `COMPLETED` or `FAILED`. Owner 한윤수 (5 meal plan).
+
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Member |
-| start_date | date | | | No | | Start date |
-| purpose | varchar | | | No | BALANCED | BALANCED/DIET/HIGH_PROTEIN/SIMPLE/SAVING |
-| meal_types | varchar | | | No | | Meals to include (from BREAKFAST,LUNCH,DINNER, comma-separated) |
-| servings | int | | | No | | Number of people |
-| generated_days | int | | | No | | Days actually generated (1–7) |
-| created_at | timestamp | | | No | | Creation time |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member |
+| `start_date` | date |  |  | no |  | Start date (today or later only) |
+| `purpose` | varchar |  |  | no | BALANCED | BALANCED/DIET/HIGH_PROTEIN/SIMPLE/SAVING |
+| `meal_types` | varchar |  |  | no |  | Several meals (BREAKFAST,LUNCH,DINNER comma separated) |
+| `servings` | int |  |  | no |  | Servings |
+| `generated_days` | int |  |  | yes |  | Days actually generated (basic max 5, premium max 7; fewer when ingredients run short). Empty until `COMPLETED` |
+| `status` | varchar |  |  | no | GENERATING | GENERATING/COMPLETED/FAILED |
+| `created_at` | timestamp |  |  | no |  | Created time |
 
-### 18. meal_plan_slots (Meal plan slots)
+### 18. `meal_plan_slots` (Meal plan slots)
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+One recipe per date and meal. Owner 한윤수 (5 meal plan).
+
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Member |
-| meal_plan_id | bigint | FK | meal_plans | Yes | | The meal plan for a generated slot; null for a manually added slot |
-| slot_date | date | | | No | | Date |
-| meal_type | varchar | UK | | No | | BREAKFAST/LUNCH/DINNER. UK(user_id + slot_date + meal_type) |
-| menu_name | varchar | | | No | | Menu name (the recipe title for a manual slot) |
-| recipe_id | bigint | FK | recipes | Yes | | Null means a menu-name-only slot (tapping it generates the detail) |
-| source | varchar | | | No | AI | AI (meal plan generation)/MANUAL (added meal) |
-| created_at | timestamp | | | No | | Creation time |
-| updated_at | timestamp | | | No | | Update time (when detail generation fills recipe_id) |
+| `id` | bigint | PK |  | no |  | ID |
+| `meal_plan_id` | bigint | FK | meal_plans | no |  | Meal plan |
+| `slot_date` | date |  |  | no |  | Date. UK(meal_plan_id + slot_date + meal_type) |
+| `meal_type` | varchar |  |  | no |  | BREAKFAST/LUNCH/DINNER |
+| `recipe_id` | bigint | FK | recipes | no |  | Recipe |
+| `cooked_at` | timestamp |  |  | yes |  | Time the recipe was cooked from today's slot. If set, the meal stays with this recipe even when a new plan overwrites the day |
+| `created_at` | timestamp |  |  | no |  | Created time |
+| `updated_at` | timestamp |  |  | no |  | Recipe replace time |
 
-- Generation skips dates and meals that already have a slot (manual slots). Overwrite (`overwrite`) deletes only the AI slots on overlapping dates and regenerates them. There is no delete API.
+### 19. `cart_items` (Cart)
 
-### 19. meal_plan_slot_ingredients (Planned ingredients per slot)
+Missing-ingredient list (added automatically when saving a shared recipe, saving my recipe that got missing ingredients through the recipe supplement, and generating a meal plan). Owner 최유리 (7 sharing/cart).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| slot_id | bigint | FK | meal_plan_slots | No | | Meal plan slot. Deleted with the slot |
-| ingredient_id | bigint | FK | ingredients | Yes | | Assigned fridge ingredient. Null for a missing ingredient or after the ingredient is deleted |
-| name | varchar | | | No | | Ingredient name |
-| amount | numeric(10,3) | | | No | | Amount |
-| unit | varchar | | | No | | Unit |
-| created_at | timestamp | | | No | | Creation time |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member |
+| `recipe_id` | bigint | FK | recipes | yes |  | Source recipe |
+| `category_id` | bigint | FK | ingredient_categories | no |  | Category estimated when added (used when moving to the fridge) |
+| `name` | varchar |  |  | no |  | Ingredient name |
+| `amount` | numeric(10,3) |  |  | no |  | Amount |
+| `unit` | varchar |  |  | no |  | Unit |
+| `created_at` | timestamp |  |  | no |  | Added time |
+| `updated_at` | timestamp |  |  | no |  | Amount change time |
 
-- Every slot has planned ingredients. AI slots get them from generation; manual slots from the added recipe's `recipe_ingredients`.
-- **Why a table instead of JSON**
-  - Preventing duplicate assignment and computing shortages (the PRD's "hardest technical problem") means counting "how much of this ingredient is already assigned across slots". A table does this in one SQL line (`SUM(amount) ... WHERE ingredient_id = ?`). With JSON, every slot must be loaded and parsed in Java.
-  - When a fridge ingredient is deleted, the foreign key cleans up the link (SET NULL). JSON keeps the deleted ingredient ID.
-  - It is a table inside the same `mealplan` feature, so it maps as a normal JPA entity with no JSON conversion setup.
-  - The PRD and API only say "store per-slot ingredients" and do not fix the storage method, so this does not conflict with the plan.
+### 20. `shared_recipes` (Shared recipes)
 
-### 20. cart_items (Cart)
+Posts in the shared space (fully anonymous). Owner 최유리 (7 sharing/cart).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Member |
-| recipe_id | bigint | FK | recipes | Yes | | Recipe the group is based on (null for a menu-name-only slot) |
-| meal_plan_id | bigint | FK | meal_plans | Yes | | Set when it came from a meal plan |
-| meal_plan_slot_id | bigint | FK | meal_plan_slots | Yes | | Source slot (null for recipe saves). ON DELETE SET NULL |
-| group_name | varchar | | | No | | Group name on screen (recipe title or menu name) |
-| name | varchar | | | No | | Ingredient name |
-| amount | numeric(10,3) | | | No | | Amount (editable) |
-| unit | varchar | | | No | | Unit |
-| created_at | timestamp | | | No | | Added time |
-| updated_at | timestamp | | | No | | Amount change time |
+| `id` | bigint | PK |  | no |  | ID |
+| `recipe_id` | bigint | FK | recipes | no |  | Shared recipe (the same recipe once per week) |
+| `title` | varchar |  |  | no |  | Title |
+| `image_key` | varchar |  |  | no |  | Path of the single cooking photo |
+| `status` | varchar |  |  | no | VISIBLE | VISIBLE/HIDDEN (hidden by an operator) |
+| `created_at` | timestamp |  |  | no |  | Shared time |
+| `updated_at` | timestamp |  |  | no |  | Status change time |
 
-- There is no API to add items directly; items are always added automatically. The same ingredient is kept separately per recipe.
-- Decision [#46](https://github.com/likelion-backendschool-9th/REMAKE/issues/46): add through `AddCartItemsUseCase.add(Long userId, CartSource source, List<CartGroup> groups)` in `cart/application/port/in`; return the number of inserted rows as `int` for the caller's `cartAddedCount`.
-- `CartGroup`: nullable `recipeId`, `mealPlanId`, `mealPlanSlotId`, plus `groupName` and `items`. Each `CartItem` has `name`, `amount` (`BigDecimal`), and `unit` (the existing 14 unit codes). `CartSource`: `MEAL_PLAN`, `RECIPE_SAVE`, `SHARED_RECIPE_SAVE`.
-- For meal plans, pass one group per slot: `recipeId = null`, `mealPlanId`, `mealPlanSlotId`, and the menu name as `groupName`. For recipe saves, pass `recipeId`, the recipe title as `groupName`, and `mealPlanSlotId = null`.
-- Skip empty lists and groups without items. Return 0 if nothing is inserted and emit no event. Otherwise emit `cart_item_added` once per call from the cart UseCase only, with `cart_source` and the total inserted-row count as `item_count`; never record a rolled-back add as a successful event.
-- Join the caller's transaction with `REQUIRED`, never `REQUIRES_NEW`; roll back cart changes together with meal-plan or recipe saving. Meal-plan generation retries use the common `Idempotency-Key` handling; do not add separate retry deduplication inside the add UseCase.
-- On meal-plan overwrite, call `RemoveCartItemsByMealPlanSlotsUseCase.remove(userId, slotIds)` to delete only that user's items linked to the replaced slots, including items whose amounts the user edited. In one transaction: delete those cart items → delete the old slots → save new slots → add new cart items. Preserve items from untouched slots and emit no user-deletion event for this automatic cleanup.
-- Keep `meal_plan_slot_id` nullable with `ON DELETE SET NULL`, like the cart's `recipe_id` and `meal_plan_id`. Explicit UseCase cleanup happens before slot deletion during overwrite; the FK action does not replace that cleanup.
+### 21. `shared_recipe_reports` (Shared recipe reports)
 
-### 21. shared_recipes (Shared recipes)
+One report. Owner 최유리 (7 sharing/cart).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| recipe_id | bigint | FK,UK | recipes | No | | Original shared recipe. A recipe can be shared once. Only RECIPE_GEN and MEAL_DETAIL (copies cannot be shared) |
-| title | varchar | | | No | | Shared title (required) |
-| status | varchar | | | No | VISIBLE | VISIBLE/HIDDEN/DELETED |
-| save_count | int | | | No | 0 | Cumulative save count (detail screen). Weekly popularity counts `saved_recipes.saved_at` |
-| created_at | timestamp | | | No | | Share time |
-| updated_at | timestamp | | | No | | Status or save count change time |
+| `id` | bigint | PK |  | no |  | ID |
+| `shared_recipe_id` | bigint | FK | shared_recipes | no |  | Reported post |
+| `reporter_id` | bigint | FK | users | no |  | Reporter. UK(reporter_id + shared_recipe_id): one report per post |
+| `reason` | varchar |  |  | no |  | OFFENSIVE_IMAGE/AD_TITLE/DANGEROUS_RECIPE/OTHER |
+| `status` | varchar |  |  | no | PENDING | PENDING/DONE |
+| `created_at` | timestamp |  |  | no |  | Reported time |
 
-- The author is known only through `recipes.creator_id` and is never returned in responses.
-- Hiding or deleting changes only the shared post; copies already saved by others stay.
+### 22. `shared_recipe_weekly_ranks` (Weekly ranking records)
 
-### 22. shared_recipe_photos (Shared cooking photos)
+Last week's final ranking (for the rank change arrows). Owner 최유리 (7 sharing/cart).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| shared_recipe_id | bigint | FK | shared_recipes | No | | Shared recipe |
-| image_key | varchar | | | No | | Storage path |
-| sort_order | int | | | No | | Order (at least one photo required) |
-| created_at | timestamp | | | No | | Upload time |
+| `id` | bigint | PK |  | no |  | ID |
+| `week_start` | date |  |  | no |  | Monday of the counted week. UK(week_start + shared_recipe_id) |
+| `shared_recipe_id` | bigint | FK | shared_recipes | no |  | Shared recipe |
+| `rank_no` | int |  |  | no |  | Final rank that week |
+| `save_count` | int |  |  | no |  | Saves received that week |
+| `created_at` | timestamp |  |  | no |  | Stored time (weekly batch) |
 
-### 23. shared_recipe_reports (Shared recipe reports)
+### 23. `generation_quota_grants` (Reward generation grants)
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+Extra recipe generations given as the weekly top 1-3 reward. Owner 최유리 (7 sharing/cart). No reward screen in Figma.
+
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| shared_recipe_id | bigint | FK | shared_recipes | No | | Shared recipe |
-| reporter_id | bigint | FK,UK | users | No | | Reporter. UK(shared_recipe_id + reporter_id) |
-| reason | varchar | | | No | | PHOTO/OFFENSIVE/DANGEROUS/OTHER |
-| reason_detail | varchar | | | Yes | | Text written for OTHER |
-| status | varchar | | | No | PENDING | PENDING/DONE |
-| result | varchar | | | Yes | | HIDDEN/DELETED/DISMISSED (no problem) |
-| handled_by | bigint | FK | users | Yes | | Admin who handled it |
-| handled_at | timestamp | | | Yes | | Handling time |
-| created_at | timestamp | | | No | | Report time |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member who received it |
+| `shared_recipe_id` | bigint | FK | shared_recipes | yes |  | Rewarded shared recipe |
+| `week_start` | date |  |  | no |  | Reward week (Monday). UK(week_start + rank_no) |
+| `rank_no` | int |  |  | no |  | 1-3 |
+| `amount` | int |  |  | no |  | Granted count 10/6/3 |
+| `remaining` | int |  |  | no |  | Remaining count |
+| `expires_at` | timestamp |  |  | no |  | Expiry (grant + 1 month) |
+| `created_at` | timestamp |  |  | no |  | Granted time |
 
-### 24. shared_recipe_weekly_ranks (Weekly ranking records)
+### 24. `notifications` (Notifications)
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+One notification created for a member. Owner 이상호 (6 notifications).
+
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| week_start | date | | | No | | Ranking week (Monday). UK(week_start + rank_no) |
-| shared_recipe_id | bigint | FK | shared_recipes | No | | Shared recipe |
-| rank_no | int | | | No | | Rank (1–100) |
-| save_count | int | | | No | | Saves in that week |
-| created_at | timestamp | | | No | | Save time (weekly job) |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Member |
+| `type` | varchar |  |  | no |  | EXPIRY_SOON/EXPIRED/MEAL_PLAN_COMPLETED/MEAL_PLAN_FAILED |
+| `ingredient_id` | bigint | FK | ingredients | yes |  | Ingredient of an expiring-soon notification. Cleared when the ingredient is deleted |
+| `meal_plan_id` | bigint | FK | meal_plans | yes |  | Plan of a `MEAL_PLAN_COMPLETED` notification; tapping opens p5 at its start date. Cleared when the plan is deleted |
+| `message` | varchar |  |  | no |  | Text to show |
+| `read_at` | timestamp |  |  | yes |  | Read time. Opening the notification screen marks all unread ones as read |
+| `created_at` | timestamp |  |  | no |  | Notification time |
 
-- **Aggregation is the reset point.** Every Monday at 00:00, right after the week ends, the weekly job fixes last week's ranking. It counts `saved_recipes` rows whose `saved_at` is in last week and that still exist when the job runs (a save cancelled before the job is not counted), and saves the TOP 100 here. The new week's ranking starts from zero at the same moment.
-- **Aggregation comes first.** Count, save the ranks, and grant the rewards (`generation_quota_grants`, to the authors of the top 3 recipes) in one transaction that reads one consistent snapshot (for example `REPEATABLE READ`). Saves and cancellations made while the job runs do not change the result; they belong to the new week.
-- `UK(week_start + rank_no)` prevents recording the same week and rank twice. If the week's ranks already exist, a rerun does not recount; it uses the saved ranks and grants only the rewards that are missing (`generation_quota_grants` has the same UK).
-- `rankChange` = last week's rank − this week's rank (null if there is no rank last week or it is the same).
+### 25. `events` (Events)
 
-### 25. generation_quota_grants (Generation quota grants)
+Raw user behavior events (frontend and server). Names and properties are in `spec/events.md`. Owner 이준호 (common, events).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Recipient |
-| amount | int | | | No | | Granted count (negative when an admin reduces it) |
-| remaining | int | | | No | | Remaining count |
-| expires_at | timestamp | | | No | | Expiry (grant time + 1 month). Expired grants are not used |
-| reason | varchar | | | No | | WEEKLY_REWARD/ADMIN |
-| week_start | date | | | Yes | | Reward week |
-| rank_no | int | UK | | Yes | | 1–3. UK(week_start + rank_no), so a rerun of the reward job never grants twice |
-| shared_recipe_id | bigint | FK | shared_recipes | Yes | | Rewarded shared recipe (admin ranking and reward screen) |
-| admin_id | bigint | FK | users | Yes | | Adjusting admin |
-| memo | varchar | | | Yes | | Adjustment reason |
-| created_at | timestamp | | | No | | Grant time |
+| `id` | bigint | PK |  | no |  | ID |
+| `event_name` | varchar |  |  | no |  | Event name |
+| `user_id` | bigint |  |  | yes |  | Member number (no FK, kept after withdrawal) |
+| `session_id` | varchar |  |  | yes |  | App session |
+| `source` | varchar |  |  | no |  | CLIENT/SERVER |
+| `screen` | varchar |  |  | yes |  | Screen code (`spec/events.md`). Server events take it from the `X-Screen` header; scheduled jobs leave it empty |
+| `properties` | jsonb |  |  | yes |  | Event properties. No personal data |
+| `platform` | varchar |  |  | yes |  | TWA/PWA/WEB (header `X-Client-Platform`) |
+| `app_version` | varchar |  |  | yes |  | App version (header `X-App-Version`) |
+| `is_seed` | boolean |  |  | no | false | Demo event. Only the demo seed script sets true |
+| `occurred_at` | timestamp |  |  | no |  | Time the action happened |
+| `created_at` | timestamp |  |  | no |  | Stored time |
 
-- Counts granted as rewards or adjustments are valid for **one month** (`expires_at`). After the 2 daily base generations are used, unexpired grants are used until `remaining` runs out.
+### 26. `ingredient_catalog` (Ingredient unit dictionary)
 
-### 26. usage_logs (Call logs)
+Internal reference data that maps an ingredient name to a unit, category and shelf life. Owner 김재연 (2 fridge). 11/22 decision: keep the dictionary table from PR #140 as a unit dictionary only (no autocomplete API).
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
+| Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Member |
-| type | varchar | | | No | | RECIPE/MEAL_PLAN/MEAL_DETAIL/OCR |
-| status | varchar | | | No | PENDING | PENDING/SUCCESS/FAILED. Insert PENDING **before** the call and update it afterwards |
-| error_code | varchar | | | Yes | | Failure code |
-| duration_ms | int | | | Yes | | Response time (ms) |
-| grant_id | bigint | FK | generation_quota_grants | Yes | | The grant used, if a reward or adjustment count was spent |
-| created_at | timestamp | | | No | | Call start time |
+| `id` | bigint | PK |  | no |  | ID |
+| `category_id` | bigint | FK | ingredient_categories | no |  | Category of this ingredient |
+| `name` | varchar(50) | UK |  | no |  | Ingredient name (each spelling of the same ingredient is its own row, e.g. 달걀 and 계란) |
+| `unit` | varchar |  |  | no |  | Default unit of this ingredient (one of the 9 fridge units, Appendix C) |
+| `shelf_life_days` | int |  |  | yes |  | Shelf life. Empty means the category default |
+| `is_common_exclusion` | boolean |  |  | no | false | Representative-allergen flag added in PR #140. Allergies are stored as `user_excluded_ingredients.allergen_code` (19 chips), so screens and APIs do not use it |
 
-- Remaining counts are computed, not stored: for recipes, base count if today's (Korea time) RECIPE rows with SUCCESS+PENDING are fewer than 2, otherwise unexpired grants (oldest first). Meal plans use this month's MEAL_PLAN rows. MEAL_DETAIL is not counted (proposal).
-- OCR rows are recorded for cost and success-rate monitoring only. Receipt scans have no limit (decide again if AI is added to OCR).
+- How to pick the unit for a name that is not in the dictionary is not decided yet. Do not invent a rule; ask the owner or the PO.
 
-### 27. notifications (Notifications)
+## Relationships
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Member |
-| ingredient_id | bigint | FK | ingredients | Yes | | Ingredient of an expiring alert. Null after the ingredient is deleted (tapping opens the fridge) |
-| type | varchar | | | No | | EXPIRY_SOON/EXPIRED (there is no "receipt analysis finished" notification) |
-| dedupe_key | varchar | UK | | No | | UK(user_id + this). Example: `EXPIRY_SOON:501:2026-11-20`, `EXPIRED:2026-11-19` |
-| title | varchar | | | No | | Title |
-| body | varchar | | | No | | Body |
-| read_at | timestamp | | | Yes | | Read time |
-| created_at | timestamp | | | No | | Notification time (today / N days ago grouping, kept 30 days) |
+| Parent | Child | Column | Relation | Parent optional | On parent delete |
+| --- | --- | --- | --- | --- | --- |
+| `users` | `user_excluded_ingredients` | user_id | 1:N | no | - (the app deletes them on withdrawal) |
+| `users` | `refresh_tokens` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `users` | `account_deletion_requests` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `users` | `subscriptions` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `subscriptions` | `subscription_payments` | subscription_id | 1:N | no | RESTRICT (payment records are never deleted) |
+| `users` | `subscription_payments` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `users` | `ingredients` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `ingredient_categories` | `ingredients` | category_id | 1:N | no | RESTRICT (reference data, never deleted) |
+| `receipt_items` | `ingredients` | receipt_item_id | 1:1 | yes | SET NULL |
+| `users` | `ingredient_logs` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `ingredients` | `ingredient_logs` | ingredient_id | 1:N | yes | SET NULL |
+| `users` | `receipts` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `receipts` | `receipt_items` | receipt_id | 1:N | no | CASCADE (deleted together by the 6-month cleanup) |
+| `ingredient_categories` | `receipt_items` | category_id | 1:N | no | RESTRICT |
+| `users` | `recipes` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `recipes` | `recipe_ingredients` | recipe_id | 1:N | no | CASCADE |
+| `ingredients` | `recipe_ingredients` | ingredient_id | 1:N | yes | SET NULL |
+| `recipes` | `recipe_steps` | recipe_id | 1:N | no | CASCADE |
+| `users` | `saved_recipes` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `recipes` | `saved_recipes` | recipe_id | 1:N | no | RESTRICT (recipes are never deleted) |
+| `shared_recipes` | `saved_recipes` | shared_recipe_id | 1:N | yes | SET NULL |
+| `users` | `usage_logs` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `generation_quota_grants` | `usage_logs` | grant_id | 1:N | yes | SET NULL |
+| `users` | `meal_plans` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `meal_plans` | `meal_plan_slots` | meal_plan_id | 1:N | no | CASCADE |
+| `recipes` | `meal_plan_slots` | recipe_id | 1:N | no | RESTRICT (recipes are never deleted) |
+| `users` | `cart_items` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `recipes` | `cart_items` | recipe_id | 1:N | yes | SET NULL |
+| `ingredient_categories` | `cart_items` | category_id | 1:N | no | RESTRICT |
+| `recipes` | `shared_recipes` | recipe_id | 1:N | no | RESTRICT (recipes are never deleted) |
+| `shared_recipes` | `shared_recipe_reports` | shared_recipe_id | 1:N | no | CASCADE |
+| `users` | `shared_recipe_reports` | reporter_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `shared_recipes` | `shared_recipe_weekly_ranks` | shared_recipe_id | 1:N | no | CASCADE |
+| `users` | `generation_quota_grants` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `shared_recipes` | `generation_quota_grants` | shared_recipe_id | 1:N | yes | SET NULL |
+| `users` | `notifications` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `ingredients` | `notifications` | ingredient_id | 1:N | yes | SET NULL |
+| `meal_plans` | `notifications` | meal_plan_id | 1:N | yes | SET NULL |
+| `ingredient_categories` | `ingredient_catalog` | category_id | 1:N | no | RESTRICT (reference data) |
 
-### 28. push_subscriptions (Push subscriptions)
+## Screen values computed instead of stored
 
-| Column | Type | PK/FK | References | Nullable | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| user_id | bigint | FK | users | No | | Member |
-| endpoint | varchar | UK | | No | | Push endpoint |
-| p256dh_key | varchar | | | No | | Push encryption public key |
-| auth_key | varchar | | | No | | Push auth key |
-| created_at | timestamp | | | No | | Subscription time |
+These values appear on screens but have no column. They are computed from the sources below.
 
-### 29. events (Events)
-
-| Column | Type | PK/FK | References | Nullable | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| event_name | varchar | | | No | | Event name (snake_case name from the event definition) |
-| user_id | bigint | | | Yes | | Internal user ID. **No foreign key**. Kept after withdrawal (de-identified because `users` clears personal identifiers) |
-| session_id | varchar | | | Yes | | App session |
-| source | varchar | | | No | | CLIENT/SERVER |
-| screen | varchar | | | Yes | | Screen code |
-| properties | jsonb | | | Yes | | Event properties. No personal data such as email or allergies |
-| platform | varchar | | | Yes | | PWA/TWA/WEB |
-| app_version | varchar | | | Yes | | App version |
-| is_seed | boolean | | | No | false | Whether it is a demo seed event |
-| occurred_at | timestamp | | | No | | Time the action happened (the frontend's +09:00 value converted to Korea time) |
-| created_at | timestamp | | | No | | Insert time |
-
-- Indexes: (event_name, occurred_at), (user_id, occurred_at). Raw events older than 180 days are deleted every early morning.
-
-### 30. event_daily_stats (Daily event aggregates)
-
-| Column | Type | PK/FK | References | Nullable | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| stat_date | date | PK | | No | | Aggregate date (Korea time) |
-| event_name | varchar | PK | | No | | Event name |
-| is_seed | boolean | PK | | No | false | Whether it aggregates demo data |
-| event_count | bigint | | | No | | Event count |
-| user_count | int | | | No | | Number of users |
-
-### 31. admin_audit_logs (Admin action logs)
-
-| Column | Type | PK/FK | References | Nullable | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| id | bigint | PK | | No | | ID |
-| admin_id | bigint | FK | users | No | | Acting admin |
-| action | varchar | | | No | | HIDE_RECIPE/DELETE_RECIPE/DISMISS_REPORT/ADJUST_QUOTA/SUSPEND_USER/RESTORE_USER |
-| target_type | varchar | | | No | | SHARED_RECIPE/REPORT/USER |
-| target_id | bigint | | | No | | Target ID |
-| detail | jsonb | | | Yes | | Reason and before/after values |
-| created_at | timestamp | | | No | | Action time |
-
-### 32. idempotency_keys (Duplicate request keys)
-
-Table that makes a request processed only once even if it arrives twice by mistake. Storage for the API common rule "create, deduct, and confirm POSTs accept an `Idempotency-Key` header (the same key returns the same response, 24 hours)".
-
-| Column | Type | PK/FK | References | Nullable | Default | Description |
-| --- | --- | --- | --- | --- | --- | --- |
-| user_id | bigint | PK,FK | users | No | | Requesting member (the same key is separate per member) |
-| idempotency_key | varchar | PK | | No | | Key sent by the frontend in the header |
-| request_path | varchar | | | No | | API of the first request. A different API with the same key is rejected |
-| response_status | int | | | No | | HTTP status of the first response |
-| response_body | jsonb | | | Yes | | Body of the first response (null for a response without a body) |
-| created_at | timestamp | | | No | | First request time. Deleted by the cleanup job after 24 hours |
-
-- Flow: (1) if the key is new, process the request and store the response; (2) if the key exists, do not process it and return the stored response.
-- **Why a DB table instead of Redis:** the current stack and deployment have no Redis, and running one more server is too much for a 4-week project. Server memory does not work because the old and new versions run together during a deploy and cannot share keys. PostgreSQL is fast enough at our scale.
-- Header handling is one shared filter (or interceptor) in `global`, not built per feature.
-
-## Implementation rules
-
-Rules kept in code while the ERD stays as is.
-
-| Area | Rule | Why |
+| Screen | Value | Source |
 | --- | --- | --- |
-| Common | Run the server (JVM) in Asia/Seoul (already set for production and tests). Read the time only from `Clock` | Timestamp columns are `timestamp` (no time zone) |
-| Members | On withdrawal, clear `provider_user_id` and `email`, and delete ingredients, receipts, meal plans, cart, and notifications. Keep the `users` row and recipes | De-identification + re-signup + keeping shared recipes |
-| Recipes | Give the AI prompt the excluded list (`is_common_exclusion` items) and let it pick only from that list. The server matches ingredient names against the dictionary and adds missing items to `recipe_catalog_items` | If the AI misses one, the allergy warning does not show |
-| Recipes | Do not cook directly from a shared recipe detail; save it (copy) and cook from my recipe | So it never points at someone else's fridge |
-| Quota | A scheduled job sets `usage_logs` rows that stay PENDING for more than 2 minutes to FAILED (AI timeout is 60 seconds) | If the server dies mid-call, the count stays reduced |
-| Quota | Reduce a grant with `UPDATE ... SET remaining = remaining - 1 WHERE id = ? AND remaining > 0`; if no row changed, use the next grant | Prevents two concurrent generations from spending the same grant |
-| Shared space | Change `save_count` in the same transaction as save and unsave | Keeps the save count consistent |
-| Shared space | Hiding or deleting changes only the shared post; copies stay | Copies may already be used in meal plan slots or cook logs |
-| Cleanup jobs | Every early morning: receipts older than 6 months by purchase date with images and items, notifications (30 days), raw events (180 days), deletion codes (older than a day), duplicate request keys (24 hours) | Tables that keep growing |
+| p2 fridge | N ingredients, danger/soon/ok counts, D-day badge | `ingredients.expiration_date` |
+| p3 receipts | Month total, week totals, per-receipt amount and "N food items" | Sum and count of `receipt_items.price` (by `receipts.purchased_on`) |
+| p3 receipts | "N won more than my average" | Compare with the average monthly total of the last 6 months |
+| p3.4 consumption pattern | This month's spending, vs average, category share, per-day amount and items | `receipt_items` + ingredients added without a receipt (`ingredients.receipt_item_id` empty and `price` set, by registration date). An empty price means fridge-only |
+| Discarded cost screen (to be added) | Discarded food cost this month | Sum of `ingredient_logs.cost_amount` |
+| p1.3 settings | N allergies | Count of `user_excluded_ingredients` |
+| p4.1 recipes | N saved recipes, "ready now" filter | Count of `saved_recipes`; compare `recipe_ingredients.name` with my `ingredients.name` |
+| p4.1.4.1 shared detail | Heart (save) count, red-bordered ingredients (ones I do not have) | Count of `saved_recipes` by `shared_recipe_id`; name comparison |
+| p4.1, p4.1.4 | Weekly TOP 3, popular rank, rank change arrows | Count of this week's `saved_recipes.saved_at` + `shared_recipe_weekly_ranks` (last week) |
+| p4.1.1 kebab sheet | "Share" disabled | Whether a `shared_recipes` row with the same `recipe_id` exists this week |
+| p4.1 modal, p4.1.3, p5 | Remaining recipe generations (today), remaining meal plans (this month) | Count of `usage_logs` + `users.plan` limits + `generation_quota_grants.remaining` |
+| Common header | Notification banner text, red count | Latest `notifications.message`, count with empty `read_at` |
+| p7 cart | Select all (N) | Count of `cart_items` |
+| p1 login | "Recent login" bubble | Not in the DB. Stored on the device (localStorage) |
+| p1.3.4 before subscribing | Next billing date (if subscribing today) | Today + 1 month. Not stored |
+
+## Processing rules
+
+| Case | Rule |
+| --- | --- |
+| Withdrawal | Clear `provider_user_id` and `email`, set `deleted_at`. Delete excluded ingredients, tokens, deletion codes, fridge ingredients, use logs, receipts, meal plans, cart, and notifications. Keep the `users` row, recipes, and shared recipes (anonymous). Events keep only the member number |
+| Amount reaches 0 | When "used / discarded" or cooking brings the amount to 0, delete the `ingredients` row. The record stays in `ingredient_logs` with the name |
+| Amount edit | Editing the amount (input mistake) sets `amount` and `initial_amount` together. Reject with `INVALID_INPUT` if the ingredient has any `ingredient_logs` row (#128) |
+| Ingredient delete | The delete icon on the edit screen (to be added) deletes the row. Links from logs, recipe ingredients, and notifications are only cleared |
+| Receipt registration | OCR results are not stored before registration. "Register N food items" creates `receipts`, `receipt_items`, and `ingredients` at once |
+| Duplicate receipt | Block registration if one of my receipts has the same store (branch name), receipt number, and purchase time (if the number is unreadable compare store, purchase date, and the list of food names; if the time is unreadable compare by purchase date). Check at scan and again at registration |
+| Cart -> fridge | Fill storage and expiry from the category's `default_storage` and `default_shelf_life_days`; leave the price empty. The category was set when the item was added. Delete moved items from `cart_items` |
+| Automatic cart removal | On receipt registration, delete cart items whose name equals a registered ingredient |
+| Meal delete / replace | Delete removes the `meal_plan_slots` row. Replace generates a new recipe, changes `recipe_id`, and uses one daily recipe generation (one `usage_logs` RECIPE row). Only slots from today on; past slots cannot be changed |
+| Meal-plan generation | API 38 checks the start date, quota, and overlap, creates `meal_plans` as `GENERATING`, and replies 202. A server job fills the slots and the cart, sets `COMPLETED`, charges one `usage_logs` row, and creates a `MEAL_PLAN_COMPLETED` notification. Too few ingredients, AI error, or timeout set `FAILED`, charge nothing, and create `MEAL_PLAN_FAILED`. Meal-plan notifications ignore `notification_enabled`. A new request while one is `GENERATING` → `MEAL_PLAN_IN_PROGRESS` (409). `MEAL_PLAN_COMPLETED` sets `notifications.meal_plan_id` (tap opens p5 at the start date); `MEAL_PLAN_FAILED` opens the setup screen. No failure-reason column. Overwrite deletes the old overlapping slots when the job completes, so a failed job keeps the existing plan. (deferred, #144): whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap |
+| Meal-plan overwrite | The start date can only be today or later, so past days never change. Delete existing slots on dates that overlap the new plan, except today's meals already cooked (`cooked_at` set): they keep their recipe and the new plan does not fill them. The delete happens when the generation job completes, not at acceptance |
+| Cooked mark | Cooking a recipe opened from today's slot sets that slot's `cooked_at` (never for other days) |
+| Receipt delete | Delete the `receipts` and `receipt_items` rows (image included). It leaves spending and patterns; registered fridge ingredients stay (only `receipt_item_id` is cleared) |
+| Recipe "delete" | Remove only from the saved list (`saved_recipes`). Shared posts and others' saves stay |
+| Withdrawal and subscription | End the subscription immediately on withdrawal (ENDED, clear `billing_key`, no more payments). Keep `subscription_payments` (payment records). Refunds for the remaining period are an open question (policy ch. 12 item 13) |
+| Cleanup jobs | Every early morning: receipts older than 6 months by purchase date (with images), notifications older than 30 days, deletion codes older than a day |
+| Subscription start | Toss card registration -> the server issues a billingKey -> on first payment success create `subscriptions` (ACTIVE) and `subscription_payments` (DONE) and set `users.plan` = PREMIUM. If the first payment fails, do not create a subscription (record the failure only). Premium limits apply at once (recipes 4 per day, meal plans 4 this month and 7 days) |
+| Subscription renewal | Every early morning, charge ACTIVE subscriptions whose `next_billing_date` is today with the billingKey. On success extend the period by a month. Failure handling is an open question (policy ch. 12 item 11) |
+| Subscription cancel | Cancel request sets `status` = CANCELED and `canceled_at`. PREMIUM stays until the day before the next billing date; on that date's early morning do not charge, set ENDED, clear `billing_key`, set `users.plan` = BASIC. Basic limits apply afterwards (counts already used this month still count) |
+| Common | Amounts `numeric(10,3)`, money `bigint` (KRW), time `timestamp` (Korea time), JSON `jsonb`. `created_at` on every app-created row, `updated_at` only on tables whose values change |
+
+## Differences from the current code
+
+Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged migrations; match this ERD with new numbered migrations.
+
+| Table | Current code | To match this ERD |
+| --- | --- | --- |
+| `users` | Has `status` (ACTIVE/SUSPENDED) | Drop `status` |
+| `refresh_tokens` | Has `revoked_at` (logout = mark revoked) | Drop `revoked_at`. Logout deletes the row |
+| `ingredient_categories` | Has `default_unit`, no `sort_order`, SEASONING named '양념·소스' | Drop `default_unit`, add `sort_order` (Appendix A order), rename SEASONING to '양념' |
+| `ingredients` | Has `is_expiration_estimated`, `status` (ACTIVE/FINISHED), `version` | Drop the three columns. Delete the row when the amount reaches 0 |
+| `ingredient_catalog` | PR #140 (V5): no `unit`, has autocomplete API `GET /user/ingredient-catalog` | Add `unit`, remove the autocomplete API |
+| `events` | Same | Nothing to change |
+
+## Differences from ERD v3 (32 tables)
+
+Summary: 17 changed, 7 kept, 7 removed, 1 on hold, 2 added -> 26 tables in the new ERD. The new tables are `subscriptions` and `subscription_payments`, added with the subscription on 11/22.
+
+| Previous table | Status | Added columns | Removed columns | Reason |
+| --- | --- | --- | --- | --- |
+| `users` | changed | - | status | No admin (suspension) screen. `plan` follows the subscription (11/22) |
+| `user_excluded_ingredients` | changed | allergen_code | catalog_id | catalog_id (dictionary) -> allergen_code. The 19 chips are a fixed list, stored as codes |
+| `refresh_tokens` | changed | - | revoked_at | Logout deletes the row |
+| `account_deletion_requests` | kept | - | - | The 11/21 rollback brings back email codes for Kakao/Google |
+| `ingredient_categories` | changed | sort_order | default_unit | The backend picks units per ingredient; `sort_order` for the sheet order |
+| `ingredient_catalog` | changed | unit | - | No autocomplete screen, so no API; used only as an internal dictionary to pick units from names (11/22 decision). Allergies use chip codes |
+| `ingredients` | changed | - | is_expiration_estimated, status, version | No "estimated" display, the row is deleted at 0, no basis for `version` |
+| `ingredient_logs` | changed | user_id, name | cook_log_id | Cook log table removed. `user_id` and `name` keep the record after the ingredient is deleted |
+| `receipts` | changed | purchased_time, receipt_number | - | For duplicate-receipt checks. Deleting removes it from spending and patterns |
+| `receipt_items` | changed | - | expiration_date, is_expiration_estimated | The receipt detail has no expiry; expiry is only on fridge ingredients |
+| `recipes` | changed | user_id, source | creator_id, origin, mode, supplement_used | origin and mode -> one `source` (QUICK/CUSTOM/MEAL_PLAN). No shared copies; meal slots get full recipes from the start. No screen for supplement_used |
+| `recipe_ingredients` | kept | - | - | Same structure |
+| `recipe_steps` | kept | - | - | Same structure |
+| `recipe_catalog_items` | removed | - | (whole table) | No recipe allergy warning screen |
+| `saved_recipes` | kept | - | - | Same structure, but saving a shared recipe stores the original `recipe_id`, not a copy |
+| `recipe_cook_logs` | removed | - | (whole table) | No cook history screen. Cook deduction is `ingredient_logs` (USED); cooking is recorded as events. The recommend question is a fridge bottom sheet after the cook deduction, collected only as event E50 (no table) |
+| `meal_plans` | kept | - | - | Same structure |
+| `meal_plan_slots` | changed | cooked_at | user_id, menu_name, source | Slots always belong to a plan and get a full recipe (no manual slots). `meal_plan_id` and `recipe_id` required. `cooked_at` keeps cooked meals on overwrite |
+| `meal_plan_slot_ingredients` | removed | - | (whole table) | No per-slot planned-ingredient screen |
+| `cart_items` | changed | category_id | meal_plan_id, meal_plan_slot_id, group_name | p7 rows show only the source recipe name. `category_id` for moving to the fridge |
+| `shared_recipes` | changed | image_key | save_count | `recipe_id` no longer unique (can be shared again each week). Save count is computed. One photo, so `image_key` lives here |
+| `shared_recipe_photos` | removed | - | (whole table) | One shared photo -> `shared_recipes.image_key` |
+| `shared_recipe_reports` | changed | - | reason_detail, result, handled_by, handled_at | No "other" text input; no admin screen. UK(reporter_id + shared_recipe_id) kept |
+| `shared_recipe_weekly_ranks` | kept | - | - | UK is week_start + shared_recipe_id |
+| `generation_quota_grants` | changed | - | reason, admin_id, memo | No admin adjustment screen |
+| `usage_logs` | changed | - | status, error_code, duration_ms | Successes only (failures are not charged). OCR and MEAL_DETAIL removed from `type` (no OCR limit) |
+| `notifications` | changed | message | dedupe_key, title, body | title/body -> one `message` line |
+| `push_subscriptions` | removed | - | (whole table) | In-app notifications only, no device push |
+| `events` | kept | - | - | Same structure (screen, platform, app_version, is_seed kept) |
+| `event_daily_stats` | removed | - | (whole table) | No admin dashboard screen. Revisit when admin screens are designed |
+| `admin_audit_logs` | on hold | - | (whole table) | No admin screen. Revisit with the admin design |
+| `idempotency_keys` | removed | - | (whole table) | No screen or decision basis |
+| `subscriptions` | added | id, user_id, status, customer_key, billing_key, price, current_period_start, next_billing_date, canceled_at, ended_at, created_at, updated_at | - | p1.3.4 subscription management (added to Figma 11/22), Toss auto-billing |
+| `subscription_payments` | added | id, subscription_id, user_id, order_id, payment_key, amount, status, failure_code, period_start, period_end, approved_at, created_at | - | First payment and auto-payment records |
+
+## Appendix A. 12 ingredient categories
+
+Codes from PRD appendix B, names follow the middle-dot rule (11/21), shelf life is the PRD appendix B draft. Default storage is a draft (used for cart -> fridge).
+
+| Code | Name | Default shelf life | Default storage (draft) |
+| --- | --- | --- | --- |
+| VEGETABLE | 채소 | 7 days | FRIDGE |
+| MEAT | 육류 | 3 days | FRIDGE |
+| FRUIT | 과일 | 7 days | FRIDGE |
+| SEAFOOD | 해산물 | 2 days | FRIDGE |
+| DAIRY_EGG | 달걀·유제품 | 10 days | FRIDGE |
+| GRAIN | 곡류·면·빵 | 30 days | PANTRY |
+| BEAN_TOFU | 두부·콩류 | 5 days | FRIDGE |
+| PROCESSED | 가공·냉동식품 | 30 days | FREEZER |
+| SIDE_DISH | 김치·반찬 | 14 days | FRIDGE |
+| SEASONING | 양념 | 180 days | PANTRY |
+| BEVERAGE | 음료 | 30 days | FRIDGE |
+| ETC | 기타 | 7 days | FRIDGE |
+
+## Appendix B. 19 excluded-ingredient (allergy) chips
+
+In the p1.2 chip order.
+
+| Code | Display name |
+| --- | --- |
+| EGG | 난류 |
+| MILK | 우유 |
+| BUCKWHEAT | 메밀 |
+| PEANUT | 땅콩 |
+| SOYBEAN | 대두 |
+| WHEAT | 밀 |
+| MACKEREL | 고등어 |
+| CRUSTACEAN | 갑각류 |
+| PORK | 돼지고기 |
+| SHRIMP | 새우 |
+| SULFITE | 아황산류 |
+| PEACH | 복숭아 |
+| SQUID | 오징어 |
+| CHICKEN | 닭고기 |
+| BEEF | 쇠고기 |
+| OYSTER | 굴 |
+| CRAB | 게 |
+| PINE_NUT | 잣 |
+| SHELLFISH | 어패류 |
+
+## Appendix C. Code values
+
+| Column | Values |
+| --- | --- |
+| users.provider | KAKAO / NAVER / GOOGLE |
+| users.plan | BASIC / PREMIUM |
+| subscriptions.status | ACTIVE subscribed / CANCELED cancel scheduled / ENDED |
+| subscription_payments.status | DONE / FAILED |
+| storage (ingredients, items) | FRIDGE refrigerated / FREEZER frozen / PANTRY room temperature |
+| ingredient_logs.type | USED used or cooked / DISCARDED |
+| recipes.source | QUICK / CUSTOM / MEAL_PLAN (meal-plan generation and replace) |
+| usage_logs.type | RECIPE (quick, custom, regenerate, meal replace) / MEAL_PLAN |
+| meal_plans.purpose | BALANCED / DIET / HIGH_PROTEIN / SIMPLE / SAVING |
+| meal_plans.status | GENERATING generating / COMPLETED done / FAILED failed |
+| meal_type | BREAKFAST / LUNCH / DINNER |
+| shared_recipes.status | VISIBLE / HIDDEN (hidden by an operator) |
+| shared_recipe_reports.reason | OFFENSIVE_IMAGE / AD_TITLE / DANGEROUS_RECIPE / OTHER |
+| shared_recipe_reports.status | PENDING / DONE |
+| notifications.type | EXPIRY_SOON / EXPIRED / MEAL_PLAN_COMPLETED meal plan done / MEAL_PLAN_FAILED meal plan failed |
+| receipts.store_code | CU / GS25 / SEVEN_ELEVEN / EMART24 / EMART / HOMEPLUS / LOTTE_MART / COSTCO / TRADERS / HANARO / GS_FRESH / LOTTE_SUPER / EMART_EVERYDAY / HOMEPLUS_EXPRESS (empty when not matched) |
+| unit | PRD appendix A: 9 fridge units (G, KG, ML, L, EA, PACK, BUNCH, PIECE, SHEET); recipes add TBSP, TSP, CUP, PINCH, TO_TASTE. The backend picks the value per ingredient |

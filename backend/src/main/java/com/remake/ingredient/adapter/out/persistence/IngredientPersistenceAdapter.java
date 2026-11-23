@@ -1,5 +1,7 @@
 package com.remake.ingredient.adapter.out.persistence;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
@@ -10,6 +12,8 @@ import com.remake.ingredient.application.port.out.DeleteIngredientPort;
 import com.remake.ingredient.application.port.out.LoadIngredientPort;
 import com.remake.ingredient.application.port.out.SaveIngredientPort;
 import com.remake.ingredient.domain.Ingredient;
+import com.remake.ingredient.domain.IngredientStatus;
+import com.remake.ingredient.domain.StorageLocation;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,6 +27,18 @@ class IngredientPersistenceAdapter implements LoadIngredientPort, SaveIngredient
 	@Override
 	public Optional<Ingredient> loadByIdAndUserId(Long ingredientId, Long userId) {
 		return repository.findByIdAndUserId(ingredientId, userId).map(IngredientJpaEntity::toDomain);
+	}
+
+	@Override
+	public List<Ingredient> loadActiveByUserId(Long userId, StorageLocation storage, Long categoryId) {
+		return repository.search(userId, IngredientStatus.ACTIVE, storage, categoryId).stream()
+				.map(IngredientJpaEntity::toDomain)
+				.toList();
+	}
+
+	@Override
+	public List<LocalDate> loadActiveExpirationDates(Long userId) {
+		return repository.findExpirationDates(userId, IngredientStatus.ACTIVE);
 	}
 
 	@Override

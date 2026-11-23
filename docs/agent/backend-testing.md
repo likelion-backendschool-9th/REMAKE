@@ -41,7 +41,7 @@ Choose the lightest type that can actually verify what you test. Do not replace 
 - Write persistence adapter tests only for hand-written queries or complex mapping. API tests already cover simple saving and loading.
 - If a persistence adapter fails with `LazyInitializationException`, call it inside `transactionTemplate`, as production calls it inside a service transaction. Do not change the mapping to `EAGER`.
 - MockMvc does not go through Tomcat. Upload size limits and the `/error` response are not tested through it. Check configuration values in the shared application (for example the `MultipartConfigElement` bean). Upload limits have two values: per file (`spring.servlet.multipart.max-file-size`) and per request (`spring.servlet.multipart.max-request-size`).
-- For an external adapter that does not use `RestClient` (web push library, vendor SDK), stop and ask the user how to test it.
+- For an external adapter that does not use `RestClient` (for example a vendor SDK), stop and ask the user how to test it.
 
 ## Integration test rules
 
@@ -74,7 +74,8 @@ class IngredientApiTest extends IntegrationTestSupport {
 
 ## External service adapters
 
-- In the PR that adds an external service adapter (`adapter/out/ai`, `ocr`, `oauth`, web push, and `filestorage` when files go to external storage), replace it in `IntegrationTestSupport` with `@MockitoBean` on the adapter class. Do not mock a port interface: when an adapter implements several ports, the application fails to start.
+- In the PR that adds an external service adapter (`adapter/out/ai`, `ocr`, `oauth`, and `filestorage` when files go to external storage), replace it in `IntegrationTestSupport` with `@MockitoBean` on the adapter class. Do not mock a port interface: when an adapter implements several ports, the application fails to start.
+- A mocked adapter's real constructor never runs in tests, so a missing dependency (for example `RestClient.Builder` without `spring-boot-starter-restclient`) passes every test and fails only on the server. `MockedAdapterWiringTest` resolves every constructor parameter of each `@MockitoBean` adapter in `IntegrationTestSupport` the way Spring does when it calls the constructor (`@Value`, `@Qualifier`, `Optional`, and `List` included; several beans of one type fail). Give each adapter a single constructor. If this test fails, fix the app, not the test: add the missing dependency to `build.gradle`, or add `@Qualifier` when several beans match.
 - Each test stubs the responses it needs. Unstubbed calls return default values: `null` for objects, empty for collections and `Optional`, 0 for numbers. Stubs reset after each test.
 - Add fake keys and an unreachable address (`http://localhost:1`) for the adapter's properties to `application-test.yml`. Tests do not read `backend/.env` (only the `local` profile reads it), but they still read environment variables from the shell or IDE. Without the fake key, a real key from those variables can be used.
 - If files are saved to a server folder, do not mock `filestorage`. Set the folder to a test folder in `application-test.yml` and clear it in `IntegrationTestSupport.cleanUp`.
