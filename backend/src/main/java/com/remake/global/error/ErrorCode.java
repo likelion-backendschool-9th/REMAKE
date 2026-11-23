@@ -40,6 +40,7 @@ public enum ErrorCode {
 	INVALID_UNIT(HttpStatus.BAD_REQUEST, "사용할 수 없는 단위입니다."),
 	INSUFFICIENT_QUANTITY(HttpStatus.BAD_REQUEST, "가진 양보다 많이 뺄 수 없습니다."),
 	// AI 레시피 (문구는 에러 정의서 v2. 모두 횟수 차감 없음)
+	GENERATION_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "오늘의 레시피 생성 횟수를 모두 사용했어요"),
 	AI_UPSTREAM_ERROR(HttpStatus.BAD_GATEWAY, "레시피를 만들지 못했어요. 횟수는 차감되지 않았어요"),
 	AI_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "생성이 오래 걸리고 있어요. 횟수는 차감되지 않았어요"),
 	AI_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "레시피를 만들지 못했어요. 횟수는 차감되지 않았어요"),
