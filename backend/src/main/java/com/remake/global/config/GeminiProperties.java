@@ -6,8 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.StringUtils;
 
 /**
- * Gemini(AI 레시피·식단표 생성) 설정. 지금은 로컬(backend/.env의 GEMINI_API_KEY)에서만 키를 넣는다.
- * 운영 설정(compose.prod.yml)에는 아직 넣지 않았으므로 운영에서는 키가 비어 있고, 생성 요청은 AI_UPSTREAM_ERROR로 실패한다.
+ * Gemini(AI 레시피·식단표 생성) 설정. 키는 로컬은 backend/.env, 운영은 서버 .env의 GEMINI_API_KEY(compose.prod.yml이 넘김)에 넣는다.
+ * 키가 비어 있으면 호출하지 않고, 생성 요청은 AI_UPSTREAM_ERROR로 실패한다.
  *
  * @param apiKey         Google AI Studio API 키. 비어 있으면 호출하지 않는다
  * @param model          모델 코드. 기본 gemini-3.5-flash-lite(무료 티어)

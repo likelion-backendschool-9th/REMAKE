@@ -5,12 +5,12 @@
 냉장고 속 식재료를 관리하고, AI 맞춤 레시피와 소비기한 알림으로 식재료 낭비를 줄이는 서비스의 프론트엔드 설계 문서입니다.
 모바일 우선 PWA로 만들고, PWABuilder(TWA)로 안드로이드 앱으로 패키징합니다.
 
-> 화면 목록과 라우트는 초안입니다. 기획·디자인이 확정되면 이 문서를 먼저 고친 뒤 코드를 바꿉니다.
+> §4 라우트는 WBS v2의 프론트 URL 표(2026-11-22, 피그마 기준)를 따릅니다. 기획이나 디자인이 바뀌면 이 문서를 먼저 고친 뒤 코드를 바꿉니다.
 
 ## 1. 역할 분담
 
 - **프론트(Next.js)**: 화면과 사용자 상호작용만 담당합니다. 비즈니스 로직과 데이터 저장은 하지 않습니다.
-- **백엔드(Spring Boot)**: 인증, 데이터, OCR·AI 처리, 푸시 발송을 담당합니다.
+- **백엔드(Spring Boot)**: 인증, 데이터, OCR·AI 처리, 앱 안 알림을 담당합니다.
 - 프론트는 Spring REST API만 호출합니다. Next의 Route Handler·Server Action으로 백엔드 기능을 대신 만들지 않습니다.
   예외: 서비스 워커 서빙 라우트(`app/serwist/[path]`).
 - **`/api/`는 백엔드 경로입니다.** 운영에서는 프론트와 백엔드가 한 도메인을 같이 쓰고, 프록시가 `/api/`로 시작하는 요청을 경로 그대로 Spring으로 보냅니다. 나머지는 모두 Next.js로 갑니다([`deployment.md`](./deployment.md) 참고).
@@ -34,7 +34,7 @@
 | 날짜            | dayjs                                                                            | 날짜 표시, 식단표 달력                                                              |
 | 아이콘          | @solar-icons/react (Solar)                                                       | 트리 셰이킹되는 React 컴포넌트, 오프라인에서도 동작                                 |
 | 폰트            | Pretendard(`pretendard` 패키지, dynamic subset) + GmarketSans(`next/font/local`) | Pretendard: 한글 UI 폰트, 화면에 나온 글자 묶음만 받음. GmarketSans: 로고 글자 전용 |
-| PWA·푸시        | Serwist + Web Push                                                               | 서비스 워커, 오프라인 화면, 소비기한 알림                                           |
+| PWA             | Serwist                                                                          | 서비스 워커, 오프라인 화면. 알림은 앱 안에서만(기기 푸시 없음)                      |
 | 스토어 배포     | PWABuilder (TWA)                                                                 | 안드로이드 앱 패키지 생성                                                           |
 | 웹 배포         | `output: "standalone"` + nginx                                                   | Node 서버를 nginx 뒤에서 실행                                                       |
 | 코드 품질       | ESLint + Prettier, Husky + lint-staged                                           | 7명 코드 스타일 통일, 커밋 전 자동 검사                                             |
@@ -45,10 +45,12 @@
 ```
 frontend/
 ├─ app/                  # 라우트. 각 라우트 폴더에 그 라우트만 쓰는 코드를 함께 둔다 (3.1 참고)
-│  ├─ layout.tsx         # 루트 레이아웃, globals.css, 홈 page.tsx
+│  ├─ layout.tsx         # 루트 레이아웃, globals.css
 │  ├─ fonts/             # GmarketSans 파일(woff2) + fonts.ts (next/font/local) + pretendard.css(생성 파일)
-│  ├─ fridge/            # 라우트 예시 — 3.1 참고
-│  ├─ sw.ts              # 서비스 워커 (캐싱, 푸시 수신)
+│  ├─ page.tsx           # 스플래시 (/)
+│  ├─ public/            # /public/... 라우트 (로그인 전, §4)
+│  ├─ user/              # /user/... 라우트 (로그인 후, §4). 예: user/fridge/ingredients/ — 3.1 참고
+│  ├─ sw.ts              # 서비스 워커 (캐싱)
 │  ├─ serwist/[path]/    # 서비스 워커 서빙 라우트
 │  ├─ ~offline/          # 오프라인 대체 화면
 │  └─ manifest.ts        # PWA 매니페스트
@@ -72,7 +74,7 @@ frontend/
 코드는 그 코드를 쓰는 페이지나 컴포넌트 옆에 둡니다. 여러 라우트에서 재사용하는 코드만 공용 폴더(`components/`, `hooks/`, `lib/`)로 올립니다.
 
 ```
-app/fridge/
+app/user/fridge/ingredients/
 ├─ page.tsx                     # 얇게: _components를 조합하고 _lib/queries를 호출
 ├─ page.module.css
 ├─ _components/                 # 이 라우트(와 하위 라우트)에서만 쓰는 컴포넌트
@@ -86,11 +88,12 @@ app/fridge/
 │  ├─ schema.ts                 # Zod 스키마
 │  └─ utils.ts                  # 순수 함수 (예: 필터 상태 → 쿼리 파라미터 변환)
 └─ [id]/
-   └─ page.tsx
+   └─ edit/
+      └─ page.tsx
 ```
 
 1. **private 폴더.** `_`로 시작하는 폴더는 Next.js private 폴더라서 라우트가 되지 않습니다. 라우트의 화면 외 코드는 모두 `_components/`, `_hooks/`, `_lib/`에 둡니다. 이 안에 `page.tsx`나 `route.ts`를 두지 않습니다.
-2. **라우트 단위 고립.** 라우트는 자기 폴더와 상위 라우트 폴더의 코로케이션 코드만 import할 수 있습니다 (예: `app/fridge/[id]`는 `app/fridge/_components`를 쓸 수 있음). 형제 라우트나 관련 없는 라우트의 코드는 import하지 않습니다.
+2. **라우트 단위 고립.** 라우트는 자기 폴더와 상위 라우트 폴더의 코로케이션 코드만 import할 수 있습니다 (예: `app/user/fridge/ingredients/[id]/edit`는 `app/user/fridge/ingredients/_components`를 쓸 수 있음). 형제 라우트나 관련 없는 라우트의 코드는 import하지 않습니다.
 3. **컴포넌트 단위 고립.** 컴포넌트마다 폴더 하나를 두고 `.tsx`, `.module.css`, 그 컴포넌트만 쓰는 훅·유틸을 함께 둡니다. 다른 컴포넌트의 CSS Module이나 내부 파일을 import하지 않습니다.
 4. **공유되면 올리기.** 관련 없는 두 라우트가 같은 코드를 필요로 하면 위로 올립니다 — UI 컴포넌트 → `components/<이름>/`, React 훅 → `hooks/`, queryKey와 Query 훅 → `lib/queries/<도메인>.ts`, 그 밖의 함수 → `lib/`. 공용 코드는 특정 페이지를 알면 안 됩니다.
 5. **import 경로.** 코로케이션 코드는 상대 경로(`./_components/...`, `../_lib/...`)로, 공용 코드는 `@/`(`@/components/Button`)로 import합니다. `@/app/...`에서는 import하지 않습니다 (ESLint로 막음).
@@ -122,23 +125,52 @@ components/Button/
 | 이벤트 핸들러                            | `handle` + 동작, props는 `on` + 동작 | `handleSubmit`, `onSubmit`          |
 | boolean                                  | `is` / `has` / `can` 접두사          | `isOpen`, `hasError`                |
 
-## 4. 화면 / 라우트 (초안)
+## 4. 화면 / 라우트
 
-| 라우트           | 화면           | 주요 기능                                       |
-| ---------------- | -------------- | ----------------------------------------------- |
-| `/`              | 홈             | 소비기한 임박 재료, 추천 레시피 요약            |
-| `/login`         | 로그인         | 소셜 로그인                                     |
-| `/onboarding`    | 온보딩         | 가구원 수 → 알레르기 (단계마다 건너뛰기 가능)   |
-| `/fridge`        | 내 냉장고      | 재료 목록, 보관 위치·소비기한 정렬              |
-| `/fridge/[id]`   | 재료 상세·수정 | 이름·카테고리·보관 위치·소비기한·가격·수량 수정 |
-| `/fridge/add`    | 재료 등록      | 직접 입력 / 영수증 촬영 선택                    |
-| `/receipt`       | 영수증 OCR     | 촬영 → 로딩(요청 한 번) → 품목 확인·수정 → 확정 |
-| `/recipes`       | 레시피 추천    | 보유 재료 기반 AI 추천                          |
-| `/recipes/[id]`  | 레시피 상세    | 재료·조리 순서, 부족 재료                       |
-| `/recipes/new`   | 커스텀 레시피  | 고른 옵션으로 레시피 생성 (자유 입력 없음)      |
-| `/meal-plan`     | 식단표         | 월간 달력, AI 식단표 생성                       |
-| `/notifications` | 알림           | 소비기한 알림 목록, 푸시 권한 설정              |
-| `/mypage`        | 마이페이지     | 프로필, 설정                                    |
+출처: WBS v2 3장 "프론트 URL"(2026-11-22). 형식은 `/{역할자}/{기능}/{자원}`입니다. 역할자는 `public`(로그인 전)과 `user`(로그인 후) 둘입니다. 예외는 스플래시 `/` 하나뿐입니다.
+
+- 시트·모달·드로워·로딩·실패는 따로 주소가 없고, 그 화면 안의 상태입니다.
+- 로그인하지 않았으면 모든 `/user/...` 라우트에서 `/public/auth/login`으로 보냅니다. 로그인했으면 `/`와 로그인 화면에서 `/user/fridge/ingredients`(인덱스)로 보냅니다.
+- 온보딩은 첫 로그인 직후 필수입니다. 건너뛰기 버튼은 없습니다. 가구원 수는 입력해야 넘어가고, 알레르기는 0개여도 됩니다.
+
+| 라우트                                       | 화면(피그마)                      | 비고                                                                     |
+| -------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------ |
+| `/`                                          | 스플래시                          | 로그인 여부를 보고 로그인 또는 냉장고로                                  |
+| `/public/auth/login`                         | p1 로그인                         | 카카오·네이버·구글, "최근 로그인" 말풍선, 약관 드로워는 이 화면 안       |
+| `/public/auth/callback/[provider]`           | (화면 없음)                       | 소셜 인증 되돌아오는 주소. API 1(로그인) 또는 API 10(네이버 재인증) 호출 |
+| `/user/onboarding/household`                 | p1.1 가구원 수                    | 1~50, 숫자만. 입력 전 "다음" 비활성                                      |
+| `/user/onboarding/allergies`                 | p1.2 알레르기 선택                | 칩 19개, 0개 가능. 온보딩 값 두 개를 한 번에 저장(API 4)                 |
+| `/user/setting/profile`                      | p1.3 설정                         | 로그아웃 모달, 계정 삭제 모달이 이 화면 안                               |
+| `/user/setting/household`                    | p1.3.1 가구원 설정                |                                                                          |
+| `/user/setting/excluded-ingredients`         | p1.3.2 알레르기 재료 제외         | 0개 가능                                                                 |
+| `/user/setting/subscription`                 | p1.3.4 구독 관리(구독 전·구독 중) | 토스페이먼츠 카드 등록                                                   |
+| `/user/setting/subscription/billing-success` | (화면 없음)                       | 토스가 돌려보내는 주소. 구독 시작(API 59) 후 구독 관리로                 |
+| `/user/setting/subscription/billing-fail`    | (화면 없음)                       | 토스 실패·취소 때 돌아오는 주소. 토스트 후 구독 관리로                   |
+| `/user/setting/account-deletion`             | p1.3.3 이메일 인증번호            | 카카오·구글만. 네이버는 재인증                                           |
+| `/user/fridge/ingredients`                   | p2 냉장고(인덱스)                 | 상태 카드, 위치·종류 시트, 사용 여부 시트                                |
+| `/user/fridge/ingredients/new`               | p2.2 재료 추가                    |                                                                          |
+| `/user/fridge/ingredients/[id]/edit`         | p2.1 재료 수정                    | 값 변경 시트, 삭제 아이콘                                                |
+| `/user/receipt/receipts`                     | p3 영수증                         | 월 선택, 주차 묶음                                                       |
+| `/user/receipt/receipts/[id]`                | p3.2 영수증 상세                  | 삭제 모달이 이 화면 안                                                   |
+| `/user/receipt/scan`                         | p3.1 카메라·이미지 업로드         |                                                                          |
+| `/user/receipt/scan/result`                  | p3.3 OCR 결과                     | 기다리는 동안 스켈레톤. OCR 실패는 이 주소 안의 상태                     |
+| `/user/receipt/scan/items/new`               | p3.3.2 OCR 재료 추가              |                                                                          |
+| `/user/receipt/scan/items/[index]/edit`      | p3.3.1 OCR 재료 수정              | 고친 값은 등록할 때까지 화면 상태로만 둠                                 |
+| `/user/receipt/patterns`                     | p3.4 나의 소비                    |                                                                          |
+| `/user/recipe/saved-recipes`                 | p4.1 레시피(메인)                 | 금주 TOP 3, 저장 목록, 빠른 생성 모달이 이 화면 안                       |
+| `/user/recipe/custom`                        | p4.1.2 커스텀 레시피              | 선택식만, 자유 입력 없음                                                 |
+| `/user/recipe/results/[id]`                  | p4.1.3 생성 결과                  | 로딩·실패·횟수 소진은 이 주소 안의 상태                                  |
+| `/user/recipe/recipes/[id]`                  | p4.1.1 레시피 상세                |                                                                          |
+| `/user/recipe/recipes/[id]/cook`             | p4.1.1.2 요리 완료 재료 차감      |                                                                          |
+| `/user/recipe/shared-recipes`                | p4.1.4 금주의 인기 레시피         | 랭킹, 검색                                                               |
+| `/user/recipe/shared-recipes/new`            | p4.1.1.1 레시피 공유 작성         |                                                                          |
+| `/user/recipe/shared-recipes/[id]`           | p4.1.4.1 공유 레시피 상세         | 신고 시트가 이 화면 안                                                   |
+| `/user/meal-plan/calendar`                   | p5 식단표                         | 빈 화면, 월 달력, 날짜 시트, ⋮ 시트(삭제·교체)                           |
+| `/user/meal-plan/meal-plans/new`             | p5 식단표 생성 설정               | 겹침 모달, 횟수 소진이 이 화면 안. 생성은 비동기(§5)                     |
+| `/user/notification/notifications`           | p6 알림                           |                                                                          |
+| `/user/cart/cart-items`                      | p7 장바구니                       | 수량 시트, 삭제 모드                                                     |
+
+아직 위치가 정해지지 않은 화면(화면 대기): 이번 달 버린 식재료 금액, 레시피 추천 여부.
 
 ## 5. 데이터 흐름
 
@@ -159,7 +191,11 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - **API 클라이언트**: 모든 호출은 `lib/api/client.ts`를 거칩니다. 쿠키를 함께 보냅니다(`credentials: "include"`). 타임아웃은 `AbortSignal.timeout`으로 겁니다. 개발 중에는 넉넉하게 기본 30초, OCR 60초, AI 레시피 생성 120초로 둡니다. 프론트 타임아웃은 백엔드 제한(위 참고)보다 길어야 합니다. 그래야 프론트가 먼저 끊지 않고 서버의 `OCR_TIMEOUT`·`AI_TIMEOUT` 응답을 화면에서 처리할 수 있습니다. 최종 값은 개발 막바지에 #122에서 정합니다.
 - **재시도**: GET만 1회 재시도합니다. POST·PUT·PATCH·DELETE는 재시도하지 않습니다. TanStack Query는 기본으로 3회 재시도하므로 query는 1, mutation은 0으로 설정합니다.
 - **캐싱**: 자주 안 바뀌는 데이터(카테고리, 마트 목록, 알레르기 목록, 금주의 레시피)는 `staleTime`을 길게(수 분~1시간) 둡니다. 자주 바뀌는 데이터(냉장고 재료, 장바구니)는 짧게 두고, 바꾼 뒤에는 `invalidateQueries`를 합니다.
-- **에러**: 백엔드 에러 `code`를 사용자 문구로 바꾸는 표는 `lib/error-messages.ts` 하나로 관리합니다(§10 에러). 401이면 로그인 화면으로 보냅니다.
+- **에러**: 백엔드 에러 `code`를 사용자 문구로 바꾸는 표는 `lib/error-messages.ts` 하나로 관리합니다(§10 에러).
+- **401 처리** (상태 코드가 아니라 `code`로 판단합니다. [`errors.md`](../agent/spec/errors.md), 영문):
+    - `TOKEN_EXPIRED`(30분이 지나 액세스 쿠키 만료): `POST /api/v1/public/auth/refresh`(API 2)를 한 번 부르고, 원래 요청을 한 번 다시 보냅니다. 사용자에게는 아무것도 보여 주지 않습니다. 여러 요청이 함께 만료되면 재발급은 한 번만 하고 나머지는 그 결과를 기다립니다.
+    - `REFRESH_TOKEN_INVALID`(재발급 실패: 14일이 지났거나 지워졌거나 위조된 리프레시 토큰)와 `UNAUTHORIZED`(액세스 쿠키가 없거나 위조됨): TanStack Query 캐시를 비우고 `/public/auth/login`으로 보낸 뒤, 로그인하면 원래 주소로 돌아갑니다.
+    - 이 처리는 `lib/api/client.ts` 한 곳에서 합니다. 화면에서는 이 코드들을 다루지 않습니다.
 - **Zustand**에는 진짜 전역 상태(로그인 사용자 요약, UI 설정)와, props로 내리면 3단계를 넘는 상태만 둡니다.
 - **URL 상태**: 필터·탭·정렬·월 선택은 nuqs로 URL에 둡니다. 바텀시트·모달·드로어는 URL에 넣지 않고 로컬 상태로 관리합니다(뒤로가기: §7.1).
 - **환경 변수**: 브라우저에 노출해도 되는 값만 `NEXT_PUBLIC_`을 붙입니다. 비밀 값은 서버에서만 씁니다.
@@ -174,8 +210,7 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - 단위는 rem입니다(1rem = 16px, 루트 font-size는 바꾸지 않음). 피그마 px 값은 16으로 나눠 씁니다(10px → 0.625rem). 테두리 같은 선만 px로 씁니다.
 - 폰트: 파일은 woff2만 씁니다.
     - Pretendard(본문): `pretendard` 패키지의 dynamic subset 파일을 씁니다(굵기마다 글자 묶음별로 `unicode-range`로 나뉘어 있어 화면에 나온 글자가 든 묶음만 받습니다. 통파일은 굵기마다 약 770KB). `app/fonts/pretendard.css`는 `pnpm gen:fonts`(`scripts/gen-pretendard-css.mjs`)가 만들고 `app/layout.tsx`에서 불러옵니다. 손으로 고치지 않습니다. 굵기는 쓰는 것만 400/500/700/800입니다(400은 `Remake/content-regular`·`Remake/error` 텍스트 스타일, 800은 마트 배지). 굵기를 더하려면 스크립트의 `WEIGHTS`를 고치고 다시 실행합니다. 글꼴 이름은 `Pretendard`이고, `tokens.css`의 `--font-family-base`가 이 이름을 씁니다.
-    - GmarketSans: `app/fonts/fonts.ts`에서 `next/font/local`로 불러오고 `app/layout.tsx`의 `<html>`에 붙입니다.
-    - GmarketSans(로고 글자 전용): 굵기 300/500/700, `preload: false`. `font-family: var(--font-family-logo)`(`globals.css`에 정의)로 씁니다. 다른 글자에는 쓰지 않습니다.
+    - GmarketSans(로고 글자 전용): `app/fonts/fonts.ts`에서 `next/font/local`로 불러오고 `app/layout.tsx`의 `<html>`에 붙입니다. 굵기 300/500/700, `preload: false`. `font-family: var(--font-family-logo)`(`globals.css`에 정의)로 씁니다. 다른 글자에는 쓰지 않습니다.
 - 화면 전체 높이는 `100dvh`, 하단 고정 요소는 `env(safe-area-inset-bottom)`을 더합니다.
 - 대부분 플랫하게 만들고, 글래스 효과는 피그마에서 글래스가 걸린 요소에만 씁니다.
 - 스타일 파일은 컴포넌트와 같은 폴더에 같은 이름으로 둡니다. 예: `IngredientCard.tsx` + `IngredientCard.module.css`
@@ -229,7 +264,7 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 
 제목·설명 등 기본 검색 표현은 [Google SEO 기본 가이드](https://developers.google.com/search/docs/fundamentals/seo-starter-guide), 제목 계층은 [W3C 페이지 구조 가이드](https://www.w3.org/WAI/tutorials/page-structure/)를 참고합니다.
 
-## 7. PWA · 푸시 · TWA
+## 7. PWA · TWA
 
 - 서비스 워커는 `pnpm build && pnpm start`에서만 켜집니다. 개발 모드와 MSW 사용 중에는 꺼집니다(같은 scope 충돌 방지).
 - 서비스 워커(`/serwist/sw.js`)는 빌드할 때 미리 생성되어야 합니다(`pnpm build` 결과에서 `●`). standalone 운영 서버에는 esbuild와 `app/sw.ts`가 없어서, 요청할 때 생성되는 `ƒ` 라우트가 되면 500 오류가 납니다.
@@ -238,7 +273,7 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
     - 그 함수는 `cacheLife("max")`를 호출합니다. `sw.js`는 빌드할 때만 바뀌는데, 기본 프로필(15분마다 다시 생성)을 쓰면 운영 서버가 뒤에서 번들링을 다시 시도합니다. esbuild가 없어 실패하고, 시도할 때마다 에러 로그가 남습니다. 어느 경우든 기존 `sw.js`는 계속 응답됩니다.
     - 그 결과 `sw.js`에는 `Cache-Control: s-maxage=2592000`(30일)이 붙습니다. 브라우저는 `s-maxage`를 무시하지만, 앱 앞에 공유 캐시(CDN이나 프록시 캐시)를 두면 배포 뒤에도 예전 서비스 워커가 나갈 수 있습니다. `/serwist/` 경로는 공유 캐시에서 제외합니다.
     - 서비스 워커나 이 라우트를 바꾼 뒤에는 `pnpm build` 결과에 `/serwist/sw.js`가 `●`로 나오는지, `.next/server/app/serwist/sw.js.body` 파일이 있는지 확인합니다.
-- 푸시: 프론트가 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`로 구독을 만들어 백엔드에 저장하고, 백엔드가 발송합니다. 수신·클릭 처리는 `app/sw.ts`에서 합니다.
+- 기기 푸시는 없습니다. 알림은 앱 안에서만 보여 줍니다: 모든 탭 화면 상단의 알림 띠(API 43)와 알림 화면(API 44). `app/sw.ts`의 Web Push 처리와 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`는 지워야 할 남은 코드입니다.
 - TWA 배포 전 준비물: 192/512 PNG 아이콘, `public/.well-known/assetlinks.json`(앱 서명 SHA-256), HTTPS 도메인
 
 ### 7.1 뒤로가기로 시트 닫기
@@ -263,8 +298,8 @@ TypeScript는 `strict` 모드이고 `any`는 쓰지 않습니다(ESLint로 막�
 
 - [x] 인증 방식과 토큰 갱신 흐름 — **[#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) A 확정**: 액세스(30분)·리프레시(14일) JWT를 모두 HttpOnly 쿠키(`Secure; SameSite=Lax`)로 둡니다. 로그인·재발급 응답에 `accessToken`을 넣지 않습니다. `/api/...` 호출은 `credentials: 'include'`, `Authorization: Bearer`와 JS에서 읽을 수 있는 토큰 저장은 쓰지 않습니다. 로컬(출처가 다름)에서는 백엔드가 credentials CORS를 허용해야 합니다.
 - [ ] 공용 컴포넌트 목록 확정 (디자인 시안 기준)
-- [ ] 프론트 CI (GitHub Actions: lint · typecheck · build)
-- [ ] 배포 환경 (nginx + Node 컨테이너 구성)
+- [x] 프론트 CI — `.github/workflows/frontend-ci.yml`이 `dev`·`main` 대상 PR에서 `pnpm lint` · `pnpm typecheck` · `pnpm build`를 돌립니다([`ci.md`](./ci.md)).
+- [x] 배포 환경 — `compose.prod.yml`의 `frontend-blue`·`frontend-green` 컨테이너를 nginx(`deploy/nginx/`) 뒤에 두고, `.github/workflows/frontend-cd.yml`이 배포합니다([`deployment.md`](./deployment.md)).
 
 ## 10. 제품 정책에서 온 UI 규칙
 
@@ -272,14 +307,14 @@ TypeScript는 `strict` 모드이고 `any`는 쓰지 않습니다(ESLint로 막�
 
 - **AI에 자유 입력 금지.** 레시피 커스텀(재료, 맛, 조리 시간, 도구, 방식, 요리 유형, 제외 알레르기)과 식단표 설정(시작일, 목적, 끼니, 인원)은 모두 선택식입니다. ID와 enum을 보냅니다.
 - **소비기한 상태**: 서버가 준 `status`와 `dDay`를 보여 줍니다(DANGER = 지났거나 D-DAY, SOON = D-1~D-3, OK = 그 이후). 기기 시계로 다시 계산하지 않습니다.
-- **문구**: AI 레시피 상세와 공유 레시피 상세에 "AI가 생성한 레시피"를, 식단표에 "참고용" 문구를 보여 줍니다.
+- **문구**: "AI가 생성한 레시피" 문구와 "참고용 식단" 문구는 넣지 않습니다(정책정의서 v4: 둘 다 피그마에 없음).
 - **영수증 흐름**: 촬영 → 로딩 화면(동기 대기) → 결과·확인 화면 → 저장. 사용자가 확정하기 전에는 아무것도 저장하지 않습니다. 결과 화면을 나가면 OCR 결과를 버리고 `receipt_result_abandoned`를 보냅니다. 확정한 영수증은 수정할 수 없고 삭제만 됩니다. 재료 정보는 나중에 냉장고에서 고칩니다.
 - **수량 입력**: 수량 버튼 간격은 g·ml 50, kg·L 0.5, EA/PACK/BUNCH/PIECE/SHEET 1. 직접 입력은 숫자와 소수만 받고 분수는 받지 않습니다. 냉장고는 단위 9개(G, KG, ML, L, EA, PACK, BUNCH, PIECE, SHEET)만, 레시피는 14개 모두 쓰고 레시피 수량은 1/2, 1/3, 1/4로 보여 줄 수 있습니다.
-- **공유**: 제목과 조리 사진 1장 이상이 필수이고, 먼저 확인 모달을 띄웁니다. 작성자 정보는 어디에도 보여 주지 않습니다.
-- **식단표**: 월간 달력, 칸을 누르면 레시피 상세. 식단 추가는 저장한 레시피를 빈 칸에 넣는 것입니다. 삭제와 칸 재생성은 없습니다. "남은 N회"는 `GET /api/v1/user/usage-quotas` 값으로 보여 줍니다.
-- **장바구니**: 레시피별로 묶습니다. 항목은 자동으로만 담기고(식단표 생성, 레시피 저장), 사용자는 수량 변경과 선택 삭제만 할 수 있습니다. 결제나 외부 링크는 없습니다.
-- **알림**: `EXPIRY_SOON`, `EXPIRED`만 있습니다. "영수증 분석 완료" 알림은 없습니다.
-- **프리미엄**: 설정의 구독 화면은 UI만 만듭니다.
+- **공유**: 사진 딱 1장(필수)과 제목(필수). 둘 다 있어야 공유 버튼이 켜집니다. 확인 모달은 없습니다. 같은 레시피는 한 주에 한 번 공유할 수 있습니다. 작성자 정보는 어디에도 보여 주지 않습니다.
+- **식단표**: 월간 달력, 끼니 행을 누르면 레시피 상세. 빈 칸에 직접 넣는 기능은 없습니다("+"는 식단표 추가 시트 → 생성 설정). 끼니 ⋮ 시트에는 "식단 삭제"(그 칸만 지움)와 "레시피 교체"(새 레시피, 레시피 하루 횟수 1회 사용)가 있습니다. 오늘 이후만 되고, 지난 날짜는 `PAST_DATE_NOT_ALLOWED` 토스트를 띄웁니다. 남은 횟수는 `GET /api/v1/user/usage-quotas` 값으로 보여 줍니다.
+- **장바구니**: 항목마다 한 행이고 출처 레시피명을 함께 보여 줍니다(같은 재료라도 출처 레시피가 다르면 따로). 항목은 자동으로만 담깁니다(식단표 부족 재료, 재료 보충으로 만든 내 레시피 저장, 공유 레시피 저장). 사용자는 수량 변경, 선택 삭제, 선택 항목 냉장고에 추가를 할 수 있습니다. 결제나 외부 링크는 없습니다.
+- **알림**: 앱 안에서만(기기 푸시 없음). 종류는 `EXPIRY_SOON`, `EXPIRED`, `MEAL_PLAN_COMPLETED`, `MEAL_PLAN_FAILED`. 모든 탭 화면 상단 알림 띠에 최신 문구와 안 읽은 개수를 보여 줍니다. 소비기한 알림은 눌러도 동작이 없고, `MEAL_PLAN_COMPLETED`는 그 식단표 시작일의 식단표로, `MEAL_PLAN_FAILED`는 식단표 생성 설정으로 갑니다.
+- **프리미엄**: 토스페이먼츠 카드 자동결제로 실제 구독합니다(`/user/setting/subscription`, API 57~60). 토스 시크릿 키와 자동결제 키(billingKey)는 프론트에 보내거나 저장하지 않습니다.
 - **에러**: 메시지와 동작은 `message`가 아니라 `code`([`docs/agent/spec/errors.md`](../agent/spec/errors.md), 영문)로 정합니다. 모르는 코드는 `INTERNAL_ERROR` 화면으로 처리합니다. `traceId`는 "문의하기" 상세에만 보여 주고 주 메시지로 쓰지 않습니다.
 - **표기 형식**: API는 날짜를 `2026-11-19`, 시각을 `+09:00`이 붙은 ISO 8601, 금액을 원 단위 정수로 보냅니다. 날짜와 금액은 `lib/format.ts`의 공통 함수(`@/lib/dayjs` 기반)로만, 정책정의서의 표기 형식대로 표시합니다. 사용자에게 보이는 문구는 한국어입니다.
 

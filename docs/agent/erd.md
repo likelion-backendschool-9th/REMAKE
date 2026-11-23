@@ -757,7 +757,7 @@ Internal reference data that maps an ingredient name to a unit, category and she
 | `shelf_life_days` | int |  |  | yes |  | Shelf life. Empty means the category default |
 | `is_common_exclusion` | boolean |  |  | no | false | Representative-allergen flag added in PR #140. Allergies are stored as `user_excluded_ingredients.allergen_code` (19 chips), so screens and APIs do not use it |
 
-- How to pick the unit for a name that is not in the dictionary is not decided yet. Do not invent a rule; ask the owner or the PO.
+- The server picks the unit for an ingredient name in this order (decided in #145): (1) the name equals a dictionary name exactly, so use its unit; (2) otherwise the dictionary names contained in the name, in the same category only, two characters or more, the longest one wins, so use its unit; (3) otherwise `EA`. A unit printed on a receipt (for example the `g` in "300g") does not override the dictionary unit.
 
 ## Relationships
 

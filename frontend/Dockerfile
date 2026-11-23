@@ -21,10 +21,8 @@ FROM base AS build
 # 운영 기본값: API는 같은 도메인의 상대 경로로 호출하고(빈 값), MSW 목업은 끈다.
 ARG NEXT_PUBLIC_API_BASE_URL=""
 ARG NEXT_PUBLIC_API_MOCKING="false"
-ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY=""
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
-    NEXT_PUBLIC_API_MOCKING=$NEXT_PUBLIC_API_MOCKING \
-    NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
+    NEXT_PUBLIC_API_MOCKING=$NEXT_PUBLIC_API_MOCKING
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # 서비스 워커(/serwist/sw.js)가 빌드 때 미리 생성됐는지 확인한다. (blueprint.md §7)

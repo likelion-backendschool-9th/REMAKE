@@ -26,6 +26,13 @@ class IngredientCatalogPersistenceAdapter implements LoadIngredientCatalogPort {
 	}
 
 	@Override
+	public List<IngredientCatalogItem> loadByCategoryId(Long categoryId) {
+		return repository.findByCategoryId(categoryId).stream()
+				.map(IngredientCatalogJpaEntity::toDomain)
+				.toList();
+	}
+
+	@Override
 	public Optional<IngredientCatalogItem> loadByName(String name) {
 		return repository.findByName(name).map(IngredientCatalogJpaEntity::toDomain);
 	}
