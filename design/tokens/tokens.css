@@ -1,4 +1,4 @@
-/* Remake 디자인 토큰 v3.0.0 (2026-11-23)
+/* Remake 디자인 토큰 v3.1.0 (2026-11-23)
  * 원칙: 피그마 디자인이 최우선. 토큰은 피그마 디자인 시스템(0. 기초)에 정의된 변수·스타일만 이름 그대로 옮긴 것이다. 프레임에 변수·스타일이 걸려 있으면 같은 이름의 토큰을 쓰고, 안 걸려 있으면 프레임 값을 그대로 쓴다.
  * 원천: Figma etTm84sh4aA60z6BmOwM3i '디자인 시스템' 페이지 > '0. 기초' (node 5761:2324, Remake 디자인 시스템 v1 2026-11-22)
  * 생성: design/tokens/build_tokens.py (생성 파일은 손으로 고치지 말고 이 스크립트로 다시 만듭니다)
@@ -35,6 +35,7 @@
   --color-bg-badge-warning: #FF71191F; /* figma: bg/badge-warning = #FF7119 12% */
   --color-bg-badge-safe: #179C001F; /* figma: bg/badge-safe = #179C00 12% */
   --color-bg-dim: #191F2899; /* figma: bg/dim = #191F28 60% */
+  --color-bg-toast: #111827EB; /* figma: bg/toast = #111827 92% */
 
   /* ---------- 색 border/ (Remake Color) ---------- */
   --color-border-default: #E2E8F0; /* figma: border/default */
@@ -112,7 +113,7 @@
   --category-etc: #7B838E; /* 기타 */
 
   /* ---------- 기능상 필요한 예외 (피그마에 없음) ---------- */
-  --font-family-base: var(--font-pretendard, 'Pretendard Variable'), Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', sans-serif; /* 글꼴 지정(Pretendard + 대체 글꼴). 피그마의 임시 글꼴 Noto Sans KR 대신 Pretendard */
+  --font-family-base: var(--font-pretendard, 'Pretendard Variable'), Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', sans-serif; /* 글꼴 지정(피그마 Pretendard + 대체 글꼴) */
   --font-size-input: 1rem; /* 입력창 글자 16px. 피그마는 14·12px지만 iOS에서 16px 미만이면 화면이 자동 확대됨 */
   --z-sticky: 100; /* 상단 고정 헤더·탭 */
   --z-fixed: 200; /* 하단 고정 버튼 영역 */

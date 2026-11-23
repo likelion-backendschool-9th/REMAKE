@@ -1,6 +1,6 @@
 # REMAKE Design Tokens
 
-> v3.0.0 · 2026-11-23 · Copied from the Figma REMAKE file, page `디자인 시스템` > frame `0. 기초` ([node 5761-2324](https://www.figma.com/design/etTm84sh4aA60z6BmOwM3i/REMAKE?node-id=5761-2324), "Remake 디자인 시스템 v1", 2026-11-22): 39 color variables, 11 spacing and 6 radius variables, 10 text styles, 5 shadow styles.
+> v3.1.0 · 2026-11-23 · Copied from the Figma REMAKE file, page `디자인 시스템` > frame `0. 기초` ([node 5761-2324](https://www.figma.com/design/etTm84sh4aA60z6BmOwM3i/REMAKE?node-id=5761-2324), "Remake 디자인 시스템 v1", 2026-11-22): 40 color variables, 11 spacing and 6 radius variables, 10 text styles, 5 shadow styles.
 >
 > Korean version for developers: [`docs/developer/design-tokens.md`](../developer/design-tokens.md)
 
@@ -75,6 +75,9 @@ cp design/tokens/tokens.css frontend/app/tokens.css
 | `var(--color-bg-badge-warning)`       | `#FF71191F` (#FF7119 12%) | `bg/badge-warning`     |
 | `var(--color-bg-badge-safe)`          | `#179C001F` (#179C00 12%) | `bg/badge-safe`        |
 | `var(--color-bg-dim)`                 | `#191F2899` (#191F28 60%) | `bg/dim`               |
+| `var(--color-bg-toast)`               | `#111827EB` (#111827 92%) | `bg/toast` (1)         |
+
+(1) `bg/toast` is a Figma variable used by the toast (default, success, error) but has no Dev Mode code name and is not shown in `0. 기초`. Its CSS name follows the same rule.
 
 ### Borders (`border/`)
 
@@ -124,7 +127,7 @@ Values are in rem (px ÷ 16).
 
 ## Text styles (`Remake/*`)
 
-Line height 140%, letter spacing 0 for every style. Figma uses Noto Sans KR as a placeholder font (its note says to replace it with Pretendard); the app renders Pretendard. Mobile only (app width 360–480px).
+Line height 140%, letter spacing 0 for every style. Font: Pretendard. Mobile only (app width 360–480px).
 
 | Usage                              | Figma style              | Size | Weight        |
 | ---------------------------------- | ------------------------ | ---- | ------------- |
@@ -176,7 +179,7 @@ Values used on the Figma spending-pattern screen. They are not design-system var
 
 | Variable             | Value               | Reason                                                                                                |
 | -------------------- | ------------------- | ----------------------------------------------------------------------------------------------------- |
-| `--font-family-base` | Pretendard + others | Font family (Pretendard instead of Figma's placeholder Noto Sans KR, plus fallback fonts)             |
+| `--font-family-base` | Pretendard + others | Font family (Figma's Pretendard plus fallback fonts)             |
 | `--font-size-input`  | `1rem`              | Input text is 16px. Figma uses 14 and 12px, but iOS auto-zooms the page when input text is under 16px |
 | `--z-sticky`         | `100`               | Sticky top header and tabs                                                                            |
 | `--z-fixed`          | `200`               | Fixed bottom button area                                                                              |

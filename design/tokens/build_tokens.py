@@ -7,7 +7,7 @@ import json, os, html
 
 OUT = os.path.dirname(os.path.abspath(__file__))
 e = html.escape
-VERSION, DATE = "3.0.0", "2026-11-23"
+VERSION, DATE = "3.1.0", "2026-11-23"
 SOURCE = "Figma etTm84sh4aA60z6BmOwM3i '디자인 시스템' 페이지 > '0. 기초' (node 5761:2324, Remake 디자인 시스템 v1 2026-11-22)"
 
 def rem(px):
@@ -30,21 +30,20 @@ colors = [
     ("primary-subtle", "#EBF3FF"), ("primary-tint", "#EFF5FF"), ("skeleton", "#E9ECEF"),
     ("skeleton-highlight", "#F1F5F9"), ("primary", "#3182F6"), ("danger", "#DC2626"),
     ("badge-danger", "#DC262626"), ("badge-warning", "#FF71191F"), ("badge-safe", "#179C001F"),
-    ("dim", "#191F2899"),
+    ("dim", "#191F2899"), ("toast", "#111827EB"),
   ]),
   ("border", [("default", "#E2E8F0"), ("subtle", "#F5F5F5"), ("control", "#CFCFCF"), ("chip", "#EAEAEA")]),
   ("icon", [("default", "#374151"), ("sub", "#9CA3AF"), ("disabled", "#CFCFCF"), ("favorite", "#FDD43E")]),
   ("brand", [("primary", "#3182F6"), ("complementary", "#F56214")]),
   ("social", [("kakao", "#FEE500"), ("naver", "#03C75A"), ("google", "#F2F2F2")]),
 ]
-ALPHA_NOTE = {"badge-danger": "#DC2626 15%", "badge-warning": "#FF7119 12%", "badge-safe": "#179C00 12%", "dim": "#191F28 60%"}
+ALPHA_NOTE = {"badge-danger": "#DC2626 15%", "badge-warning": "#FF7119 12%", "badge-safe": "#179C00 12%", "dim": "#191F28 60%", "toast": "#111827 92%"}
 
 # ---------- 피그마 변수: Remake Size ----------
 spaces = [2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 30]
 radii = [("xs", 4), ("sm", 8), ("md", 10), ("lg", 14), ("xl", 20), ("full", 100)]
 
 # ---------- 피그마 텍스트 스타일 Remake/* (행간 140%, 자간 0) ----------
-# 피그마는 임시로 Noto Sans KR. 앱은 Pretendard(피그마 메모: "Pretendard로 바꿀 것")
 text_styles = [
   ("display", 22, 700), ("header", 18, 700), ("subheader", 16, 700), ("title", 16, 500),
   ("content", 14, 500), ("content-regular", 14, 400), ("content-strong", 14, 700),
@@ -71,7 +70,7 @@ categories = [("VEGETABLE","채소","#2E9E5D"),("FRUIT","과일","#CE3B78"),("ME
 # 기능상 꼭 필요한 예외 (피그마에 없음)
 FONT_FAMILY = "var(--font-pretendard, 'Pretendard Variable'), Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', sans-serif"
 exceptions = [
-  ("--font-family-base", FONT_FAMILY, "글꼴 지정(Pretendard + 대체 글꼴). 피그마의 임시 글꼴 Noto Sans KR 대신 Pretendard"),
+  ("--font-family-base", FONT_FAMILY, "글꼴 지정(피그마 Pretendard + 대체 글꼴)"),
   ("--font-size-input", "1rem", "입력창 글자 16px. 피그마는 14·12px지만 iOS에서 16px 미만이면 화면이 자동 확대됨"),
   ("--z-sticky", "100", "상단 고정 헤더·탭"),
   ("--z-fixed", "200", "하단 고정 버튼 영역"),
@@ -195,7 +194,7 @@ th{{color:var(--color-text-assist)}}
 <li>예외는 기능상 꼭 필요한 것만 둡니다(아래 표).</li>
 </ol></div>
 <section><h2>색 (Remake Color)</h2>{color_html}</section>
-<section><h2>텍스트 스타일 (Remake/*)</h2><p class="desc">행간 140%, 자간 0. 피그마의 임시 글꼴 Noto Sans KR 대신 Pretendard로 그립니다.</p>{ty_html}</section>
+<section><h2>텍스트 스타일 (Remake/*)</h2><p class="desc">행간 140%, 자간 0, 글꼴 Pretendard.</p>{ty_html}</section>
 <section><h2>간격 (space)</h2>{space_html}</section>
 <section><h2>모서리 (radius)</h2><div class="row2">{radius_html}</div></section>
 <section><h2>그림자 (Remake/shadow-*)</h2><div class="row2">{shadow_html}</div></section>

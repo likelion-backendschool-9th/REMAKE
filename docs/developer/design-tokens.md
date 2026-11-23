@@ -1,6 +1,6 @@
 # REMAKE 디자인 토큰
 
-> v3.0.0 · 2026-11-23 · 피그마 REMAKE 파일의 `디자인 시스템` 페이지 > `0. 기초` 프레임([node 5761-2324](https://www.figma.com/design/etTm84sh4aA60z6BmOwM3i/REMAKE?node-id=5761-2324), "Remake 디자인 시스템 v1", 2026-11-22)에서 옮겼습니다. 색 변수 39개, 간격 11개·모서리 6개 변수, 텍스트 스타일 10개, 그림자 스타일 5개입니다.
+> v3.1.0 · 2026-11-23 · 피그마 REMAKE 파일의 `디자인 시스템` 페이지 > `0. 기초` 프레임([node 5761-2324](https://www.figma.com/design/etTm84sh4aA60z6BmOwM3i/REMAKE?node-id=5761-2324), "Remake 디자인 시스템 v1", 2026-11-22)에서 옮겼습니다. 색 변수 40개, 간격 11개·모서리 6개 변수, 텍스트 스타일 10개, 그림자 스타일 5개입니다.
 >
 > 영문 버전(에이전트용): [`docs/agent/design-tokens.md`](../agent/design-tokens.md)
 
@@ -75,6 +75,9 @@ cp design/tokens/tokens.css frontend/app/tokens.css
 | `var(--color-bg-badge-warning)`       | `#FF71191F` (#FF7119 12%) | `bg/badge-warning`     |
 | `var(--color-bg-badge-safe)`          | `#179C001F` (#179C00 12%) | `bg/badge-safe`        |
 | `var(--color-bg-dim)`                 | `#191F2899` (#191F28 60%) | `bg/dim`               |
+| `var(--color-bg-toast)`               | `#111827EB` (#111827 92%) | `bg/toast` (1)         |
+
+(1) `bg/toast`는 토스트(기본·성공·오류)에 쓰는 피그마 변수입니다. Dev Mode 코드 이름이 없고 `0. 기초`에는 보이지 않지만, CSS 이름은 같은 규칙으로 정했습니다.
 
 ### 선 (`border/`)
 
@@ -124,7 +127,7 @@ cp design/tokens/tokens.css frontend/app/tokens.css
 
 ## 텍스트 스타일 (`Remake/*`)
 
-모든 스타일의 행간은 140%, 자간은 0입니다. 피그마는 임시 글꼴로 Noto Sans KR을 쓰고 있고(피그마 메모: Pretendard로 바꿀 것), 앱은 Pretendard로 그립니다. 모바일만 둡니다(앱 폭 360~480px).
+모든 스타일의 행간은 140%, 자간은 0입니다. 글꼴은 Pretendard입니다. 모바일만 둡니다(앱 폭 360~480px).
 
 | 사용법                             | 피그마 스타일            | 크기 | 굵기          |
 | ---------------------------------- | ------------------------ | ---- | ------------- |
@@ -176,7 +179,7 @@ cp design/tokens/tokens.css frontend/app/tokens.css
 
 | 변수                 | 값              | 이유                                                                                     |
 | -------------------- | --------------- | ---------------------------------------------------------------------------------------- |
-| `--font-family-base` | Pretendard 외   | 글꼴 지정(피그마의 임시 글꼴 Noto Sans KR 대신 Pretendard, 그리고 대체 글꼴)             |
+| `--font-family-base` | Pretendard 외   | 글꼴 지정(피그마 Pretendard + 대체 글꼴)             |
 | `--font-size-input`  | `1rem`          | 입력창 글자 16px. 피그마는 14·12px지만 iOS에서 16px 미만이면 화면이 자동 확대됩니다      |
 | `--z-sticky`         | `100`           | 상단 고정 헤더·탭                                                                        |
 | `--z-fixed`          | `200`           | 하단 고정 버튼 영역                                                                      |
