@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from "next";
 
 import { AppProviders } from "@/providers/app-providers";
 
-import { gmarketSans, pretendard } from "./fonts/fonts";
+import { gmarketSans } from "./fonts/fonts";
 
+// 본문 Pretendard: 글자 묶음(unicode-range)으로 나눈 파일이라 화면에 나온 글자가 든 묶음만 받는다(blueprint §6)
+import "./fonts/pretendard.css";
 import "./globals.css";
 
 const APP_NAME = "REMAKE";
@@ -25,7 +27,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={`${pretendard.variable} ${gmarketSans.variable}`}>
+    <html lang="ko" className={gmarketSans.variable}>
       <body>
         <AppProviders>{children}</AppProviders>
       </body>
