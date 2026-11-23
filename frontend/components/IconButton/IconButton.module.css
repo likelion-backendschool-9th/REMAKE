@@ -1,0 +1,33 @@
+/* 피그마 2. 버튼 > 아이콘 버튼: 44×44, 아이콘 24, 색 icon/default */
+.button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-icon-default);
+}
+
+.button:disabled {
+  color: var(--color-icon-disabled);
+  cursor: default;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -2px;
+}
+
+.icon {
+  display: flex;
+}
+
+.icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}

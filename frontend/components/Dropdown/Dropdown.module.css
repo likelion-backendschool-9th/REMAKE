@@ -1,0 +1,44 @@
+/* 피그마 4. 선택 > 드롭다운: 작게=Remake/assist·text/assist·아이콘 14, 크게=Remake/title·text/strong·아이콘 18 */
+.dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-assist);
+  font: var(--font-assist);
+  white-space: nowrap;
+}
+
+.dropdown::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 2.75rem);
+  height: max(100%, 2.75rem);
+  transform: translate(-50%, -50%);
+}
+
+.icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.dropdown[data-size="lg"] {
+  color: var(--color-text-strong);
+  font: var(--font-title);
+}
+
+.dropdown[data-size="lg"] .icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.dropdown:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}

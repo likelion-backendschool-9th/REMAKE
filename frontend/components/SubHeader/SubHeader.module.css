@@ -1,0 +1,32 @@
+/* 피그마 1. 앱 틀 > 서브 헤더: 높이 56, 여백 0/6, bg/surface, 제목 Remake/header·text/strong, 오른쪽 글자 영역 여백 0/10 */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  height: 3.5rem;
+  padding: 0 var(--space-6);
+  background: var(--color-bg-surface);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-strong);
+  font: var(--font-header);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.right {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+/* 오른쪽이 글자 버튼이면 피그마처럼 옆 여백 10을 둔다 */
+.right > :not(a[aria-label], button[aria-label]) {
+  margin: 0 var(--space-10);
+}
