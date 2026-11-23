@@ -186,4 +186,3 @@ Cart items cannot be added manually. No "take down my shared post" API.
 - Auto-payment failure handling (card limit, suspended card, etc.).
 - What the subscription screen shows after scheduling cancellation, and whether a confirm modal is needed.
 - Whether the demo uses Toss test keys only (real auto-billing needs a separate contract with Toss).
-- The unit for an ingredient name that is not in `ingredient_catalog`.

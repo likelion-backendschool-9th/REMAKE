@@ -64,7 +64,7 @@ Source: PRD v4 and policy doc v4 (Figma-based, 2026-11-22; Korean, kept in Notio
 | PINCH | 꼬집 | small | - | no | yes |
 | TO_TASTE | 약간 | small (no amount) | - | no | yes |
 
-- **The server picks the unit from the ingredient name** (the internal `ingredient_catalog` dictionary, see [`../erd.md`](../erd.md) table 26). The user never chooses a unit. The unit for a name not in the dictionary is (open).
+- **The server picks the unit from the ingredient name** (the internal `ingredient_catalog` dictionary, see [`../erd.md`](../erd.md) table 26). The user never chooses a unit. The unit is decided in this order (#145): the name equals a dictionary name exactly; otherwise the longest dictionary name (two characters or more, same category) contained in the name; otherwise `EA`. A unit printed on a receipt does not override it.
 - Packaging words (봉지, 캔, 병, 통) map to PACK; counting words (마리, 알, 모, 포기) map to EA.
 - Deduction converts automatically only within the same kind (weight↔weight, volume↔volume with measures in ml). Different kinds need the user to confirm the amount. PINCH and TO_TASTE are never deducted.
 - Fridge amounts are plain numbers, no fractions, up to 3 decimals. Stepper step (proposal): g/ml 50, kg/L 0.5, count units 1.
