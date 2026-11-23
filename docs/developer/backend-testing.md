@@ -75,6 +75,7 @@ class IngredientApiTest extends IntegrationTestSupport {
 ## 외부 서비스 어댑터
 
 - 외부 서비스 어댑터(`adapter/out/ai`, `ocr`, `oauth`, 그리고 파일을 외부 저장소에 둘 때의 `filestorage`)를 추가하는 PR에서, `IntegrationTestSupport`에 그 어댑터 클래스를 `@MockitoBean`으로 바꿔 둔다. 포트 인터페이스를 가짜로 바꾸지 않는다. 어댑터가 포트를 여러 개 구현하면 앱이 뜨지 않는다.
+- 가짜로 바꾼 어댑터는 테스트에서 진짜 생성자가 실행되지 않는다. 그래서 의존성이 빠져도(예: `spring-boot-starter-restclient` 없이 `RestClient.Builder`를 받음) 모든 테스트가 통과하고 서버에서만 앱이 뜨지 않는다. `MockedAdapterWiringTest`가 `IntegrationTestSupport`의 `@MockitoBean` 어댑터마다 생성자 인자를 Spring이 생성자를 부를 때와 같은 방식으로 찾아 본다(`@Value`, `@Qualifier`, `Optional`, `List`도 처리하고, 같은 타입의 Bean이 여러 개면 실패한다). 어댑터의 생성자는 하나만 둔다. 이 테스트가 실패하면 테스트가 아니라 앱을 고친다. 빠진 의존성을 `build.gradle`에 추가하거나, 같은 타입의 Bean이 여러 개면 `@Qualifier`를 붙인다.
 - 외부 호출을 거치는 테스트는 필요한 응답을 각자 정한다. 정하지 않은 호출은 기본값을 돌려준다. 객체는 `null`, 컬렉션과 `Optional`은 빈 값, 숫자는 0이다. 정한 응답은 테스트가 끝나면 초기화된다.
 - 어댑터가 쓰는 설정의 가짜 키와 접속되지 않는 주소(`http://localhost:1`)를 `application-test.yml`에 넣는다. 테스트는 `backend/.env`를 읽지 않지만(`local` 프로필만 읽는다), 셸이나 IDE의 환경 변수는 읽는다. 가짜 키가 없으면 그 환경 변수에 있는 진짜 키가 쓰일 수 있다.
 - 파일을 서버 폴더에 저장한다면 `filestorage`를 가짜로 바꾸지 않는다. `application-test.yml`에서 저장 폴더를 테스트용 폴더로 바꾸고, `IntegrationTestSupport.cleanUp`에서 비운다.

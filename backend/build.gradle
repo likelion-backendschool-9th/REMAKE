@@ -23,6 +23,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	// 외부 API 호출용 RestClient.Builder Bean(소셜 로그인 SocialOAuthAdapter, 이후 AI·OCR). Boot 4부터 webmvc 스타터에 들어 있지 않다.
+	implementation 'org.springframework.boot:spring-boot-starter-restclient'
 	// JWT 발급·검증(#42 HttpOnly 쿠키). jjwt는 API/구현/Jackson을 나눈다.
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
