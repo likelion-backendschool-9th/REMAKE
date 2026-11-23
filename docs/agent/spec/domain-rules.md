@@ -209,7 +209,10 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Not even one day: `MEAL_PLAN_NO_INGREDIENTS` → failure notification; the plan is `FAILED`, not charged.
 - Each meal slot gets a full recipe from the start (no "menu name first, details later").
 - Do not allocate the same ingredient amount to several meals (based on each slot's recipe ingredients; no per-slot planned-ingredient table; method is up to the developer).
-- Overlap: if the new period overlaps an existing plan, show the warning modal (cancel / overwrite). Overwrite deletes the overlapping days' slots and refills them when the generation job completes (a failed job keeps the existing plan). Meals already cooked today stay and are not refilled. Overlap is not charged (modal pending).
+- Missing vs short (#78): a fridge ingredient is used only within its remaining amount (fridge amount minus amounts already allocated to other plans). If it runs short, it does not go to the cart; generation stops from that day (fewer days). An ingredient not in the fridge stays in the recipe and goes to the cart.
+- Each meal uses at least 1 fridge ingredient (#78). Ingredients without an amount ("약간", "한 꼬집") do not count. Basic seasonings follow #158.
+- Trimming is per day (#78): if any meal of a day cannot be made, drop that whole day and stop there. Never skip a day to make later days.
+- Overlap: if the new period overlaps an existing plan, show the warning modal (cancel / overwrite). Overwrite deletes the overlapping days' slots and refills them when the generation job completes (a failed job keeps the existing plan). Days at the end that were not made for lack of ingredients keep the existing plan (only the made days change, #78). Meals already cooked today stay and are not refilled. Overlap is not charged (modal pending).
 - Slot ⋮: "식단 삭제" or "레시피 교체" + confirm. Delete removes that slot only. Replace generates a new recipe and charges 1 daily recipe ("레시피를 교체하게 될 경우 레시피 사용 횟수를 1회 차감 합니다"); not charged on failure.
 - Past days are view only. ⋮ stays; tapping it shows the `PAST_DATE_NOT_ALLOWED` toast.
 - Planning does not deduct fridge ingredients; only cook deduction does.
