@@ -143,16 +143,13 @@ class IngredientTest {
 	}
 
 	@Test
-	void 일부_사용했거나_완료된_재료는_수량을_고칠_수_없다() {
-		Ingredient used = Ingredient.restore(1L, 1L, 1L, null, "우유", StorageLocation.FRIDGE, EXPIRATION, false,
-				new BigDecimal("1"), new BigDecimal("2"), IngredientUnit.EA, null, IngredientStatus.ACTIVE);
+	void 완료된_재료는_수량을_고칠_수_없다() {
 		Ingredient finished = Ingredient.restore(2L, 1L, 1L, null, "우유", StorageLocation.FRIDGE, EXPIRATION, false,
 				BigDecimal.ZERO, new BigDecimal("2"), IngredientUnit.EA, null, IngredientStatus.FINISHED);
 
-		assertThatThrownBy(() -> used.changeAmount(new BigDecimal("5"))).isInstanceOf(IllegalArgumentException.class);
 		assertThatThrownBy(() -> finished.changeAmount(new BigDecimal("5"))).isInstanceOf(IllegalArgumentException.class);
-		assertThat(used.amount()).isEqualByComparingTo("1");
-		assertThat(used.initialAmount()).isEqualByComparingTo("2");
+		assertThat(finished.amount()).isEqualByComparingTo("0");
+		assertThat(finished.initialAmount()).isEqualByComparingTo("2");
 	}
 
 	@Test
@@ -162,5 +159,75 @@ class IngredientTest {
 		assertThatThrownBy(() -> ingredient.changeAmount(BigDecimal.ZERO)).isInstanceOf(IllegalArgumentException.class);
 		assertThatThrownBy(() -> ingredient.changeAmount(new BigDecimal("1.2345"))).isInstanceOf(IllegalArgumentException.class);
 		assertThatThrownBy(() -> ingredient.changeAmount(null)).isInstanceOf(IllegalArgumentException.class);
+	}
+
+	// ---- 사용·폐기(consume) ----
+
+	private static Ingredient pack(String amount, Long price) {
+		return Ingredient.register(1L, 1L, null, "우유", StorageLocation.FRIDGE, LocalDate.of(2026, 3, 10), false,
+				new BigDecimal(amount), IngredientUnit.PACK, price);
+	}
+
+	@Test
+	void 일부를_빼면_남은_양만_줄고_비지_않는다() {
+		Ingredient ingredient = pack("4", 4000L);
+
+		ingredient.consume(new BigDecimal("1.5"));
+
+		assertThat(ingredient.amount()).isEqualByComparingTo("2.5");
+		assertThat(ingredient.initialAmount()).isEqualByComparingTo("4");
+		assertThat(ingredient.isEmpty()).isFalse();
+	}
+
+	@Test
+	void 남은_양을_모두_빼면_0이_되고_비었다고_본다() {
+		Ingredient ingredient = pack("2", null);
+
+		ingredient.consume(new BigDecimal("2"));
+
+		assertThat(ingredient.amount()).isEqualByComparingTo("0");
+		assertThat(ingredient.isEmpty()).isTrue();
+	}
+
+	@Test
+	void 남은_양보다_많이_빼면_InsufficientAmountException이다() {
+		Ingredient ingredient = pack("2", null);
+
+		assertThatThrownBy(() -> ingredient.consume(new BigDecimal("2.001")))
+				.isInstanceOfSatisfying(InsufficientAmountException.class,
+						e -> assertThat(e.remaining()).isEqualByComparingTo("2"));
+		assertThat(ingredient.amount()).isEqualByComparingTo("2");
+	}
+
+	@Test
+	void 수량이_0이하거나_형식이_틀리면_거절한다() {
+		Ingredient ingredient = pack("2", null);
+
+		assertThatThrownBy(() -> ingredient.consume(BigDecimal.ZERO)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> ingredient.consume(new BigDecimal("-1"))).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> ingredient.consume(new BigDecimal("0.0001"))).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> ingredient.consume(null)).isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void 버린_금액은_가격에_처음_양_대비_비율을_곱해_원_단위로_반올림한다() {
+		assertThat(pack("4", 4000L).proportionalCost(new BigDecimal("1"))).isEqualTo(1000L);
+		assertThat(pack("3", 1000L).proportionalCost(new BigDecimal("1"))).isEqualTo(333L);
+		assertThat(pack("3", 1000L).proportionalCost(new BigDecimal("2"))).isEqualTo(667L);
+		assertThat(pack("4", 4000L).proportionalCost(new BigDecimal("4"))).isEqualTo(4000L);
+		assertThat(pack("4", 0L).proportionalCost(new BigDecimal("1"))).isZero();
+	}
+
+	@Test
+	void 가격이_없으면_버린_금액은_null이다() {
+		assertThat(pack("4", null).proportionalCost(new BigDecimal("1"))).isNull();
+	}
+
+	@Test
+	void 일부를_쓴_뒤에도_처음_양_기준으로_비율을_계산한다() {
+		Ingredient ingredient = pack("4", 4000L);
+		ingredient.consume(new BigDecimal("1"));
+
+		assertThat(ingredient.proportionalCost(new BigDecimal("1"))).isEqualTo(1000L);
 	}
 }
