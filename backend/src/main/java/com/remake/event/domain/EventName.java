@@ -30,8 +30,8 @@ public enum EventName {
 	LOGIN_SUCCEEDED("login_succeeded", EventSource.SERVER, Set.of("provider", "is_new_user")), // E09
 	LOGIN_FAILED("login_failed", EventSource.SERVER, Set.of("provider", "error_code")), // E10
 	SIGNUP_COMPLETED("signup_completed", EventSource.SERVER, Set.of("provider")), // E11
-	ONBOARDING_STEP_COMPLETED("onboarding_step_completed", EventSource.CLIENT, Set.of("onboarding_step", "was_skipped")), // E12
-	ONBOARDING_COMPLETED("onboarding_completed", EventSource.SERVER, Set.of("skipped_step_count", "excluded_count")), // E13
+	ONBOARDING_STEP_COMPLETED("onboarding_step_completed", EventSource.CLIENT, Set.of("onboarding_step")), // E12
+	ONBOARDING_COMPLETED("onboarding_completed", EventSource.SERVER, Set.of("excluded_count")), // E13
 	SETTING_CHANGED("setting_changed", EventSource.CLIENT, Set.of("setting_key", "new_value_bool")), // E14
 	EXCLUDED_INGREDIENTS_UPDATED("excluded_ingredients_updated", EventSource.CLIENT, Set.of("excluded_count")), // E15
 	LOGOUT_CONFIRMED("logout_confirmed", EventSource.CLIENT, Set.of()), // E16
