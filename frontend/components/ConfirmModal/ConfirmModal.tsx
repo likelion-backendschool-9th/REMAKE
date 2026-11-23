@@ -7,6 +7,7 @@ import { CloseIcon } from "@solar-icons/react/linear";
 
 import { IconButton } from "@/components/IconButton/IconButton";
 import { useDialogLayer } from "@/hooks/useDialogLayer";
+import { useIsClient } from "@/hooks/useIsClient";
 
 import styles from "./ConfirmModal.module.css";
 
@@ -39,9 +40,11 @@ export function ConfirmModal({
   const layerRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const messageId = useId();
-  useDialogLayer(isOpen, onClose, layerRef);
+  const isClient = useIsClient();
+  useDialogLayer(isOpen && isClient, onClose, layerRef);
 
-  if (!isOpen) return null;
+  // 포털은 document가 있어야 하므로 서버 렌더링에서는 그리지 않는다
+  if (!isOpen || !isClient) return null;
 
   return createPortal(
     <div ref={layerRef} className={styles.layer}>
