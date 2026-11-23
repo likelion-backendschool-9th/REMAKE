@@ -38,6 +38,9 @@ x-backend: &backend
     NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-}
     GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    # AI 레시피·식단표 생성(Gemini). 비어 있어도 앱은 뜨고 생성 요청만 실패한다. 모델이 비면 앱 기본값(gemini-3.5-flash-lite)을 쓴다.
+    GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    GEMINI_MODEL: ${GEMINI_MODEL:-}
     TZ: Asia/Seoul
     # 자바 힙을 컨테이너 메모리 상한의 75%까지 쓰게 한다. (기본 25%로는 상한 2g 에서 힙이 512MB 뿐이다)
     JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
