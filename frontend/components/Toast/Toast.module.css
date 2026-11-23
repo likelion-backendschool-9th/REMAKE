@@ -32,3 +32,33 @@
   color: var(--color-text-on-color);
   font: var(--font-content);
 }
+
+/* 나타남: 아래에서 위로 스르륵(0.3초). 사라짐: 아래로 내려가며 흐려짐(0.25초, TOAST_LEAVE_MS와 맞춤) */
+.toast {
+  animation: toast-in 0.3s ease-out;
+}
+
+.toast[data-leaving] {
+  animation: toast-out 0.25s ease-in forwards;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .toast[data-leaving] {
+    animation: none;
+  }
+}
