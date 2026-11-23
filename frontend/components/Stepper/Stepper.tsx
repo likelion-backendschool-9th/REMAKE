@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import { AddIcon, MinusIcon } from "@solar-icons/react/linear";
+import { MinusIcon } from "@solar-icons/react/bold";
+import { AddIcon } from "@solar-icons/react/linear";
 
 import { cx } from "@/lib/cx";
 
@@ -57,7 +58,7 @@ export function Stepper({
         disabled={!canIncrease}
         aria-label={`${label} 늘리기`}
       >
-        <AddIcon aria-hidden="true" />
+        <AddIcon className={styles.plus} strokeWidth={2.57} aria-hidden="true" />
       </button>
     </div>
   );

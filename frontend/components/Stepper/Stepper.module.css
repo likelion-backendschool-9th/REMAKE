@@ -1,4 +1,4 @@
-/* 피그마 3. 입력 > 스테퍼: 버튼 24(원, bg/section), 아이콘 16, 간격 space/16 */
+/* 피그마 3. 입력 > 스테퍼: 버튼 24(원, bg/section), 빼기 16(solar minus bold)·더하기 14(선 1.5), 간격 space/16 */
 .stepper {
   display: inline-flex;
   align-items: center;
@@ -29,6 +29,11 @@
 .control svg {
   width: 1rem;
   height: 1rem;
+}
+
+.control .plus {
+  width: 0.875rem;
+  height: 0.875rem;
 }
 
 .control:disabled {
