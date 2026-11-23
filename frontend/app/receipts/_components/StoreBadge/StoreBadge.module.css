@@ -51,12 +51,12 @@
 
 .badge[data-store="EMART24"] {
   --store-bg: #ffb81c;
-  --store-fg: var(--text-header);
+  --store-fg: var(--color-text-strong);
 }
 
 .badge[data-store="EMART"] {
   --store-bg: #ffd400;
-  --store-fg: var(--text-header);
+  --store-fg: var(--color-text-strong);
   --label-size: 20;
 }
 
@@ -68,13 +68,13 @@
 
 .badge[data-store="LOTTE_MART"] {
   --store-bg: #ed1c24;
-  --store-fg: var(--text-white);
+  --store-fg: var(--color-text-on-color);
   --label-size: 20;
 }
 
 .badge[data-store="COSTCO"] {
   --store-bg: #005daa;
-  --store-fg: var(--text-white);
+  --store-fg: var(--color-text-on-color);
   --label-size: 20;
 }
 
@@ -101,12 +101,12 @@
 
 .badge[data-store="EMART_EVERYDAY"] {
   --store-bg: #ffd400;
-  --store-fg: var(--text-header);
+  --store-fg: var(--color-text-strong);
 }
 
 .badge[data-store="HOMEPLUS_EXPRESS"] {
   --store-bg: #e31837;
-  --store-fg: var(--text-white);
+  --store-fg: var(--color-text-on-color);
 }
 
 /* 피그마에 없음: 2글자 약어 기준(14px) */

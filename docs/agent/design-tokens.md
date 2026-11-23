@@ -1,13 +1,13 @@
 # REMAKE Design Tokens
 
-> v2.0.0 · 2026-11-20 · The 24 local variables, 2 paint styles, and 6 mobile text styles of the Figma REMAKE file, copied with their names unchanged.
+> v3.0.0 · 2026-11-23 · Copied from the Figma REMAKE file, page `디자인 시스템` > frame `0. 기초` ([node 5761-2324](https://www.figma.com/design/etTm84sh4aA60z6BmOwM3i/REMAKE?node-id=5761-2324), "Remake 디자인 시스템 v1", 2026-11-22): 39 color variables, 11 spacing and 6 radius variables, 10 text styles, 5 shadow styles.
 >
 > Korean version for developers: [`docs/developer/design-tokens.md`](../developer/design-tokens.md)
 
 ## Principle: Figma design comes first
 
-- Tokens are only the variables and styles defined in Figma, copied with their names unchanged. Do not merge values or force them onto a 4pt (or any other) scale.
-- When building a screen, read the Figma frame (Dev Mode). If a value has a variable, use the token with the same name. If it has none (spacing, radius, shadow, glass, ...), use the frame value as is.
+- Tokens are only the variables and styles defined in the Figma design system (`0. 기초`), copied with their names unchanged. CSS variable names equal the code names Figma Dev Mode shows (e.g. `var(--color-text-strong)`).
+- When building a screen, read the Figma frame (Dev Mode). If a value has a variable or style, use the token with the same name. If it has none, use the frame value as is.
 - If a token and Figma differ, follow Figma and update the token.
 - Keep exceptions to what is functionally required ([Functional exceptions](#functional-exceptions)).
 
@@ -28,72 +28,134 @@ python3 design/tokens/build_tokens.py
 cp design/tokens/tokens.css frontend/app/tokens.css
 ```
 
-## Figma variables → CSS variables
+## Naming
 
-`/` in a Figma name becomes `-`. Typos (`warring`, `skeletn`) are kept as in Figma.
+| Figma                                    | CSS variable               | Example                                         |
+| ---------------------------------------- | -------------------------- | ----------------------------------------------- |
+| Color variable `<group>/<name>`          | `--color-<group>-<name>`   | `text/strong` → `var(--color-text-strong)`      |
+| Size variable `space/<px>`               | `--space-<px>`             | `space/16` → `var(--space-16)` (1rem)           |
+| Size variable `radius/<step>`            | `--radius-<step>`          | `radius/md` → `var(--radius-md)` (0.625rem)     |
+| Text style `Remake/<name>`               | `--font-<name>`            | `font: var(--font-content)`                     |
+| Effect style `Remake/shadow-<name>`      | `--shadow-<name>`          | `box-shadow: var(--shadow-card)`                |
 
-### Text colors (`text/`)
+## Colors (`Remake Color`)
 
-| CSS variable              | Value     | Figma variable     |
-| ------------------------- | --------- | ------------------ |
-| `var(--text-header)`      | `#111827` | `text/header`      |
-| `var(--text-title)`       | `#374151` | `text/title`       |
-| `var(--text-content)`     | `#4B5563` | `text/content`     |
-| `var(--text-assist)`      | `#98A3B4` | `text/assist`      |
-| `var(--text-placeholder)` | `#ABB7CA` | `text/placeholder` |
-| `var(--text-disabled)`    | `#B0B8C1` | `text/disabled`    |
-| `var(--text-primary)`     | `#3182F6` | `text/primary`     |
-| `var(--text-error)`       | `#EF4444` | `text/error`       |
-| `var(--text-warring)`     | `#FF7119` | `text/warring`     |
-| `var(--text-safe)`        | `#179C00` | `text/safe`        |
-| `var(--text-white)`       | `#F8F9F6` | `text/white`       |
+### Text (`text/`)
+
+| CSS variable                     | Value     | Figma              |
+| -------------------------------- | --------- | ------------------ |
+| `var(--color-text-strong)`       | `#111827` | `text/strong`      |
+| `var(--color-text-title)`        | `#374151` | `text/title`       |
+| `var(--color-text-body)`         | `#4B5563` | `text/body`        |
+| `var(--color-text-sub)`          | `#9CA3AF` | `text/sub`         |
+| `var(--color-text-assist)`       | `#98A3B4` | `text/assist`      |
+| `var(--color-text-placeholder)`  | `#ABB7CA` | `text/placeholder` |
+| `var(--color-text-disabled)`     | `#B0B8C1` | `text/disabled`    |
+| `var(--color-text-on-color)`     | `#F8F9F6` | `text/on-color`    |
+| `var(--color-text-primary)`      | `#3182F6` | `text/primary`     |
+| `var(--color-text-danger)`       | `#DC2626` | `text/danger`      |
+| `var(--color-text-warning)`      | `#FF7119` | `text/warning`     |
+| `var(--color-text-safe)`         | `#179C00` | `text/safe`        |
 
 ### Backgrounds (`bg/`)
 
-| CSS variable                    | Value                    | Figma variable           |
-| ------------------------------- | ------------------------ | ------------------------ |
-| `var(--bg-white)`               | `#FFFFFF`                | `bg/white`               |
-| `var(--bg-1depth)`              | `#F2F4F7`                | `bg/1depth`              |
-| `var(--bg-1depth-bg)`           | `#EFF5FF`                | `bg/1depth-bg`           |
-| `var(--bg-blue-btn-bg)`         | `#EBF3FF`                | `bg/blue-btn-bg`         |
-| `var(--bg-input-bg)`            | `#F2F4F6`                | `bg/input-bg`            |
-| `var(--bg-gray-1depth)`         | `#F5F5F5`                | `bg/gray-1depth`         |
-| `var(--bg-gray-2depth)`         | `#EAEAEA`                | `bg/gray-2depth`         |
-| `var(--bg-gray-3depth)`         | `#CFCFCF`                | `bg/gray-3depth`         |
-| `var(--bg-gray-4depth)`         | `#B9B9B9`                | `bg/gray-4depth`         |
-| `var(--bg-skeletn-bg)`          | `#E9ECEF`                | `bg/skeletn-bg`          |
-| `var(--bg-skeleton-highlights)` | `#F1F5F9`                | `bg/skeleton-highlights` |
-| `var(--bg-shadow)`              | `rgba(25, 31, 40, 0.32)` | `bg/shadow`              |
+| CSS variable                          | Value                    | Figma                   |
+| ------------------------------------- | ------------------------ | ----------------------- |
+| `var(--color-bg-surface)`             | `#FFFFFF`                | `bg/surface`            |
+| `var(--color-bg-subtle)`              | `#F2F4F7`                | `bg/subtle`             |
+| `var(--color-bg-section)`             | `#F3F4F6`                | `bg/section`            |
+| `var(--color-bg-input)`               | `#F2F4F6`                | `bg/input`              |
+| `var(--color-bg-primary-subtle)`      | `#EBF3FF`                | `bg/primary-subtle`     |
+| `var(--color-bg-primary-tint)`        | `#EFF5FF`                | `bg/primary-tint`       |
+| `var(--color-bg-skeleton)`            | `#E9ECEF`                | `bg/skeleton`           |
+| `var(--color-bg-skeleton-highlight)`  | `#F1F5F9`                | `bg/skeleton-highlight` |
+| `var(--color-bg-primary)`             | `#3182F6`                | `bg/primary`            |
+| `var(--color-bg-danger)`              | `#DC2626`                | `bg/danger`             |
+| `var(--color-bg-badge-danger)`        | `#DC262626` (#DC2626 15%) | `bg/badge-danger`      |
+| `var(--color-bg-badge-warning)`       | `#FF71191F` (#FF7119 12%) | `bg/badge-warning`     |
+| `var(--color-bg-badge-safe)`          | `#179C001F` (#179C00 12%) | `bg/badge-safe`        |
+| `var(--color-bg-dim)`                 | `#191F2899` (#191F28 60%) | `bg/dim`               |
 
-### Lines
+### Borders (`border/`)
 
-| CSS variable      | Value     | Figma variable |
-| ----------------- | --------- | -------------- |
-| `var(--stroke-1)` | `#E2E8F0` | `stroke-1`     |
+| CSS variable                   | Value     | Figma            |
+| ------------------------------ | --------- | ---------------- |
+| `var(--color-border-default)`  | `#E2E8F0` | `border/default` |
+| `var(--color-border-subtle)`   | `#F5F5F5` | `border/subtle`  |
+| `var(--color-border-control)`  | `#CFCFCF` | `border/control` |
+| `var(--color-border-chip)`     | `#EAEAEA` | `border/chip`    |
 
-## Figma paint styles
+### Icons (`icon/`)
 
-| CSS variable                 | Value     | Figma style     |
-| ---------------------------- | --------- | --------------- |
-| `var(--style-primay)`        | `#3182F6` | `primay`        |
-| `var(--style-complementary)` | `#F56214` | `complementary` |
+| CSS variable                   | Value     | Figma           |
+| ------------------------------ | --------- | --------------- |
+| `var(--color-icon-default)`    | `#374151` | `icon/default`  |
+| `var(--color-icon-sub)`        | `#9CA3AF` | `icon/sub`      |
+| `var(--color-icon-disabled)`   | `#CFCFCF` | `icon/disabled` |
+| `var(--color-icon-favorite)`   | `#FDD43E` | `icon/favorite` |
 
-## Figma text styles (mobile)
+### Brand and social (`brand/`, `social/`)
 
-Line height is auto for every style in Figma, so it stays CSS `normal`. The 6 tablet styles are omitted because the app width (360–480px) never uses them.
+| CSS variable                        | Value     | Figma                 |
+| ----------------------------------- | --------- | --------------------- |
+| `var(--color-brand-primary)`        | `#3182F6` | `brand/primary`       |
+| `var(--color-brand-complementary)`  | `#F56214` | `brand/complementary` |
+| `var(--color-social-kakao)`         | `#FEE500` | `social/kakao`        |
+| `var(--color-social-naver)`         | `#03C75A` | `social/naver`        |
+| `var(--color-social-google)`        | `#F2F2F2` | `social/google`       |
 
-| Usage                                  | Figma style            | Size | Weight   |
-| -------------------------------------- | ---------------------- | ---- | -------- |
-| `font: var(--font-header-mobile)`      | `header - mobile`      | 18px | SemiBold |
-| `font: var(--font-title-mobile)`       | `title - mobile`       | 16px | Medium   |
-| `font: var(--font-content-mobile)`     | `content - mobile`     | 14px | Medium   |
-| `font: var(--font-assist-mobile)`      | `assist - mobile`      | 12px | Medium   |
-| `font: var(--font-placeholder-mobile)` | `placeholder - mobile` | 12px | Medium   |
-| `font: var(--font-error-mobile)`       | `error - mobile`       | 12px | Regular  |
+## Spacing and radius (`Remake Size`)
+
+Values are in rem (px ÷ 16).
+
+| CSS variable       | px  |     | CSS variable          | px  |
+| ------------------ | --- | --- | --------------------- | --- |
+| `var(--space-2)`   | 2   |     | `var(--radius-xs)`    | 4   |
+| `var(--space-4)`   | 4   |     | `var(--radius-sm)`    | 8   |
+| `var(--space-6)`   | 6   |     | `var(--radius-md)`    | 10  |
+| `var(--space-8)`   | 8   |     | `var(--radius-lg)`    | 14  |
+| `var(--space-10)`  | 10  |     | `var(--radius-xl)`    | 20  |
+| `var(--space-12)`  | 12  |     | `var(--radius-full)`  | 100 |
+| `var(--space-14)`  | 14  |     |                       |     |
+| `var(--space-16)`  | 16  |     |                       |     |
+| `var(--space-20)`  | 20  |     |                       |     |
+| `var(--space-24)`  | 24  |     |                       |     |
+| `var(--space-30)`  | 30  |     |                       |     |
+
+## Text styles (`Remake/*`)
+
+Line height 140%, letter spacing 0 for every style. Figma uses Noto Sans KR as a placeholder font (its note says to replace it with Pretendard); the app renders Pretendard. Mobile only (app width 360–480px).
+
+| Usage                              | Figma style              | Size | Weight        |
+| ---------------------------------- | ------------------------ | ---- | ------------- |
+| `font: var(--font-display)`        | `Remake/display`         | 22px | Bold 700      |
+| `font: var(--font-header)`         | `Remake/header`          | 18px | Bold 700      |
+| `font: var(--font-subheader)`      | `Remake/subheader`       | 16px | Bold 700      |
+| `font: var(--font-title)`          | `Remake/title`           | 16px | Medium 500    |
+| `font: var(--font-content)`        | `Remake/content`         | 14px | Medium 500    |
+| `font: var(--font-content-regular)`| `Remake/content-regular` | 14px | Regular 400   |
+| `font: var(--font-content-strong)` | `Remake/content-strong`  | 14px | Bold 700      |
+| `font: var(--font-assist)`         | `Remake/assist`          | 12px | Medium 500    |
+| `font: var(--font-assist-strong)`  | `Remake/assist-strong`   | 12px | Bold 700      |
+| `font: var(--font-error)`          | `Remake/error`           | 12px | Regular 400   |
+
+## Shadows (`Remake/shadow-*`)
+
+| Usage                                | Figma                  | Value (color, offset, blur)  |
+| ------------------------------------ | ---------------------- | ---------------------------- |
+| `box-shadow: var(--shadow-control)`  | `Remake/shadow-control`| `#0000001F`, (0, 0), 4       |
+| `box-shadow: var(--shadow-card)`     | `Remake/shadow-card`   | `#00000014`, (0, 1), 4       |
+| `box-shadow: var(--shadow-sheet)`    | `Remake/shadow-sheet`  | `#0000001A`, (0, -4), 10     |
+| `box-shadow: var(--shadow-modal)`    | `Remake/shadow-modal`  | `#00000029`, (0, 4), 16      |
+| `box-shadow: var(--shadow-header)`   | `Remake/shadow-header` | `#3182F61A`, (0, 4), 20      |
+
+## Icons
+
+The design system has 24 icons (`아이콘/*`, 24px, color bound to `icon/default`; instances change the color). In code use Solar icons (`@solar-icons/react`) as the frontend rules require: pick the closest Solar icon and set its color with the `--color-icon-*` tokens.
 
 ## Ingredient category dot colors
 
-Values used on the Figma spending-pattern screen. They are tokens because the color is chosen from data (the category code). The variable name is the category code in lowercase kebab-case (e.g. `DAIRY_EGG` → `--category-dairy-egg`).
+Values used on the Figma spending-pattern screen. They are not design-system variables, but they are tokens because the color is chosen from data (the category code). The variable name is the category code in lowercase kebab-case (e.g. `DAIRY_EGG` → `--category-dairy-egg`).
 
 | CSS variable                | Value     | Category (code)                         |
 | --------------------------- | --------- | --------------------------------------- |
@@ -114,7 +176,7 @@ Values used on the Figma spending-pattern screen. They are tokens because the co
 
 | Variable             | Value               | Reason                                                                                                |
 | -------------------- | ------------------- | ----------------------------------------------------------------------------------------------------- |
-| `--font-family-base` | Pretendard + others | Font family (Figma's Pretendard plus fallback fonts)                                                  |
+| `--font-family-base` | Pretendard + others | Font family (Pretendard instead of Figma's placeholder Noto Sans KR, plus fallback fonts)             |
 | `--font-size-input`  | `1rem`              | Input text is 16px. Figma uses 14 and 12px, but iOS auto-zooms the page when input text is under 16px |
 | `--z-sticky`         | `100`               | Sticky top header and tabs                                                                            |
 | `--z-fixed`          | `200`               | Fixed bottom button area                                                                              |
@@ -123,3 +185,7 @@ Values used on the Figma spending-pattern screen. They are tokens because the co
 | `--z-sheet`          | `500`               | Bottom sheet                                                                                          |
 | `--z-modal`          | `600`               | Modal                                                                                                 |
 | `--z-toast`          | `700`               | Toast                                                                                                 |
+
+## Changes from v2
+
+v2 copied the old local variables (`text/header`, `bg/white`, `stroke-1`, paint styles `primay`/`complementary`, `* - mobile` text styles). v3 replaces all of them with the design-system names. Old → new for the ones the app used: `--text-header` → `--color-text-strong`, `--text-content` → `--color-text-body`, `--text-assist` → `--color-text-assist`, `--text-white` → `--color-text-on-color`, `--text-error` → `--color-text-danger`, `--bg-white` → `--color-bg-surface`, `--stroke-1` → `--color-border-default`, `--style-primay` → `--color-brand-primary`, `--font-header-mobile` → `--font-header` (now Bold), `--font-content-mobile` → `--font-content`.
