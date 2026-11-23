@@ -81,7 +81,6 @@ class IngredientApiTest extends IntegrationTestSupport {
 - If files are saved to a server folder, do not mock `filestorage`. Set the folder to a test folder in `application-test.yml` and clear it in `IntegrationTestSupport.cleanUp`.
 - An adapter test (no Spring) builds a client from `RestClient.builder()` bound with `MockRestServiceServer.bindTo(builder)` and passes it to the adapter's constructor. Do not set a request factory (for example for timeouts) on that builder after binding: it replaces the mock server, and requests go to the real network.
 - To give an adapter timeouts, build its `RestClient` in a `@Configuration` bean (request factory and base URL there) and have the adapter's constructor take the built `RestClient` with `@Qualifier`. The adapter test then passes a `RestClient` built from the mock-bound builder. Example: `GeminiClientConfig` and `GeminiRecipeAdapter`.
-- A mocked adapter's real constructor never runs in integration tests. Add a small wiring test that gets each constructor argument from the application context and builds the adapter (example: `GeminiRecipeAdapterWiringTest`).
 
 ## Reference data
 

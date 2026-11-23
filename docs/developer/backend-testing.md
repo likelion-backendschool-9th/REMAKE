@@ -81,7 +81,6 @@ class IngredientApiTest extends IntegrationTestSupport {
 - 파일을 서버 폴더에 저장한다면 `filestorage`를 가짜로 바꾸지 않는다. `application-test.yml`에서 저장 폴더를 테스트용 폴더로 바꾸고, `IntegrationTestSupport.cleanUp`에서 비운다.
 - 어댑터 테스트(Spring 없음)는 `RestClient.builder()`에 `MockRestServiceServer.bindTo(builder)`로 가짜 서버를 붙여 만든 클라이언트를 어댑터 생성자에 넘긴다. 붙인 뒤에는 그 빌더에 요청 팩토리(예: 타임아웃용)를 설정하지 않는다. 가짜 서버가 대체되어 요청이 실제 네트워크로 나간다.
 - 어댑터에 시간 제한을 걸려면 `RestClient`를 `@Configuration` 빈에서 만들고(요청 팩토리와 기본 주소는 여기서), 어댑터 생성자는 완성된 `RestClient`를 `@Qualifier`로 받는다. 그러면 어댑터 테스트는 가짜 서버를 붙인 빌더로 만든 `RestClient`를 그대로 넘긴다. 예: `GeminiClientConfig`와 `GeminiRecipeAdapter`.
-- 통합 테스트에서는 가짜로 바꾼 어댑터의 실제 생성자가 돌지 않는다. 생성자 인자를 앱 컨텍스트에서 꺼내 어댑터를 만들어 보는 작은 주입 확인 테스트를 둔다(예: `GeminiRecipeAdapterWiringTest`).
 
 ## 기준 데이터
 
