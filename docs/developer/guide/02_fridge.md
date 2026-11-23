@@ -88,12 +88,10 @@
 
 ## 지금 코드와 다른 점
 
-- `ingredient_categories`: `default_unit` 삭제, `sort_order` 추가(부록 A 순서), SEASONING 이름 '양념·소스' → '양념'.
-- `ingredients`: `is_expiration_estimated`, `status`(ACTIVE/FINISHED), `version` 삭제. 수량이 0이면 행 삭제.
 - `ingredient_catalog`(PR #140, V5): `unit` 추가, 자동완성 API는 빼기.
 - 재료 추가 요청에 `unit`이 없어요(서버가 정함). 단위 변경 금지 규칙은 없어졌어요(이름을 바꾸면 단위도 다시 정함).
 - `GET /user/ingredients`의 `q`(검색)는 없어요(피그마에 검색 없음).
-- 에러 코드 `INVALID_UNIT`, `INGREDIENT_ALREADY_FINISHED`, `INGREDIENT_HAS_LOGS`, `CONCURRENT_UPDATE`, `CATALOG_ITEM_NOT_FOUND`는 v2에 없어요.
+- 에러 코드 `INVALID_UNIT`, `INGREDIENT_ALREADY_FINISHED`, `INGREDIENT_HAS_LOGS`, `CONCURRENT_UPDATE`, `CATALOG_ITEM_NOT_FOUND`는 v2에 없어요. 이 중 `INVALID_UNIT`만 코드에 남아 있고(재료 추가 요청이 아직 `unit`을 받아서), #153에서 요청의 `unit`과 함께 없애요.
 
 ## 에러 코드
 
@@ -124,4 +122,5 @@
 - [x] 수량 수정 시 `initial_amount`도 같이 변경, 기록이 있으면 `INVALID_INPUT`
 - [x] 사용·버림 후 수량 0이면 행 삭제, 버린 금액 계산
 - [x] 기록 있는 재료 삭제
+- [x] 냉장고 스키마 정리(#71): `ingredients`의 `is_expiration_estimated`·`status`·`version`, `ingredient_categories`의 `default_unit` 삭제, `sort_order` 추가, SEASONING 이름 '양념'
 - [ ] 카테고리·재료 사전 마이그레이션
