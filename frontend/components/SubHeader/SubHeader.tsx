@@ -47,9 +47,14 @@ export function SubHeader({
         label="뒤로 가기"
         onClick={onBack ?? (() => router.back())}
       />
-      <Title id={titleId} className={styles.title}>
-        {title}
-      </Title>
+      {/* 제목이 없으면(화면 본문에 h1이 있는 경우) 빈 제목 요소를 만들지 않고 자리만 채운다 */}
+      {title ? (
+        <Title id={titleId} className={styles.title}>
+          {title}
+        </Title>
+      ) : (
+        <span className={styles.title} />
+      )}
       {right && <div className={styles.right}>{right}</div>}
     </header>
   );

@@ -29,6 +29,17 @@
   color: var(--color-text-on-color);
 }
 
+/* 피그마 p1.2-알러지 선택 칩: 줄 높이 normal(높이 29), 선택=브랜드 파랑 20% 배경(변수 아님)·brand/primary 테두리·text/primary */
+.chip[data-variant="soft"] {
+  line-height: normal;
+}
+
+.chip[data-variant="soft"][aria-pressed="true"] {
+  border-color: var(--color-brand-primary);
+  background: rgba(49, 130, 246, 0.2);
+  color: var(--color-text-primary);
+}
+
 .chip:focus-visible {
   outline: 2px solid var(--color-brand-primary);
   outline-offset: 2px;
