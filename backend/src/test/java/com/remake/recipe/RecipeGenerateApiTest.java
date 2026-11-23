@@ -61,8 +61,15 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 		for (Long id : fridgeIds) {
 			ingredients.add(new GeneratedRecipe.Ingredient(id, "재료" + id, BigDecimal.ONE, "EA"));
 		}
-		ingredients.add(new GeneratedRecipe.Ingredient(null, "소금", null, "TO_TASTE"));
 		return new GeneratedRecipe("계란 양파볶음", 15, "약불로 볶아요.", ingredients, List.of("썬다.", "볶는다."));
+	}
+
+	/** 소금을 "약간"으로 쓰는 응답. saltId가 null이면 냉장고에 없는 소금 */
+	private static GeneratedRecipe aiRecipeWithSalt(Long saltId, Long... fridgeIds) {
+		GeneratedRecipe base = aiRecipe(fridgeIds);
+		List<GeneratedRecipe.Ingredient> ingredients = new java.util.ArrayList<>(base.ingredients());
+		ingredients.add(new GeneratedRecipe.Ingredient(saltId, "소금", null, "TO_TASTE"));
+		return new GeneratedRecipe(base.title(), base.cookMinutes(), base.tips(), ingredients, base.steps());
 	}
 
 	private int recipeRows() {
@@ -97,7 +104,8 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 		Long egg = fridge("DAIRY_EGG", "계란", 1);
 		Long onion = fridge("VEGETABLE", "양파", 10);
 		fridge("MEAT", "상한 고기", -1);
-		when(geminiRecipeAdapter.generate(any())).thenReturn(aiRecipe(egg, onion));
+		Long salt = fridge("SEASONING", "소금", 30);
+		when(geminiRecipeAdapter.generate(any())).thenReturn(aiRecipeWithSalt(salt, egg, onion));
 
 		generate("{\"mode\":\"QUICK\"}")
 				.andExpect(status().isCreated())
@@ -117,14 +125,14 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 		assertThat(sent.servings()).isEqualTo(3);
 		assertThat(sent.supplementEnabled()).isFalse();
 		assertThat(sent.fridgeIngredients()).extracting(RecipeAiRequest.FridgeItem::ingredientId)
-				.as("소비기한이 지난 재료는 보내지 않는다").containsExactly(egg, onion);
+				.as("소비기한이 지난 재료는 보내지 않는다").containsExactly(egg, onion, salt);
 		assertThat(sent.fridgeIngredients().get(0).expiringSoon()).isTrue();
 		assertThat(sent.fridgeIngredients().get(1).expiringSoon()).isFalse();
 		assertThat(recipeRows()).isEqualTo(1);
 		assertThat(usageRows()).isEqualTo(1);
 		assertThat(eventProperties("recipe_generated"))
 				.contains("\"recipe_mode\": \"QUICK\"", "\"is_regenerated\": false", "\"expiring_used_count\": 1",
-						"\"shortage_count\": 1", "\"remaining_quota\": 1");
+						"\"shortage_count\": 0", "\"remaining_quota\": 1");
 	}
 
 	@Test
@@ -184,7 +192,7 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 	@Test
 	void 재료_보충이_켜져_있으면_냉장고가_비어도_만든다() throws Exception {
 		jdbcTemplate.update("UPDATE users SET recipe_supplement_enabled = true WHERE id = ?", userId);
-		when(geminiRecipeAdapter.generate(any())).thenReturn(aiRecipe());
+		when(geminiRecipeAdapter.generate(any())).thenReturn(aiRecipeWithSalt(null));
 
 		generate("{\"mode\":\"QUICK\"}").andExpect(status().isCreated());
 

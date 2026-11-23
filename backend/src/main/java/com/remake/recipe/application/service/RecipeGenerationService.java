@@ -188,7 +188,8 @@ class RecipeGenerationService implements GenerateRecipeUseCase, RegenerateRecipe
 				"is_regenerated", regenerated,
 				"duration_ms", elapsedMillis(start),
 				"expiring_used_count", ingredients.stream().filter(i -> expiringIds.contains(i.ingredientId())).count(),
-				"shortage_count", ingredients.stream().filter(i -> i.ingredientId() == null).count(),
+				"shortage_count", ingredients.stream()
+						.filter(i -> i.ingredientId() == null && !GeneratedRecipeValidator.isWater(i.name())).count(),
 				"remaining_quota", result.quota().remaining()), EventTrackCommand.ofUser(userId));
 		return saved;
 	}
