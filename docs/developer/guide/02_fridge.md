@@ -65,6 +65,8 @@
 | 18 | POST | `/user/ingredients/{id}/consume` | 사용·버림 기록. 버리면 버린 금액 계산(가격이 있을 때). 0이 되면 재료 삭제 | `{ type: "USED"\|"DISCARDED", amount }` | `200 { remainingAmount, deleted, costAmount? }` | ingredients, ingredient_logs |
 | 19 | GET | `/user/ingredient-categories` | 카테고리 12개 | `-` | `200 { items: [{ code, name, imageUrl }] }` | ingredient_categories |
 
+14는 이름만 받아서, 사전 이름과 정확히 같을 때만 사전 단위를 주고 아니면 `EA`예요. 저장할 때(15·16)는 카테고리까지 써서 정하므로 저장된 `unit`이 달라질 수 있어요(예: "유기농 우유"는 14에서 `EA`, 우유 카테고리로 저장하면 `PACK`). 저장 응답의 `unit`이 최종 값이에요. `name`이 비어 있으면 `INVALID_INPUT`이에요.
+
 재료 사전 자동완성 API(`GET /user/ingredient-catalog`)는 없어요(11/22 결정). `ingredient_catalog`는 서버 안에서 단위를 정할 때만 써요(API 14·15·16·21).
 
 ## 테이블
