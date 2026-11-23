@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.quota.application.port.in.ConsumeMealPlanQuotaUseCase;
 import com.remake.quota.application.port.in.ConsumeRecipeQuotaUseCase;
 import com.remake.quota.application.port.in.GetUsageQuotasUseCase;
 import com.remake.quota.application.port.out.UsageLogPort;
@@ -33,7 +34,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
-class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseCase {
+class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseCase, ConsumeMealPlanQuotaUseCase {
 
 	/** 보상 테이블이 생기기 전까지 쓸 수 있는 보상 횟수 */
 	private static final int NO_BONUS = 0;
@@ -59,9 +60,7 @@ class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseC
 	public UsageQuotas getUsageQuotas(Long userId) {
 		PlanQuota plan = planOf(userId);
 		LocalDate today = LocalDate.now(clock);
-		int mealPlanUsed = usageLogPort.countSince(userId, UsageType.MEAL_PLAN, today.withDayOfMonth(1).atStartOfDay());
-		return new UsageQuotas(recipeQuota(userId, plan, today),
-				new MealPlanQuota(plan.mealPlanMonthly(), mealPlanUsed, plan.mealPlanMaxDays()));
+		return new UsageQuotas(recipeQuota(userId, plan, today), mealPlanQuota(userId, plan, today));
 	}
 
 	@Override
@@ -90,6 +89,33 @@ class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseC
 		}
 		usageLogPort.save(userId, UsageType.RECIPE, null);
 		return new RecipeQuota(quota.limit(), quota.used() + 1, quota.bonusRemaining(), quota.resetsAt());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public MealPlanQuota requireMealPlanQuota(Long userId) {
+		MealPlanQuota quota = mealPlanQuota(userId, planOf(userId), LocalDate.now(clock));
+		if (enforced && quota.remaining() == 0) {
+			throw new BusinessException(ErrorCode.MEAL_PLAN_LIMIT_EXCEEDED);
+		}
+		return quota;
+	}
+
+	@Override
+	@Transactional
+	public MealPlanQuota consumeMealPlanQuota(Long userId) {
+		usageLogPort.lockUser(userId);
+		MealPlanQuota quota = mealPlanQuota(userId, planOf(userId), LocalDate.now(clock));
+		if (enforced && quota.remaining() == 0) {
+			throw new BusinessException(ErrorCode.MEAL_PLAN_LIMIT_EXCEEDED);
+		}
+		usageLogPort.save(userId, UsageType.MEAL_PLAN, null);
+		return new MealPlanQuota(quota.limit(), quota.used() + 1, quota.maxDays());
+	}
+
+	private MealPlanQuota mealPlanQuota(Long userId, PlanQuota plan, LocalDate today) {
+		int used = usageLogPort.countSince(userId, UsageType.MEAL_PLAN, today.withDayOfMonth(1).atStartOfDay());
+		return new MealPlanQuota(plan.mealPlanMonthly(), used, plan.mealPlanMaxDays());
 	}
 
 	private RecipeQuota recipeQuota(Long userId, PlanQuota plan, LocalDate today) {
