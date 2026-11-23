@@ -21,24 +21,24 @@
 
 ## 2. 기술 스택
 
-| 영역            | 기술                                   | 쓰는 이유                                                   |
-| --------------- | -------------------------------------- | ----------------------------------------------------------- |
-| 프레임워크      | Next.js (App Router) + TypeScript      | 라우트별 화면 분리, 화면만 담당                             |
-| 패키지 매니저   | pnpm                                   | 빠른 설치, lockfile로 7명 의존성 버전 통일                  |
-| 스타일          | CSS Modules + CSS 변수                 | 별도 라이브러리 없이 컴포넌트 단위 스타일, 디자인 토큰 공유 |
-| 서버 데이터     | TanStack Query                         | 서버 데이터 캐싱·다시 불러오기                              |
-| 클라이언트 상태 | Zustand                                | 로그인 정보 등 최소한만                                     |
-| URL 상태        | nuqs                                   | 필터·탭·정렬·월 선택을 URL에 저장                           |
-| API 연동        | openapi-typescript + openapi-fetch     | Spring OpenAPI에서 타입 자동 생성, 타입 안전한 호출         |
-| 폼              | React Hook Form + Zod                  | 온보딩, 커스텀 레시피 입력, 재료 수정 검증                  |
-| 날짜            | dayjs                                  | 날짜 표시, 식단표 달력                                      |
-| 아이콘          | @solar-icons/react (Solar)             | 트리 셰이킹되는 React 컴포넌트, 오프라인에서도 동작         |
-| 폰트            | Pretendard + GmarketSans (`next/font/local`) | Pretendard: 한글 UI 폰트. GmarketSans: 로고 글자 전용. 로딩 중 레이아웃 밀림 방지 |
-| PWA             | Serwist                                | 서비스 워커, 오프라인 화면. 알림은 앱 안에서만(기기 푸시 없음) |
-| 스토어 배포     | PWABuilder (TWA)                       | 안드로이드 앱 패키지 생성                                   |
-| 웹 배포         | `output: "standalone"` + nginx         | Node 서버를 nginx 뒤에서 실행                               |
-| 코드 품질       | ESLint + Prettier, Husky + lint-staged | 7명 코드 스타일 통일, 커밋 전 자동 검사                     |
-| API 목업        | MSW                                    | 백엔드 완성 전 더미 응답으로 화면 개발                      |
+| 영역            | 기술                                                                             | 쓰는 이유                                                                           |
+| --------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 프레임워크      | Next.js (App Router) + TypeScript                                                | 라우트별 화면 분리, 화면만 담당                                                     |
+| 패키지 매니저   | pnpm                                                                             | 빠른 설치, lockfile로 7명 의존성 버전 통일                                          |
+| 스타일          | CSS Modules + CSS 변수                                                           | 별도 라이브러리 없이 컴포넌트 단위 스타일, 디자인 토큰 공유                         |
+| 서버 데이터     | TanStack Query                                                                   | 서버 데이터 캐싱·다시 불러오기                                                      |
+| 클라이언트 상태 | Zustand                                                                          | 로그인 정보 등 최소한만                                                             |
+| URL 상태        | nuqs                                                                             | 필터·탭·정렬·월 선택을 URL에 저장                                                   |
+| API 연동        | openapi-typescript + openapi-fetch                                               | Spring OpenAPI에서 타입 자동 생성, 타입 안전한 호출                                 |
+| 폼              | React Hook Form + Zod                                                            | 온보딩, 커스텀 레시피 입력, 재료 수정 검증                                          |
+| 날짜            | dayjs                                                                            | 날짜 표시, 식단표 달력                                                              |
+| 아이콘          | @solar-icons/react (Solar)                                                       | 트리 셰이킹되는 React 컴포넌트, 오프라인에서도 동작                                 |
+| 폰트            | Pretendard(`pretendard` 패키지, dynamic subset) + GmarketSans(`next/font/local`) | Pretendard: 한글 UI 폰트, 화면에 나온 글자 묶음만 받음. GmarketSans: 로고 글자 전용 |
+| PWA             | Serwist                                                                          | 서비스 워커, 오프라인 화면. 알림은 앱 안에서만(기기 푸시 없음)                      |
+| 스토어 배포     | PWABuilder (TWA)                                                                 | 안드로이드 앱 패키지 생성                                                           |
+| 웹 배포         | `output: "standalone"` + nginx                                                   | Node 서버를 nginx 뒤에서 실행                                                       |
+| 코드 품질       | ESLint + Prettier, Husky + lint-staged                                           | 7명 코드 스타일 통일, 커밋 전 자동 검사                                             |
+| API 목업        | MSW                                                                              | 백엔드 완성 전 더미 응답으로 화면 개발                                              |
 
 ## 3. 폴더 구조
 
@@ -46,7 +46,7 @@
 frontend/
 ├─ app/                  # 라우트. 각 라우트 폴더에 그 라우트만 쓰는 코드를 함께 둔다 (3.1 참고)
 │  ├─ layout.tsx         # 루트 레이아웃, globals.css
-│  ├─ fonts/             # 폰트 파일(woff2) + fonts.ts (next/font/local)
+│  ├─ fonts/             # GmarketSans 파일(woff2) + fonts.ts (next/font/local) + pretendard.css(생성 파일)
 │  ├─ page.tsx           # 스플래시 (/)
 │  ├─ public/            # /public/... 라우트 (로그인 전, §4)
 │  ├─ user/              # /user/... 라우트 (로그인 후, §4). 예: user/fridge/ingredients/ — 3.1 참고
@@ -133,42 +133,42 @@ components/Button/
 - 로그인하지 않았으면 모든 `/user/...` 라우트에서 `/public/auth/login`으로 보냅니다. 로그인했으면 `/`와 로그인 화면에서 `/user/fridge/ingredients`(인덱스)로 보냅니다.
 - 온보딩은 첫 로그인 직후 필수입니다. 건너뛰기 버튼은 없습니다. 가구원 수는 입력해야 넘어가고, 알레르기는 0개여도 됩니다.
 
-| 라우트                                            | 화면(피그마)                                 | 비고                                                                                    |
-| ------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `/`                                               | 스플래시                                     | 로그인 여부를 보고 로그인 또는 냉장고로                                                 |
-| `/public/auth/login`                              | p1 로그인                                    | 카카오·네이버·구글, "최근 로그인" 말풍선, 약관 드로워는 이 화면 안                      |
-| `/public/auth/callback/[provider]`                | (화면 없음)                                  | 소셜 인증 되돌아오는 주소. API 1(로그인) 또는 API 10(네이버 재인증) 호출                |
-| `/user/onboarding/household`                      | p1.1 가구원 수                               | 1~50, 숫자만. 입력 전 "다음" 비활성                                                     |
-| `/user/onboarding/allergies`                      | p1.2 알레르기 선택                           | 칩 19개, 0개 가능. 온보딩 값 두 개를 한 번에 저장(API 4)                                |
-| `/user/setting/profile`                           | p1.3 설정                                    | 로그아웃 모달, 계정 삭제 모달이 이 화면 안                                              |
-| `/user/setting/household`                         | p1.3.1 가구원 설정                           |                                                                                         |
-| `/user/setting/excluded-ingredients`              | p1.3.2 알레르기 재료 제외                    | 0개 가능                                                                                |
-| `/user/setting/subscription`                      | p1.3.4 구독 관리(구독 전·구독 중)            | 토스페이먼츠 카드 등록                                                                  |
-| `/user/setting/subscription/billing-success`      | (화면 없음)                                  | 토스가 돌려보내는 주소. 구독 시작(API 59) 후 구독 관리로                                |
-| `/user/setting/subscription/billing-fail`         | (화면 없음)                                  | 토스 실패·취소 때 돌아오는 주소. 토스트 후 구독 관리로                                  |
-| `/user/setting/account-deletion`                  | p1.3.3 이메일 인증번호                       | 카카오·구글만. 네이버는 재인증                                                          |
-| `/user/fridge/ingredients`                        | p2 냉장고(인덱스)                            | 상태 카드, 위치·종류 시트, 사용 여부 시트                                               |
-| `/user/fridge/ingredients/new`                    | p2.2 재료 추가                               |                                                                                         |
-| `/user/fridge/ingredients/[id]/edit`              | p2.1 재료 수정                               | 값 변경 시트, 삭제 아이콘                                                               |
-| `/user/receipt/receipts`                          | p3 영수증                                    | 월 선택, 주차 묶음                                                                      |
-| `/user/receipt/receipts/[id]`                     | p3.2 영수증 상세                             | 삭제 모달이 이 화면 안                                                                  |
-| `/user/receipt/scan`                              | p3.1 카메라·이미지 업로드                    |                                                                                         |
-| `/user/receipt/scan/result`                       | p3.3 OCR 결과                                | 기다리는 동안 스켈레톤. OCR 실패는 이 주소 안의 상태                                    |
-| `/user/receipt/scan/items/new`                    | p3.3.2 OCR 재료 추가                         |                                                                                         |
-| `/user/receipt/scan/items/[index]/edit`           | p3.3.1 OCR 재료 수정                         | 고친 값은 등록할 때까지 화면 상태로만 둠                                                |
-| `/user/receipt/patterns`                          | p3.4 나의 소비                               |                                                                                         |
-| `/user/recipe/saved-recipes`                      | p4.1 레시피(메인)                            | 금주 TOP 3, 저장 목록, 빠른 생성 모달이 이 화면 안                                      |
-| `/user/recipe/custom`                             | p4.1.2 커스텀 레시피                         | 선택식만, 자유 입력 없음                                                                |
-| `/user/recipe/results/[id]`                       | p4.1.3 생성 결과                             | 로딩·실패·횟수 소진은 이 주소 안의 상태                                                 |
-| `/user/recipe/recipes/[id]`                       | p4.1.1 레시피 상세                           |                                                                                         |
-| `/user/recipe/recipes/[id]/cook`                  | p4.1.1.2 요리 완료 재료 차감                 |                                                                                         |
-| `/user/recipe/shared-recipes`                     | p4.1.4 금주의 인기 레시피                    | 랭킹, 검색                                                                              |
-| `/user/recipe/shared-recipes/new`                 | p4.1.1.1 레시피 공유 작성                    |                                                                                         |
-| `/user/recipe/shared-recipes/[id]`                | p4.1.4.1 공유 레시피 상세                    | 신고 시트가 이 화면 안                                                                  |
-| `/user/meal-plan/calendar`                        | p5 식단표                                    | 빈 화면, 월 달력, 날짜 시트, ⋮ 시트(삭제·교체)                                          |
-| `/user/meal-plan/meal-plans/new`                  | p5 식단표 생성 설정                          | 겹침 모달, 횟수 소진이 이 화면 안. 생성은 비동기(§5)                                    |
-| `/user/notification/notifications`                | p6 알림                                      |                                                                                         |
-| `/user/cart/cart-items`                           | p7 장바구니                                  | 수량 시트, 삭제 모드                                                                    |
+| 라우트                                       | 화면(피그마)                      | 비고                                                                     |
+| -------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------ |
+| `/`                                          | 스플래시                          | 로그인 여부를 보고 로그인 또는 냉장고로                                  |
+| `/public/auth/login`                         | p1 로그인                         | 카카오·네이버·구글, "최근 로그인" 말풍선, 약관 드로워는 이 화면 안       |
+| `/public/auth/callback/[provider]`           | (화면 없음)                       | 소셜 인증 되돌아오는 주소. API 1(로그인) 또는 API 10(네이버 재인증) 호출 |
+| `/user/onboarding/household`                 | p1.1 가구원 수                    | 1~50, 숫자만. 입력 전 "다음" 비활성                                      |
+| `/user/onboarding/allergies`                 | p1.2 알레르기 선택                | 칩 19개, 0개 가능. 온보딩 값 두 개를 한 번에 저장(API 4)                 |
+| `/user/setting/profile`                      | p1.3 설정                         | 로그아웃 모달, 계정 삭제 모달이 이 화면 안                               |
+| `/user/setting/household`                    | p1.3.1 가구원 설정                |                                                                          |
+| `/user/setting/excluded-ingredients`         | p1.3.2 알레르기 재료 제외         | 0개 가능                                                                 |
+| `/user/setting/subscription`                 | p1.3.4 구독 관리(구독 전·구독 중) | 토스페이먼츠 카드 등록                                                   |
+| `/user/setting/subscription/billing-success` | (화면 없음)                       | 토스가 돌려보내는 주소. 구독 시작(API 59) 후 구독 관리로                 |
+| `/user/setting/subscription/billing-fail`    | (화면 없음)                       | 토스 실패·취소 때 돌아오는 주소. 토스트 후 구독 관리로                   |
+| `/user/setting/account-deletion`             | p1.3.3 이메일 인증번호            | 카카오·구글만. 네이버는 재인증                                           |
+| `/user/fridge/ingredients`                   | p2 냉장고(인덱스)                 | 상태 카드, 위치·종류 시트, 사용 여부 시트                                |
+| `/user/fridge/ingredients/new`               | p2.2 재료 추가                    |                                                                          |
+| `/user/fridge/ingredients/[id]/edit`         | p2.1 재료 수정                    | 값 변경 시트, 삭제 아이콘                                                |
+| `/user/receipt/receipts`                     | p3 영수증                         | 월 선택, 주차 묶음                                                       |
+| `/user/receipt/receipts/[id]`                | p3.2 영수증 상세                  | 삭제 모달이 이 화면 안                                                   |
+| `/user/receipt/scan`                         | p3.1 카메라·이미지 업로드         |                                                                          |
+| `/user/receipt/scan/result`                  | p3.3 OCR 결과                     | 기다리는 동안 스켈레톤. OCR 실패는 이 주소 안의 상태                     |
+| `/user/receipt/scan/items/new`               | p3.3.2 OCR 재료 추가              |                                                                          |
+| `/user/receipt/scan/items/[index]/edit`      | p3.3.1 OCR 재료 수정              | 고친 값은 등록할 때까지 화면 상태로만 둠                                 |
+| `/user/receipt/patterns`                     | p3.4 나의 소비                    |                                                                          |
+| `/user/recipe/saved-recipes`                 | p4.1 레시피(메인)                 | 금주 TOP 3, 저장 목록, 빠른 생성 모달이 이 화면 안                       |
+| `/user/recipe/custom`                        | p4.1.2 커스텀 레시피              | 선택식만, 자유 입력 없음                                                 |
+| `/user/recipe/results/[id]`                  | p4.1.3 생성 결과                  | 로딩·실패·횟수 소진은 이 주소 안의 상태                                  |
+| `/user/recipe/recipes/[id]`                  | p4.1.1 레시피 상세                |                                                                          |
+| `/user/recipe/recipes/[id]/cook`             | p4.1.1.2 요리 완료 재료 차감      |                                                                          |
+| `/user/recipe/shared-recipes`                | p4.1.4 금주의 인기 레시피         | 랭킹, 검색                                                               |
+| `/user/recipe/shared-recipes/new`            | p4.1.1.1 레시피 공유 작성         |                                                                          |
+| `/user/recipe/shared-recipes/[id]`           | p4.1.4.1 공유 레시피 상세         | 신고 시트가 이 화면 안                                                   |
+| `/user/meal-plan/calendar`                   | p5 식단표                         | 빈 화면, 월 달력, 날짜 시트, ⋮ 시트(삭제·교체)                           |
+| `/user/meal-plan/meal-plans/new`             | p5 식단표 생성 설정               | 겹침 모달, 횟수 소진이 이 화면 안. 생성은 비동기(§5)                     |
+| `/user/notification/notifications`           | p6 알림                           |                                                                          |
+| `/user/cart/cart-items`                      | p7 장바구니                       | 수량 시트, 삭제 모드                                                     |
 
 아직 위치가 정해지지 않은 화면(화면 대기): 이번 달 버린 식재료 금액, 레시피 추천 여부.
 
@@ -204,13 +204,13 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 
 - Tailwind나 CSS-in-JS 라이브러리를 쓰지 않습니다. **CSS Modules(`*.module.css`) + `globals.css`의 CSS 변수**만 씁니다.
 - 아이콘은 `@solar-icons/react`의 스타일별 경로에서 import합니다. 예: `import { HomeIcon } from "@solar-icons/react/linear"`. 기본 크기·색·선 두께는 `globals.css`의 `--solar-*` 변수로 정합니다.
-- 디자인 토큰은 [`design-tokens.md`](./design-tokens.md)를 따릅니다. 피그마 변수·스타일을 이름 그대로 옮긴 것입니다. `design/tokens/build_tokens.py`가 만들고, 결과를 `app/tokens.css`로 복사해 `globals.css`에서 불러옵니다. `app/tokens.css`는 손으로 고치지 않습니다. 피그마에서 변수·스타일이 걸린 값은 같은 이름의 토큰을, 걸리지 않은 값(간격·반경·그림자·글래스 등)은 프레임 값을 그대로 씁니다.
+- 디자인 토큰은 [`design-tokens.md`](./design-tokens.md)를 따릅니다. 피그마 디자인 시스템(`0. 기초`)의 변수·스타일을 이름 그대로 옮긴 것이고, CSS 변수 이름은 피그마 Dev Mode의 코드 이름과 같습니다(`var(--color-text-strong)`, `var(--space-16)`, `font: var(--font-content)`). `design/tokens/build_tokens.py`가 만들고, 결과를 `app/tokens.css`로 복사해 `globals.css`에서 불러옵니다. `app/tokens.css`는 손으로 고치지 않습니다. 피그마에서 변수·스타일이 걸린 값은 같은 이름의 토큰을, 걸리지 않은 값은 프레임 값을 그대로 씁니다.
 - 모바일 우선입니다. 기준 폭은 360px입니다. 기본 레이아웃 최대 폭은 `--layout-max-width`(480px), 좌우 여백은 `--layout-gutter`입니다. 480px보다 넓은 화면은 480px 컨테이너를 가운데 정렬해 보여 줍니다.
 - 라이트 모드만 있습니다. 다크 모드는 없습니다.
 - 단위는 rem입니다(1rem = 16px, 루트 font-size는 바꾸지 않음). 피그마 px 값은 16으로 나눠 씁니다(10px → 0.625rem). 테두리 같은 선만 px로 씁니다.
-- 폰트: 두 폰트 모두 `app/fonts/fonts.ts`에서 `next/font/local`로 불러오고 `app/layout.tsx`의 `<html>`에 붙입니다. 파일은 woff2만 씁니다.
-  - Pretendard(본문): 피그마에서 쓰는 굵기 500/600/700/800만 둡니다. CSS 변수 `--font-pretendard`이고, `tokens.css`의 `--font-family-base`가 이 변수를 씁니다.
-  - GmarketSans(로고 글자 전용): 굵기 300/500/700, `preload: false`. `font-family: var(--font-family-logo)`(`globals.css`에 정의)로 씁니다. 다른 글자에는 쓰지 않습니다.
+- 폰트: 파일은 woff2만 씁니다.
+    - Pretendard(본문): `pretendard` 패키지의 dynamic subset 파일을 씁니다(굵기마다 글자 묶음별로 `unicode-range`로 나뉘어 있어 화면에 나온 글자가 든 묶음만 받습니다. 통파일은 굵기마다 약 770KB). `app/fonts/pretendard.css`는 `pnpm gen:fonts`(`scripts/gen-pretendard-css.mjs`)가 만들고 `app/layout.tsx`에서 불러옵니다. 손으로 고치지 않습니다. 굵기는 쓰는 것만 400/500/700/800입니다(400은 `Remake/content-regular`·`Remake/error` 텍스트 스타일, 800은 마트 배지). 굵기를 더하려면 스크립트의 `WEIGHTS`를 고치고 다시 실행합니다. 글꼴 이름은 `Pretendard`이고, `tokens.css`의 `--font-family-base`가 이 이름을 씁니다.
+    - GmarketSans(로고 글자 전용): `app/fonts/fonts.ts`에서 `next/font/local`로 불러오고 `app/layout.tsx`의 `<html>`에 붙입니다. 굵기 300/500/700, `preload: false`. `font-family: var(--font-family-logo)`(`globals.css`에 정의)로 씁니다. 다른 글자에는 쓰지 않습니다.
 - 화면 전체 높이는 `100dvh`, 하단 고정 요소는 `env(safe-area-inset-bottom)`을 더합니다.
 - 대부분 플랫하게 만들고, 글래스 효과는 피그마에서 글래스가 걸린 요소에만 씁니다.
 - 스타일 파일은 컴포넌트와 같은 폴더에 같은 이름으로 둡니다. 예: `IngredientCard.tsx` + `IngredientCard.module.css`
@@ -278,10 +278,13 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 
 ### 7.1 뒤로가기로 시트 닫기
 
-- 바텀시트·모달·드로어는 URL 히스토리에 쌓지 않습니다(열림 여부는 로컬 상태). 대신 뒤로가기(안드로이드 뒤로 버튼, iOS 밀어서 뒤로)를 누르면 페이지 이동 없이 열린 창만 닫힙니다.
-- 공통 훅 `useBackToClose(isOpen, onClose)`(`hooks/`) 하나로 처리합니다. 컴포넌트에서 `popstate`를 직접 다루지 않습니다.
-- 크롬 계열(TWA 포함)은 `CloseWatcher`로 닫기 요청을 받아 상태를 끕니다.
-- `CloseWatcher`가 없는 브라우저(사파리, 파이어폭스)는 열 때 URL을 바꾸지 않고 `history.pushState`로 임시 한 칸을 넣고, `popstate`가 오면 닫습니다. 닫기 버튼으로 닫을 때는 그 임시 한 칸을 `history.back()`으로 지웁니다.
+- 바텀시트·모달·드로어는 방문 기록을 건드리지 않습니다. URL도 바꾸지 않고 `history.pushState`도 쓰지 않습니다(열림 여부는 로컬 상태).
+- 닫기는 공통 훅 `useBackToClose(isOpen, onClose)`(`hooks/`, `useDialogLayer`가 씀) 하나로 처리합니다. 컴포넌트에서 `popstate`를 직접 다루지 않습니다.
+- 크롬 계열(TWA 포함)은 `CloseWatcher`로 안드로이드 뒤로 버튼과 Esc를 닫기 요청으로 받아, 페이지 이동 없이 열린 시트만 닫습니다. `CloseWatcher`는 방문 기록을 쓰지 않습니다.
+- `CloseWatcher`가 없는 브라우저(사파리, 파이어폭스)는 Esc로 닫습니다. 뒤로가기(iOS 밀어서 뒤로)는 평소처럼 이전 화면으로 갑니다.
+- 시트가 열린 화면이 숨겨지면(시트 안에서 다른 화면으로 이동, 뒤로가기) 시트를 닫습니다. `cacheComponents`라 이전 화면은 상태를 가진 채 남아 있어서, 닫지 않으면 돌아왔을 때 시트가 열린 채 보입니다.
+- 시트·모달이 열려 있는 동안 뒤 화면은 스크롤되지 않습니다.
+- `onClose`에는 닫힌 상태만 반영합니다. 화면이 숨겨질 때도 불리기 때문입니다. 취소 기록 같은 다른 동작은 넣지 않고 취소 버튼의 처리 함수에 넣습니다. 확인 뒤 다른 화면으로 갈 때는 먼저 닫고 이동합니다.
 - 시트가 겹쳐 열려 있으면 가장 위의 것만 닫습니다.
 
 ## 8. 개발 흐름

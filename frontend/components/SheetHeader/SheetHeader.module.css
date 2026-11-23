@@ -1,0 +1,14 @@
+/* 피그마 6. 겹쳐 뜨는 것 > 시트 제목: 높이 44, Remake/title, text/title */
+.header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-title);
+  font: var(--font-title);
+}

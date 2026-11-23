@@ -1,0 +1,22 @@
+/* 피그마 1. 앱 틀 > 메인 헤더: bg/surface, shadow-header
+   로고 줄 여백 위 10·오른쪽 6·아래 4·왼쪽 10, 알림 띠 줄 여백 4/16 */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-header);
+}
+
+.logoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-10) var(--space-6) var(--space-4) var(--space-10);
+}
+
+.noticeRow {
+  padding: var(--space-4) var(--space-16);
+}

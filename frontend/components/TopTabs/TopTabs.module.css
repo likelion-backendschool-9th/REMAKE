@@ -1,0 +1,33 @@
+/* 피그마 1. 앱 틀 > 상단 탭: 높이 56, 여백 0/16, 간격 15, 아래 선 border/chip
+   항목: 선택=Remake/subheader·text/body, 아님=Remake/title·text/disabled */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.9375rem;
+  height: 3.5rem;
+  padding: 0 var(--space-16);
+  border-bottom: 1px solid var(--color-border-chip);
+  background: var(--color-bg-surface);
+  overflow-x: auto;
+}
+
+.tab {
+  display: flex;
+  flex: none;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--color-text-disabled);
+  font: var(--font-title);
+  white-space: nowrap;
+}
+
+.tab[aria-current="page"] {
+  color: var(--color-text-body);
+  font: var(--font-subheader);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}

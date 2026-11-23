@@ -1,0 +1,27 @@
+/* 피그마 5. 칩·배지 > 숫자 배지: 높이 18, 최소 폭 18, 여백 0/4, radius/full, Remake/assist-strong */
+.badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-danger);
+  color: var(--color-text-on-color);
+  font: var(--font-assist-strong);
+}
+
+.badge[data-tone="primary"] {
+  background: var(--color-bg-primary);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
