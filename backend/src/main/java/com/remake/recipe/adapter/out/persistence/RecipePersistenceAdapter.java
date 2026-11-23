@@ -1,7 +1,11 @@
 package com.remake.recipe.adapter.out.persistence;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.springframework.stereotype.Component;
@@ -49,6 +53,16 @@ class RecipePersistenceAdapter implements SaveRecipePort, LoadRecipePort {
 		return recipeRepository.findByIdAndUserId(recipeId, userId)
 				.map(entity -> toDomain(entity, ingredientRepository.findByRecipeIdOrderBySortOrderAsc(recipeId),
 						stepRepository.findByRecipeIdOrderByStepNoAsc(recipeId)));
+	}
+
+	@Override
+	public Map<Long, List<RecipeIngredient>> loadIngredientsByRecipeIds(Collection<Long> recipeIds, Long userId) {
+		if (recipeIds.isEmpty()) {
+			return Map.of();
+		}
+		return ingredientRepository.findAllOfUserRecipes(recipeIds, userId).stream()
+				.collect(Collectors.groupingBy(RecipeIngredientJpaEntity::getRecipeId, LinkedHashMap::new,
+						Collectors.mapping(RecipeIngredientJpaEntity::toDomain, Collectors.toList())));
 	}
 
 	private static Recipe toDomain(RecipeJpaEntity entity, List<RecipeIngredientJpaEntity> ingredients,
