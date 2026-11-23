@@ -26,7 +26,6 @@ import com.remake.ingredient.application.port.in.ConsumeIngredientCommand;
 import com.remake.ingredient.application.port.in.ConsumeIngredientUseCase;
 import com.remake.ingredient.domain.ConsumeVia;
 import com.remake.ingredient.domain.IngredientLogType;
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.support.IntegrationTestSupport;
 
 // 재료 사용·폐기(consume): API와 요리 후 차감이 쓰는 UseCase를 DB·이벤트까지 확인한다. 오늘은 시험용 시계의 2026-03-04이다.
@@ -50,7 +49,7 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	/** 우유 4팩(4000원). 소비기한은 daysLeft일 뒤 */
 	private Long milk(Long userId, int daysLeft, Long price) {
-		Long id = createIngredient(userId, "DAIRY_EGG", "우유", TODAY.plusDays(daysLeft), IngredientStatus.ACTIVE, price);
+		Long id = createIngredient(userId, "DAIRY_EGG", "우유", TODAY.plusDays(daysLeft), price);
 		jdbcTemplate.update("UPDATE ingredients SET amount = 4, initial_amount = 4, unit = 'PACK' WHERE id = ?", id);
 		return id;
 	}
@@ -142,7 +141,7 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 여러_번_나눠_버려도_금액은_처음_양_기준이다() throws Exception {
-		Long id = createIngredient(ME, "DAIRY_EGG", "우유", TODAY.plusDays(5), IngredientStatus.ACTIVE, 1000L);
+		Long id = createIngredient(ME, "DAIRY_EGG", "우유", TODAY.plusDays(5), 1000L);
 		jdbcTemplate.update("UPDATE ingredients SET amount = 3, initial_amount = 3, unit = 'PACK' WHERE id = ?", id);
 
 		mockMvc.perform(consume(ME, id, body("DISCARDED", "1"))).andExpect(status().isOk());

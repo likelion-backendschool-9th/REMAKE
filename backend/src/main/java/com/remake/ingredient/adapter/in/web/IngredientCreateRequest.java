@@ -32,7 +32,7 @@ public record IngredientCreateRequest(
 		@PositiveOrZero Long price) {
 
 	public RegisterIngredientCommand toCommand(Long userId) {
-		return new RegisterIngredientCommand(userId, name, categoryCode, storage, expirationDate, null, false, amount,
+		return new RegisterIngredientCommand(userId, name, categoryCode, storage, expirationDate, null, amount,
 				parseUnit(unit), price, null);
 	}
 

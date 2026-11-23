@@ -11,7 +11,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.notification.application.port.in.CleanupOldNotificationsUseCase;
 import com.remake.notification.application.port.in.RunExpiryNotificationBatchUseCase;
 import com.remake.support.IntegrationTestSupport;
@@ -37,12 +36,12 @@ class ExpiryNotificationBatchTest extends IntegrationTestSupport {
 
 	@Test
 	void 임박은_재료마다_기한_지남은_하루_한_건이고_끈_회원은_제외한다() {
-		createIngredient(ON_USER, "DAIRY_EGG", "우유", TODAY.plusDays(1), IngredientStatus.ACTIVE);
-		createIngredient(ON_USER, "FRUIT", "사과", TODAY, IngredientStatus.ACTIVE);
-		createIngredient(ON_USER, "MEAT", "지난고기", TODAY.minusDays(2), IngredientStatus.ACTIVE);
-		createIngredient(ON_USER, "MEAT", "어제고기", TODAY.minusDays(1), IngredientStatus.ACTIVE);
-		createIngredient(OFF_USER, "FRUIT", "끈회원사과", TODAY, IngredientStatus.ACTIVE);
-		createIngredient(OFF_USER, "MEAT", "끈회원만료", TODAY.minusDays(1), IngredientStatus.ACTIVE);
+		createIngredient(ON_USER, "DAIRY_EGG", "우유", TODAY.plusDays(1));
+		createIngredient(ON_USER, "FRUIT", "사과", TODAY);
+		createIngredient(ON_USER, "MEAT", "지난고기", TODAY.minusDays(2));
+		createIngredient(ON_USER, "MEAT", "어제고기", TODAY.minusDays(1));
+		createIngredient(OFF_USER, "FRUIT", "끈회원사과", TODAY);
+		createIngredient(OFF_USER, "MEAT", "끈회원만료", TODAY.minusDays(1));
 
 		runExpiryNotificationBatchUseCase.runExpiryNotificationBatch();
 		awaitEventWrites();
@@ -73,8 +72,8 @@ class ExpiryNotificationBatchTest extends IntegrationTestSupport {
 
 	@Test
 	void 같은_날_두_번_돌아도_알림과_이벤트가_늘지_않는다() {
-		createIngredient(ON_USER, "FRUIT", "사과", TODAY.plusDays(2), IngredientStatus.ACTIVE);
-		createIngredient(ON_USER, "MEAT", "어제고기", TODAY.minusDays(1), IngredientStatus.ACTIVE);
+		createIngredient(ON_USER, "FRUIT", "사과", TODAY.plusDays(2));
+		createIngredient(ON_USER, "MEAT", "어제고기", TODAY.minusDays(1));
 
 		runExpiryNotificationBatchUseCase.runExpiryNotificationBatch();
 		awaitEventWrites();

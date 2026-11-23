@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,12 +29,14 @@ class IngredientCategoryApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 카테고리_목록을_감싸지_않고_배열로_돌려준다() throws Exception {
-		String[] codes = Arrays.stream(IngredientCategoryCode.values()).map(Enum::name).toArray(String[]::new);
+		// 카테고리 시트 순서는 sort_order(ERD 부록 A)를 따른다. enum 선언 순서와 다르다.
+		String[] codes = { "VEGETABLE", "MEAT", "FRUIT", "SEAFOOD", "DAIRY_EGG", "GRAIN", "BEAN_TOFU", "PROCESSED",
+				"SIDE_DISH", "SEASONING", "BEVERAGE", "ETC" };
 
 		mockMvc.perform(get("/api/v1/user/ingredient-categories")
 						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, 1L))
 				.andExpect(status().isOk())
-				// ApiResponse 같은 감싸기 없이 최상위가 배열이고, DB의 code 12개가 enum과 같은 순서로 나온다
+				// ApiResponse 같은 감싸기 없이 최상위가 배열이고, DB의 code 12개가 sort_order 순서로 나온다
 				.andExpect(jsonPath("$[*].code", contains(codes)))
 				// enum은 이름 그대로 나간다
 				.andExpect(jsonPath("$[?(@.code == 'VEGETABLE')].name", contains("채소")))
@@ -49,7 +50,7 @@ class IngredientCategoryApiTest extends IntegrationTestSupport {
 				.getIngredientCategoryByCode(IngredientCategoryCode.SEASONING);
 
 		assertThat(category.id()).isEqualTo(categoryId("SEASONING"));
-		assertThat(category.name()).isEqualTo("양념·소스");
+		assertThat(category.name()).isEqualTo("양념");
 		assertThat(category.defaultStorage()).isEqualTo(StorageLocation.PANTRY);
 	}
 

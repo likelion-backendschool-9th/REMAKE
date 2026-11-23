@@ -24,15 +24,13 @@ public class Ingredient {
 	private String name;
 	private StorageLocation storage;
 	private LocalDate expirationDate;
-	private boolean expirationEstimated;
 	private BigDecimal amount;
 	private BigDecimal initialAmount;
 	private Long price;
-	private IngredientStatus status;
 
 	private Ingredient(Long id, Long userId, Long categoryId, Long receiptItemId, String name, StorageLocation storage,
-			LocalDate expirationDate, boolean expirationEstimated, BigDecimal amount, BigDecimal initialAmount,
-			IngredientUnit unit, Long price, IngredientStatus status) {
+			LocalDate expirationDate, BigDecimal amount, BigDecimal initialAmount, IngredientUnit unit,
+			Long price) {
 		this.id = id;
 		this.userId = userId;
 		this.categoryId = categoryId;
@@ -40,21 +38,18 @@ public class Ingredient {
 		this.name = name;
 		this.storage = storage;
 		this.expirationDate = expirationDate;
-		this.expirationEstimated = expirationEstimated;
 		this.amount = amount;
 		this.initialAmount = initialAmount;
 		this.unit = unit;
 		this.price = price;
-		this.status = status;
 	}
 
 	/**
-	 * 새 재료를 등록한다. 남은 양과 처음 양은 같고 상태는 ACTIVE이다.
-	 * 소비기한을 직접 입력했으면 expirationEstimated는 false, 카테고리 기본값으로 추정했으면 true를 넘긴다.
+	 * 새 재료를 등록한다. 남은 양과 처음 양은 같다.
 	 */
 	public static Ingredient register(Long userId, Long categoryId, Long receiptItemId, String name,
-			StorageLocation storage, LocalDate expirationDate, boolean expirationEstimated, BigDecimal amount,
-			IngredientUnit unit, Long price) {
+			StorageLocation storage, LocalDate expirationDate, BigDecimal amount, IngredientUnit unit,
+			Long price) {
 		requireNonNull(userId, "사용자");
 		requireNonNull(categoryId, "카테고리");
 		requireNonNull(storage, "보관 위치");
@@ -64,15 +59,15 @@ public class Ingredient {
 		validateAmount(amount);
 		validatePrice(price);
 		return new Ingredient(null, userId, categoryId, receiptItemId, normalizedName, storage, expirationDate,
-				expirationEstimated, amount, amount, unit, price, IngredientStatus.ACTIVE);
+				amount, amount, unit, price);
 	}
 
 	/** 저장된 값으로 되살린다. 저장소 어댑터만 쓴다. 이미 저장된 값이라 규칙을 다시 확인하지 않는다. */
 	public static Ingredient restore(Long id, Long userId, Long categoryId, Long receiptItemId, String name,
-			StorageLocation storage, LocalDate expirationDate, boolean expirationEstimated, BigDecimal amount,
-			BigDecimal initialAmount, IngredientUnit unit, Long price, IngredientStatus status) {
+			StorageLocation storage, LocalDate expirationDate, BigDecimal amount, BigDecimal initialAmount,
+			IngredientUnit unit, Long price) {
 		return new Ingredient(id, userId, categoryId, receiptItemId, name, storage, expirationDate,
-				expirationEstimated, amount, initialAmount, unit, price, status);
+				amount, initialAmount, unit, price);
 	}
 
 	public void changeName(String newName) {
@@ -86,15 +81,12 @@ public class Ingredient {
 
 	/**
 	 * 수량을 고친다. 입력을 잘못 넣은 것을 바로잡는 용도라 남은 양과 처음 양을 함께 바꾼다.
-	 * 완료된 재료는 고칠 수 없다. 이미 쓰거나 버린 기록이 있는지는 기록 테이블을 봐야 알 수 있어서 Service가 먼저 확인한다
+	 * 이미 쓰거나 버린 기록이 있는지는 기록 테이블을 봐야 알 수 있어서 Service가 먼저 확인한다
 	 * (기록이 있으면 처음 양을 바꾸면 안 되므로 이 메서드를 부르지 않는다).
 	 * 단위는 등록한 뒤에 바꾸지 않는다.
 	 */
 	public void changeAmount(BigDecimal newAmount) {
 		validateAmount(newAmount);
-		if (status != IngredientStatus.ACTIVE) {
-			throw new IllegalArgumentException("완료된 재료는 수량을 고칠 수 없습니다.");
-		}
 		this.amount = newAmount;
 		this.initialAmount = newAmount;
 	}
@@ -129,11 +121,10 @@ public class Ingredient {
 				.divide(initialAmount, 0, java.math.RoundingMode.HALF_UP).longValueExact();
 	}
 
-	/** 소비기한을 사용자가 직접 고친다. 사용자가 정한 값이므로 추정 표시를 끈다. */
+	/** 소비기한을 사용자가 직접 고친다. */
 	public void changeExpirationDate(LocalDate newExpirationDate) {
 		requireNonNull(newExpirationDate, "소비기한");
 		this.expirationDate = newExpirationDate;
-		this.expirationEstimated = false;
 	}
 
 	public void changeStorage(StorageLocation newStorage) {
@@ -212,10 +203,6 @@ public class Ingredient {
 		return expirationDate;
 	}
 
-	public boolean expirationEstimated() {
-		return expirationEstimated;
-	}
-
 	public BigDecimal amount() {
 		return amount;
 	}
@@ -232,7 +219,4 @@ public class Ingredient {
 		return price;
 	}
 
-	public IngredientStatus status() {
-		return status;
-	}
 }
