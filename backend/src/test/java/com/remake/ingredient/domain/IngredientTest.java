@@ -108,6 +108,18 @@ class IngredientTest {
 	}
 
 	@Test
+	void 단위를_바꿔도_수량_숫자는_그대로다() {
+		Ingredient ingredient = register("대파", new BigDecimal("2"), null);
+
+		ingredient.changeUnit(IngredientUnit.BUNCH);
+
+		assertThat(ingredient.unit()).isEqualTo(IngredientUnit.BUNCH);
+		assertThat(ingredient.amount()).isEqualByComparingTo("2");
+		assertThat(ingredient.initialAmount()).isEqualByComparingTo("2");
+		assertThatThrownBy(() -> ingredient.changeUnit(null)).isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
 	void 보관_위치와_가격을_고친다() {
 		Ingredient ingredient = register();
 
