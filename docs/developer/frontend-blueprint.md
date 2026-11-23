@@ -173,7 +173,7 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - 라이트 모드만 있습니다. 다크 모드는 없습니다.
 - 단위는 rem입니다(1rem = 16px, 루트 font-size는 바꾸지 않음). 피그마 px 값은 16으로 나눠 씁니다(10px → 0.625rem). 테두리 같은 선만 px로 씁니다.
 - 폰트: 두 폰트 모두 `app/fonts/fonts.ts`에서 `next/font/local`로 불러오고 `app/layout.tsx`의 `<html>`에 붙입니다. 파일은 woff2만 씁니다.
-  - Pretendard(본문): 피그마에서 쓰는 굵기 500/600/700/800만 둡니다. CSS 변수 `--font-pretendard`이고, `tokens.css`의 `--font-family-base`가 이 변수를 씁니다.
+  - Pretendard(본문): 피그마에서 쓰는 굵기 400/500/600/700/800만 둡니다(400은 `Remake/content-regular`·`Remake/error` 텍스트 스타일). CSS 변수 `--font-pretendard`이고, `tokens.css`의 `--font-family-base`가 이 변수를 씁니다.
   - GmarketSans(로고 글자 전용): 굵기 300/500/700, `preload: false`. `font-family: var(--font-family-logo)`(`globals.css`에 정의)로 씁니다. 다른 글자에는 쓰지 않습니다.
 - 화면 전체 높이는 `100dvh`, 하단 고정 요소는 `env(safe-area-inset-bottom)`을 더합니다.
 - 대부분 플랫하게 만들고, 글래스 효과는 피그마에서 글래스가 걸린 요소에만 씁니다.

@@ -1,9 +1,10 @@
 import localFont from "next/font/local";
 
 // 본문 폰트. tokens.css의 --font-family-base가 --font-pretendard를 먼저 찾는다.
-// 피그마에서 쓰는 굵기만 둔다: Medium 500, SemiBold 600, Bold 700, ExtraBold 800.
+// 피그마에서 쓰는 굵기만 둔다: Regular 400(Remake/content-regular·error 텍스트 스타일), Medium 500, SemiBold 600, Bold 700, ExtraBold 800.
 export const pretendard = localFont({
   src: [
+    { path: "./Pretendard-Regular.woff2", weight: "400", style: "normal" },
     { path: "./Pretendard-Medium.woff2", weight: "500", style: "normal" },
     { path: "./Pretendard-SemiBold.woff2", weight: "600", style: "normal" },
     { path: "./Pretendard-Bold.woff2", weight: "700", style: "normal" },

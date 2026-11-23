@@ -173,7 +173,7 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 - Light theme only; no dark mode.
 - Units: rem (1rem = 16px; never change the root font size). Convert Figma px by dividing by 16 (10px → 0.625rem). Use px only for lines such as borders.
 - Font: both are loaded with `next/font/local` in `app/fonts/fonts.ts` and attached to `<html>` in `app/layout.tsx`. Use woff2 files only.
-  - Pretendard (body text): weights 500/600/700/800 only (the ones Figma uses). CSS variable `--font-pretendard`, used by `--font-family-base` in `tokens.css`.
+  - Pretendard (body text): weights 400/500/600/700/800 only (the ones Figma uses; 400 is the `Remake/content-regular` and `Remake/error` text styles). CSS variable `--font-pretendard`, used by `--font-family-base` in `tokens.css`.
   - GmarketSans (logo text only): weights 300/500/700, `preload: false`. Use `font-family: var(--font-family-logo)` (defined in `globals.css`). Do not use it for other text.
 - Full-screen height uses `100dvh`. Bottom-fixed elements add `env(safe-area-inset-bottom)`.
 - Mostly flat. Apply glass effects only to elements that have them in Figma.
