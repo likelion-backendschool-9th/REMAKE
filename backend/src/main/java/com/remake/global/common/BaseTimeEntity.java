@@ -10,7 +10,7 @@ import lombok.Getter;
 
 /**
  * 생성 시각(created_at)과 수정 시각(updated_at)이 있는 JPA 엔티티의 부모 클래스.
- * 값이 수정되는 테이블(users, ingredients, receipts, receipt_items, meal_plan_slots, cart_items, shared_recipes)이 상속한다.
+ * 값이 수정되는 테이블(users, ingredients, receipts, receipt_items, meal_plans, meal_plan_slots, cart_items, shared_recipes)이 상속한다.
  */
 @Getter
 @MappedSuperclass
