@@ -38,9 +38,8 @@ final class EventPropertyValues {
 			Map.entry("date_relation", Set.of("TODAY", "PAST", "FUTURE")),
 			Map.entry("slot_source", Set.of("AI", "MANUAL")),
 			Map.entry("cart_source", Set.of("MEAL_PLAN", "RECIPE_SAVE", "SHARED_RECIPE_SAVE")),
-			Map.entry("notification_type", Set.of("EXPIRY_SOON", "EXPIRED")),
-			Map.entry("channel", Set.of("PUSH", "IN_APP")),
-			Map.entry("click_from", Set.of("PUSH", "BANNER", "LIST")),
+			Map.entry("notification_type", Set.of(
+					"expiry_soon", "expired", "meal_plan_completed", "meal_plan_failed")),
 			Map.entry("ranking_view", Set.of("WEEKLY", "ALL")),
 			Map.entry("view_from", Set.of("RANKING", "SHARE_LINK", "SAVED")),
 			Map.entry("rank_bucket", Set.of("TOP10", "TOP30", "OTHER")),

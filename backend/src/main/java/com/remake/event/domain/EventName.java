@@ -85,8 +85,8 @@ public enum EventName {
 	CART_VIEWED("cart_viewed", EventSource.CLIENT, Set.of("group_count", "item_count")), // E63
 	CART_AMOUNT_CHANGED("cart_amount_changed", EventSource.CLIENT, Set.of()), // E64
 	CART_ITEMS_DELETED("cart_items_deleted", EventSource.CLIENT, Set.of("deleted_count", "was_select_all")), // E65
-	NOTIFICATION_SENT("notification_sent", EventSource.SERVER, Set.of("notification_type", "channel", "batch_count")), // E66
-	NOTIFICATION_CLICKED("notification_clicked", EventSource.CLIENT, Set.of("notification_type", "click_from")), // E67
+	NOTIFICATION_SENT("notification_sent", EventSource.SERVER, Set.of("notification_type", "batch_count")), // E66
+	NOTIFICATION_BANNER_CLICKED("notification_banner_clicked", EventSource.CLIENT, Set.of("unread_count")), // E67
 	NOTIFICATION_LIST_VIEWED("notification_list_viewed", EventSource.CLIENT, Set.of("unread_count")), // E68
 	RANKING_VIEWED("ranking_viewed", EventSource.CLIENT, Set.of("ranking_view", "query_used")), // E69
 	SHARED_RECIPE_VIEWED("shared_recipe_viewed", EventSource.CLIENT, Set.of("shared_recipe_id", "view_from", "rank_bucket")), // E70
