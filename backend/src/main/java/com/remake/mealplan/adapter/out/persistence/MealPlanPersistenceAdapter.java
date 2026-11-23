@@ -48,6 +48,16 @@ class MealPlanPersistenceAdapter
 	}
 
 	@Override
+	public List<MealPlan> loadByStatusStartingBetween(Long userId, MealPlanStatus status, LocalDate from,
+			LocalDate to) {
+		return mealPlanRepository
+				.findByUserIdAndStatusAndStartDateBetweenOrderByStartDateAscIdAsc(userId, status, from, to)
+				.stream()
+				.map(MealPlanJpaEntity::toDomain)
+				.toList();
+	}
+
+	@Override
 	public MealPlan saveNew(MealPlan mealPlan) {
 		if (mealPlan.id() != null) {
 			throw new IllegalArgumentException("이미 저장된 식단표입니다: " + mealPlan.id());
