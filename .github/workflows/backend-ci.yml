@@ -134,6 +134,36 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
+        id: buildx
+      # Dockerfile의 Gradle 보관 폴더(RUN --mount=type=cache,target=/root/.gradle)는 빌드한 컴퓨터에만 남는다.
+      # 러너는 매번 새 컴퓨터라 Gradle과 라이브러리를 매번 새로 받다가 Maven Central 요청 제한(429)에 걸린 적이 있다.
+      # 그래서 보관 폴더를 GitHub 캐시에 두고 빌드 전에 넣는다. 캐시 용량 때문에 저장은 dev 머지 때만 한다.
+      - name: Restore Gradle cache for Docker build
+        if: github.event_name != 'push'
+        uses: actions/cache/restore@v6
+        with:
+          path: backend-docker-gradle
+          key: backend-docker-gradle-${{ hashFiles('backend/build.gradle', 'backend/settings.gradle', 'backend/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: backend-docker-gradle-
+      # 저장은 뒷정리(post) 단계에서 한다. 뒷정리는 단계의 역순으로 돌기 때문에 이 단계가 아래 cache-dance보다 앞에 있어야
+      # "빌드 뒤 보관 폴더 꺼내기 → 저장" 순서가 된다.
+      - name: Cache Gradle for Docker build
+        if: github.event_name == 'push'
+        id: gradle-cache
+        uses: actions/cache@v6
+        with:
+          path: backend-docker-gradle
+          key: backend-docker-gradle-${{ hashFiles('backend/build.gradle', 'backend/settings.gradle', 'backend/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: backend-docker-gradle-
+      # 캐시 도구가 실패해도 빌드는 지금처럼(캐시 없이) 진행한다.
+      - name: Inject Gradle cache into Docker build
+        continue-on-error: true
+        uses: reproducible-containers/buildkit-cache-dance@5422eac04292c961a382e0f584ea0f03ad9da723 # v3.4.0
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          cache-map: '{"backend-docker-gradle": "/root/.gradle"}'
+          utility-image: ghcr.io/containerd/busybox@sha256:52f73a0a43a16cf37cd0720c90887ce972fe60ee06a687ee71fb93a7ca601df7
+          skip-extraction: ${{ github.event_name != 'push' || steps.gradle-cache.outputs.cache-hit == 'true' }}
       - name: Build backend image
         uses: docker/build-push-action@v7
         with:
@@ -141,6 +171,9 @@ jobs:
           push: false
           cache-from: type=gha,scope=backend
           cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=max,scope=backend' || '' }}
+          # 새 캐시를 저장하는 dev 실행에서는 build 단계를 층 캐시 없이 다시 돌려 Gradle이 실제로 받게 한다.
+          # (층 캐시로 bootJar 줄을 건너뛰면 보관 폴더가 빈 채로 저장된다)
+          no-cache-filters: ${{ github.event_name == 'push' && steps.gradle-cache.outputs.cache-hit != 'true' && 'build' || '' }}
 
   required:
     name: Backend CI required
