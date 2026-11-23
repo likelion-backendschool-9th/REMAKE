@@ -15,3 +15,9 @@ export const householdSchema = z.object({
 });
 
 export type HouseholdForm = z.infer<typeof householdSchema>;
+
+/** 입력한 값의 오류 문구. 빈칸이면 오류 없음(버튼만 비활성) */
+export function getHouseholdError(value: string): string | undefined {
+  if (!value) return undefined;
+  return householdSchema.safeParse({ householdSize: value }).error?.issues[0]?.message;
+}

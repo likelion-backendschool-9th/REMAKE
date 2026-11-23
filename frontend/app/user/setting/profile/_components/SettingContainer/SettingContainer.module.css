@@ -1,0 +1,99 @@
+/* 피그마 p1.3-설정: 내용 위치 화면 위 71(서브 헤더 56 + 15), 폭 328(옆 여백 16), 묶음 사이 간격 20 */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  width: 100%;
+  padding: 0.9375rem var(--layout-gutter) calc(var(--space-24) + env(safe-area-inset-bottom));
+}
+
+/* 계정 카드: bg/surface, border/default, radius 12, 여백 15/15/20, 제목-내용 간격 30, 줄 간격 10 */
+.account {
+  display: flex;
+  flex-direction: column;
+  gap: 1.875rem;
+  padding: 0.9375rem 0.9375rem 1.25rem;
+  border: 1px solid var(--color-border-default);
+  border-radius: 0.75rem;
+  background: var(--color-bg-surface);
+}
+
+.accountTitle {
+  color: var(--color-text-title);
+  font: var(--font-subheader);
+}
+
+.accountBody,
+.accountList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+.accountRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.accountLabel {
+  color: var(--color-text-assist);
+  font: var(--font-content);
+}
+
+.accountValue {
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+/* 프리미엄 이용권: 높이 48, 배경 #F4F4F6(변수 아님), border/default, radius 12.
+   왼쪽 원 30(파랑 15% 배경·그림자) + 그라데이션 별 18, 오른쪽 "구독하기"(Remake/content-regular·text/body) + 화살표 20 */
+.premium {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: 3rem;
+  padding: 0 var(--space-6) 0 var(--space-8);
+  border: 1px solid var(--color-border-default);
+  border-radius: 0.75rem;
+  background: #f4f4f6;
+  text-decoration: none;
+}
+
+.premium:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+.premiumIcon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: var(--radius-full);
+  background: rgba(203, 224, 255, 0.15);
+  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+.premiumLabel {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-title);
+  font: var(--font-content);
+}
+
+.premiumAction {
+  flex: none;
+  color: var(--color-text-body);
+  font: var(--font-content-regular);
+}
+
+.premiumArrow {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-left: -0.1875rem; /* "구독하기"와 간격 5 */
+  color: var(--color-icon-sub);
+}

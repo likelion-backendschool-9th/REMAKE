@@ -2,15 +2,14 @@
 
 import { useState } from "react";
 
-import { ForbiddenCircleIcon } from "@solar-icons/react/linear";
-
 import { Button } from "@/components/Button/Button";
-import { Chip } from "@/components/Chip/Chip";
-import { type AllergenCode, ALLERGENS } from "@/lib/allergens";
+import type { AllergenCode } from "@/lib/allergens";
 
-import { OnboardingLayout } from "../../../_components/OnboardingLayout/OnboardingLayout";
-
-import styles from "./AllergiesContainer.module.css";
+import {
+  AllergenSelector,
+  toggleAllergen,
+} from "../../../../_components/AllergenSelector/AllergenSelector";
+import { QuestionLayout } from "../../../../_components/QuestionLayout/QuestionLayout";
 
 type AllergiesContainerProps = {
   /** 처음 선택된 재료. 미리보기용, 기본 없음 */
@@ -26,46 +25,19 @@ export function AllergiesContainer({ defaultSelected = [] }: AllergiesContainerP
     () => new Set(defaultSelected),
   );
 
-  const toggle = (code: AllergenCode) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
-  };
-
   const handleComplete = () => {
     // TODO: 가구원 수와 고른 코드(allergenCodes)를 API 4(PUT /user/onboarding)로 한 번에 저장한 뒤 냉장고로 이동
   };
 
   return (
-    <OnboardingLayout
+    <QuestionLayout
       title="레시피에서 제외할 재료를 선택해 주세요!"
       footer={<Button onClick={handleComplete}>완료</Button>}
     >
-      <p className={styles.count} aria-live="polite">
-        <ForbiddenCircleIcon className={styles.countIcon} aria-hidden="true" />
-        <span>
-          <span className={styles.countNumber} data-active={selected.size > 0 || undefined}>
-            {selected.size}개
-          </span>
-          의 재료 제외
-        </span>
-      </p>
-
-      <div className={styles.chips} role="group" aria-label="제외할 재료">
-        {ALLERGENS.map(({ code, name }) => (
-          <Chip
-            key={code}
-            variant="soft"
-            isSelected={selected.has(code)}
-            onClick={() => toggle(code)}
-          >
-            {name}
-          </Chip>
-        ))}
-      </div>
-    </OnboardingLayout>
+      <AllergenSelector
+        selected={selected}
+        onToggle={(code) => setSelected((prev) => toggleAllergen(prev, code))}
+      />
+    </QuestionLayout>
   );
 }

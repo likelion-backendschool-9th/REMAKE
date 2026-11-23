@@ -6,6 +6,9 @@ import type { ReactNode } from "react";
 import { LoginContainer } from "../../../public/auth/login/_components/LoginContainer/LoginContainer";
 import { AllergiesContainer } from "../../../user/onboarding/allergies/_components/AllergiesContainer/AllergiesContainer";
 import { HouseholdContainer } from "../../../user/onboarding/household/_components/HouseholdContainer/HouseholdContainer";
+import { ExcludedIngredientsContainer } from "../../../user/setting/excluded-ingredients/_components/ExcludedIngredientsContainer/ExcludedIngredientsContainer";
+import { SettingHouseholdContainer } from "../../../user/setting/household/_components/SettingHouseholdContainer/SettingHouseholdContainer";
+import { SettingContainer } from "../../../user/setting/profile/_components/SettingContainer/SettingContainer";
 
 export type PreviewState = {
   /** 주소 /dev/p1/<slug> */
@@ -71,5 +74,47 @@ export const P1_STATES: PreviewState[] = [
     label: "p1.2-알러지 선택 포커스 (갑각류·굴)",
     route: "/user/onboarding/allergies",
     render: () => <AllergiesContainer defaultSelected={["CRUSTACEAN", "OYSTER"]} />,
+  },
+  {
+    slug: "setting",
+    label: "p1.3-설정",
+    route: "/user/setting/profile",
+    render: () => <SettingContainer />,
+  },
+  {
+    slug: "setting-logout",
+    label: "p1.3-설정-로그아웃",
+    route: "/user/setting/profile",
+    render: () => <SettingContainer initialModal="logout" />,
+  },
+  {
+    slug: "setting-delete",
+    label: "p1.3-설정-계정 삭제",
+    route: "/user/setting/profile",
+    render: () => <SettingContainer initialModal="delete" />,
+  },
+  {
+    slug: "setting-household",
+    label: "p1.3.1-가구원 설정",
+    route: "/user/setting/household",
+    render: () => <SettingHouseholdContainer />,
+  },
+  {
+    slug: "setting-household-filled",
+    label: "p1.3.1-가구원 설정 (3명 입력, 피그마 없음)",
+    route: "/user/setting/household",
+    render: () => <SettingHouseholdContainer defaultHouseholdSize="3" />,
+  },
+  {
+    slug: "setting-excluded",
+    label: "p1.3.2-알러지 재료 제외 (쇠고기)",
+    route: "/user/setting/excluded-ingredients",
+    render: () => <ExcludedIngredientsContainer />,
+  },
+  {
+    slug: "setting-excluded-empty",
+    label: "p1.3.2-알러지 재료 제외 (0개, 피그마 없음)",
+    route: "/user/setting/excluded-ingredients",
+    render: () => <ExcludedIngredientsContainer defaultSelected={[]} />,
   },
 ];

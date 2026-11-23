@@ -1,4 +1,4 @@
-/* 피그마 p1.2: 질문 제목 아래 21에 "N개의 재료 제외"(아이콘 14 + 간격 7, Remake/title·text/title),
+/* 피그마 p1.2·p1.3.2: 질문 제목 아래 21에 "N개의 재료 제외"(아이콘 14 + 간격 7, Remake/title·text/title),
    개수는 0개면 text/assist, 고르면 text/primary. 그 아래 37에 칩(가로 간격 10, 줄 간격 8) */
 .count {
   display: flex;
