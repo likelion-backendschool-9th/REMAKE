@@ -203,8 +203,24 @@ class MealPlanTrimmerTest {
 
 		TrimResult result = MealPlanTrimmer.trim(schedule(3, meals), porkEveryMeal(3, meals, "100"), ledger);
 
-		assertThat(ledger.available()).isEmpty();
 		assertThat(result.generatedDays()).isEqualTo(3);
+	}
+
+	@Test
+	void AI에_보낼_재료는_덮어쓸_기간의_예전_배정량을_돌려받은_양이다() {
+		// 예전 식단표가 1~3일에 매일 100g, 4일에 50g. 냉장고 400g.
+		// 1~3일을 덮어쓰면 그 300g은 돌려받고, 기간 밖인 4일의 50g만 빼서 350g을 보낸다.
+		List<AllocatedSlot> old = List.of(
+				new AllocatedSlot(TODAY, List.of(fridge(PORK, "100", RecipeUnit.G))),
+				new AllocatedSlot(TODAY.plusDays(1), List.of(fridge(PORK, "100", RecipeUnit.G))),
+				new AllocatedSlot(TODAY.plusDays(2), List.of(fridge(PORK, "100", RecipeUnit.G))),
+				new AllocatedSlot(TODAY.plusDays(3), List.of(fridge(PORK, "50", RecipeUnit.G))));
+		StockLedger ledger = StockLedger.of(List.of(stock(PORK, "400", IngredientUnit.G)), old, TODAY);
+
+		assertThat(ledger.available(schedule(3, EnumSet.of(MealType.DINNER)))).singleElement()
+				.satisfies(stock -> assertThat(stock.amount()).isEqualByComparingTo("350"));
+		assertThat(ledger.available(schedule(1, EnumSet.of(MealType.DINNER)))).singleElement()
+				.satisfies(stock -> assertThat(stock.amount()).isEqualByComparingTo("150"));
 	}
 
 	@Test
@@ -232,7 +248,7 @@ class MealPlanTrimmerTest {
 		StockLedger ledger = ledger(List.of(expired, dDay));
 		MealSchedule oneDinner = schedule(1, EnumSet.of(MealType.DINNER));
 
-		assertThat(ledger.available()).extracting(FridgeStock::ingredientId).containsExactly(ONION);
+		assertThat(ledger.available(oneDinner)).extracting(FridgeStock::ingredientId).containsExactly(ONION);
 		assertThat(MealPlanTrimmer.trim(oneDinner,
 				List.of(slot(1, MealType.DINNER, fridge(PORK, "100", RecipeUnit.G))), ledger).generatedDays())
 				.isZero();
@@ -302,7 +318,7 @@ class MealPlanTrimmerTest {
 		StockLedger ledger = StockLedger.of(
 				List.of(stock(PORK, "1", IngredientUnit.KG), stock(ONION, "2", IngredientUnit.EA)), allocated, TODAY);
 
-		assertThat(ledger.available()).singleElement().satisfies(stock -> {
+		assertThat(ledger.available(schedule(3, EnumSet.of(MealType.DINNER)))).singleElement().satisfies(stock -> {
 			assertThat(stock.ingredientId()).isEqualTo(PORK);
 			assertThat(stock.amount()).isEqualByComparingTo("0.7");
 			assertThat(stock.unit()).isEqualTo(IngredientUnit.KG);

@@ -57,10 +57,24 @@ public final class StockLedger {
 	}
 
 	/**
-	 * 아직 쓸 수 있는 냉장고 재료와 남은 양(냉장고 단위). 남은 양이 0이면 뺀다.
+	 * 이번 생성에서 쓸 수 있는 냉장고 재료와 남은 양(냉장고 단위). 남은 양이 0이면 뺀다.
 	 * AI에 보낼 재료 목록이고, 비어 있으면 하루도 만들 수 없다(MEAL_PLAN_NO_INGREDIENTS).
+	 *
+	 * <p>덮어쓸 기간 안의 이미 있는 칸은 새 식단표로 바뀔 칸이라 그 배정량을 돌려받은 양으로 계산한다.
+	 * 실제로 돌려받는 것은 자르기에서 그날을 만들 때뿐이라(못 만든 날은 예전 칸이 남음),
+	 * 앞쪽 날에 몰아 쓰면 아직 돌려받지 않은 뒤쪽 날 몫이라 그날에서 잘린다.
 	 */
-	public List<FridgeStock> available() {
+	public List<FridgeStock> available(MealSchedule schedule) {
+		StockLedger released = copy();
+		for (AllocatedSlot slot : allocated) {
+			if (schedule.contains(slot.date())) {
+				released.unclaim(slot.ingredients());
+			}
+		}
+		return released.remainingStocks();
+	}
+
+	private List<FridgeStock> remainingStocks() {
 		List<FridgeStock> result = new ArrayList<>();
 		for (Stock stock : stocks.values()) {
 			BigDecimal remaining = stock.remaining();
