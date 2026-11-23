@@ -26,6 +26,7 @@
   max-width: var(--layout-max-width);
   max-height: 90dvh;
   overflow-y: auto;
+  overscroll-behavior: contain; /* 시트 끝까지 스크롤해도 뒤 화면으로 넘어가지 않게 */
   padding: var(--space-10) var(--space-16) calc(var(--space-16) + env(safe-area-inset-bottom));
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   background: var(--color-bg-surface);
