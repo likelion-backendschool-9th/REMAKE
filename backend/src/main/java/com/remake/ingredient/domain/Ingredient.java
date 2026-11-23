@@ -86,16 +86,47 @@ public class Ingredient {
 
 	/**
 	 * 수량을 고친다. 입력을 잘못 넣은 것을 바로잡는 용도라 남은 양과 처음 양을 함께 바꾼다.
-	 * 이미 쓰거나 버린 재료는 처음 양과 남은 양이 달라서(또는 완료 상태라서) 고칠 수 없다.
+	 * 완료된 재료는 고칠 수 없다. 이미 쓰거나 버린 기록이 있는지는 기록 테이블을 봐야 알 수 있어서 Service가 먼저 확인한다
+	 * (기록이 있으면 처음 양을 바꾸면 안 되므로 이 메서드를 부르지 않는다).
 	 * 단위는 등록한 뒤에 바꾸지 않는다.
 	 */
 	public void changeAmount(BigDecimal newAmount) {
 		validateAmount(newAmount);
-		if (status != IngredientStatus.ACTIVE || amount.compareTo(initialAmount) != 0) {
-			throw new IllegalArgumentException("사용하거나 폐기한 재료는 수량을 고칠 수 없습니다.");
+		if (status != IngredientStatus.ACTIVE) {
+			throw new IllegalArgumentException("완료된 재료는 수량을 고칠 수 없습니다.");
 		}
 		this.amount = newAmount;
 		this.initialAmount = newAmount;
+	}
+
+	/**
+	 * 재료를 쓰거나 버려서 남은 양을 뺀다. 남은 양이 0이 되면 호출한 쪽이 재료 행을 지운다(isEmpty).
+	 * 남은 양보다 많으면 InsufficientAmountException을 던지고, 그 밖의 잘못된 수량(0 이하, 소수 셋째 자리 초과)은
+	 * IllegalArgumentException이다.
+	 */
+	public void consume(BigDecimal consumedAmount) {
+		validateAmount(consumedAmount);
+		if (consumedAmount.compareTo(amount) > 0) {
+			throw new InsufficientAmountException(amount);
+		}
+		this.amount = amount.subtract(consumedAmount);
+	}
+
+	/** 남은 양이 0이면 다 쓴 것이라 재료 행을 지운다 */
+	public boolean isEmpty() {
+		return amount.signum() == 0;
+	}
+
+	/**
+	 * 버린 양에 해당하는 금액(원). 가격 × 버린 양 ÷ 처음 양을 원 단위로 반올림한다. 가격이 없으면 null이다.
+	 * 처음 양 기준이라 여러 번에 나눠 버려도 합이 가격을 넘지 않는다(반올림 오차는 있을 수 있다).
+	 */
+	public Long proportionalCost(BigDecimal consumedAmount) {
+		if (price == null) {
+			return null;
+		}
+		return BigDecimal.valueOf(price).multiply(consumedAmount)
+				.divide(initialAmount, 0, java.math.RoundingMode.HALF_UP).longValueExact();
 	}
 
 	/** 소비기한을 사용자가 직접 고친다. 사용자가 정한 값이므로 추정 표시를 끈다. */

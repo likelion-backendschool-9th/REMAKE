@@ -189,7 +189,9 @@ class IngredientApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.amount").value(4))
 				.andExpect(jsonPath("$.unit").value("EA"));
 
-		jdbcTemplate.update("UPDATE ingredients SET amount = 1 WHERE id = ?", id);
+		// 사용한 기록이 있으면 수량을 고칠 수 없다.
+		mockMvc.perform(json(as(ME, post(URL + "/" + id + "/consume")), "{ \"type\": \"USED\", \"amount\": 1 }"))
+				.andExpect(status().isOk());
 		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), "{ \"amount\": 9 }"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
