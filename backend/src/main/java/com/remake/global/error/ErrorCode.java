@@ -45,6 +45,7 @@ public enum ErrorCode {
 	AI_UPSTREAM_ERROR(HttpStatus.BAD_GATEWAY, "레시피를 만들지 못했어요. 횟수는 차감되지 않았어요"),
 	AI_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "생성이 오래 걸리고 있어요. 횟수는 차감되지 않았어요"),
 	AI_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "레시피를 만들지 못했어요. 횟수는 차감되지 않았어요"),
+	RECIPE_NOT_FOUND(HttpStatus.NOT_FOUND, "레시피를 찾을 수 없어요"),
 	// 이벤트
 	EVENT_BATCH_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE, "이벤트는 한 번에 50개까지 보낼 수 있습니다.");
 

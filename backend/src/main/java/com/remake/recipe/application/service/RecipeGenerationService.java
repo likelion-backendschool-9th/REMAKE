@@ -23,8 +23,10 @@ import com.remake.quota.application.port.in.GetUsageQuotasUseCase;
 import com.remake.quota.domain.RecipeQuota;
 import com.remake.recipe.application.port.in.GenerateRecipeCommand;
 import com.remake.recipe.application.port.in.GenerateRecipeUseCase;
+import com.remake.recipe.application.port.in.RegenerateRecipeUseCase;
 import com.remake.recipe.application.port.out.GenerateRecipeAiPort;
 import com.remake.recipe.application.port.out.GeneratedRecipe;
+import com.remake.recipe.application.port.out.LoadRecipePort;
 import com.remake.recipe.application.port.out.RecipeAiRequest;
 import com.remake.recipe.application.port.out.SaveRecipePort;
 import com.remake.recipe.domain.CustomOptions;
@@ -37,7 +39,7 @@ import com.remake.user.domain.User;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 레시피 생성(API 28).
+ * 레시피 생성(API 28)과 다시 받기(API 29).
  * <ol>
  * <li>입력 확인과 재료 고르기(INVALID_INPUT, INGREDIENT_NOT_FOUND)</li>
  * <li>남은 횟수 확인(GENERATION_LIMIT_EXCEEDED, quota_exceeded 이벤트)</li>
@@ -49,7 +51,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
-class RecipeGenerationService implements GenerateRecipeUseCase {
+class RecipeGenerationService implements GenerateRecipeUseCase, RegenerateRecipeUseCase {
 
 	private static final int MAX_AI_ATTEMPTS = 2;
 	private static final Set<ErrorCode> RETRYABLE = Set.of(ErrorCode.AI_UPSTREAM_ERROR, ErrorCode.AI_TIMEOUT,
@@ -64,6 +66,7 @@ class RecipeGenerationService implements GenerateRecipeUseCase {
 	private final GetUsageQuotasUseCase getUsageQuotasUseCase;
 	private final GenerateRecipeAiPort aiPort;
 	private final SaveRecipePort saveRecipePort;
+	private final LoadRecipePort loadRecipePort;
 	private final EventTracker eventTracker;
 	private final TransactionTemplate transactionTemplate;
 	private final Duration retryDelay;
@@ -71,7 +74,8 @@ class RecipeGenerationService implements GenerateRecipeUseCase {
 	RecipeGenerationService(GetUserUseCase getUserUseCase, GetFridgeUseCase getFridgeUseCase,
 			ConsumeRecipeQuotaUseCase consumeRecipeQuotaUseCase, GetUsageQuotasUseCase getUsageQuotasUseCase,
 			GenerateRecipeAiPort aiPort,
-			SaveRecipePort saveRecipePort, EventTracker eventTracker, TransactionTemplate transactionTemplate,
+			SaveRecipePort saveRecipePort, LoadRecipePort loadRecipePort, EventTracker eventTracker,
+			TransactionTemplate transactionTemplate,
 			@Value("${remake.recipe.ai-retry-delay:1500ms}") Duration retryDelay) {
 		this.getUserUseCase = getUserUseCase;
 		this.getFridgeUseCase = getFridgeUseCase;
@@ -79,6 +83,7 @@ class RecipeGenerationService implements GenerateRecipeUseCase {
 		this.getUsageQuotasUseCase = getUsageQuotasUseCase;
 		this.aiPort = aiPort;
 		this.saveRecipePort = saveRecipePort;
+		this.loadRecipePort = loadRecipePort;
 		this.eventTracker = eventTracker;
 		this.transactionTemplate = transactionTemplate;
 		this.retryDelay = retryDelay;
@@ -106,7 +111,39 @@ class RecipeGenerationService implements GenerateRecipeUseCase {
 		return run(userId, request, selected, false);
 	}
 
-	/** 횟수 확인부터 저장까지. 다시 받기(API 29)도 이 흐름을 쓴다. */
+	/**
+	 * 다시 받기. 빠른 생성은 지금의 가구원 수·냉장고로, 커스텀은 저장해 둔 선택값(custom_options)으로 다시 만든다.
+	 * 커스텀에서 고른 재료 중 그 사이 없어진 것은 빼고 만든다. 재료 보충 설정은 지금 값을 쓴다(설정은 이후 생성에 적용).
+	 * 식단표 레시피(MEAL_PLAN)는 식단 칸 교체(API 42)로 바꾸므로 여기서는 받지 않는다.
+	 */
+	@Override
+	public Recipe regenerate(Long userId, Long recipeId) {
+		Recipe original = loadRecipePort.loadByIdAndUserId(recipeId, userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.RECIPE_NOT_FOUND));
+		if (original.source() == RecipeSource.MEAL_PLAN) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT, "식단표 레시피는 식단 칸 교체로 바꿉니다.");
+		}
+		User user = getUserUseCase.getUser(userId).orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+		CustomOptions options = original.customOptions();
+		List<FridgeIngredient> fridge = getFridgeUseCase.getFridgeIngredients(userId, null, null, null);
+		List<FridgeIngredient> selected;
+		int servings;
+		List<String> allergens;
+		if (original.source() == RecipeSource.CUSTOM) {
+			selected = GenerationIngredients.selectRemaining(fridge, options.ingredientIds());
+			servings = options.servings();
+			allergens = options.allergenCodes();
+		} else {
+			selected = GenerationIngredients.select(fridge, List.of());
+			servings = servingsOf(user, GenerateRecipeCommand.quick());
+			allergens = List.of();
+		}
+		RecipeAiRequest request = new RecipeAiRequest(original.source(), servings, user.recipeSupplementEnabled(),
+				GenerationIngredients.toAiItems(selected), options, allergens);
+		return run(userId, request, selected, true);
+	}
+
+	/** 횟수 확인부터 저장까지. 생성과 다시 받기가 같이 쓴다. */
 	Recipe run(Long userId, RecipeAiRequest request, List<FridgeIngredient> selected, boolean regenerated) {
 		long start = System.nanoTime();
 		// 이벤트 값은 EventPropertyValues 허용 목록대로 대문자(QUICK·CUSTOM, RECIPE)를 쓴다

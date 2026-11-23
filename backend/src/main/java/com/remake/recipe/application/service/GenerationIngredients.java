@@ -47,6 +47,21 @@ final class GenerationIngredients {
 				.toList();
 	}
 
+	/**
+	 * 다시 받기용. 원래 고른 재료 중 아직 냉장고에 있는 것만 쓴다(그 사이 다 쓰거나 지운 재료는 조용히 뺀다).
+	 * 원래 고른 재료가 없었으면 냉장고 전체를 쓴다.
+	 */
+	static List<FridgeIngredient> selectRemaining(List<FridgeIngredient> fridge, List<Long> chosenIds) {
+		if (chosenIds.isEmpty()) {
+			return select(fridge, chosenIds);
+		}
+		Set<Long> chosen = Set.copyOf(chosenIds);
+		return fridge.stream()
+				.filter(f -> chosen.contains(f.ingredient().id()))
+				.filter(GenerationIngredients::usable)
+				.toList();
+	}
+
 	/** 재료 보충 OFF일 때 재료가 충분한지. 양념은 세지 않는다. */
 	static boolean enoughWithoutSupplement(List<FridgeIngredient> selected) {
 		long main = selected.stream()
