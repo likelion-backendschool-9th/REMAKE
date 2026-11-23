@@ -26,8 +26,8 @@ final class EventPropertyValues {
 			Map.entry("storage", Set.of("FRIDGE", "FREEZER", "PANTRY")),
 			Map.entry("edit_field", Set.of(
 					"name", "category", "storage", "expiration_date", "amount", "unit", "price", "item_name")),
-			Map.entry("use_via", Set.of("COOK", "CONSUME")),
-			Map.entry("expiry_status", Set.of("DANGER", "SOON", "OK")),
+			Map.entry("use_via", Set.of("manual", "cook")),
+			Map.entry("expiry_status", Set.of("danger", "soon", "ok")),
 			Map.entry("scan_method", Set.of("CAMERA", "GALLERY")),
 			Map.entry("recipe_mode", Set.of("QUICK", "CUSTOM")),
 			Map.entry("detail_origin", Set.of("LIST", "MEAL_PLAN", "SHARED", "GENERATE", "SAVED")),

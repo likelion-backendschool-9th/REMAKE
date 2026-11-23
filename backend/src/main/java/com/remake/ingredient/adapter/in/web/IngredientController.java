@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.remake.global.config.OpenApiConfig;
 import com.remake.global.web.LoginUserId;
+import com.remake.ingredient.application.port.in.ConsumeIngredientUseCase;
 import com.remake.ingredient.application.port.in.DeleteIngredientUseCase;
 import com.remake.ingredient.application.port.in.GetFridgeUseCase;
 import com.remake.ingredient.application.port.in.GetIngredientCategoriesUseCase;
@@ -46,6 +47,7 @@ public class IngredientController {
 	private final DeleteIngredientUseCase deleteIngredientUseCase;
 	private final GetIngredientCategoriesUseCase getIngredientCategoriesUseCase;
 	private final GetFridgeUseCase getFridgeUseCase;
+	private final ConsumeIngredientUseCase consumeIngredientUseCase;
 
 	@Operation(summary = "냉장고 목록", description = "진행 중인 재료만, 소비기한이 빠른 순입니다. status·storage·categoryCode는 모두 선택이고 없으면 전체입니다. 페이징은 없습니다.")
 	@GetMapping
@@ -84,6 +86,13 @@ public class IngredientController {
 	public IngredientResponse update(@LoginUserId Long userId, @PathVariable Long id,
 			@Valid @RequestBody IngredientUpdateRequest request) {
 		return toResponse(updateIngredientUseCase.updateIngredient(request.toCommand(userId, id)));
+	}
+
+	@Operation(summary = "재료 사용·폐기", description = "USED(사용했어요)·DISCARDED(버렸어요)와 뺄 양. 남은 양이 0이 되면 재료가 지워지고(deleted=true) 기록은 이름·단위와 함께 남습니다. 버린 재료는 가격에 비례한 금액(costAmount)을 기록에 남깁니다.")
+	@PostMapping("/{id}/consume")
+	public IngredientConsumeResponse consume(@LoginUserId Long userId, @PathVariable Long id,
+			@Valid @RequestBody IngredientConsumeRequest request) {
+		return IngredientConsumeResponse.from(consumeIngredientUseCase.consumeIngredient(request.toCommand(userId, id)));
 	}
 
 	@Operation(summary = "재료 삭제")
