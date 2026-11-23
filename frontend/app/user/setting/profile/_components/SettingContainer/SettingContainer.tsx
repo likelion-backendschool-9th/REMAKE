@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { AltArrowRightIcon } from "@solar-icons/react/linear";
 
@@ -32,6 +33,7 @@ export function SettingContainer({
   profile = SAMPLE_PROFILE,
   initialModal = null,
 }: SettingContainerProps) {
+  const router = useRouter();
   const [modal, setModal] = useState<SettingModal | null>(initialModal);
   // TODO: 토글은 API 6(PATCH /user/profile)으로 저장하고 E14 setting_changed를 보낸다
   const [recipeSupplement, setRecipeSupplement] = useState(profile.recipeSupplementEnabled);
@@ -45,8 +47,10 @@ export function SettingContainer({
   };
 
   const handleDelete = () => {
-    // TODO: 카카오·구글은 인증번호 화면(/user/setting/account-deletion)으로, 네이버는 재인증으로. 먼저 닫고 이동한다
+    // 다른 화면으로 가기 전에 먼저 닫는다(blueprint §7.1)
     closeModal();
+    // TODO: 카카오·구글은 API 9로 인증번호를 보낸 뒤 이동. 네이버는 이 화면 대신 재인증(auth_type=reauthenticate)
+    router.push("/user/setting/account-deletion");
   };
 
   return (
