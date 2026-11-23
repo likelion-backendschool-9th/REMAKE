@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,15 +21,18 @@ import com.remake.quota.domain.UsageType;
 import com.remake.user.application.port.in.GetUserUseCase;
 import com.remake.user.domain.User;
 
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 생성 횟수 계산과 차감. 남은 횟수는 저장하지 않고 usage_logs를 세어 계산한다(초기화 작업 없음).
  * "오늘"·"이번 달"은 주입한 Clock(한국 시간)으로 정한다.
  * 보상 횟수(generation_quota_grants)는 그 테이블이 생기기 전까지 0으로 계산한다(공유·장바구니 영역이 만들면 연결).
+ * <p>
+ * remake.quota.enforced=false면 한도를 넘어도 막지 않는다(기록은 그대로 남김). 개발자 본인 키로 반복 테스트하는 로컬 전용이고,
+ * 기본값은 true라 운영·테스트 설정에는 넣지 않는다.
  */
+@Slf4j
 @Service
-@RequiredArgsConstructor
 class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseCase {
 
 	/** 보상 테이블이 생기기 전까지 쓸 수 있는 보상 횟수 */
@@ -37,6 +41,18 @@ class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseC
 	private final UsageLogPort usageLogPort;
 	private final GetUserUseCase getUserUseCase;
 	private final Clock clock;
+	private final boolean enforced;
+
+	UsageQuotaService(UsageLogPort usageLogPort, GetUserUseCase getUserUseCase, Clock clock,
+			@Value("${remake.quota.enforced:true}") boolean enforced) {
+		this.usageLogPort = usageLogPort;
+		this.getUserUseCase = getUserUseCase;
+		this.clock = clock;
+		this.enforced = enforced;
+		if (!enforced) {
+			log.warn("생성 횟수 한도를 검사하지 않습니다(remake.quota.enforced=false). 로컬 전용 설정입니다");
+		}
+	}
 
 	@Override
 	@Transactional(readOnly = true)
@@ -58,7 +74,7 @@ class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseC
 	@Transactional(readOnly = true)
 	public RecipeQuota requireRecipeQuota(Long userId) {
 		RecipeQuota quota = getRecipeQuota(userId);
-		if (quota.exhausted()) {
+		if (enforced && quota.exhausted()) {
 			throw limitExceeded(quota);
 		}
 		return quota;
@@ -69,7 +85,7 @@ class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseC
 	public RecipeQuota consumeRecipeQuota(Long userId) {
 		usageLogPort.lockUser(userId);
 		RecipeQuota quota = getRecipeQuota(userId);
-		if (quota.exhausted()) {
+		if (enforced && quota.exhausted()) {
 			throw limitExceeded(quota);
 		}
 		usageLogPort.save(userId, UsageType.RECIPE, null);

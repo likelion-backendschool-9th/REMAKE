@@ -52,4 +52,8 @@ remake:
       client-secret: ${GOOGLE_CLIENT_SECRET:}
       token-uri: https://oauth2.googleapis.com/token
       user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+  quota:
+    # false면 레시피 생성 횟수 한도(BASIC 하루 2회)를 넘어도 막지 않는다(사용 기록은 남음). 본인 Gemini 키로 반복 테스트하는 로컬 전용.
+    # 한도 동작을 확인할 때는 backend/.env에 QUOTA_ENFORCED=true를 넣는다. 운영·테스트 설정에는 넣지 않는다(기본 true).
+    enforced: ${QUOTA_ENFORCED:false}
 
