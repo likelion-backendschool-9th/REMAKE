@@ -117,7 +117,19 @@ export function DraggableSheet({
         >
           <span className={styles.grip} aria-hidden="true" />
         </button>
-        <div className={styles.content}>{children}</div>
+        {/* 접혔을 때는 시트 아래쪽(펼친 높이 - 접힌 높이)이 화면 밖이라 그만큼 여백을 더해 끝까지 스크롤되게 한다 */}
+        <div
+          className={styles.content}
+          style={
+            isExpanded
+              ? undefined
+              : {
+                  paddingBottom: `calc(${expandedHeight} - ${collapsedHeight} + env(safe-area-inset-bottom))`,
+                }
+          }
+        >
+          {children}
+        </div>
       </section>
     </>
   );
