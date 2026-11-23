@@ -49,7 +49,7 @@
 
 배포 워크플로는 서버의 `.env`와 `proxy/`를 전송하거나 덮어쓰지 않는다. DB 데이터는 Docker named volume(`remake_postgres-data`)에 보존된다. `compose.prod.yml`에 프로젝트 이름을 `remake`로 고정해 두었으므로, 배포 디렉터리의 이름이나 위치와 관계없이 같은 볼륨을 쓴다. 이 이름을 바꾸면 빈 볼륨이 새로 만들어지므로 바꾸지 않는다. 업로드 파일(공유 사진 등)도 같은 방식으로 named volume(`remake_uploads`)에 보존되며, 두 백엔드 슬롯의 `/data/uploads`에 붙는다. 백엔드는 이 경로를 `REMAKE_UPLOAD_ROOT_DIRECTORY`로 받고, 값은 `.env`가 아니라 `compose.prod.yml`에 고정값으로 들어 있다.
 
-프론트의 `NEXT_PUBLIC_*` 값은 실행할 때가 아니라 이미지를 빌드할 때 번들에 들어간다. API 주소는 같은 도메인의 상대 경로(빈 값)로, MSW 목업은 꺼진 상태로 `frontend/Dockerfile`에 기본값이 정해져 있다. 서버마다 다른 값인 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`(Web Push 공개 키)만 서버의 `.env`에 적는다. 값을 바꾸면 다음 프론트 배포 때 다시 빌드되어 적용된다.
+프론트의 `NEXT_PUBLIC_*` 값은 실행할 때가 아니라 이미지를 빌드할 때 번들에 들어간다. API 주소는 같은 도메인의 상대 경로(빈 값)로, MSW 목업은 꺼진 상태로 `frontend/Dockerfile`에 기본값이 정해져 있다. 지금은 서버의 `.env`에 적는 프론트 값이 없다. 서버마다 다른 값이 필요해지면 `.env` 값을 `compose.prod.yml`의 `frontend-blue` `build.args`로 넘기고 `frontend/Dockerfile`에 `ARG`로 선언한다. 값을 바꾸면 다음 프론트 배포 때 다시 빌드되어 적용된다.
 
 ## 호스트 Nginx 설정 (최초 1회)
 
@@ -59,7 +59,7 @@
 2. `Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto` 헤더를 넘긴다. 앱이 HTTPS 요청을 올바르게 인식하는 데 필요하다.
 3. `proxy_buffering off`를 지정한다. 프론트(Next.js)는 화면을 나눠 스트리밍으로 보내는데, 호스트 Nginx가 응답을 모았다가 보내면 스트리밍이 동작하지 않는다. 안쪽 프록시도 프론트 경로에 같은 설정을 둔다.
 4. 캐시(`proxy_cache`)를 켜지 않는다. 서비스 워커(`/serwist/sw.js`)에는 `s-maxage` 30일이 붙어 있어서, 공유 캐시에 남으면 배포한 뒤에도 예전 서비스 워커가 나간다.
-5. `sudo nginx -t`가 통과한 뒤에만 reload한다. 다른 사이트와 같은 Nginx를 쓰므로, 검사에 실패한 설정을 남겨 두면 다른 사이트의 reload까지 막힌다. 실패하면 `sites-enabled/remake` 링크를 지운다. 그다음 `sudo certbot --nginx -d <도메인>`으로 인증서를 발급한다. 도메인의 DNS가 이 서버를 가리켜야 한다. PWA와 Web Push는 HTTPS에서만 동작한다. 인증서는 서버의 certbot 타이머가 자동으로 갱신한다.
+5. `sudo nginx -t`가 통과한 뒤에만 reload한다. 다른 사이트와 같은 Nginx를 쓰므로, 검사에 실패한 설정을 남겨 두면 다른 사이트의 reload까지 막힌다. 실패하면 `sites-enabled/remake` 링크를 지운다. 그다음 `sudo certbot --nginx -d <도메인>`으로 인증서를 발급한다. 도메인의 DNS가 이 서버를 가리켜야 한다. PWA(서비스 워커, 앱 설치)는 HTTPS에서만 동작한다. 인증서는 서버의 certbot 타이머가 자동으로 갱신한다.
 
 이 설정은 최초 한 번만 하며, 이후 배포에서는 호스트 Nginx를 건드리지 않는다.
 
