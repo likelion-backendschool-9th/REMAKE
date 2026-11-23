@@ -27,7 +27,7 @@
 | 재료 입력 항목 | 재료명·카테고리·보관 위치(냉장·냉동·실온)·소비기한·가격(선택)·수량. 직접 추가와 OCR 결과 수정·추가가 같은 항목 | 확정(피그마) |
 | 필수 입력 | 재료명·카테고리·보관 위치·소비기한·수량 필수, 가격 선택. 필수값 전 버튼 비활성 | 확정 |
 | 재료명 | 제품명이 아니라 재료명("비비고 냉동 만두 X → 만두 O") | 확정(피그마) |
-| 단위 | 서버가 재료명에 맞춰 정함. 재료명을 정하기 전에는 수량 칸 비활성, 정하면 단위를 받아 켬. 재료명을 바꾸면 단위만 다시 정하고 숫자는 그대로. 추가·수정 모두 같고, 사용·버림 기록이 있어도 같음(기록은 당시 이름·단위를 따로 가짐) | 확정 |
+| 단위 | 서버가 재료명(과 카테고리)에 맞춰 정함. 재료명을 정하기 전에는 수량 칸 비활성, 정하면 단위를 받아 켬. 카테고리를 바꿔도 다시 받음. 재료명을 바꾸면 단위만 다시 정하고 숫자는 그대로. 추가·수정 모두 같고, 사용·버림 기록이 있어도 같음(기록은 당시 이름·단위를 따로 가짐) | 확정 |
 | 수량 수정 | 입력 실수를 고치는 용도라 `amount`와 `initial_amount`를 같이 바꿈. 사용·버림 기록이 있으면 `INVALID_INPUT`으로 거절(#128) | 확정(#128) |
 | 수량 | 분수 없이 숫자, 소수 셋째 자리까지. 냉장고 단위 9개(g·kg·ml·L·개·팩·단·쪽·장). 수량 변경 간격은 PRD 부록 A(제안) | 확정 / 간격은 제안 |
 | 단위 통일 | 봉지·캔·병·통 → 팩, 마리·알·모·포기 → 개 | 확정 |
@@ -58,14 +58,14 @@
 | 11 | GET | `/user/ingredients/summary` | 전체 개수와 상태별 개수(필터와 무관) | `-` | `200 { total, danger, soon, ok }` | ingredients |
 | 12 | GET | `/user/ingredients` | 내 재료 목록. 소비기한 가까운 순. 검색 없음(피그마에 없음). 냉장고 재료라 페이징 없이 전부 | `?status=DANGER\|SOON\|OK &storage=FRIDGE\|FREEZER\|PANTRY &categoryCode=` | `200 { items: [{ id, name, categoryCode, imageUrl, storage, amount, unit, expirationDate, dDay, status }] }` | ingredients, ingredient_categories |
 | 13 | GET | `/user/ingredients/{id}` | 재료 하나 | `-` | `200 { id, name, categoryCode, imageUrl, storage, amount, unit, expirationDate, dDay, status, price }` | ingredients |
-| 14 | GET | `/user/ingredient-units` | 재료명에 맞는 단위를 백엔드가 정해 줌(ERD 답 5). 재료명을 정하기 전에는 수량 칸 비활성, 재료명을 정하면 호출해 단위를 받고 수량 칸을 켬. 재료명을 바꾸면 다시 호출(API 답 1). 등록 전인 OCR 재료 수정(p3.3.1)에서 재료명을 바꿀 때도 호출(API 답 8) | `?name=대파` | `200 { unit }` | - |
+| 14 | GET | `/user/ingredient-units` | 재료명에 맞는 단위를 백엔드가 정해 줌(ERD 답 5). 재료명을 정하기 전에는 수량 칸 비활성, 재료명을 정하면 호출해 단위를 받고 수량 칸을 켬. 재료명이나 카테고리를 바꾸면 다시 호출(API 답 1). 등록 전인 OCR 재료 수정(p3.3.1)에서 바꿀 때도 호출(API 답 8). `categoryCode`는 선택이고, 넣으면 저장될 단위와 같음 | `?name=대파&categoryCode=VEGETABLE` | `200 { unit }` | - |
 | 15 | POST | `/user/ingredients` | 직접 추가. 카테고리 필수("전체" 없음, ERD 답 4). 단위는 서버가 정함. 가격은 선택(넣으면 소비 패턴에 들어감, ERD 답 3) | `{ name, categoryCode, storage, expirationDate, amount, price? }` | `201 (재료 하나 모양)` | ingredients |
 | 16 | PATCH | `/user/ingredients/{id}` | 바꾼 값만 보냄. 재료명을 바꾸면 서버가 새 이름에 맞게 단위를 다시 정해 응답에 줌(예: 대파 1단 → 양파 1개, API 답 8). 기록이 있어도 같음. `amount`를 바꾸면 `initial_amount`도 같이 바뀌고, 사용·버림 기록이 있으면 `INVALID_INPUT`(#128) | `{ name?, categoryCode?, storage?, expirationDate?, price?, amount? }` | `200 (재료 하나 모양)` | ingredients |
 | 17 | DELETE | `/user/ingredients/{id}` | 재료 삭제. 사용·버림 기록은 이름과 함께 남음 | `-` | `204` | ingredients, ingredient_logs |
 | 18 | POST | `/user/ingredients/{id}/consume` | 사용·버림 기록. 버리면 버린 금액 계산(가격이 있을 때). 0이 되면 재료 삭제 | `{ type: "USED"\|"DISCARDED", amount }` | `200 { remainingAmount, deleted, costAmount? }` | ingredients, ingredient_logs |
 | 19 | GET | `/user/ingredient-categories` | 카테고리 12개 | `-` | `200 { items: [{ code, name, imageUrl }] }` | ingredient_categories |
 
-14는 이름만 받아서, 사전 이름과 정확히 같을 때만 사전 단위를 주고 아니면 `EA`예요. 저장할 때(15·16)는 카테고리까지 써서 정하므로 저장된 `unit`이 달라질 수 있어요(예: "유기농 우유"는 14에서 `EA`, 우유 카테고리로 저장하면 `PACK`). 저장 응답의 `unit`이 최종 값이에요. `name`이 비어 있으면 `INVALID_INPUT`이에요.
+14는 저장(15·16·21)과 같은 규칙으로 단위를 정해요. `categoryCode`를 넣으면 저장될 단위와 같아요(예: "유기농 우유" + 달걀·유제품 → `PACK`). 넣지 않으면 사전 이름과 정확히 같을 때만 사전 단위이고 아니면 `EA`예요. 재료 추가(p2.2)·OCR 품목 수정(p3.3.1)은 저장 전에 카테고리가 정해져 있으니, 프론트는 카테고리가 있으면 항상 같이 보내고 이름이나 카테고리가 바뀔 때마다 다시 불러요. 숫자는 그대로 두고 단위만 바뀌므로, 미리 본 단위와 저장 단위가 다르면 입력한 양의 뜻이 바뀌기 때문이에요. `name`이 비어 있거나 없는 `categoryCode`면 `INVALID_INPUT`이에요.
 
 재료 사전 자동완성 API(`GET /user/ingredient-catalog`)는 없어요(11/22 결정). `ingredient_catalog`는 서버 안에서 단위를 정할 때만 써요(API 14·15·16·21).
 

@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.remake.global.config.OpenApiConfig;
 import com.remake.ingredient.application.port.in.ResolveIngredientUnitUseCase;
+import com.remake.ingredient.domain.IngredientCategoryCode;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -23,12 +24,14 @@ public class IngredientUnitController {
 
 	private final ResolveIngredientUnitUseCase resolveIngredientUnitUseCase;
 
-	// 정의서대로 이름만 받는다. 카테고리가 없어 사전 이름과 정확히 같을 때만 사전 단위이고 아니면 EA이다.
-	// 재료를 저장할 때는 카테고리까지 써서 단위를 정하므로 이 값과 다를 수 있다. 저장 응답의 unit이 최종 값이다.
-	@Operation(summary = "재료명에 맞는 단위", description = "재료명으로 단위를 미리 알려 줍니다. 사전 이름과 정확히 같으면 그 단위, 아니면 EA입니다. "
-			+ "저장 응답의 unit이 최종 값이며 미리 본 값과 다를 수 있습니다(수식어가 붙은 이름 등).")
+	// 이름과 카테고리로 저장(15·16·21)과 같은 규칙을 써서, 미리 본 단위와 저장되는 단위가 같게 한다.
+	// 카테고리는 선택이다. 없으면 사전 이름과 정확히 같을 때만 사전 단위이고 아니면 EA이다.
+	@Operation(summary = "재료명에 맞는 단위", description = "재료명(필수)과 카테고리(선택)로 단위를 알려 줍니다. 재료 저장과 같은 규칙입니다. "
+			+ "카테고리를 넣으면 저장될 단위와 같고, 없으면 사전 이름과 정확히 같을 때만 사전 단위, 아니면 EA입니다. "
+			+ "이름이나 카테고리가 바뀌면 다시 부릅니다.")
 	@GetMapping
-	public IngredientUnitResponse getUnit(@RequestParam(required = false) String name) {
-		return new IngredientUnitResponse(resolveIngredientUnitUseCase.resolveUnit(name, null));
+	public IngredientUnitResponse getUnit(@RequestParam(required = false) String name,
+			@RequestParam(required = false) IngredientCategoryCode categoryCode) {
+		return new IngredientUnitResponse(resolveIngredientUnitUseCase.resolveUnit(name, categoryCode));
 	}
 }
