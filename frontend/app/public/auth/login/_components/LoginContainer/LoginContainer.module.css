@@ -15,7 +15,6 @@
   align-items: center;
   gap: 1.875rem;
   width: 100%;
-  max-width: var(--layout-max-width);
   padding-bottom: 3.125rem;
 }
 
