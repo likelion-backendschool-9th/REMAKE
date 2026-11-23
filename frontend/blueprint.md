@@ -284,6 +284,7 @@ Refer to the [Google SEO Starter Guide](https://developers.google.com/search/doc
 - Browsers without `CloseWatcher` (Safari, Firefox): Esc closes the sheet. The back action (iOS swipe back) navigates to the previous screen as usual.
 - When a screen with an open sheet is hidden (navigation from inside the sheet, or back), the sheet closes. With `cacheComponents` the previous screen keeps its state, so without this the sheet would still be open when the user comes back.
 - While a sheet or modal is open, the screen behind it does not scroll.
+- `onClose` only sets the closed state; it is also called when the screen is hidden. Do not put other actions (such as recording a cancel event) in it; put them in the cancel button's handler. To navigate after confirming, close the sheet first, then navigate.
 - When sheets are stacked, close only the topmost one.
 
 ## 8. Development flow

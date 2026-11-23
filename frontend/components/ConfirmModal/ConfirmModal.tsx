@@ -25,7 +25,11 @@ type ConfirmModalProps = {
   isPending?: boolean;
 };
 
-/** 피그마 디자인 시스템 > 6. 겹쳐 뜨는 것 > 확인 모달. 가운데 뜨는 확인창. 취소·닫기·뒤로 가기·Esc는 onClose. */
+/**
+ * 피그마 디자인 시스템 > 6. 겹쳐 뜨는 것 > 확인 모달. 가운데 뜨는 확인창. 취소·닫기·뒤로 가기·Esc는 onClose.
+ * onClose에는 닫힌 상태만 반영한다(취소 기록 같은 동작을 넣지 않음). 화면이 숨겨질 때도 불리기 때문이다.
+ * onConfirm에서 다른 화면으로 이동하면 먼저 닫고 이동한다.
+ */
 export function ConfirmModal({
   isOpen,
   onClose,

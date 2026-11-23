@@ -42,6 +42,8 @@ export function useDialogLayer(
   // 숨겨지고(effect만 정리됨), 뒤로 오면 그대로 다시 보인다. 시트가 열린 채 돌아오지 않게 한다.
   // effect가 정리된 뒤 다시 실행되지 않았으면(숨겨짐·사라짐) 닫는다. 닫힘(isOpen=false)이나
   // 개발 모드 StrictMode의 정리-재실행은 바로 다시 실행되므로 닫지 않는다.
+  // 그래서 onClose는 닫기 버튼·Esc 말고도 불린다. 쓰는 쪽은 onClose에 닫힌 상태만 반영하고(취소 기록 등은
+  // 취소 버튼에서 따로), 확인 뒤 다른 화면으로 갈 때는 먼저 닫고 이동한다.
   const runRef = useRef(0);
   useEffect(() => {
     const run = (runRef.current += 1);
