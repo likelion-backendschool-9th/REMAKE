@@ -12,4 +12,7 @@ public interface LoadIngredientCatalogPort {
 	List<IngredientCatalogItem> loadByIds(Collection<Long> ids);
 
 	Optional<IngredientCatalogItem> loadByName(String name);
+
+	/** 한 카테고리의 모든 항목. 단위를 정할 때 재료명 안에 들어 있는 사전 이름을 찾는 데 쓴다. */
+	List<IngredientCatalogItem> loadByCategoryId(Long categoryId);
 }
