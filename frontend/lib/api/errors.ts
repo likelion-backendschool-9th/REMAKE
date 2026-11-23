@@ -18,6 +18,16 @@ type ErrorBody = {
   details?: unknown;
 };
 
+/**
+ * code 없는 응답의 code. 프록시의 "준비 중" 503은 점검 문구와 30초 뒤 재시도로,
+ * 프록시 시간 제한 504는 타임아웃 문구로 보이게 한다. 나머지는 INTERNAL_ERROR.
+ */
+function codeFromStatus(status: number): string {
+  if (status === 503) return "SERVICE_UNAVAILABLE";
+  if (status === 504) return CLIENT_ERROR_CODES.clientTimeout;
+  return "INTERNAL_ERROR";
+}
+
 export class ApiError extends Error {
   readonly code: string;
   /** HTTP 상태. 서버 응답이 없으면(네트워크·타임아웃) null */
@@ -43,11 +53,13 @@ export class ApiError extends Error {
     this.details = init.details ?? {};
   }
 
-  /** 서버 응답 본문으로 만든다. 모양이 다르면 INTERNAL_ERROR로 본다. */
+  /**
+   * 서버 응답 본문으로 만든다. 본문에 code가 없으면(Nginx가 직접 돌려준 HTML 오류 등) 상태 코드로 정한다.
+   */
   static fromBody(body: unknown, status: number): ApiError {
     const b = (typeof body === "object" && body !== null ? body : {}) as ErrorBody;
     return new ApiError({
-      code: typeof b.code === "string" ? b.code : "INTERNAL_ERROR",
+      code: typeof b.code === "string" ? b.code : codeFromStatus(status),
       status,
       message: typeof b.message === "string" ? b.message : undefined,
       traceId: typeof b.traceId === "string" ? b.traceId : null,
