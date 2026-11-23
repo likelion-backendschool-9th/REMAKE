@@ -21,24 +21,24 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 
 ## 2. Tech stack
 
-| Area            | Technology                                   | Why                                                                                    |
-| --------------- | -------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Framework       | Next.js (App Router) + TypeScript            | Screens split per route; frontend handles screens only                                 |
-| Package manager | pnpm                                         | Fast installs; lockfile keeps dependency versions identical for all 7 members          |
-| Styling         | CSS Modules + CSS variables                  | Component-scoped styles without extra libraries; shared design tokens                  |
-| Server data     | TanStack Query                               | Caching and refetching server data                                                     |
-| Client state    | Zustand                                      | Only the minimum, such as login info                                                   |
-| URL state       | nuqs                                         | Filters, tabs, sort, and selected month live in the URL                                |
-| API integration | openapi-typescript + openapi-fetch           | Types generated from Spring OpenAPI; type-safe calls                                   |
-| Forms           | React Hook Form + Zod                        | Validation for onboarding, custom recipe input, ingredient edits                       |
-| Dates           | dayjs                                        | Date display; meal-plan calendar                                                       |
-| Icons           | @solar-icons/react (Solar)                   | Tree-shakable React components; work offline                                           |
-| Font            | Pretendard + GmarketSans (`next/font/local`) | Pretendard: Korean UI font. GmarketSans: logo text only. No layout shift while loading |
-| PWA & push      | Serwist + Web Push                           | Service worker, offline screen, expiry alerts                                          |
-| Store release   | PWABuilder (TWA)                             | Generates the Android app package                                                      |
-| Web deploy      | `output: "standalone"` + nginx               | Node server running behind nginx                                                       |
-| Code quality    | ESLint + Prettier, Husky + lint-staged       | Unified code style for 7 people; automatic checks before commit                        |
-| API mocking     | MSW                                          | Build screens against dummy responses before the backend is ready                      |
+| Area            | Technology                                                                          | Why                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Framework       | Next.js (App Router) + TypeScript                                                   | Screens split per route; frontend handles screens only                                                 |
+| Package manager | pnpm                                                                                | Fast installs; lockfile keeps dependency versions identical for all 7 members                          |
+| Styling         | CSS Modules + CSS variables                                                         | Component-scoped styles without extra libraries; shared design tokens                                  |
+| Server data     | TanStack Query                                                                      | Caching and refetching server data                                                                     |
+| Client state    | Zustand                                                                             | Only the minimum, such as login info                                                                   |
+| URL state       | nuqs                                                                                | Filters, tabs, sort, and selected month live in the URL                                                |
+| API integration | openapi-typescript + openapi-fetch                                                  | Types generated from Spring OpenAPI; type-safe calls                                                   |
+| Forms           | React Hook Form + Zod                                                               | Validation for onboarding, custom recipe input, ingredient edits                                       |
+| Dates           | dayjs                                                                               | Date display; meal-plan calendar                                                                       |
+| Icons           | @solar-icons/react (Solar)                                                          | Tree-shakable React components; work offline                                                           |
+| Font            | Pretendard (`pretendard` package, dynamic subset) + GmarketSans (`next/font/local`) | Pretendard: Korean UI font, downloads only the character groups on screen. GmarketSans: logo text only |
+| PWA & push      | Serwist + Web Push                                                                  | Service worker, offline screen, expiry alerts                                                          |
+| Store release   | PWABuilder (TWA)                                                                    | Generates the Android app package                                                                      |
+| Web deploy      | `output: "standalone"` + nginx                                                      | Node server running behind nginx                                                                       |
+| Code quality    | ESLint + Prettier, Husky + lint-staged                                              | Unified code style for 7 people; automatic checks before commit                                        |
+| API mocking     | MSW                                                                                 | Build screens against dummy responses before the backend is ready                                      |
 
 ## 3. Folder structure
 
@@ -46,7 +46,7 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 frontend/
 ├─ app/                  # routes. Each route folder colocates the code only it uses (see §3.1)
 │  ├─ layout.tsx         # root layout, globals.css, home page.tsx
-│  ├─ fonts/             # font files (woff2) + fonts.ts (next/font/local)
+│  ├─ fonts/             # GmarketSans files (woff2) + fonts.ts (next/font/local) + pretendard.css (generated)
 │  ├─ fridge/            # example route — see §3.1
 │  ├─ sw.ts              # service worker (caching, push handling)
 │  ├─ serwist/[path]/    # service-worker serving route
@@ -172,8 +172,9 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 - Mobile first. Design for a 360px width. The default max layout width is `--layout-max-width` (480px) and the side gutter is `--layout-gutter`. Wider screens show the 480px container centered.
 - Light theme only; no dark mode.
 - Units: rem (1rem = 16px; never change the root font size). Convert Figma px by dividing by 16 (10px → 0.625rem). Use px only for lines such as borders.
-- Font: both are loaded with `next/font/local` in `app/fonts/fonts.ts` and attached to `<html>` in `app/layout.tsx`. Use woff2 files only.
-  - Pretendard (body text): weights 400/500/600/700/800 only (the ones Figma uses; 400 is the `Remake/content-regular` and `Remake/error` text styles). CSS variable `--font-pretendard`, used by `--font-family-base` in `tokens.css`.
+- Font: use woff2 files only.
+  - Pretendard (body text): use the dynamic subset files of the `pretendard` package (each weight is split into character groups with `unicode-range`, so the browser downloads only the groups that appear on screen; the full file is about 770 KB per weight). `app/fonts/pretendard.css` is generated by `pnpm gen:fonts` (`scripts/gen-pretendard-css.mjs`) and imported in `app/layout.tsx`. Never edit it by hand. Weights 400/500/700/800 only (the ones in use; 400 is the `Remake/content-regular` and `Remake/error` text styles, 800 is the store badge). To add a weight, edit `WEIGHTS` in the script and run it again. Font family name `Pretendard`, used by `--font-family-base` in `tokens.css`.
+  - GmarketSans: loaded with `next/font/local` in `app/fonts/fonts.ts` and attached to `<html>` in `app/layout.tsx`.
   - GmarketSans (logo text only): weights 300/500/700, `preload: false`. Use `font-family: var(--font-family-logo)` (defined in `globals.css`). Do not use it for other text.
 - Full-screen height uses `100dvh`. Bottom-fixed elements add `env(safe-area-inset-bottom)`.
 - Mostly flat. Apply glass effects only to elements that have them in Figma.
@@ -242,10 +243,12 @@ Refer to the [Google SEO Starter Guide](https://developers.google.com/search/doc
 
 ### 7.1 Back button closes sheets
 
-- Bottom sheets, modals, and drawers never add URL history (their open state is local). The back action (Android back button, iOS swipe back) closes only the open sheet, without navigating.
-- Handle this in one shared hook, `useBackToClose(isOpen, onClose)` in `hooks/`. Components never handle `popstate` themselves.
-- Chromium browsers (including the TWA): receive the close request with `CloseWatcher` and set the state to closed.
-- Browsers without `CloseWatcher` (Safari, Firefox): on open, push one temporary entry with `history.pushState` without changing the URL, and close on `popstate`. When the sheet is closed by a close button, remove that entry with `history.back()`.
+- Bottom sheets, modals, and drawers never touch history: no URL change and no `history.pushState` (their open state is local).
+- Handle closing in one shared hook, `useBackToClose(isOpen, onClose)` in `hooks/` (used by `useDialogLayer`). Components never handle `popstate` themselves.
+- Chromium browsers (including the TWA): receive the Android back button and Esc as a close request with `CloseWatcher`, and close only the open sheet without navigating. `CloseWatcher` does not use history.
+- Browsers without `CloseWatcher` (Safari, Firefox): Esc closes the sheet. The back action (iOS swipe back) navigates to the previous screen as usual.
+- When a screen with an open sheet is hidden (navigation from inside the sheet, or back), the sheet closes. With `cacheComponents` the previous screen keeps its state, so without this the sheet would still be open when the user comes back.
+- While a sheet or modal is open, the screen behind it does not scroll.
 - When sheets are stacked, close only the topmost one.
 
 ## 8. Development flow

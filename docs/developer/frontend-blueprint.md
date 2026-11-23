@@ -21,24 +21,24 @@
 
 ## 2. 기술 스택
 
-| 영역            | 기술                                   | 쓰는 이유                                                   |
-| --------------- | -------------------------------------- | ----------------------------------------------------------- |
-| 프레임워크      | Next.js (App Router) + TypeScript      | 라우트별 화면 분리, 화면만 담당                             |
-| 패키지 매니저   | pnpm                                   | 빠른 설치, lockfile로 7명 의존성 버전 통일                  |
-| 스타일          | CSS Modules + CSS 변수                 | 별도 라이브러리 없이 컴포넌트 단위 스타일, 디자인 토큰 공유 |
-| 서버 데이터     | TanStack Query                         | 서버 데이터 캐싱·다시 불러오기                              |
-| 클라이언트 상태 | Zustand                                | 로그인 정보 등 최소한만                                     |
-| URL 상태        | nuqs                                   | 필터·탭·정렬·월 선택을 URL에 저장                           |
-| API 연동        | openapi-typescript + openapi-fetch     | Spring OpenAPI에서 타입 자동 생성, 타입 안전한 호출         |
-| 폼              | React Hook Form + Zod                  | 온보딩, 커스텀 레시피 입력, 재료 수정 검증                  |
-| 날짜            | dayjs                                  | 날짜 표시, 식단표 달력                                      |
-| 아이콘          | @solar-icons/react (Solar)             | 트리 셰이킹되는 React 컴포넌트, 오프라인에서도 동작         |
-| 폰트            | Pretendard + GmarketSans (`next/font/local`) | Pretendard: 한글 UI 폰트. GmarketSans: 로고 글자 전용. 로딩 중 레이아웃 밀림 방지 |
-| PWA·푸시        | Serwist + Web Push                     | 서비스 워커, 오프라인 화면, 소비기한 알림                   |
-| 스토어 배포     | PWABuilder (TWA)                       | 안드로이드 앱 패키지 생성                                   |
-| 웹 배포         | `output: "standalone"` + nginx         | Node 서버를 nginx 뒤에서 실행                               |
-| 코드 품질       | ESLint + Prettier, Husky + lint-staged | 7명 코드 스타일 통일, 커밋 전 자동 검사                     |
-| API 목업        | MSW                                    | 백엔드 완성 전 더미 응답으로 화면 개발                      |
+| 영역            | 기술                                                                             | 쓰는 이유                                                                           |
+| --------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 프레임워크      | Next.js (App Router) + TypeScript                                                | 라우트별 화면 분리, 화면만 담당                                                     |
+| 패키지 매니저   | pnpm                                                                             | 빠른 설치, lockfile로 7명 의존성 버전 통일                                          |
+| 스타일          | CSS Modules + CSS 변수                                                           | 별도 라이브러리 없이 컴포넌트 단위 스타일, 디자인 토큰 공유                         |
+| 서버 데이터     | TanStack Query                                                                   | 서버 데이터 캐싱·다시 불러오기                                                      |
+| 클라이언트 상태 | Zustand                                                                          | 로그인 정보 등 최소한만                                                             |
+| URL 상태        | nuqs                                                                             | 필터·탭·정렬·월 선택을 URL에 저장                                                   |
+| API 연동        | openapi-typescript + openapi-fetch                                               | Spring OpenAPI에서 타입 자동 생성, 타입 안전한 호출                                 |
+| 폼              | React Hook Form + Zod                                                            | 온보딩, 커스텀 레시피 입력, 재료 수정 검증                                          |
+| 날짜            | dayjs                                                                            | 날짜 표시, 식단표 달력                                                              |
+| 아이콘          | @solar-icons/react (Solar)                                                       | 트리 셰이킹되는 React 컴포넌트, 오프라인에서도 동작                                 |
+| 폰트            | Pretendard(`pretendard` 패키지, dynamic subset) + GmarketSans(`next/font/local`) | Pretendard: 한글 UI 폰트, 화면에 나온 글자 묶음만 받음. GmarketSans: 로고 글자 전용 |
+| PWA·푸시        | Serwist + Web Push                                                               | 서비스 워커, 오프라인 화면, 소비기한 알림                                           |
+| 스토어 배포     | PWABuilder (TWA)                                                                 | 안드로이드 앱 패키지 생성                                                           |
+| 웹 배포         | `output: "standalone"` + nginx                                                   | Node 서버를 nginx 뒤에서 실행                                                       |
+| 코드 품질       | ESLint + Prettier, Husky + lint-staged                                           | 7명 코드 스타일 통일, 커밋 전 자동 검사                                             |
+| API 목업        | MSW                                                                              | 백엔드 완성 전 더미 응답으로 화면 개발                                              |
 
 ## 3. 폴더 구조
 
@@ -46,7 +46,7 @@
 frontend/
 ├─ app/                  # 라우트. 각 라우트 폴더에 그 라우트만 쓰는 코드를 함께 둔다 (3.1 참고)
 │  ├─ layout.tsx         # 루트 레이아웃, globals.css, 홈 page.tsx
-│  ├─ fonts/             # 폰트 파일(woff2) + fonts.ts (next/font/local)
+│  ├─ fonts/             # GmarketSans 파일(woff2) + fonts.ts (next/font/local) + pretendard.css(생성 파일)
 │  ├─ fridge/            # 라우트 예시 — 3.1 참고
 │  ├─ sw.ts              # 서비스 워커 (캐싱, 푸시 수신)
 │  ├─ serwist/[path]/    # 서비스 워커 서빙 라우트
@@ -172,9 +172,10 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - 모바일 우선입니다. 기준 폭은 360px입니다. 기본 레이아웃 최대 폭은 `--layout-max-width`(480px), 좌우 여백은 `--layout-gutter`입니다. 480px보다 넓은 화면은 480px 컨테이너를 가운데 정렬해 보여 줍니다.
 - 라이트 모드만 있습니다. 다크 모드는 없습니다.
 - 단위는 rem입니다(1rem = 16px, 루트 font-size는 바꾸지 않음). 피그마 px 값은 16으로 나눠 씁니다(10px → 0.625rem). 테두리 같은 선만 px로 씁니다.
-- 폰트: 두 폰트 모두 `app/fonts/fonts.ts`에서 `next/font/local`로 불러오고 `app/layout.tsx`의 `<html>`에 붙입니다. 파일은 woff2만 씁니다.
-  - Pretendard(본문): 피그마에서 쓰는 굵기 400/500/600/700/800만 둡니다(400은 `Remake/content-regular`·`Remake/error` 텍스트 스타일). CSS 변수 `--font-pretendard`이고, `tokens.css`의 `--font-family-base`가 이 변수를 씁니다.
-  - GmarketSans(로고 글자 전용): 굵기 300/500/700, `preload: false`. `font-family: var(--font-family-logo)`(`globals.css`에 정의)로 씁니다. 다른 글자에는 쓰지 않습니다.
+- 폰트: 파일은 woff2만 씁니다.
+    - Pretendard(본문): `pretendard` 패키지의 dynamic subset 파일을 씁니다(굵기마다 글자 묶음별로 `unicode-range`로 나뉘어 있어 화면에 나온 글자가 든 묶음만 받습니다. 통파일은 굵기마다 약 770KB). `app/fonts/pretendard.css`는 `pnpm gen:fonts`(`scripts/gen-pretendard-css.mjs`)가 만들고 `app/layout.tsx`에서 불러옵니다. 손으로 고치지 않습니다. 굵기는 쓰는 것만 400/500/700/800입니다(400은 `Remake/content-regular`·`Remake/error` 텍스트 스타일, 800은 마트 배지). 굵기를 더하려면 스크립트의 `WEIGHTS`를 고치고 다시 실행합니다. 글꼴 이름은 `Pretendard`이고, `tokens.css`의 `--font-family-base`가 이 이름을 씁니다.
+    - GmarketSans: `app/fonts/fonts.ts`에서 `next/font/local`로 불러오고 `app/layout.tsx`의 `<html>`에 붙입니다.
+    - GmarketSans(로고 글자 전용): 굵기 300/500/700, `preload: false`. `font-family: var(--font-family-logo)`(`globals.css`에 정의)로 씁니다. 다른 글자에는 쓰지 않습니다.
 - 화면 전체 높이는 `100dvh`, 하단 고정 요소는 `env(safe-area-inset-bottom)`을 더합니다.
 - 대부분 플랫하게 만들고, 글래스 효과는 피그마에서 글래스가 걸린 요소에만 씁니다.
 - 스타일 파일은 컴포넌트와 같은 폴더에 같은 이름으로 둡니다. 예: `IngredientCard.tsx` + `IngredientCard.module.css`
@@ -242,10 +243,12 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 
 ### 7.1 뒤로가기로 시트 닫기
 
-- 바텀시트·모달·드로어는 URL 히스토리에 쌓지 않습니다(열림 여부는 로컬 상태). 대신 뒤로가기(안드로이드 뒤로 버튼, iOS 밀어서 뒤로)를 누르면 페이지 이동 없이 열린 창만 닫힙니다.
-- 공통 훅 `useBackToClose(isOpen, onClose)`(`hooks/`) 하나로 처리합니다. 컴포넌트에서 `popstate`를 직접 다루지 않습니다.
-- 크롬 계열(TWA 포함)은 `CloseWatcher`로 닫기 요청을 받아 상태를 끕니다.
-- `CloseWatcher`가 없는 브라우저(사파리, 파이어폭스)는 열 때 URL을 바꾸지 않고 `history.pushState`로 임시 한 칸을 넣고, `popstate`가 오면 닫습니다. 닫기 버튼으로 닫을 때는 그 임시 한 칸을 `history.back()`으로 지웁니다.
+- 바텀시트·모달·드로어는 방문 기록을 건드리지 않습니다. URL도 바꾸지 않고 `history.pushState`도 쓰지 않습니다(열림 여부는 로컬 상태).
+- 닫기는 공통 훅 `useBackToClose(isOpen, onClose)`(`hooks/`, `useDialogLayer`가 씀) 하나로 처리합니다. 컴포넌트에서 `popstate`를 직접 다루지 않습니다.
+- 크롬 계열(TWA 포함)은 `CloseWatcher`로 안드로이드 뒤로 버튼과 Esc를 닫기 요청으로 받아, 페이지 이동 없이 열린 시트만 닫습니다. `CloseWatcher`는 방문 기록을 쓰지 않습니다.
+- `CloseWatcher`가 없는 브라우저(사파리, 파이어폭스)는 Esc로 닫습니다. 뒤로가기(iOS 밀어서 뒤로)는 평소처럼 이전 화면으로 갑니다.
+- 시트가 열린 화면이 숨겨지면(시트 안에서 다른 화면으로 이동, 뒤로가기) 시트를 닫습니다. `cacheComponents`라 이전 화면은 상태를 가진 채 남아 있어서, 닫지 않으면 돌아왔을 때 시트가 열린 채 보입니다.
+- 시트·모달이 열려 있는 동안 뒤 화면은 스크롤되지 않습니다.
 - 시트가 겹쳐 열려 있으면 가장 위의 것만 닫습니다.
 
 ## 8. 개발 흐름
