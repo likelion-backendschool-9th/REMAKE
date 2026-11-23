@@ -6,9 +6,11 @@ import type { ReactNode } from "react";
 import { LoginContainer } from "../../../public/auth/login/_components/LoginContainer/LoginContainer";
 import { AllergiesContainer } from "../../../user/onboarding/allergies/_components/AllergiesContainer/AllergiesContainer";
 import { HouseholdContainer } from "../../../user/onboarding/household/_components/HouseholdContainer/HouseholdContainer";
+import { AccountDeletionContainer } from "../../../user/setting/account-deletion/_components/AccountDeletionContainer/AccountDeletionContainer";
 import { ExcludedIngredientsContainer } from "../../../user/setting/excluded-ingredients/_components/ExcludedIngredientsContainer/ExcludedIngredientsContainer";
 import { SettingHouseholdContainer } from "../../../user/setting/household/_components/SettingHouseholdContainer/SettingHouseholdContainer";
 import { SettingContainer } from "../../../user/setting/profile/_components/SettingContainer/SettingContainer";
+import { SubscriptionContainer } from "../../../user/setting/subscription/_components/SubscriptionContainer/SubscriptionContainer";
 
 export type PreviewState = {
   /** 주소 /dev/p1/<slug> */
@@ -116,5 +118,73 @@ export const P1_STATES: PreviewState[] = [
     label: "p1.3.2-알러지 재료 제외 (0개, 피그마 없음)",
     route: "/user/setting/excluded-ingredients",
     render: () => <ExcludedIngredientsContainer defaultSelected={[]} />,
+  },
+  {
+    slug: "account-deletion",
+    label: "p1.3.3-계정 삭제",
+    route: "/user/setting/account-deletion",
+    render: () => <AccountDeletionContainer />,
+  },
+  {
+    slug: "account-deletion-typing",
+    label: "p1.3.3-계정 삭제-포커스 (1자리)",
+    route: "/user/setting/account-deletion",
+    render: () => <AccountDeletionContainer defaultDigits={["1", "", "", "", "", ""]} />,
+  },
+  {
+    slug: "account-deletion-complete",
+    label: "p1.3.3-계정 삭제-액티브 (6자리)",
+    route: "/user/setting/account-deletion",
+    render: () => <AccountDeletionContainer defaultDigits={["1", "2", "3", "4", "5", "6"]} />,
+  },
+  {
+    slug: "account-deletion-failed",
+    label: "p1.3.3-계정 삭제-실패 (오류 토스트 3초)",
+    route: "/user/setting/account-deletion",
+    render: () => (
+      <AccountDeletionContainer
+        defaultDigits={["1", "2", "3", "4", "5", "6"]}
+        defaultErrorCode="DELETION_CODE_INVALID"
+      />
+    ),
+  },
+  {
+    slug: "subscription",
+    label: "p1.3.4-구독하기 (약관 동의 전)",
+    route: "/user/setting/subscription",
+    render: () => <SubscriptionContainer />,
+  },
+  {
+    slug: "subscription-agreed",
+    label: "p1.3.4-구독하기 (약관 동의, 피그마 없음)",
+    route: "/user/setting/subscription",
+    render: () => <SubscriptionContainer defaultAgreed />,
+  },
+  {
+    slug: "subscription-terms",
+    label: "p1.3.4 결제 약관 드로워",
+    route: "/user/setting/subscription",
+    render: () => <SubscriptionContainer initialOpenTerms />,
+  },
+  {
+    slug: "subscription-active",
+    label: "p1.3.4-구독 해지 (구독 중)",
+    route: "/user/setting/subscription",
+    render: () => (
+      <SubscriptionContainer
+        subscription={{ status: "ACTIVE", price: 9900, nextBillingDate: "2026-12-22" }}
+      />
+    ),
+  },
+  {
+    slug: "subscription-cancel",
+    label: "p1.3.4-구독 해지 모달",
+    route: "/user/setting/subscription",
+    render: () => (
+      <SubscriptionContainer
+        subscription={{ status: "ACTIVE", price: 9900, nextBillingDate: "2026-12-22" }}
+        initialOpenCancel
+      />
+    ),
   },
 ];
