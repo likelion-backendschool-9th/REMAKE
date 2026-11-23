@@ -3,6 +3,15 @@ spring:
     name: remake
   profiles:
     active: local
+  servlet:
+    multipart:
+      # 영수증은 10MB, 공유 사진은 서비스에서 별도로 5MiB까지 검사한다.
+      max-file-size: 10MB
+      max-request-size: 30MB
+
+remake:
+  upload:
+    root-directory: ${REMAKE_UPLOAD_ROOT_DIRECTORY:${java.io.tmpdir}/remake-uploads}
 
 logging:
   pattern:

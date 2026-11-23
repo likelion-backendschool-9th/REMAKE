@@ -15,7 +15,7 @@ Source: PRD v4 and policy doc v4 (Figma-based, 2026-11-22; Korean, kept in Notio
 - Roles `USER` and `ADMIN`. The server allows `/api/v1/admin/**` to ADMIN only (403 otherwise).
 - Paths: backend `/api/v1/{role}/{resource}`, frontend `/{role}/{feature}/{resource}`. Role is `public` (before login) or `user`. Sheets, modals, loading and failure screens have no path of their own.
 - Timeouts: general 10 s, OCR 30 s, AI recipe 60 s (recipes only; meal-plan generation replies 202 and runs as a server job, see section 5). AI retries once automatically; OCR does not retry.
-- Files (receipt and shared photos): <= 10 MB, jpg/png/heic. The frontend checks first; the server checks last (413, 415).
+- Receipt files: <= 10 MB, jpg/png/heic. Shared cooking photos: one required, <= 5 MiB, JPEG/PNG/WebP ([#64 storage agreement](https://github.com/likelion-backendschool-9th/REMAKE/issues/64#issuecomment-7089190543)). The frontend checks first; the server checks last (413, 415).
 - Double clicks: buttons such as register and deduct are disabled until the request ends. No server `Idempotency-Key`.
 - Concurrent edits of the same ingredient: last request wins. Deduction checks the remaining amount first.
 - Errors: `{ code, message, status, traceId, fieldErrors?, details? }` with the 59 codes in [`errors.md`](errors.md). Input errors show as red text under the field (#DC2626). Errors without a screen show the shared toast. Errors with a screen use the OCR failure screen, the generation failure screen, the meal-plan overlap modal, or the quota-used-up screen.
@@ -266,6 +266,15 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - No way to take down my own post (no screen).
 - **Reward**: members who posted last week's top 1–3 recipes by saves. Per recipe rank, so one member can receive more than once. 1st +10, 2nd +6, 3rd +3 recipe generations, usable for one month from the grant.
 - Week = Monday 00:00 to Sunday 24:00 KST. The Monday 00:00 job records last week's TOP 100 and grants rewards, counting only saves that still exist then. Never grant the same week twice. Own saves do not count; 0 saves get no reward (proposal). No reward screen or notification; only the remaining count changes.
+
+### Cooking photo storage (#64)
+
+- `StoreSharedRecipePhotoUseCase.store(SharedRecipePhotoUpload)` stores one photo and returns a random `imageKey`. The #86 publishing UseCase must start a writable transaction and save that key to `shared_recipes.image_key` in the same transaction. There is no separate photo table. Missing/empty photo -> `PHOTO_REQUIRED`; MIME/header mismatch -> `UNSUPPORTED_FILE_TYPE`; over 5 MiB -> `FILE_TOO_LARGE`. Check the actual stream length, not only the declared size. Header checks do not fully decode or convert images.
+- Use `remake.upload.root-directory`, explicitly mapped from `REMAKE_UPLOAD_ROOT_DIRECTORY`. Local default: `${java.io.tmpdir}/remake-uploads`. Production requires the variable and must use the shared volume `/data/uploads`, never the temporary default. The deployment owner adds the volume, compose variable and Nginx limits in a separate PR; confirm deployment before merging this feature.
+- `FileSystemSharedRecipePhotoStorageAdapter` writes under `shared-recipes/`, does not overwrite existing keys and rejects invalid paths or symbolic-link reads. `LoadSharedRecipePhotoPort` returns the stream, MIME and length; close the stream after use. A missing file returns empty. Delete is idempotent.
+- Storage failures remove the attempted file; transaction rollback removes the newly stored file. An immediate deletion failure is retried on rollback; persistent deletion failures are logged without provider details and need manual cleanup. Process-crash recovery is not guaranteed. Photo handling emits no event.
+- Global Spring multipart limits are 10 MB per file and 30 MB per request, preserving receipts; the photo service applies its stricter 5 MiB limit. The deployment owner sets both Nginx limits to 32m.
+- #86 connects publishing, DB storage and an authenticated image API that checks the shared post's visibility before reading its DB key. Do not expose the volume as a public static directory or accept arbitrary file paths from a request. There is no user post-removal API; withdrawal keeps anonymous shared posts and their photos. Do not delete those files as receipt images. FE resize/compression and authenticated image display belong to #112.
 
 ## Admin (on hold)
 

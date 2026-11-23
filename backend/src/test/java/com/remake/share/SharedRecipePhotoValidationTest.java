@@ -7,8 +7,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -33,48 +31,30 @@ class SharedRecipePhotoValidationTest {
 	@BeforeEach
 	void setUp() {
 		storage = mock(SharedRecipePhotoStoragePort.class);
-		service = new SharedRecipePhotoService(storage, SharedRecipePhotoPolicy.proposed());
+		service = new SharedRecipePhotoService(storage, new SharedRecipePhotoPolicy(SharedRecipePhotoPolicy.MAX_FILE_BYTES));
 	}
 
 	@Test
-	void 사진이_없으면_PHOTO_REQUIRED이다() {
+	void 사진이_없거나_비어있으면_PHOTO_REQUIRED이다() {
 		assertError(() -> service.store(null), ErrorCode.PHOTO_REQUIRED);
-		assertError(() -> service.store(List.of()), ErrorCode.PHOTO_REQUIRED);
-		assertError(() -> service.store(Collections.singletonList(null)), ErrorCode.PHOTO_REQUIRED);
-		assertError(() -> service.store(List.of(new SharedRecipePhotoUpload("image/png", 1, null))),
-				ErrorCode.PHOTO_REQUIRED);
-		verifyNoInteractions(storage);
-	}
-
-	@Test
-	void 빈_파일은_거절한다() {
-		assertError(() -> service.store(List.of(upload("image/png", new byte[0]))), ErrorCode.PHOTO_REQUIRED);
-		verifyNoInteractions(storage);
-	}
-
-	@Test
-	void 최대_장수를_넘으면_스트림을_열지_않는다() {
-		SharedRecipePhotoUpload photo = new SharedRecipePhotoUpload("image/png", 8, () -> {
-			throw new AssertionError("장수 초과 시 스트림에 접근하면 안 됩니다.");
-		});
-		assertError(() -> service.store(Collections.nCopies(6, photo)), ErrorCode.INVALID_INPUT);
+		assertError(() -> service.store(new SharedRecipePhotoUpload("image/png", 1, null)), ErrorCode.PHOTO_REQUIRED);
+		assertError(() -> service.store(upload("image/png", new byte[0])), ErrorCode.PHOTO_REQUIRED);
 		verifyNoInteractions(storage);
 	}
 
 	@Test
 	void 신고된_용량이_상한보다_크면_읽기_전에_거절한다() {
 		SharedRecipePhotoUpload photo = new SharedRecipePhotoUpload("image/png",
-				SharedRecipePhotoPolicy.PROPOSED_MAX_FILE_BYTES + 1L, () -> {
+				SharedRecipePhotoPolicy.MAX_FILE_BYTES + 1L, () -> {
 					throw new AssertionError("용량 초과 시 스트림에 접근하면 안 됩니다.");
 				});
-		assertError(() -> service.store(List.of(photo)), ErrorCode.FILE_TOO_LARGE);
+		assertError(() -> service.store(photo), ErrorCode.FILE_TOO_LARGE);
 		verifyNoInteractions(storage);
 	}
 
 	@Test
-	void 실제_스트림이_상한을_넘으면_거절하고_닫는다() {
-		// 작은 정책값으로 경계와 제한된 읽기를 검증한다.
-		service = new SharedRecipePhotoService(storage, new SharedRecipePhotoPolicy(5, 12));
+	void 실제_스트림이_상한을_넘으면_제한해서_읽고_닫는다() {
+		service = new SharedRecipePhotoService(storage, new SharedRecipePhotoPolicy(12));
 		boolean[] closed = {false};
 		ByteArrayInputStream stream = new ByteArrayInputStream(new byte[100]) {
 			@Override
@@ -82,8 +62,7 @@ class SharedRecipePhotoValidationTest {
 				closed[0] = true;
 			}
 		};
-		assertError(() -> service.store(List.of(new SharedRecipePhotoUpload("image/png", 12, () -> stream))),
-				ErrorCode.FILE_TOO_LARGE);
+		assertError(() -> service.store(new SharedRecipePhotoUpload("image/png", 12, () -> stream)), ErrorCode.FILE_TOO_LARGE);
 		assertThat(stream.available()).isEqualTo(87);
 		assertThat(closed[0]).isTrue();
 		verifyNoInteractions(storage);
@@ -91,22 +70,15 @@ class SharedRecipePhotoValidationTest {
 
 	@Test
 	void 실제_크기가_신고된_크기와_다르면_거절한다() {
-		assertError(() -> service.store(List.of(new SharedRecipePhotoUpload("image/png", 9,
-				() -> new ByteArrayInputStream(png())))), ErrorCode.INVALID_INPUT);
-		verifyNoInteractions(storage);
-	}
-
-	@Test
-	void 뒤의_사진이_잘못됐어도_앞의_사진을_저장하지_않는다() {
-		assertError(() -> service.store(List.of(upload("image/png", png()), upload("image/png", new byte[] {1}))),
-				ErrorCode.UNSUPPORTED_FILE_TYPE);
+		assertError(() -> service.store(new SharedRecipePhotoUpload("image/png", 9,
+				() -> new ByteArrayInputStream(png()))), ErrorCode.INVALID_INPUT);
 		verifyNoInteractions(storage);
 	}
 
 	@ParameterizedTest
 	@MethodSource("unsupportedTypes")
 	void 허용하지_않은_MIME을_거절한다(String contentType) {
-		assertError(() -> service.store(List.of(upload(contentType, png()))), ErrorCode.UNSUPPORTED_FILE_TYPE);
+		assertError(() -> service.store(upload(contentType, png())), ErrorCode.UNSUPPORTED_FILE_TYPE);
 		verifyNoInteractions(storage);
 	}
 
@@ -130,43 +102,33 @@ class SharedRecipePhotoValidationTest {
 	}
 
 	@Test
-	void PNG를_JPEG라고_보내거나_잘린_헤더를_보내면_거절한다() {
-		assertError(() -> service.store(List.of(upload("image/jpeg", png()))), ErrorCode.UNSUPPORTED_FILE_TYPE);
-		assertError(() -> SharedRecipePhotoFormat.PNG.validateHeader(new byte[] {(byte) 0x89}),
-				ErrorCode.UNSUPPORTED_FILE_TYPE);
-		assertError(() -> SharedRecipePhotoFormat.WEBP.validateHeader("RIFF1234FAKE".getBytes()),
-				ErrorCode.UNSUPPORTED_FILE_TYPE);
+	void MIME과_다른_내용이나_잘린_헤더는_거절한다() {
+		assertError(() -> service.store(upload("image/jpeg", png())), ErrorCode.UNSUPPORTED_FILE_TYPE);
+		assertError(() -> SharedRecipePhotoFormat.PNG.validateHeader(new byte[] {(byte) 0x89}), ErrorCode.UNSUPPORTED_FILE_TYPE);
+		assertError(() -> SharedRecipePhotoFormat.WEBP.validateHeader("RIFF1234FAKE".getBytes()), ErrorCode.UNSUPPORTED_FILE_TYPE);
 	}
 
 	@Test
-	void 입력_스트림_실패는_저장소_호출_없이_처리한다() {
+	void 입력_스트림_실패는_원인을_보존하고_저장하지_않는다() {
 		IOException original = new IOException("test read failure");
-		assertThatThrownBy(() -> service.store(List.of(new SharedRecipePhotoUpload("image/png", 8, () -> {
+		assertThatThrownBy(() -> service.store(new SharedRecipePhotoUpload("image/png", 8, () -> {
 			throw original;
-		}))))
-				.isInstanceOf(BusinessException.class)
-				.hasCause(original)
-				.extracting(error -> ((BusinessException) error).getErrorCode())
-				.isEqualTo(ErrorCode.SERVICE_UNAVAILABLE);
+		}))).isInstanceOf(BusinessException.class).hasCause(original)
+				.extracting(error -> ((BusinessException) error).getErrorCode()).isEqualTo(ErrorCode.SERVICE_UNAVAILABLE);
 		verifyNoInteractions(storage);
 	}
 
 	@Test
 	void 게시_트랜잭션_밖에서는_파일을_저장하지_않는다() {
-		assertError(() -> service.store(List.of(upload("image/png", png()))), ErrorCode.INTERNAL_ERROR);
+		assertError(() -> service.store(upload("image/png", png())), ErrorCode.INTERNAL_ERROR);
 		verifyNoInteractions(storage);
 	}
 
 	@Test
-	void 정책_경계값은_포함하고_잘못된_설정은_거절한다() {
-		SharedRecipePhotoPolicy policy = SharedRecipePhotoPolicy.proposed();
-		policy.validateCount(1);
-		policy.validateCount(5);
-		policy.validateSize(5 * 1024 * 1024);
-		assertThatThrownBy(() -> new SharedRecipePhotoPolicy(0, 1)).isInstanceOf(IllegalArgumentException.class);
-		assertThatThrownBy(() -> new SharedRecipePhotoPolicy(1, 0)).isInstanceOf(IllegalArgumentException.class);
-		assertThatThrownBy(() -> new SharedRecipePhotoPolicy(1, Integer.MAX_VALUE))
-				.isInstanceOf(IllegalArgumentException.class);
+	void 용량_경계는_포함하고_잘못된_설정은_거절한다() {
+		new SharedRecipePhotoPolicy(SharedRecipePhotoPolicy.MAX_FILE_BYTES).validateSize(5 * 1024 * 1024);
+		assertThatThrownBy(() -> new SharedRecipePhotoPolicy(0)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> new SharedRecipePhotoPolicy(Integer.MAX_VALUE)).isInstanceOf(IllegalArgumentException.class);
 	}
 
 	static SharedRecipePhotoUpload upload(String contentType, byte[] bytes) {

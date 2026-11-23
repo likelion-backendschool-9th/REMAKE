@@ -7,6 +7,9 @@ spring:
       ddl-auto: validate
 
 remake:
+  upload:
+    # 개발·운영 파일과 분리하고 공유 테스트 앱이 닫힐 때 임시 폴더도 정리한다.
+    root-directory: ${java.io.tmpdir}/remake-test-uploads-${random.uuid}
   scheduling:
     # 테스트 중 @Scheduled 작업이 저절로 돌지 않게 한다. @Scheduled 설정은 ScheduledSettingsTest가 따로 검사한다.
     enabled: false
