@@ -64,7 +64,7 @@ Source: PRD v4 and policy doc v4 (Figma-based, 2026-11-22; Korean, kept in Notio
 | PINCH | 꼬집 | small | - | no | yes |
 | TO_TASTE | 약간 | small (no amount) | - | no | yes |
 
-- **The server picks the unit from the ingredient name** (the internal `ingredient_catalog` dictionary, see [`../erd.md`](../erd.md) table 26). The user never chooses a unit. The unit for a name not in the dictionary is (open).
+- **The server picks the unit from the ingredient name** (the internal `ingredient_catalog` dictionary, see [`../erd.md`](../erd.md) table 26). The user never chooses a unit. The unit is decided in this order (#145): the name equals a dictionary name exactly; otherwise the longest dictionary name (two characters or more, same category) contained in the name; otherwise `EA`. A unit printed on a receipt does not override it.
 - Packaging words (봉지, 캔, 병, 통) map to PACK; counting words (마리, 알, 모, 포기) map to EA.
 - Deduction converts automatically only within the same kind (weight↔weight, volume↔volume with measures in ml). Different kinds need the user to confirm the amount. PINCH and TO_TASTE are never deducted.
 - Fridge amounts are plain numbers, no fractions, up to 3 decimals. Stepper step (proposal): g/ml 50, kg/L 0.5, count units 1.
@@ -127,7 +127,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - First screen: "냉장고에 재료가 N개 있어요", "AI를 활용해 레시피 생성하기 →" (to recipe home), danger / soon / ok cards, ingredient list.
 - Ingredient fields: name, category, storage (refrigerated, frozen, room temperature), expiry date, price (optional), amount. Manual add and OCR item edit/add use the same fields. All but price are required; the button is disabled until they are filled.
 - Name is the ingredient, not the product ("비비고 냉동 만두" ✗ → "만두" ✓).
-- Unit: the server picks it from the name. The amount field is disabled until the name is set. Changing the name re-picks only the unit; the number stays. This applies on add and on edit, also when the ingredient already has use/discard logs (each log keeps the name and unit recorded at that time).
+- Unit: the server picks it from the name (and the category, API 14 with `categoryCode`). The amount field is disabled until the name is set; the frontend asks API 14 again when the name or category changes so the shown unit equals the saved one. Changing the name re-picks only the unit; the number stays. This applies on add and on edit, also when the ingredient already has use/discard logs (each log keeps the name and unit recorded at that time).
 - Amount edit: it fixes an input mistake, so it changes `amount` and `initial_amount` together (the discarded cost divides by `initial_amount`). Reject it with `INVALID_INPUT` once the ingredient has any use/discard log (#128).
 - Expiry status: danger = expired or today (D-DAY); soon = D-1 to D-3; ok = later. Shown as `D-N`, `D-DAY`, `폐기-N`.
 - Filter and sort: tapping a status card shows only that status; "재료 위치" and "재료 종류" sheets filter one at a time. Sorted by nearest expiry. List title "N개의 위험/임박/여유 재료". **No ingredient search.**
