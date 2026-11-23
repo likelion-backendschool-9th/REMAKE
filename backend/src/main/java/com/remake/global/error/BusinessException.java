@@ -23,6 +23,11 @@ public class BusinessException extends RuntimeException {
 		this(errorCode, message, null);
 	}
 
+	// 기본 문구 그대로 details만 담을 때 쓴다. 예: 횟수 초과의 { remaining, resetsAt }
+	public BusinessException(ErrorCode errorCode, Map<String, Object> details) {
+		this(errorCode, errorCode.getMessage(), details);
+	}
+
 	// 화면이 쓰는 값을 응답의 details에 함께 담을 때 쓴다. 예: Map.of("remaining", 300)
 	public BusinessException(ErrorCode errorCode, String message, Map<String, Object> details) {
 		super(message);
