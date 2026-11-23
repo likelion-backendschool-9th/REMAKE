@@ -95,8 +95,11 @@ public class SharedRecipePhotoService implements StoreSharedRecipePhotoUseCase {
 
 		@Override
 		public void afterCompletion(int status) {
-			if (status != STATUS_COMMITTED) {
+			if (status == STATUS_ROLLED_BACK) {
 				remove(null);
+			} else if (status == STATUS_UNKNOWN && pending) {
+				// 실제 커밋됐을 수 있으므로 파일을 보존하고 DB와 저장소 대조를 요청한다.
+				log.warn("공유 사진 트랜잭션 결과 불명: 파일 보존, DB 및 저장소 확인 필요");
 			}
 		}
 

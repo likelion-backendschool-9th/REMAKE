@@ -3,6 +3,8 @@ package com.remake.share;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.io.ByteArrayInputStream;
@@ -14,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
@@ -122,6 +126,23 @@ class SharedRecipePhotoValidationTest {
 	void 게시_트랜잭션_밖에서는_파일을_저장하지_않는다() {
 		assertError(() -> service.store(upload("image/png", png())), ErrorCode.INTERNAL_ERROR);
 		verifyNoInteractions(storage);
+	}
+
+	@Test
+	void 커밋_결과를_알_수_없으면_사진을_삭제하지_않는다() {
+		TransactionSynchronizationManager.setActualTransactionActive(true);
+		TransactionSynchronizationManager.initSynchronization();
+		try {
+			String key = service.store(upload("image/png", png()));
+			for (var synchronization : TransactionSynchronizationManager.getSynchronizations()) {
+				synchronization.afterCompletion(TransactionSynchronization.STATUS_UNKNOWN);
+			}
+			verify(storage).store(key, png(), "image/png");
+			verify(storage, never()).delete(key);
+		} finally {
+			TransactionSynchronizationManager.clearSynchronization();
+			TransactionSynchronizationManager.clear();
+		}
 	}
 
 	@Test
