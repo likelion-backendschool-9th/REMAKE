@@ -1,0 +1,15 @@
+/* 피그마 p1.1·p1.2: 질문 제목 위치 화면 위 90(헤더 56 + 34), Remake/header·text/strong, 옆 여백 16.
+   아래 고정 버튼(BottomBar)에 내용이 가리지 않게 아래 여백을 둔다 */
+.main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: 2.125rem var(--layout-gutter) calc(7.5rem + env(safe-area-inset-bottom));
+}
+
+.title {
+  color: var(--color-text-strong);
+  font: var(--font-header);
+}

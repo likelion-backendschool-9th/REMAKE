@@ -4,6 +4,8 @@
 import type { ReactNode } from "react";
 
 import { LoginContainer } from "../../../public/auth/login/_components/LoginContainer/LoginContainer";
+import { AllergiesContainer } from "../../../user/onboarding/allergies/_components/AllergiesContainer/AllergiesContainer";
+import { HouseholdContainer } from "../../../user/onboarding/household/_components/HouseholdContainer/HouseholdContainer";
 
 export type PreviewState = {
   /** 주소 /dev/p1/<slug> */
@@ -39,5 +41,35 @@ export const P1_STATES: PreviewState[] = [
     label: "common-약관드로워 (개인정보 처리 방침)",
     route: "/public/auth/login",
     render: () => <LoginContainer recentProvider={null} initialOpenTerms="privacy" />,
+  },
+  {
+    slug: "onboarding-household",
+    label: "p1.1-가구원 수",
+    route: "/user/onboarding/household",
+    render: () => <HouseholdContainer />,
+  },
+  {
+    slug: "onboarding-household-filled",
+    label: "p1.1-가구원 수 포커스 (4명 입력)",
+    route: "/user/onboarding/household",
+    render: () => <HouseholdContainer defaultHouseholdSize="4" />,
+  },
+  {
+    slug: "onboarding-household-error",
+    label: "p1.1-가구원 수 (범위 밖 51명, 피그마 없음)",
+    route: "/user/onboarding/household",
+    render: () => <HouseholdContainer defaultHouseholdSize="51" />,
+  },
+  {
+    slug: "onboarding-allergies",
+    label: "p1.2-알러지 선택 (0개)",
+    route: "/user/onboarding/allergies",
+    render: () => <AllergiesContainer />,
+  },
+  {
+    slug: "onboarding-allergies-selected",
+    label: "p1.2-알러지 선택 포커스 (갑각류·굴)",
+    route: "/user/onboarding/allergies",
+    render: () => <AllergiesContainer defaultSelected={["CRUSTACEAN", "OYSTER"]} />,
   },
 ];
