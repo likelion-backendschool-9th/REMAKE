@@ -41,5 +41,10 @@ remake:
       client-secret: test-google-secret
       token-uri: http://localhost:1/token
       user-info-uri: http://localhost:1/userinfo
+  gemini:
+    # 통합 테스트는 GeminiRecipeAdapter를 @MockitoBean으로 바꾸므로 실제 HTTP는 나가지 않는다.
+    api-key: test-gemini-key
+    model: test-model
+    base-url: http://localhost:1
 # 외부 서비스 키·주소는 연동이 생길 때 여기에 가짜 값으로 추가한다. 주소는 접속되지 않는 주소(http://localhost:1)로 둔다.
 # 빠뜨리면 셸이나 IDE에 설정된 환경 변수의 진짜 키가 쓰일 수 있다.

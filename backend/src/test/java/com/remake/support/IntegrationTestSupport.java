@@ -32,6 +32,7 @@ import com.remake.auth.adapter.out.oauth.SocialOAuthAdapter;
 import com.remake.global.config.AsyncConfig;
 import com.remake.global.config.UploadProperties;
 import com.remake.ingredient.domain.IngredientStatus;
+import com.remake.recipe.adapter.out.ai.GeminiRecipeAdapter;
 import com.remake.user.domain.AuthProvider;
 
 /**
@@ -102,6 +103,10 @@ public abstract class IntegrationTestSupport {
 	@MockitoBean
 	protected SocialOAuthAdapter socialOAuthAdapter;
 
+	// AI 레시피 생성. 실제 Gemini를 부르지 않는다. 테스트마다 필요한 응답·예외를 stub한다.
+	@MockitoBean
+	protected GeminiRecipeAdapter geminiRecipeAdapter;
+
 	/** 테스트용 회원 한 명을 넣고 id를 돌려준다. provider_user_id는 호출마다 다르게 만든다. */
 	protected Long createUser() {
 		return createUser(AuthProvider.KAKAO, "test-" + System.nanoTime());
@@ -166,6 +171,19 @@ public abstract class IntegrationTestSupport {
 				VALUES (?, ?, ?, 'FRIDGE', ?, 1, 1, 'EA', ?, ?, ?, ?)
 				RETURNING id
 				""", Long.class, userId, categoryId(categoryCode), name, expirationDate, price, status.name(), now, now);
+	}
+
+	/**
+	 * 레시피 한 건(빠른 생성, 1인분, 10분)을 넣고 id를 돌려준다. 재료·단계는 넣지 않는다.
+	 * 식단 칸·장바구니·저장 목록처럼 레시피 id만 필요한 테스트가 쓴다(레시피 FK가 있어 없는 번호는 넣을 수 없다).
+	 */
+	protected Long createRecipe(Long userId) {
+		ensureUser(userId);
+		return jdbcTemplate.queryForObject("""
+				INSERT INTO recipes (user_id, source, title, servings, cook_minutes, created_at)
+				VALUES (?, 'QUICK', '테스트 레시피', 1, 10, ?)
+				RETURNING id
+				""", Long.class, userId, LocalDateTime.now(clock));
 	}
 
 	@AfterEach
