@@ -28,6 +28,7 @@ public enum Screen {
 	RECEIPT_DETAIL("receipt_detail"),
 	CONSUMPTION_PATTERN("consumption_pattern"),
 	RECIPE_CREATE("recipe_create"),
+	RECIPE_CUSTOM("recipe_custom"),
 	RECIPE_DETAIL("recipe_detail"),
 	RECIPE_SAVED_LIST("recipe_saved_list"),
 	COOK_DEDUCT("cook_deduct"),
