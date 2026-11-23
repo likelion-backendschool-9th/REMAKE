@@ -20,7 +20,12 @@ export function SheetHeader({ title, titleId, onClose, className }: SheetHeaderP
       <h2 id={titleId} className={styles.title}>
         {title}
       </h2>
-      <IconButton icon={<CloseIcon />} label="닫기" onClick={onClose} />
+      <IconButton
+        icon={<CloseIcon strokeWidth={2.25} />}
+        iconSize={16}
+        label="닫기"
+        onClick={onClose}
+      />
     </div>
   );
 }

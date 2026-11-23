@@ -17,7 +17,7 @@ type SubHeaderProps = {
   onBack?: () => void;
   /**
    * 오른쪽 영역(피그마 오른쪽=없음/아이콘/글자).
-   * 아이콘: <IconButton icon={<MenuDotsVerticalIcon />} label="더보기" />
+   * 아이콘: <IconButton icon={<MenuDotsVerticalIcon />} iconSize={16} label="더보기" /> (bold 스타일, 크기는 IconButton 참고)
    * 글자: <TextButton tone="danger">삭제</TextButton>
    */
   right?: ReactNode;
@@ -30,7 +30,7 @@ export function SubHeader({ title, onBack, right, className }: SubHeaderProps) {
   return (
     <header className={cx(styles.header, className)}>
       <IconButton
-        icon={<ArrowLeftIcon />}
+        icon={<ArrowLeftIcon strokeWidth={2.85} />}
         label="뒤로 가기"
         onClick={onBack ?? (() => router.back())}
       />

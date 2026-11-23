@@ -1,4 +1,4 @@
-/* 피그마 2. 버튼 > 아이콘 버튼: 44×44, 아이콘 24, 색 icon/default */
+/* 피그마 2. 버튼 > 아이콘 버튼: 44×44, 아이콘 16·20·24(아이콘마다 다름), 색 icon/default */
 .button {
   display: inline-flex;
   flex: none;
@@ -30,4 +30,14 @@
 .icon svg {
   width: 1.5rem;
   height: 1.5rem;
+}
+
+.icon[data-size="20"] svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.icon[data-size="16"] svg {
+  width: 1rem;
+  height: 1rem;
 }

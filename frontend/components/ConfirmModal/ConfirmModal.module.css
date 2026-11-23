@@ -42,14 +42,15 @@
   font: var(--font-header);
 }
 
-/* 피그마 닫기 버튼은 35.2(아이콘 19.2). 누르는 영역 44를 지키면서 보이는 위치를 맞춘다 */
+/* 피그마 닫기 버튼은 아이콘 버튼의 0.8배(35.2, 아이콘 16×0.8=12.8). 누르는 영역 44를 지키면서 보이는 위치를 맞춘다 */
 .close {
   margin: calc(var(--space-4) * -1) calc(var(--space-12) * -1) calc(var(--space-4) * -1) 0;
 }
 
-.close svg {
-  width: 1.2rem;
-  height: 1.2rem;
+/* IconButton의 크기 규칙(.icon[data-size] svg)보다 우선하도록 선택자를 한 단계 더 붙인다 */
+.close.close [data-size] svg {
+  width: 0.8rem;
+  height: 0.8rem;
 }
 
 .message {

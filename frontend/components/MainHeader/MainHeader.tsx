@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { SettingsIcon } from "@solar-icons/react/linear";
+import { SettingsIcon } from "@solar-icons/react/outline";
 
 import { IconButton } from "@/components/IconButton/IconButton";
 import { Logo } from "@/components/Logo/Logo";

@@ -59,7 +59,8 @@ export function ConfirmModal({
             {title}
           </h2>
           <IconButton
-            icon={<CloseIcon />}
+            icon={<CloseIcon strokeWidth={2.25} />}
+            iconSize={16}
             label="닫기"
             onClick={onClose}
             className={styles.close}
