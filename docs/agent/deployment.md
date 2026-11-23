@@ -49,7 +49,7 @@ user → host Nginx (80/443, domain·TLS) → 127.0.0.1:APP_PORT → proxy conta
 
 The deploy workflows never transfer or overwrite the server's `.env` or `proxy/`. DB data is kept in the Docker named volume `remake_postgres-data`. `compose.prod.yml` pins the project name to `remake`, so the same volume is used regardless of the deploy directory's name or location. Do not change this name: a new, empty volume would be created. Uploaded files (shared recipe photos, etc.) are kept the same way in the named volume `remake_uploads`, mounted at `/data/uploads` in both backend slots; the backend receives that path as `REMAKE_UPLOAD_ROOT_DIRECTORY`, a fixed value in `compose.prod.yml` (not in `.env`).
 
-Frontend `NEXT_PUBLIC_*` values are embedded in the bundle when the image is built, not at runtime. `frontend/Dockerfile` sets the defaults: the API base URL is a same-domain relative path (empty value) and MSW mocking is off. Only the per-server value `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (Web Push public key) goes in the server's `.env`. A changed value takes effect when the next frontend deploy rebuilds the image.
+Frontend `NEXT_PUBLIC_*` values are embedded in the bundle when the image is built, not at runtime. `frontend/Dockerfile` sets the defaults: the API base URL is a same-domain relative path (empty value) and MSW mocking is off. No frontend value goes in the server's `.env` now. If a per-server value is needed, pass it from `.env` through `build.args` of `frontend-blue` in `compose.prod.yml` and declare it as an `ARG` in `frontend/Dockerfile`. A changed value takes effect when the next frontend deploy rebuilds the image.
 
 ## Host Nginx setup (one time)
 
@@ -59,7 +59,7 @@ The server also hosts other sites, so do not touch existing configuration; only 
 2. Pass the `Host`, `X-Real-IP`, `X-Forwarded-For`, and `X-Forwarded-Proto` headers. The app needs them to recognize HTTPS requests correctly.
 3. Set `proxy_buffering off`. The frontend (Next.js) streams pages in parts; if the host Nginx collects the response before sending it, streaming does not work. The inner proxy has the same setting on the frontend path.
 4. Do not enable caching (`proxy_cache`). The service worker (`/serwist/sw.js`) carries `s-maxage` of 30 days; if a shared cache keeps it, the old service worker is still served after a deploy.
-5. Reload only after `sudo nginx -t` passes. The Nginx is shared with other sites, so a configuration that fails validation also blocks their reloads. If it fails, remove the `sites-enabled/remake` link. Then issue a certificate with `sudo certbot --nginx -d <domain>`. The domain's DNS must point to this server. PWA and Web Push work only over HTTPS. The server's certbot timer renews the certificate automatically.
+5. Reload only after `sudo nginx -t` passes. The Nginx is shared with other sites, so a configuration that fails validation also blocks their reloads. If it fails, remove the `sites-enabled/remake` link. Then issue a certificate with `sudo certbot --nginx -d <domain>`. The domain's DNS must point to this server. The PWA (service worker, app install) works only over HTTPS. The server's certbot timer renews the certificate automatically.
 
 Do this once. Later deployments never touch the host Nginx.
 
