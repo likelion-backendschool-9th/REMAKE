@@ -23,8 +23,6 @@ class MealPlanPersistenceTest extends IntegrationTestSupport {
 
 	// 기본 시각 2026-03-04 10:00 (서울)
 	private static final LocalDate TODAY = LocalDate.of(2026, 3, 4);
-	// recipes 테이블이 아직 없어 FK가 없다. 아무 번호나 넣을 수 있다
-	private static final Long RECIPE_ID = 900L;
 
 	@Autowired
 	private MealPlanJpaRepository mealPlanRepository;
@@ -109,16 +107,18 @@ class MealPlanPersistenceTest extends IntegrationTestSupport {
 
 	@Test
 	void 칸을_저장하면_같은_값으로_읽히고_수정_시각이_채워진다() {
-		Long mealPlanId = saveMealPlan(request(createUser()));
+		Long userId = createUser();
+		Long mealPlanId = saveMealPlan(request(userId));
+		Long recipeId = createRecipe(userId);
 
-		Long slotId = saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.DINNER, RECIPE_ID));
+		Long slotId = saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.DINNER, recipeId));
 		MealPlanSlot loaded = transactionTemplate
 				.execute(status -> slotRepository.findById(slotId).orElseThrow().toDomain());
 
 		assertThat(loaded.mealPlanId()).isEqualTo(mealPlanId);
 		assertThat(loaded.slotDate()).isEqualTo(TODAY);
 		assertThat(loaded.mealType()).isEqualTo(MealType.DINNER);
-		assertThat(loaded.recipeId()).isEqualTo(RECIPE_ID);
+		assertThat(loaded.recipeId()).isEqualTo(recipeId);
 		assertThat(loaded.cookedAt()).isNull();
 		assertThat(jdbcTemplate.queryForObject("SELECT updated_at FROM meal_plan_slots WHERE id = ?",
 				LocalDateTime.class, slotId)).isEqualTo(LocalDateTime.of(2026, 3, 4, 10, 0));
@@ -126,8 +126,9 @@ class MealPlanPersistenceTest extends IntegrationTestSupport {
 
 	@Test
 	void 요리_시각이_저장된다() {
-		Long mealPlanId = saveMealPlan(request(createUser()));
-		Long slotId = saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.DINNER, RECIPE_ID));
+		Long userId = createUser();
+		Long mealPlanId = saveMealPlan(request(userId));
+		Long slotId = saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.DINNER, createRecipe(userId)));
 
 		transactionTemplate.executeWithoutResult(status -> {
 			MealPlanSlotJpaEntity entity = slotRepository.findById(slotId).orElseThrow();
@@ -143,21 +144,40 @@ class MealPlanPersistenceTest extends IntegrationTestSupport {
 
 	@Test
 	void 한_식단표에서_같은_날_같은_끼니는_하나다() {
-		Long mealPlanId = saveMealPlan(request(createUser()));
-		saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.DINNER, RECIPE_ID));
+		Long userId = createUser();
+		Long mealPlanId = saveMealPlan(request(userId));
+		Long recipeId = createRecipe(userId);
+		// 레시피 FK 때문이 아니라 칸 중복 때문에 실패하는지 보려고 실제 레시피를 하나 더 만든다
+		Long otherRecipeId = createRecipe(userId);
+		saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.DINNER, recipeId));
 
-		assertThatThrownBy(() -> saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.DINNER, RECIPE_ID + 1)))
+		assertThatThrownBy(() -> saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.DINNER, otherRecipeId)))
 				.isInstanceOf(DataIntegrityViolationException.class);
 		// 같은 날 다른 끼니, 다른 날 같은 끼니는 된다
-		saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.BREAKFAST, RECIPE_ID));
-		saveSlot(MealPlanSlot.create(mealPlanId, TODAY.plusDays(1), MealType.DINNER, RECIPE_ID));
+		saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.BREAKFAST, recipeId));
+		saveSlot(MealPlanSlot.create(mealPlanId, TODAY.plusDays(1), MealType.DINNER, recipeId));
+	}
+
+	@Test
+	void 칸의_레시피는_실제로_있어야_하고_칸이_쓰는_레시피는_지울_수_없다() {
+		Long userId = createUser();
+		Long mealPlanId = saveMealPlan(request(userId));
+		Long recipeId = createRecipe(userId);
+
+		assertThatThrownBy(() -> saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.DINNER, recipeId + 1000)))
+				.isInstanceOf(DataIntegrityViolationException.class);
+		saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.DINNER, recipeId));
+		assertThatThrownBy(() -> jdbcTemplate.update("DELETE FROM recipes WHERE id = ?", recipeId))
+				.isInstanceOf(DataIntegrityViolationException.class);
 	}
 
 	@Test
 	void 식단표를_지우면_칸도_같이_지워진다() {
-		Long mealPlanId = saveMealPlan(request(createUser()));
-		saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.DINNER, RECIPE_ID));
-		saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.BREAKFAST, RECIPE_ID));
+		Long userId = createUser();
+		Long mealPlanId = saveMealPlan(request(userId));
+		Long recipeId = createRecipe(userId);
+		saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.DINNER, recipeId));
+		saveSlot(MealPlanSlot.create(mealPlanId, TODAY, MealType.BREAKFAST, recipeId));
 
 		jdbcTemplate.update("DELETE FROM meal_plans WHERE id = ?", mealPlanId);
 

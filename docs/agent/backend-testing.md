@@ -80,6 +80,7 @@ class IngredientApiTest extends IntegrationTestSupport {
 - Add fake keys and an unreachable address (`http://localhost:1`) for the adapter's properties to `application-test.yml`. Tests do not read `backend/.env` (only the `local` profile reads it), but they still read environment variables from the shell or IDE. Without the fake key, a real key from those variables can be used.
 - If files are saved to a server folder, do not mock `filestorage`. Set the folder to a test folder in `application-test.yml` and clear it in `IntegrationTestSupport.cleanUp`.
 - An adapter test (no Spring) builds a client from `RestClient.builder()` bound with `MockRestServiceServer.bindTo(builder)` and passes it to the adapter's constructor. Do not set a request factory (for example for timeouts) on that builder after binding: it replaces the mock server, and requests go to the real network.
+- To give an adapter timeouts, build its `RestClient` in a `@Configuration` bean (request factory and base URL there) and have the adapter's constructor take the built `RestClient` with `@Qualifier`. The adapter test then passes a `RestClient` built from the mock-bound builder. Example: `GeminiClientConfig` and `GeminiRecipeAdapter`.
 
 ## Reference data
 
