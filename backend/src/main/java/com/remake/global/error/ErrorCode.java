@@ -30,6 +30,9 @@ public enum ErrorCode {
 	SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 요청을 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
 
 	// 기능별 (기능을 만드는 PR에서 추가. 마지막 줄만 ;로 끝낸다)
+	// 공유 사진
+	PHOTO_REQUIRED(HttpStatus.BAD_REQUEST, "조리 사진을 1장 이상 첨부해 주세요."),
+	UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 파일 형식입니다."),
 	// 인증
 	OAUTH_FAILED(HttpStatus.UNAUTHORIZED, "소셜 로그인에 실패했습니다."),
 	OAUTH_PROVIDER_UNSUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 로그인 방식입니다."),

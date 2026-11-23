@@ -89,6 +89,14 @@ int add(Long userId, CartSource source, List<CartGroup> groups);
 
 서버(5개): `cart_item_added`(담기 UseCase에서만, 실제 추가 건수가 있을 때 호출당 1건, `cart_source`·`item_count`), `shared_recipe_published`, `shared_recipe_saved`, `shared_recipe_reported`, `weekly_reward_granted`(+ 공유 저장 때 `recipe_saved`). 프론트: `ranking_viewed`, `shared_recipe_viewed`, `shared_write_started`, `cart_viewed`, `cart_amount_changed`, `cart_items_deleted`. 레시피·재료 이름은 속성에 넣지 않습니다.
 
+## 조리 사진 구현 초안 (#64, 미확정)
+
+- 제안 정책은 사진 1~5장, 파일당 최대 5MiB(5 × 1024 × 1024바이트), JPEG·PNG·WebP입니다. 제한값은 `SharedRecipePhotoPolicy`, 허용 형식은 `SharedRecipePhotoFormat`에서 관리합니다. 기존 확정 정책은 최소 1장 필수이며 나머지 값은 [#64](https://github.com/likelion-backendschool-9th/REMAKE/issues/64#issuecomment-7064847485)에서 검토합니다. 영수증의 10MB 제한을 공유 사진에 자동 적용하지 않습니다.
+- `SharedRecipePhotoService`는 `StoreSharedRecipePhotosUseCase`를 구현합니다. `SharedRecipePhotoUpload`에 MIME·신고된 크기·입력 스트림 공급자를 전달하고 원본 파일명은 넘기지 않습니다. 모든 파일의 실제 바이트 수와 MIME·헤더 일치를 검사한 뒤 저장합니다. 헤더 검사는 이미지 전체 디코딩이나 HEIC 변환을 수행하지 않습니다.
+- 게시 UseCase가 시작한 활성 쓰기 트랜잭션 안에서 `store`를 호출합니다. 반환된 `imageKey`와 0부터 시작하는 `sortOrder`를 같은 트랜잭션으로 DB에 저장합니다. 키는 임의 생성하며 만료되는 URL은 DB에 저장하지 않습니다. 사진 처리는 이벤트를 발행하지 않고 게시 이벤트는 게시 UseCase가 담당합니다.
+- 저장 실패 시 실패한 쓰기의 키까지 포함해 시도한 파일을 정리하고, 트랜잭션 롤백 때도 정리합니다. 삭제는 이미 없는 파일에도 성공해야 합니다. 일부 삭제가 실패해도 나머지 정리를 계속하고 원래 업로드 오류를 보존하며 외부 저장소 오류 원문 없이 경고를 남깁니다. 즉시 삭제에 실패한 키는 롤백 때 다시 시도하고, 계속 실패하면 저장소 확인과 잔여 파일 정리가 필요합니다. 프로세스 중단 복구나 영속적인 정리 큐까지 구현한 것은 아닙니다.
+- 실제 저장소·사진 URL 제공·최종 업로드 제한·공유 내리기/탈퇴 시 물리 삭제는 결정 대기입니다. 실제 저장소 어댑터를 연결하기 전에는 핵심 서비스를 운영 Bean으로 등록하지 않습니다. 임시 운영 저장소를 기본값으로 추가하거나, 영수증도 사용하는 전역 multipart 제한을 바꾸거나, 결정·연결 전 #64를 완료 처리하지 않습니다. 배포 전 배포 담당자와 영속 저장소 및 두 Nginx 제한을 맞춥니다.
+
 ## 체크리스트
 
 - [ ] 익명 보장(응답·로그·이벤트에 작성자 정보 없음)
