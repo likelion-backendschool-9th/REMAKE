@@ -31,7 +31,7 @@ remake:
     refresh-cookie-name: REFRESH_TOKEN
   gemini:
     # AI 레시피 생성. 키는 backend/.env의 GEMINI_API_KEY에 넣는다(커밋 금지). 비어 있으면 생성이 AI_UPSTREAM_ERROR로 실패한다.
-    # 운영 설정(compose.prod.yml)에는 팀이 키 관리를 정한 뒤 별도 PR로 추가한다.
+    # 운영은 서버 .env의 GEMINI_API_KEY를 compose.prod.yml이 넘긴다(운영 전용 프로젝트 키, 로컬에서 쓰지 않는다).
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
   oauth:
