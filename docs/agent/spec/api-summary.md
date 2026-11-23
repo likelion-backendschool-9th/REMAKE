@@ -43,6 +43,19 @@ Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo)
 
 ## 2. Fridge (owner: 김재연)
 
+<<<<<<< HEAD
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/user/ingredients/summary` | `{ total, danger, soon, ok }` |
+| GET | `/user/ingredients` | Filters `storageType`, `categoryCode`, `q`; default sort by expiry soonest; item has `dDay`, `status` (DANGER/SOON/OK), `isExpirationEstimated` |
+| GET | `/user/ingredients/{id}` | Detail |
+| POST | `/user/ingredients` | Required `name, categoryCode, storage, expirationDate, amount, unit`; optional `price`. Event: ingredient_added |
+| PATCH | `/user/ingredients/{id}` | Partial update of `name, categoryCode, storage, expirationDate, price, amount`; omitted keys stay unchanged, `"price": null` clears the price. Unit cannot be changed after registration (a `unit` key is ignored). Editing expiry clears the "estimated" flag. `amount` can be edited only while the ingredient is ACTIVE and never used or discarded (sets remaining and initial amount together); otherwise `INVALID_INPUT` |
+| POST | `/user/ingredients/{id}/consume` | `USED`/`DISCARDED` + amount; at 0 -> FINISHED. Events: ingredient_used, ingredient_discarded |
+| DELETE | `/user/ingredients/{id}` | Blocked with `INGREDIENT_HAS_LOGS` if history exists |
+| GET | `/user/ingredient-catalog` | Autocomplete / exclusion search `?q=&commonExclusion=true`. `q`: name contains, case-insensitive, max 50 chars (longer is `INVALID_INPUT`), optional (omitted = all); prefix matches first, then by name, max 50 items. `commonExclusion=true` puts common allergy items (`isCommonExclusion`) on top. Item: `id`, `name`, `categoryCode`, `shelfLifeDays` (category default when the item has none), `isCommonExclusion` |
+| GET | `/user/ingredient-categories` | 12 categories with defaults |
+=======
 | No. | Method | Path | Description | Request | Response | Events |
 | --- | --- | --- | --- | --- | --- | --- |
 | 11 | GET | `/user/ingredients/summary` | Total and per-status counts (independent of filters) | - | `200 { total, danger, soon, ok }` | |
@@ -54,6 +67,7 @@ Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo)
 | 17 | DELETE | `/user/ingredients/{id}` | Delete the ingredient. Use/discard logs stay with the name | - | `204` | |
 | 18 | POST | `/user/ingredients/{id}/consume` | Use or discard. Discarding computes the cost when a price exists. Deletes the ingredient at 0 | `{ type: "USED"\|"DISCARDED", amount }` | `200 { remainingAmount, deleted, costAmount? }` | ingredient_used, ingredient_discarded |
 | 19 | GET | `/user/ingredient-categories` | 12 categories | - | `200 { items: [{ code, name, imageUrl }] }` | |
+>>>>>>> dev
 
 `GET /user/ingredient-catalog` (autocomplete) is not part of the API. `ingredient_catalog` is used only inside the server (11/22 decision).
 
