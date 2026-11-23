@@ -9,12 +9,15 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: "primary" | "danger";
   /** 피그마 상태=로딩. 점 세 개를 보여 주고 누를 수 없게 한다. */
   isLoading?: boolean;
+  /** 높이: lg=53(화면 아래 버튼), md=44(입력 시트 안 버튼) */
+  size?: "lg" | "md";
 };
 
 /** 피그마 디자인 시스템 > 2. 버튼 > 버튼. 화면 아래 큰 버튼. 폭은 부모에 맞춰 늘어난다. */
 export function Button({
   tone = "primary",
   isLoading = false,
+  size = "lg",
   disabled,
   type = "button",
   className,
@@ -26,6 +29,7 @@ export function Button({
       type={type}
       className={cx(styles.button, className)}
       data-tone={tone}
+      data-size={size}
       data-loading={isLoading || undefined}
       disabled={disabled || isLoading}
       aria-busy={isLoading || undefined}
