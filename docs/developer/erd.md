@@ -852,14 +852,12 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 
 ## 지금 코드와 다른 점
 
-레포 `dev`의 Flyway V1~V4와 열린 PR #140(V5)에 이미 있는 테이블이에요. 머지된 마이그레이션 파일은 고치지 않고, 새 번호의 마이그레이션으로 이 ERD에 맞춰요.
+레포 `dev`의 Flyway V1~V4와 열린 PR #140(V5)에 이미 있는 테이블이에요. 머지된 마이그레이션 파일은 고치지 않고, 새 번호의 마이그레이션으로 이 ERD에 맞춰요. `ingredient_categories`와 `ingredients`는 이미 맞췄어요(V11, #71).
 
 | 테이블 | 지금 코드 | 이 ERD에 맞추려면 |
 | --- | --- | --- |
 | `users` | `status`(ACTIVE/SUSPENDED) 있음 | `status` 삭제 |
 | `refresh_tokens` | `revoked_at` 있음(로그아웃 = 취소 표시) | `revoked_at` 삭제. 로그아웃하면 행 삭제 |
-| `ingredient_categories` | `default_unit` 있음, `sort_order` 없음, SEASONING 이름 '양념·소스' | `default_unit` 삭제, `sort_order` 추가(부록 A 순서), SEASONING 이름 '양념' |
-| `ingredients` | `is_expiration_estimated`, `status`(ACTIVE/FINISHED), `version` 있음 | 세 컬럼 삭제. 수량이 0이 되면 행 삭제 |
 | `ingredient_catalog` | PR #140(V5): `unit` 없음, 자동완성 API `GET /user/ingredient-catalog` 있음 | `unit` 추가, 자동완성 API는 빼기 |
 | `events` | 같음 | 바꿀 것 없음 |
 

@@ -1,5 +1,8 @@
 package com.remake.ingredient.application.service;
 
+import java.time.Clock;
+import java.time.LocalDate;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,7 +17,9 @@ import com.remake.ingredient.application.port.out.LoadIngredientCategoryPort;
 import com.remake.ingredient.application.port.out.LoadIngredientLogPort;
 import com.remake.ingredient.application.port.out.LoadIngredientPort;
 import com.remake.ingredient.application.port.out.SaveIngredientPort;
+import com.remake.ingredient.domain.FridgeIngredient;
 import com.remake.ingredient.domain.Ingredient;
+import com.remake.ingredient.domain.IngredientCategory;
 
 import lombok.RequiredArgsConstructor;
 
@@ -31,16 +36,17 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 	private final SaveIngredientPort saveIngredientPort;
 	private final DeleteIngredientPort deleteIngredientPort;
 	private final LoadIngredientLogPort loadIngredientLogPort;
+	private final Clock clock;
 
 	@Override
 	@Transactional(readOnly = true)
-	public Ingredient getIngredient(Long userId, Long ingredientId) {
-		return loadOwned(userId, ingredientId);
+	public FridgeIngredient getIngredient(Long userId, Long ingredientId) {
+		return toFridgeIngredient(loadOwned(userId, ingredientId));
 	}
 
 	@Override
 	@Transactional
-	public Ingredient updateIngredient(UpdateIngredientCommand command) {
+	public FridgeIngredient updateIngredient(UpdateIngredientCommand command) {
 		Ingredient ingredient = loadOwned(command.userId(), command.ingredientId());
 		// 수량 수정은 입력 실수를 바로잡는 용도라, 쓰거나 버린 기록이 있으면 처음 양이 달라지므로 거부한다.
 		if (command.amount() != null && loadIngredientLogPort.existsByIngredientId(ingredient.id())) {
@@ -69,7 +75,7 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 		} catch (IllegalArgumentException e) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT, e.getMessage());
 		}
-		return saveIngredientPort.save(ingredient);
+		return toFridgeIngredient(saveIngredientPort.save(ingredient));
 	}
 
 	@Override
@@ -78,6 +84,13 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 		Ingredient ingredient = loadOwned(userId, ingredientId);
 		// 사용·폐기 기록이 있어도 지울 수 있다. 기록은 이름·단위와 함께 남고 재료 연결만 DB가 비운다(ON DELETE SET NULL).
 		deleteIngredientPort.deleteById(ingredient.id());
+	}
+
+	// 카테고리 이미지와 오늘 기준 D-day·상태를 붙인다. 계산은 FridgeIngredient.of 한 곳이라 목록(API 12)과 같다.
+	private FridgeIngredient toFridgeIngredient(Ingredient ingredient) {
+		IngredientCategory category = loadIngredientCategoryPort.loadById(ingredient.categoryId())
+				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND));
+		return FridgeIngredient.of(ingredient, category, LocalDate.now(clock));
 	}
 
 	private Ingredient loadOwned(Long userId, Long ingredientId) {

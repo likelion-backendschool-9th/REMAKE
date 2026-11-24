@@ -8,6 +8,7 @@ import com.remake.recipe.domain.CookingTool;
 import com.remake.recipe.domain.Cuisine;
 import com.remake.recipe.domain.RecipeSource;
 import com.remake.recipe.domain.Taste;
+import com.remake.user.domain.AllergenCode;
 
 /**
  * 레시피 생성 요청(API 28). 고른 옵션(id·enum)만 받는다. 자유 입력은 없다.
@@ -26,7 +27,7 @@ public record GenerateRecipeCommand(
 		CookingTool tool,
 		CookingMethod method,
 		Cuisine cuisine,
-		List<String> allergenCodes) {
+		List<AllergenCode> allergenCodes) {
 
 	public GenerateRecipeCommand {
 		ingredientIds = ingredientIds == null ? List.of() : List.copyOf(ingredientIds);

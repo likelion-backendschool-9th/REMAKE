@@ -23,7 +23,7 @@ Source: PRD v4 and policy doc v4 (Figma-based, 2026-11-22; Korean, kept in Notio
 - Loading: lists use skeletons. AI recipe generation uses a loading screen (up to 60 s, screen pending). Meal-plan generation has no loading screen (section 5).
 - Success toast: after saving a recipe, registering a receipt, or moving cart items to the fridge, show how many cart items were added or removed (not shown when 0). Meal-plan generation is asynchronous, so its cart count goes into the completion notification (section 5). Wording is (proposal).
 - Toasts use the design-system component `토스트` with three types: default, success, error (decided 11/22).
-- Excluded ingredients (allergies) from settings are never used in recipe or meal-plan generation.
+- Excluded ingredients (allergies) from settings are always applied to recipe and meal-plan generation: they are sent to the AI as ingredients to avoid and never appear in a generated recipe.
 - No health or medical information is collected. Settings values are visible to the owner only.
 - Terms of service and privacy policy: links on the login screen open a drawer (screen pending). No separate consent screen (proposal).
 

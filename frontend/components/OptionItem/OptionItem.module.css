@@ -1,0 +1,23 @@
+/* 피그마 4. 선택 > 선택 항목: 여백 6/4, 간격 space/8, Remake/content. 선택=text/title, 아님=text/disabled */
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--space-6) var(--space-4);
+  cursor: pointer;
+}
+
+.text {
+  color: var(--color-text-disabled);
+  font: var(--font-content);
+}
+
+.item:has(input:checked) .text {
+  color: var(--color-text-title);
+}
+
+.item:has(input:disabled) {
+  cursor: default;
+}

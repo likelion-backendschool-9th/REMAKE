@@ -1,0 +1,8 @@
+/* 피그마 7. 목록 행·카드 > 빈 상태: 위아래 여백 space/30, 가운데, Remake/content·text/assist */
+.empty {
+  width: 100%;
+  padding: var(--space-30) 0;
+  color: var(--color-text-assist);
+  font: var(--font-content);
+  text-align: center;
+}

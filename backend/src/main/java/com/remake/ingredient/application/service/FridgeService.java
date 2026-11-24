@@ -15,11 +15,9 @@ import com.remake.global.error.ErrorCode;
 import com.remake.ingredient.application.port.in.GetFridgeUseCase;
 import com.remake.ingredient.application.port.out.LoadIngredientCategoryPort;
 import com.remake.ingredient.application.port.out.LoadIngredientPort;
-import com.remake.ingredient.domain.ExpiryPolicy;
 import com.remake.ingredient.domain.ExpiryStatus;
 import com.remake.ingredient.domain.FridgeIngredient;
 import com.remake.ingredient.domain.FridgeSummary;
-import com.remake.ingredient.domain.Ingredient;
 import com.remake.ingredient.domain.IngredientCategory;
 import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.StorageLocation;
@@ -28,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 냉장고 화면 조회. 오늘 날짜는 주입된 Clock으로만 구하고, 상태는 ExpiryPolicy 한 곳에서 판정해
- * 요약 수치와 목록 상태가 어긋나지 않게 한다. FINISHED 재료는 목록과 요약에서 제외한다.
+ * 요약 수치와 목록 상태가 어긋나지 않게 한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -53,8 +51,8 @@ public class FridgeService implements GetFridgeUseCase {
 				.collect(Collectors.toMap(IngredientCategory::id, Function.identity(), (a, b) -> a));
 
 		LocalDate today = LocalDate.now(clock);
-		return loadIngredientPort.loadActiveByUserId(userId, storage, categoryId).stream()
-				.map(ingredient -> toFridgeIngredient(ingredient, categoriesById, today))
+		return loadIngredientPort.loadByUserId(userId, storage, categoryId).stream()
+				.map(ingredient -> FridgeIngredient.of(ingredient, categoriesById.get(ingredient.categoryId()), today))
 				// 상태는 오늘 날짜로 계산하는 값이라 DB가 아니라 여기서 거른다. 목록은 페이징이 없어 한 번에 거르면 된다.
 				.filter(item -> status == null || item.status() == status)
 				.toList();
@@ -63,13 +61,6 @@ public class FridgeService implements GetFridgeUseCase {
 	@Override
 	@Transactional(readOnly = true)
 	public FridgeSummary getFridgeSummary(Long userId) {
-		return FridgeSummary.of(loadIngredientPort.loadActiveExpirationDates(userId), LocalDate.now(clock));
-	}
-
-	private FridgeIngredient toFridgeIngredient(Ingredient ingredient, Map<Long, IngredientCategory> categoriesById,
-			LocalDate today) {
-		long dDay = ExpiryPolicy.dDay(ingredient.expirationDate(), today);
-		return new FridgeIngredient(ingredient, categoriesById.get(ingredient.categoryId()), dDay,
-				ExpiryPolicy.statusOf(dDay));
+		return FridgeSummary.of(loadIngredientPort.loadExpirationDates(userId), LocalDate.now(clock));
 	}
 }

@@ -1,6 +1,5 @@
 package com.remake.ingredient;
 
-import static com.remake.ingredient.domain.IngredientStatus.ACTIVE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -16,6 +15,8 @@ import com.remake.ingredient.application.port.in.GetIngredientUseCase;
 import com.remake.ingredient.application.port.in.UpdateIngredientCommand;
 import com.remake.ingredient.application.port.in.UpdateIngredientCommand.PriceChange;
 import com.remake.ingredient.application.port.in.UpdateIngredientUseCase;
+import com.remake.ingredient.domain.ExpiryStatus;
+import com.remake.ingredient.domain.FridgeIngredient;
 import com.remake.ingredient.domain.Ingredient;
 import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.StorageLocation;
@@ -39,7 +40,7 @@ class IngredientServiceTest extends IntegrationTestSupport {
 	private DeleteIngredientUseCase deleteUseCase;
 
 	private Long createMilk(Long userId, Long price) {
-		return createIngredient(userId, "DAIRY_EGG", "우유", EXPIRATION, ACTIVE, price);
+		return createIngredient(userId, "DAIRY_EGG", "우유", EXPIRATION, price);
 	}
 
 	private void assertNotFound(Runnable call) {
@@ -53,41 +54,38 @@ class IngredientServiceTest extends IntegrationTestSupport {
 	void 본인_재료의_상세를_읽는다() {
 		Long id = createMilk(OWNER, 3000L);
 
-		Ingredient ingredient = getUseCase.getIngredient(OWNER, id);
+		Ingredient ingredient = getUseCase.getIngredient(OWNER, id).ingredient();
 
 		assertThat(ingredient.id()).isEqualTo(id);
 		assertThat(ingredient.name()).isEqualTo("우유");
 		assertThat(ingredient.expirationDate()).isEqualTo(EXPIRATION);
 		assertThat(ingredient.price()).isEqualTo(3000L);
-		assertThat(ingredient.status()).isEqualTo(ACTIVE);
 	}
 
 	@Test
 	void 다른_사용자의_재료는_없는_것과_같이_404이다() {
 		Long id = createMilk(OTHER, null);
 
-		assertNotFound(() -> getUseCase.getIngredient(OWNER, id));
+		assertNotFound(() -> getUseCase.getIngredient(OWNER, id).ingredient());
 	}
 
 	@Test
 	void 없는_재료는_404이다() {
-		assertNotFound(() -> getUseCase.getIngredient(OWNER, 999_999L));
+		assertNotFound(() -> getUseCase.getIngredient(OWNER, 999_999L).ingredient());
 	}
 
 	@Test
-	void 소비기한을_고치면_추정_표시가_꺼진다() {
+	void 소비기한을_고치면_응답용_D_day와_상태도_새_날짜로_계산한다() {
 		Long id = createMilk(OWNER, null);
-		jdbcTemplate.update("UPDATE ingredients SET is_expiration_estimated = true WHERE id = ?", id);
-		assertThat(jdbcTemplate.queryForObject("SELECT is_expiration_estimated FROM ingredients WHERE id = ?",
-				Boolean.class, id)).isTrue();
 
-		Ingredient updated = updateUseCase.updateIngredient(
+		FridgeIngredient updated = updateUseCase.updateIngredient(
 				new UpdateIngredientCommand(OWNER, id, null, null, LocalDate.of(2026, 3, 20), null, null));
 
-		assertThat(updated.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 20));
-		assertThat(updated.expirationEstimated()).isFalse();
-		assertThat(jdbcTemplate.queryForObject("SELECT is_expiration_estimated FROM ingredients WHERE id = ?",
-				Boolean.class, id)).isFalse();
+		// 시험용 시계의 오늘은 2026-03-04이다
+		assertThat(updated.ingredient().expirationDate()).isEqualTo(LocalDate.of(2026, 3, 20));
+		assertThat(updated.dDay()).isEqualTo(16);
+		assertThat(updated.status()).isEqualTo(ExpiryStatus.OK);
+		assertThat(updated.category().code()).isEqualTo(IngredientCategoryCode.DAIRY_EGG);
 	}
 
 	@Test
@@ -96,12 +94,12 @@ class IngredientServiceTest extends IntegrationTestSupport {
 
 		updateUseCase.updateIngredient(
 				new UpdateIngredientCommand(OWNER, id, null, null, null, StorageLocation.FREEZER, new PriceChange(2500L)));
-		Ingredient changed = getUseCase.getIngredient(OWNER, id);
+		Ingredient changed = getUseCase.getIngredient(OWNER, id).ingredient();
 		assertThat(changed.storage()).isEqualTo(StorageLocation.FREEZER);
 		assertThat(changed.price()).isEqualTo(2500L);
 
 		updateUseCase.updateIngredient(new UpdateIngredientCommand(OWNER, id, null, null, null, null, new PriceChange(null)));
-		assertThat(getUseCase.getIngredient(OWNER, id).price()).isNull();
+		assertThat(getUseCase.getIngredient(OWNER, id).ingredient().price()).isNull();
 	}
 
 	@Test
@@ -110,7 +108,7 @@ class IngredientServiceTest extends IntegrationTestSupport {
 
 		updateUseCase.updateIngredient(new UpdateIngredientCommand(OWNER, id, null, null, LocalDate.of(2026, 4, 1), null, null));
 
-		Ingredient ingredient = getUseCase.getIngredient(OWNER, id);
+		Ingredient ingredient = getUseCase.getIngredient(OWNER, id).ingredient();
 		assertThat(ingredient.storage()).isEqualTo(StorageLocation.FRIDGE);
 		assertThat(ingredient.price()).isEqualTo(3000L);
 	}
@@ -125,7 +123,7 @@ class IngredientServiceTest extends IntegrationTestSupport {
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.INVALID_INPUT);
 
-		Ingredient ingredient = getUseCase.getIngredient(OWNER, id);
+		Ingredient ingredient = getUseCase.getIngredient(OWNER, id).ingredient();
 		assertThat(ingredient.expirationDate()).isEqualTo(EXPIRATION);
 		assertThat(ingredient.price()).isEqualTo(3000L);
 	}
@@ -137,7 +135,7 @@ class IngredientServiceTest extends IntegrationTestSupport {
 		updateUseCase.updateIngredient(new UpdateIngredientCommand(OWNER, id, "  두부  ", IngredientCategoryCode.BEAN_TOFU,
 				null, null, null));
 
-		Ingredient changed = getUseCase.getIngredient(OWNER, id);
+		Ingredient changed = getUseCase.getIngredient(OWNER, id).ingredient();
 		assertThat(changed.name()).isEqualTo("두부");
 		assertThat(changed.categoryId()).isEqualTo(categoryId("BEAN_TOFU"));
 	}
@@ -152,7 +150,7 @@ class IngredientServiceTest extends IntegrationTestSupport {
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.INVALID_INPUT);
 
-		assertThat(getUseCase.getIngredient(OWNER, id).name()).isEqualTo("우유");
+		assertThat(getUseCase.getIngredient(OWNER, id).ingredient().name()).isEqualTo("우유");
 	}
 
 	@Test
@@ -188,7 +186,7 @@ class IngredientServiceTest extends IntegrationTestSupport {
 		assertNotFound(() -> updateUseCase.updateIngredient(
 				new UpdateIngredientCommand(OWNER, id, null, null, LocalDate.of(2026, 4, 1), null, null)));
 
-		assertThat(getUseCase.getIngredient(OTHER, id).expirationDate()).isEqualTo(EXPIRATION);
+		assertThat(getUseCase.getIngredient(OTHER, id).ingredient().expirationDate()).isEqualTo(EXPIRATION);
 	}
 
 	@Test

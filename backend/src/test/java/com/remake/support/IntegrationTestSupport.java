@@ -27,7 +27,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import com.remake.auth.adapter.out.oauth.SocialOAuthAdapter;
 import com.remake.global.config.AsyncConfig;
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.mealplan.adapter.out.ai.UnavailableMealPlanAiAdapter;
 import com.remake.recipe.adapter.out.ai.GeminiRecipeAdapter;
 import com.remake.user.domain.AuthProvider;
@@ -164,21 +163,20 @@ public abstract class IntegrationTestSupport {
 	}
 
 	/** 냉장고 재료 한 건을 넣고 id를 돌려준다. 단위·양은 기본값(EA, 1)이고 생성·수정 시각은 시험용 시계를 따른다. */
-	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate,
-			IngredientStatus status) {
-		return createIngredient(userId, categoryCode, name, expirationDate, status, null);
+	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate) {
+		return createIngredient(userId, categoryCode, name, expirationDate, null);
 	}
 
 	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate,
-			IngredientStatus status, Long price) {
+			Long price) {
 		ensureUser(userId);
 		LocalDateTime now = LocalDateTime.now(clock);
 		return jdbcTemplate.queryForObject("""
 				INSERT INTO ingredients (user_id, category_id, name, storage, expiration_date, amount, initial_amount,
-				                         unit, price, status, created_at, updated_at)
-				VALUES (?, ?, ?, 'FRIDGE', ?, 1, 1, 'EA', ?, ?, ?, ?)
+				                         unit, price, created_at, updated_at)
+				VALUES (?, ?, ?, 'FRIDGE', ?, 1, 1, 'EA', ?, ?, ?)
 				RETURNING id
-				""", Long.class, userId, categoryId(categoryCode), name, expirationDate, price, status.name(), now, now);
+				""", Long.class, userId, categoryId(categoryCode), name, expirationDate, price, now, now);
 	}
 
 	/**
