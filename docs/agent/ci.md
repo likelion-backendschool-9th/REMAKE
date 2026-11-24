@@ -55,6 +55,20 @@ The backend tests start from an empty DB and apply every migration in order, so 
 - The result is a snapshot. If another PR with a migration merges after your check passed, your check stays green. **Right before merging a PR that adds a migration, re-run Backend CI**: on the PR's **Checks** tab, open Backend CI and click **Re-run all jobs**. A re-run is not a push, so the approval stays. It compares with the latest `dev` again.
 - Run it locally from the repository root: `git fetch origin dev && python3 scripts/check_migrations.py origin/dev HEAD`.
 
+### Warning: statements that are hard to undo
+
+The same job also reads each new migration file and raises a yellow warning on the line when it finds a statement that breaks the previous version or cannot be undone. The warnings are also listed in the run summary ("되돌리기 어려운 마이그레이션"). They do not block the merge.
+
+| Statement | Why it is risky during a deployment |
+| --- | --- |
+| `DROP TABLE`, `DROP COLUMN`, `RENAME` | The previous version keeps serving on the same DB for a few tens of seconds after the new slot applies the migration, and fails when it uses the dropped or renamed table or column. A backend rollback also fails, because the previous image does not start on the new schema |
+| `ALTER COLUMN ... TYPE`, `SET NOT NULL` | The previous version may write values that the changed column no longer accepts |
+| `DELETE FROM`, `TRUNCATE` | Deleted rows cannot be brought back without a backup |
+
+- `UPDATE` and `DROP INDEX` are not warned about: they are common and do not break the previous version. Comments are ignored. It is a text search, so unusual forms (such as `DROP` without `COLUMN`) can slip through.
+- When the warning appears for a table that has data, agree on the order with the deployment owner before merging. For example, first deploy code that no longer uses the column, then drop it in a later PR.
+- The server backs up the DB right before applying a new migration. See the [deployment document](deployment.md#backup-before-a-new-migration).
+
 ## Production start check
 
 The tests replace external integrations with fakes and run with the test settings, so they pass even when the app cannot start with the production settings. Example: #132 passed CI, but on the server the real `SocialOAuthAdapter` needed `RestClient.Builder`, whose dependency was missing. The new slot never started, and deployment stayed blocked until #141 was merged.

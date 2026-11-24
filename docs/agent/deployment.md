@@ -110,6 +110,7 @@ When a new backend slot starts, Flyway applies the migrations the DB does not ha
 - Location: `backups/remake-<time>-V<applied>-before-V<new>.dump` in the deploy directory. A backup contains member data, so the folder is `700` and each file `600`. The CD sync does not touch this folder.
 - Only the 5 most recent backups are kept (`BACKUP_KEEP`). No backup is taken when there is no new migration, or on the first deployment (no `flyway_schema_history` yet).
 - If the backup fails (the applied version cannot be read, `pg_dump` fails, or the folder cannot be created), the deploy stops without starting the new slot, and the previous version keeps serving. Fix the cause and re-run the failed Backend CD.
+- Backend CI warns about statements that are hard to undo in a PR's new migrations. See the [CI document](ci.md#warning-statements-that-are-hard-to-undo).
 
 To bring the DB back to the state right before a migration (for example, when a migration deleted data by mistake):
 
