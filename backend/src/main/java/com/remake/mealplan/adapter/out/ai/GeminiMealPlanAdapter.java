@@ -320,11 +320,32 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 					"propertyOrdering", List.of("ingredientId", "uses", "total"),
 					"required", List.of("ingredientId", "uses", "total")));
 
-	/** Gemini 응답 스키마(OpenAPI 부분집합). 배분표(fridgePlan)를 먼저, 칸(slots)을 나중에 쓰게 한다. parse는 slots만 읽는다. */
+	/**
+	 * 메뉴 목록. 칸마다 이름·주재료·조리법만 먼저 쓰게 해 같은 요리 반복을 줄인다
+	 * (11-24 실측: 같은 이름 2번, 아침이 매일 계란+김치). 서버는 읽지 않는다(다양성은 검사하지 않음).
+	 */
+	private static final Map<String, Object> MENU_PLAN_SCHEMA = Map.of(
+			"type", "ARRAY",
+			"items", Map.of(
+					"type", "OBJECT",
+					"properties", Map.of(
+							"day", Map.of("type", "INTEGER"),
+							"mealType", Map.of("type", "STRING", "enum", MEAL_TYPES),
+							"title", Map.of("type", "STRING"),
+							"mainIngredient", Map.of("type", "STRING"),
+							"method", Map.of("type", "STRING", "description", "볶음·국·찌개·구이·무침·조림·찜·죽 같은 조리법")),
+					"propertyOrdering", List.of("day", "mealType", "title", "mainIngredient", "method"),
+					"required", List.of("day", "mealType", "title", "mainIngredient", "method")));
+
+	/**
+	 * Gemini 응답 스키마(OpenAPI 부분집합). 메뉴 목록(menuPlan) → 배분표(fridgePlan) → 칸(slots) 순서로 쓰게 한다.
+	 * parse는 slots만 읽는다.
+	 */
 	static final Map<String, Object> RESPONSE_SCHEMA = Map.of(
 			"type", "OBJECT",
-			"propertyOrdering", List.of("fridgePlan", "slots"),
+			"propertyOrdering", List.of("menuPlan", "fridgePlan", "slots"),
 			"properties", Map.of(
+					"menuPlan", MENU_PLAN_SCHEMA,
 					"fridgePlan", FRIDGE_PLAN_SCHEMA,
 					"slots", Map.of(
 							"type", "ARRAY",
@@ -353,7 +374,7 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 											"steps", Map.of("type", "ARRAY", "items", Map.of("type", "STRING"))),
 									"required", List.of("day", "mealType", "title", "cookMinutes", "ingredients",
 											"steps")))),
-			"required", List.of("fridgePlan", "slots"));
+			"required", List.of("menuPlan", "fridgePlan", "slots"));
 
 	private static BusinessException invalid() {
 		return new BusinessException(ErrorCode.AI_INVALID_RESPONSE);

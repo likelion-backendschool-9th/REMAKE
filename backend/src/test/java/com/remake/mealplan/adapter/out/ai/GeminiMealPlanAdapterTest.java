@@ -153,7 +153,7 @@ class GeminiMealPlanAdapterTest {
 				.andExpect(content().string(allOf(
 						containsString("\"responseMimeType\":\"application/json\""),
 						containsString("\"responseSchema\""),
-						containsString("\"propertyOrdering\":[\"fridgePlan\",\"slots\"]"),
+						containsString("\"propertyOrdering\":[\"menuPlan\",\"fridgePlan\",\"slots\"]"),
 						containsString("장보기를 줄이는 식단"),
 						containsString("끼니당 2개"),
 						not(containsString("가벼운 식단")),
@@ -176,7 +176,7 @@ class GeminiMealPlanAdapterTest {
 			Arrays.stream(MealPurpose.values()).filter(other -> other != purpose).forEach(other -> assertThat(instruction)
 					.doesNotContain(MealPlanPrompt.purposeBlock(other).lines().findFirst().orElseThrow()));
 			assertThat(instruction).contains("excludedAllergenCodes", "TO_TASTE", "조리 15분 안", "steps는 3~6개",
-					"unit과 같은 단위", "fridgePlan부터", "\"쌀\"");
+					"unit과 같은 단위", "menuPlan → fridgePlan → slots", "mainIngredient", "\"쌀\"");
 		}
 	}
 
