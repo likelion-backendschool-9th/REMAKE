@@ -8,7 +8,7 @@
 
 | 워크플로 | 검사하는 PR | 하는 일 | 필수 검사 |
 | --- | --- | --- | --- |
-| Backend CI | `backend/`(`README.md` 같은 마크다운 파일만 바뀐 경우는 제외), `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, `scripts/check_migrations.py`가 바뀐 PR | `./gradlew build`(컴파일, 테스트, jar. 테스트가 PostgreSQL 컨테이너를 직접 띄움), 테스트 요약, Flyway 마이그레이션 파일 검사, 백엔드 Docker 이미지 빌드 | `Backend CI required` |
+| Backend CI | `backend/`(`README.md` 같은 마크다운 파일만 바뀐 경우는 제외), `compose.prod.yml`, `deploy/prod.env.example`, `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, `scripts/check_migrations.py`가 바뀐 PR | `./gradlew build`(컴파일, 테스트, jar. 테스트가 PostgreSQL 컨테이너를 직접 띄움), 테스트 요약, Flyway 마이그레이션 파일 검사, 백엔드 Docker 이미지 빌드와 운영 설정으로 띄워 보기 | `Backend CI required` |
 | Frontend CI | `frontend/`(`AGENTS.md`, `blueprint.md` 같은 마크다운 파일만 바뀐 경우는 제외), `.github/workflows/frontend-ci.yml`이 바뀐 PR | `pnpm lint`, `pnpm typecheck`, `pnpm build`, 프론트 Docker 이미지 빌드 | `Frontend CI required` |
 | Deploy CI | 배포 파일(`compose.prod.yml`, `deploy/`) 또는 워크플로 파일(`.github/workflows/`)이 바뀐 PR | 배포 파일: 셸 스크립트, Compose, 프록시 Nginx 설정 검사. 워크플로 파일: actionlint | `Deploy CI required` |
 | PR Attribution Check | 모든 PR | 커밋과 PR 본문의 AI 자동 표기 검사 | — |
@@ -55,6 +55,26 @@ Spring은 설정이 같은 테스트 클래스끼리 한 번 띄운 앱을 재�
 - 검사 결과는 그 순간의 기록이다. 내 검사가 통과한 뒤 마이그레이션이 있는 다른 PR이 먼저 머지돼도 내 검사는 초록불로 남는다. **마이그레이션을 추가하는 PR은 머지 직전에 Backend CI를 다시 실행한다**: PR의 **Checks** 탭에서 Backend CI를 열고 **Re-run all jobs**를 누른다. 다시 실행은 푸시가 아니라서 승인이 그대로 유지되고, 최신 `dev`와 다시 비교한다.
 - 로컬에서는 저장소 루트에서 실행한다: `git fetch origin dev && python3 scripts/check_migrations.py origin/dev HEAD`.
 
+## 운영 설정 기동 확인
+
+테스트는 외부 연동을 가짜로 바꾸고 테스트 설정으로 돌기 때문에, 운영 설정으로는 앱이 뜨지 않아도 통과한다. 예: #132는 CI를 통과했지만, 서버에서는 진짜 `SocialOAuthAdapter`가 필요로 하는 `RestClient.Builder`의 의존성이 빠져 있었다. 새 슬롯이 뜨지 않았고, #141이 머지될 때까지 배포가 막혔다.
+
+그래서 `Backend Docker build and start` 작업은 방금 만든 이미지를 서버의 `deploy/deploy.sh`가 새 슬롯을 띄우는 것과 같은 방법으로 띄워 본다.
+
+- `compose.prod.yml`과 `prod` 프로필: PostgreSQL을 먼저 띄우고, `backend-blue`를 `--no-deps --no-build --wait`로 띄운 뒤 같은 헬스체크(`/actuator/health/readiness`)가 통과할 때까지 최대 180초 기다린다.
+- 값은 `deploy/prod.env.example`의 빈 값을 임시 값으로 채워 쓴다. `JWT_SECRET`에는 앱이 요구하는 32바이트 이상의 임시 값을 넣는다.
+- CI 러너 안에서만 띄우고, 서버나 외부 서비스에는 접속하지 않는다. PR에서만 돈다. 머지 뒤에는 CD가 서버에서 앱을 띄운다.
+
+| 잡는 것 | 못 잡는 것 (대신 막는 곳) |
+| --- | --- |
+| 운영 설정에서만 만들어지는 Bean을 만들지 못함 (#132 사례) | 서버 `.env`에 값이 빠짐 (Deploy CI의 새 환경 변수 경고) |
+| `application-prod.yml`의 실수 (이름이나 형식 오류) | 서버에 이미 있는 데이터 때문에만 실패하는 마이그레이션. CI는 빈 DB에서 시작한다 (`deploy/deploy.sh`가 이전 버전을 유지) |
+| `application-prod.yml`이 기동할 때 필요로 하는 값을 `compose.prod.yml`이 넘기지 않음 | 앱이 뜬 뒤 특정 요청에서 나는 오류 (테스트) |
+| 기동할 때 드러나는 이미지 문제 | 외부 서비스 연결. 앱은 기동할 때 외부 서비스에 접속하지 않는다 |
+
+- 실패하면 작업 로그에 `운영 설정으로 백엔드가 뜨지 않음`과 그 아래 앱의 마지막 로그가 나온다. `APPLICATION FAILED TO START` 아래 부분을 읽고, 검사가 아니라 앱을 고친다(예: 빠진 의존성을 `build.gradle`에 추가).
+- 형식이 정해진 필수 값(숫자, 주소 등)이 새로 생기면, 같은 PR에서 `.github/workflows/backend-ci.yml`의 `Start backend with production settings` 단계에 그 형식에 맞는 임시 값을 넣는다.
+
 ## 배포 파일·워크플로 검사 (Deploy CI)
 
 | 바뀐 파일 | 검사 |
@@ -86,5 +106,5 @@ CI는 아래를 GitHub 캐시에 저장해 다음 실행에서 다시 쓴다. �
 
 ## `dev`에 머지된 뒤
 
-- Backend CI와 Frontend CI가 `dev`에서 한 번 더 돌아 캐시를 저장한다. Backend CI는 이때 Docker 이미지 빌드만 한다(빌드·테스트는 CD가 한다).
+- Backend CI와 Frontend CI가 `dev`에서 한 번 더 돌아 캐시를 저장한다. Backend CI는 이때 Docker 이미지 빌드만 하고(빌드·테스트는 CD가 한다) 운영 설정 기동 확인은 건너뛴다(CD가 서버에서 앱을 띄운다).
 - 서버 배포는 Backend CD, Frontend CD가 한다. CD도 배포 전에 다시 검사한다. 자세한 내용은 [배포 문서](deployment.md#지금-상태)를 본다.

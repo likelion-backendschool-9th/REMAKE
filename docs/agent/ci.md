@@ -8,7 +8,7 @@ When a PR targets `dev` or `main`, GitHub Actions checks the changed areas. A PR
 
 | Workflow | PRs it checks | What it does | Required check |
 | --- | --- | --- | --- |
-| Backend CI | PRs that change `backend/` (except changes to Markdown files only, such as `README.md`), `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, or `scripts/check_migrations.py` | Runs `./gradlew build` (compile, tests, jar; the tests start their own PostgreSQL container), writes the test summary, checks the Flyway migration files, builds the backend Docker image | `Backend CI required` |
+| Backend CI | PRs that change `backend/` (except changes to Markdown files only, such as `README.md`), `compose.prod.yml`, `deploy/prod.env.example`, `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, or `scripts/check_migrations.py` | Runs `./gradlew build` (compile, tests, jar; the tests start their own PostgreSQL container), writes the test summary, checks the Flyway migration files, builds the backend Docker image and starts it with the production settings | `Backend CI required` |
 | Frontend CI | PRs that change `frontend/` (except changes to Markdown files only, such as `AGENTS.md` or `blueprint.md`) or `.github/workflows/frontend-ci.yml` | `pnpm lint`, `pnpm typecheck`, `pnpm build`, builds the frontend Docker image | `Frontend CI required` |
 | Deploy CI | PRs that change the deploy files (`compose.prod.yml`, `deploy/`) or the workflow files (`.github/workflows/`) | Deploy files: checks the shell scripts, Compose, and the proxy Nginx configuration. Workflow files: actionlint | `Deploy CI required` |
 | PR Attribution Check | Every PR | Checks commits and the PR description for automatic AI attribution | — |
@@ -55,6 +55,26 @@ The backend tests start from an empty DB and apply every migration in order, so 
 - The result is a snapshot. If another PR with a migration merges after your check passed, your check stays green. **Right before merging a PR that adds a migration, re-run Backend CI**: on the PR's **Checks** tab, open Backend CI and click **Re-run all jobs**. A re-run is not a push, so the approval stays. It compares with the latest `dev` again.
 - Run it locally from the repository root: `git fetch origin dev && python3 scripts/check_migrations.py origin/dev HEAD`.
 
+## Production start check
+
+The tests replace external integrations with fakes and run with the test settings, so they pass even when the app cannot start with the production settings. Example: #132 passed CI, but on the server the real `SocialOAuthAdapter` needed `RestClient.Builder`, whose dependency was missing. The new slot never started, and deployment stayed blocked until #141 was merged.
+
+The `Backend Docker build and start` job therefore starts the image it just built the same way `deploy/deploy.sh` starts a new slot on the server:
+
+- `compose.prod.yml` with the `prod` profile: PostgreSQL first, then `backend-blue` with `--no-deps --no-build --wait`, waiting up to 180 seconds for the same health check (`/actuator/health/readiness`).
+- Values come from `deploy/prod.env.example` with its empty values filled with placeholders. `JWT_SECRET` gets a placeholder of at least 32 bytes, which the app requires.
+- It runs only inside the CI runner and connects to no server or external service. It runs only on PRs; after the merge, CD starts the app on the server.
+
+| Caught | Not caught (covered by) |
+| --- | --- |
+| A bean that only the production settings create cannot be created (the #132 case) | A value missing from the server's `.env` (the new-variable warning in Deploy CI) |
+| A mistake in `application-prod.yml` (wrong name or format) | A migration that fails only because of data already on the server. CI starts from an empty DB (`deploy/deploy.sh` keeps the previous version) |
+| A value that `application-prod.yml` needs at startup but `compose.prod.yml` does not pass | An error in a specific request after the app starts (tests) |
+| An image problem that shows up at startup | External service connections. The app does not connect to them at startup |
+
+- When it fails, the job log shows `운영 설정으로 백엔드가 뜨지 않음` followed by the app's last log lines. Read the part under `APPLICATION FAILED TO START` and fix the app (for example, add the missing dependency to `build.gradle`), not the check.
+- If a new required value must have a specific format (a number, a URL), set a valid placeholder for it in the `Start backend with production settings` step of `.github/workflows/backend-ci.yml` in the same PR.
+
 ## Deploy file and workflow checks (Deploy CI)
 
 | Changed files | Check |
@@ -86,5 +106,5 @@ If a cache seems to cause an odd build failure, delete it under the repository's
 
 ## After the merge into `dev`
 
-- Backend CI and Frontend CI run once more on `dev` to save the caches. At that point Backend CI only builds the Docker image (CD runs the build and tests).
+- Backend CI and Frontend CI run once more on `dev` to save the caches. At that point Backend CI only builds the Docker image (CD runs the build and tests) and skips the production start check (CD starts the app on the server).
 - Backend CD and Frontend CD deploy to the server. CD checks again before deploying. See the [deployment document](deployment.md#current-state).
