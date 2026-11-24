@@ -143,6 +143,25 @@ class GeminiMealPlanAdapterTest {
 	}
 
 	@Test
+	void 냉장고_재료_양이_0이면_칸을_못_만듦으로_바꾸고_냉장고에_없는_재료_양_0은_그_줄만_뺀다() {
+		List<GeneratedMealSlot> slots = adapter.parse("""
+				{"slots": [
+				  {"day": 1, "mealType": "LUNCH", "skipped": false, "title": "양배추볶음밥", "cookMinutes": 15,
+				   "ingredients": [{"fridgeIngredientId": 31, "name": "양배추", "amount": 0, "unit": "EA"},
+				                   {"fridgeIngredientId": null, "name": "쌀", "amount": 1, "unit": "CUP"}],
+				   "steps": ["볶는다."]},
+				  {"day": 1, "mealType": "DINNER", "skipped": false, "title": "버섯볶음", "cookMinutes": 10,
+				   "ingredients": [{"fridgeIngredientId": 31, "name": "버섯", "amount": 100, "unit": "G"},
+				                   {"fridgeIngredientId": null, "name": "후추", "amount": 0, "unit": "G"}],
+				   "steps": ["볶는다."]}]}
+				""", START);
+
+		assertThat(slots.get(0).skipped()).isTrue();
+		assertThat(slots.get(1).skipped()).isFalse();
+		assertThat(slots.get(1).ingredients()).extracting(ingredient -> ingredient.name()).containsExactly("버섯");
+	}
+
+	@Test
 	void 보내는_데이터는_채울_칸과_며칠째까지_쓸_수_있는지와_제외_재료_코드다() {
 		Map<String, Object> data = GeminiMealPlanAdapter.promptData(request());
 
@@ -254,8 +273,7 @@ class GeminiMealPlanAdapterTest {
 				"{\"slots\": [{\"day\": 1, \"mealType\": \"BRUNCH\", \"title\": \"a\", \"cookMinutes\": 5, \"ingredients\": [], \"steps\": []}]}",
 				"{\"slots\": [{\"day\": \"1일\", \"mealType\": \"DINNER\", \"title\": \"a\", \"cookMinutes\": 5, \"ingredients\": [], \"steps\": []}]}",
 				"{\"slots\": [{\"day\": 1, \"mealType\": \"DINNER\", \"title\": \"a\", \"cookMinutes\": \"5분\", \"ingredients\": [], \"steps\": []}]}",
-				"{\"slots\": [{\"day\": 1, \"mealType\": \"DINNER\", \"title\": \"a\", \"cookMinutes\": 5, \"ingredients\": [{\"name\": \" \", \"amount\": 1, \"unit\": \"G\"}], \"steps\": []}]}",
-				"{\"slots\": [{\"day\": 1, \"mealType\": \"DINNER\", \"title\": \"a\", \"cookMinutes\": 5, \"ingredients\": [{\"name\": \"파\", \"amount\": 0, \"unit\": \"G\"}], \"steps\": []}]}")) {
+				"{\"slots\": [{\"day\": 1, \"mealType\": \"DINNER\", \"title\": \"a\", \"cookMinutes\": 5, \"ingredients\": [{\"name\": \" \", \"amount\": 1, \"unit\": \"G\"}], \"steps\": []}]}")) {
 			assertThatThrownBy(() -> adapter.parse(json, START)).as(json)
 					.isInstanceOfSatisfying(BusinessException.class,
 							e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.AI_INVALID_RESPONSE));

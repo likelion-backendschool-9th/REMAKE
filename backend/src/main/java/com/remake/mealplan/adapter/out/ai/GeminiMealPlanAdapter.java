@@ -185,6 +185,12 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 		}
 		List<SlotIngredient> ingredients = new ArrayList<>();
 		for (JsonNode item : node.path("ingredients")) {
+			if (isRanOutFridgeLine(item)) {
+				// 배분표에서 냉장고 재료가 바닥난 칸에 AI가 양 0을 적은 것(11-24 원문 확인: 양배추 0개인 "양배추볶음밥").
+				// 주재료가 없는 레시피를 저장하지 않도록 칸을 못 만듦으로 바꾼다. 자르기가 그날에서 멈춘다
+				log.warn("Gemini 식단표 응답: 냉장고 재료 양 0인 칸을 못 만듦으로 바꿈");
+				return GeneratedMealSlot.skipped(date, mealType);
+			}
 			SlotIngredient ingredient = parseIngredient(item);
 			if (ingredient != null) {
 				ingredients.add(ingredient);
@@ -198,7 +204,16 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 				textOrNull(node.path("tips")), ingredients, steps);
 	}
 
-	/** 14개 코드에 없는 단위의 줄은 null(뺀다). "약간"(TO_TASTE)은 양을 비운다. */
+	/** 냉장고 재료 줄인데 양이 0 이하(반올림 뒤 포함)인지. */
+	private static boolean isRanOutFridgeLine(JsonNode item) {
+		return item.path("fridgeIngredientId").isIntegralNumber() && item.path("amount").isNumber()
+				&& normalizeAmount(item.path("amount").decimalValue()).signum() <= 0;
+	}
+
+	/**
+	 * 14개 코드에 없는 단위의 줄과 냉장고에 없는 재료인데 양이 0 이하인 줄은 null(뺀다). "약간"(TO_TASTE)은 양을 비운다.
+	 * 이름이 빈 줄은 무슨 재료인지 몰라 레시피를 쓸 수 없으므로 형식 오류다.
+	 */
 	private SlotIngredient parseIngredient(JsonNode item) {
 		RecipeUnit unit = parseEnum(RecipeUnit.class, textOrNull(item.path("unit")));
 		if (unit == null) {
@@ -210,11 +225,15 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 		BigDecimal amount = unit == RecipeUnit.TO_TASTE || !item.path("amount").isNumber()
 				? null
 				: normalizeAmount(item.path("amount").decimalValue());
-		try {
-			return new SlotIngredient(fridgeIngredientId, textOrNull(item.path("name")), amount, unit);
-		} catch (IllegalArgumentException e) {
-			throw invalid("재료 이름이 비었거나 양이 0 이하");
+		String name = textOrNull(item.path("name"));
+		if (name == null || name.isBlank()) {
+			throw invalid("재료 이름 빈칸");
 		}
+		if (amount != null && amount.signum() <= 0) {
+			log.warn("Gemini 식단표 응답: 냉장고에 없는 재료 중 양 0인 줄을 뺌");
+			return null;
+		}
+		return new SlotIngredient(fridgeIngredientId, name, amount, unit);
 	}
 
 	/** 소수 셋째 자리로 반올림하고 끝의 0을 지운다. 300이 3E+2로 바뀌지 않게 정수는 소수 자리 0으로 둔다. */
