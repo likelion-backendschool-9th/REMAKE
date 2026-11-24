@@ -164,6 +164,7 @@ Rules:
 - `CLAUDE.md` files contain only `@AGENTS.md` so Claude Code loads the same rules. Do not put content in them.
 - Out of scope (Korean only, no English copy): `README.md` files and `.github/` templates.
 - Exception (Korean only, no English copy): `docs/developer/guide/`. Per-area implementation guides for developers; agents use `docs/agent/spec/` for the same policy.
+- Exception (Korean only, no English copy): `docs/developer/qa/`. QA test scenarios for developers and testers; agents read `docs/agent/spec/` for the same policy.
 - Exception (English only, no Korean copy): `docs/agent/spec/`. These files summarize the Korean planning documents (PRD, policy, API, ERD, error, and event definitions kept in Notion and Google Sheets) for agents. Developers read the originals.
 - Use relative links that work from each document's location.
 
