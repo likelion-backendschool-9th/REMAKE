@@ -135,6 +135,8 @@ In-app only: no push subscription APIs.
 | 54 | DELETE | `/user/shared-recipes/{id}/save` | Unsave (cart items stay) | - | `200 { saveCount, saved: false }` | |
 | 55 | POST | `/user/shared-recipes/{id}/reports` | Report. No text input even for OTHER; an operator reviews. One report per post per member | `{ reason: "OFFENSIVE_IMAGE"\|"AD_TITLE"\|"DANGEROUS_RECIPE"\|"OTHER" }` | `201` | shared_recipe_reported |
 
+Photo delivery for API 52: `GET /api/v1/user/shared-recipe-photos/{id}`, where `id` is the shared post ID. Requires login and a VISIBLE post; returns the image bytes with its MIME/length and `Cache-Control: no-store`. Missing/hidden posts or missing files return `SHARED_RECIPE_NOT_FOUND` (404). `imageUrl` points at this endpoint, never a storage key or public static directory.
+
 Cart items cannot be added manually. No "take down my shared post" API.
 
 ## Common: events (owner: 이준호)

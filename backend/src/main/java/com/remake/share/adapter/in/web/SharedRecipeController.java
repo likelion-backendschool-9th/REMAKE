@@ -44,5 +44,6 @@ public class SharedRecipeController {
 				: new SharedRecipePhotoUpload(image.getContentType(), image.getSize(), image::getInputStream);
 		return new PublishedResponse(publishSharedRecipe.publish(userId, payload.recipeId(), payload.title(), photo));
 	}
+
 	public record PublishedResponse(Long id) { }
 }
