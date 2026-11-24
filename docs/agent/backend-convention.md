@@ -107,7 +107,7 @@ Table structure follows the [ERD and table definition](erd.md).
 - **Create and change tables only with Flyway.** When you add or change an entity, add `backend/src/main/resources/db/migration/V<number>__<description>.sql` in the same PR. JPA runs `validate` (check only) both locally and in production, so the app does not start if the SQL is missing.
   - Use the number after dev's last migration. If another PR merges first with the same number, raise your file's number before merging.
   - Never edit a migration file already merged into dev. Add a new numbered file instead.
-  - Backend CI checks these two rules against the latest dev (see the [migration check](ci.md#migration-check)). Right before merging a PR that adds a migration, re-run Backend CI so it compares with the latest dev again.
+  - Backend CI checks these two rules against the latest dev (see the [migration check](ci.md#migration-check)). When a migration lands on dev, open PRs that add migrations get this check re-run automatically, so a PR whose number is now taken turns red. If unsure, re-run Backend CI right before merging.
   - During a deploy, the old and new app versions share the DB for a while. Split changes that break the old version, such as renaming or dropping a column, into steps (see the [deployment doc](deployment.md)).
 - **Types**: quantities `numeric(10,3)` ↔ `BigDecimal`, money `bigint` ↔ `Long` (won), timestamps `timestamp` ↔ `LocalDateTime` (Korea time), JSON `jsonb`.
 - **Fixed value lists** (statuses, kinds, units) are Java enums stored with `@Enumerated(EnumType.STRING)`. Never store the ordinal (`ORDINAL`).
