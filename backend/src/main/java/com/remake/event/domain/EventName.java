@@ -30,8 +30,8 @@ public enum EventName {
 	LOGIN_SUCCEEDED("login_succeeded", EventSource.SERVER, Set.of("provider", "is_new_user")), // E09
 	LOGIN_FAILED("login_failed", EventSource.SERVER, Set.of("provider", "error_code")), // E10
 	SIGNUP_COMPLETED("signup_completed", EventSource.SERVER, Set.of("provider")), // E11
-	ONBOARDING_STEP_COMPLETED("onboarding_step_completed", EventSource.CLIENT, Set.of("onboarding_step", "was_skipped")), // E12
-	ONBOARDING_COMPLETED("onboarding_completed", EventSource.SERVER, Set.of("skipped_step_count", "excluded_count")), // E13
+	ONBOARDING_STEP_COMPLETED("onboarding_step_completed", EventSource.CLIENT, Set.of("onboarding_step")), // E12
+	ONBOARDING_COMPLETED("onboarding_completed", EventSource.SERVER, Set.of("excluded_count")), // E13
 	SETTING_CHANGED("setting_changed", EventSource.CLIENT, Set.of("setting_key", "new_value_bool")), // E14
 	EXCLUDED_INGREDIENTS_UPDATED("excluded_ingredients_updated", EventSource.CLIENT, Set.of("excluded_count")), // E15
 	LOGOUT_CONFIRMED("logout_confirmed", EventSource.CLIENT, Set.of()), // E16
@@ -40,7 +40,7 @@ public enum EventName {
 	FRIDGE_LIST_VIEWED("fridge_list_viewed", EventSource.CLIENT, Set.of("total_count", "danger_count", "soon_count", "ok_count")), // E19
 	FRIDGE_FILTER_APPLIED("fridge_filter_applied", EventSource.CLIENT, Set.of("filter_type", "filter_value")), // E20
 	INGREDIENT_ADD_STARTED("ingredient_add_started", EventSource.CLIENT, Set.of("add_source")), // E21
-	INGREDIENT_ADDED("ingredient_added", EventSource.SERVER, Set.of("add_source", "category_code", "storage", "has_price", "is_expiration_estimated", "duration_sec")), // E22
+	INGREDIENT_ADDED("ingredient_added", EventSource.SERVER, Set.of("add_source", "category_code", "storage", "has_price", "duration_sec")), // E22
 	INGREDIENT_EDITED("ingredient_edited", EventSource.CLIENT, Set.of("edit_field")), // E23
 	INGREDIENT_DELETED("ingredient_deleted", EventSource.CLIENT, Set.of("category_code")), // E24
 	INGREDIENT_USED("ingredient_used", EventSource.SERVER, Set.of("use_via", "category_code", "expiry_status", "used_ratio")), // E25

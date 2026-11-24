@@ -1,7 +1,6 @@
 package com.remake.ingredient.adapter.out.persistence;
 
 import com.remake.ingredient.domain.IngredientCategory;
-import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.StorageLocation;
 
@@ -46,14 +45,14 @@ class IngredientCategoryJpaEntity {
 	@Column(nullable = false, length = 10)
 	private StorageLocation defaultStorage;
 
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 10)
-	private IngredientUnit defaultUnit;
-
 	@Column(nullable = false)
 	private int defaultShelfLifeDays;
 
+	// 카테고리 시트에 보이는 순서(ERD 부록 A)
+	@Column(nullable = false)
+	private int sortOrder;
+
 	IngredientCategory toDomain() {
-		return new IngredientCategory(id, code, name, imageUrl, defaultStorage, defaultUnit, defaultShelfLifeDays);
+		return new IngredientCategory(id, code, name, imageUrl, defaultStorage, defaultShelfLifeDays);
 	}
 }

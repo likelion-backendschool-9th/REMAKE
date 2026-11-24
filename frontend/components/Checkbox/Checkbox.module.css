@@ -1,0 +1,43 @@
+/* 피그마 4. 선택 > 체크박스: 20×20, radius/xs. 선택=bg/primary + 체크 16(text/on-color), 아님=bg/input + border/default */
+.box {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.input {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-input);
+  appearance: none;
+}
+
+.input:checked {
+  border-color: var(--color-bg-primary);
+  background: var(--color-bg-primary);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+.check {
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-text-on-color);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.input:checked + .check {
+  visibility: visible;
+}

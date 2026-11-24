@@ -1,5 +1,8 @@
 package com.remake.support;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,7 +30,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import com.remake.auth.adapter.out.oauth.SocialOAuthAdapter;
 import com.remake.global.config.AsyncConfig;
-import com.remake.ingredient.domain.IngredientStatus;
+import com.remake.global.config.UploadProperties;
 import com.remake.recipe.adapter.out.ai.GeminiRecipeAdapter;
 import com.remake.user.domain.AuthProvider;
 
@@ -86,6 +89,9 @@ public abstract class IntegrationTestSupport {
 
 	@Autowired
 	private TestDatabase testDatabase;
+
+	@Autowired
+	private UploadProperties uploadProperties;
 
 	// 이벤트 비동기 적재가 truncate 전에 끝나게 기다린다. SyncTaskExecutor로 바꾸지 않는다.
 	@Autowired
@@ -149,21 +155,20 @@ public abstract class IntegrationTestSupport {
 	}
 
 	/** 냉장고 재료 한 건을 넣고 id를 돌려준다. 단위·양은 기본값(EA, 1)이고 생성·수정 시각은 시험용 시계를 따른다. */
-	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate,
-			IngredientStatus status) {
-		return createIngredient(userId, categoryCode, name, expirationDate, status, null);
+	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate) {
+		return createIngredient(userId, categoryCode, name, expirationDate, null);
 	}
 
 	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate,
-			IngredientStatus status, Long price) {
+			Long price) {
 		ensureUser(userId);
 		LocalDateTime now = LocalDateTime.now(clock);
 		return jdbcTemplate.queryForObject("""
 				INSERT INTO ingredients (user_id, category_id, name, storage, expiration_date, amount, initial_amount,
-				                         unit, price, status, created_at, updated_at)
-				VALUES (?, ?, ?, 'FRIDGE', ?, 1, 1, 'EA', ?, ?, ?, ?)
+				                         unit, price, created_at, updated_at)
+				VALUES (?, ?, ?, 'FRIDGE', ?, 1, 1, 'EA', ?, ?, ?)
 				RETURNING id
-				""", Long.class, userId, categoryId(categoryCode), name, expirationDate, price, status.name(), now, now);
+				""", Long.class, userId, categoryId(categoryCode), name, expirationDate, price, now, now);
 	}
 
 	/**
@@ -180,9 +185,16 @@ public abstract class IntegrationTestSupport {
 	}
 
 	@AfterEach
-	void cleanUp() {
+	void cleanUp() throws IOException {
 		awaitEventWrites();
 		clock.reset();
 		testDatabase.cleanUp();
+		// 파일 저장 어댑터는 가짜로 바꾸지 않는다. 테스트 전용 폴더의 파일만 지운다.
+		Path root = Path.of(uploadProperties.rootDirectory());
+		try (var files = Files.walk(root)) {
+			for (Path file : files.filter(path -> !Files.isDirectory(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)).toList()) {
+				Files.deleteIfExists(file);
+			}
+		}
 	}
 }

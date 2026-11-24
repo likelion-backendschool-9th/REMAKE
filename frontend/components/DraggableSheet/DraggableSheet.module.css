@@ -1,0 +1,75 @@
+/* 피그마 6. 겹쳐 뜨는 것 > 드래그 시트: bg/surface, 위쪽 radius/xl, 위 여백 8, 간격 8, shadow-sheet
+   손잡이 40×4, border/control, radius/full */
+.sheet {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: var(--z-fixed);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-sheet);
+  transition: transform 0.25s ease-out;
+  touch-action: none;
+}
+
+.sheet[data-dragging] {
+  transition: none;
+}
+
+/* 손잡이: 보이는 막대는 40×4, 누르는 영역은 폭 전체·높이 20(위 여백 8 + 막대 4 + 간격 8) */
+.handle {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 1.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+.handle:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -2px;
+}
+
+.grip {
+  width: 2.5rem;
+  height: 0.25rem;
+  border-radius: var(--radius-full);
+  background: var(--color-border-control);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom);
+  touch-action: pan-y;
+}
+
+/* 접힌 높이를 px로 재는 보이지 않는 막대 */
+.measure {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    transition: none;
+  }
+}

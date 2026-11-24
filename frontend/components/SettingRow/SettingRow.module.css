@@ -1,0 +1,60 @@
+/* 피그마 7. 목록 행·카드 > 설정형 행: 여백 16/4, 간격 space/8, 아래 선 border/subtle, Remake/content
+   라벨 text/title(필수 * text/danger), 값 text/body(없으면 회색), 화살표 16 */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  padding: var(--space-16) var(--space-4);
+  border: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: none;
+  font: var(--font-content);
+  text-align: left;
+}
+
+.interactive:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -2px;
+}
+
+.label {
+  display: flex;
+  flex: 1;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--color-text-title);
+}
+
+.required {
+  color: var(--color-text-danger);
+}
+
+.value {
+  flex: none;
+  max-width: 60%;
+  overflow: hidden;
+  color: var(--color-text-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value[data-empty] {
+  color: var(--color-text-sub);
+}
+
+.arrow {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-icon-sub);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

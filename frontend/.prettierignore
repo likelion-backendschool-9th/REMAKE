@@ -8,3 +8,5 @@ public/mockServiceWorker.js
 lib/api/schema.d.ts
 # design/tokens/build_tokens.py가 생성하는 파일. 생성 결과와 같게 유지
 app/tokens.css
+# scripts/gen-pretendard-css.mjs가 생성하는 파일
+app/fonts/pretendard.css

@@ -1,0 +1,13 @@
+/* 피그마 1. 앱 틀 > 로고: 그림 36×21, 간격 5, 글자 18 Bold text/strong
+   글꼴은 팀 결정대로 로고 전용 GmarketSans(--font-family-logo, blueprint §6) */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+}
+
+.text {
+  color: var(--color-text-strong);
+  font: var(--font-header);
+  font-family: var(--font-family-logo);
+}

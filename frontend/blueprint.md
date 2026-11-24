@@ -21,24 +21,24 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 
 ## 2. Tech stack
 
-| Area            | Technology                                   | Why                                                                                    |
-| --------------- | -------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Framework       | Next.js (App Router) + TypeScript            | Screens split per route; frontend handles screens only                                 |
-| Package manager | pnpm                                         | Fast installs; lockfile keeps dependency versions identical for all 7 members          |
-| Styling         | CSS Modules + CSS variables                  | Component-scoped styles without extra libraries; shared design tokens                  |
-| Server data     | TanStack Query                               | Caching and refetching server data                                                     |
-| Client state    | Zustand                                      | Only the minimum, such as login info                                                   |
-| URL state       | nuqs                                         | Filters, tabs, sort, and selected month live in the URL                                |
-| API integration | openapi-typescript + openapi-fetch           | Types generated from Spring OpenAPI; type-safe calls                                   |
-| Forms           | React Hook Form + Zod                        | Validation for onboarding, custom recipe input, ingredient edits                       |
-| Dates           | dayjs                                        | Date display; meal-plan calendar                                                       |
-| Icons           | @solar-icons/react (Solar)                   | Tree-shakable React components; work offline                                           |
-| Font            | Pretendard + GmarketSans (`next/font/local`) | Pretendard: Korean UI font. GmarketSans: logo text only. No layout shift while loading |
-| PWA             | Serwist                                      | Service worker, offline screen. Notifications are in-app only (no device push)         |
-| Store release   | PWABuilder (TWA)                             | Generates the Android app package                                                      |
-| Web deploy      | `output: "standalone"` + nginx               | Node server running behind nginx                                                       |
-| Code quality    | ESLint + Prettier, Husky + lint-staged       | Unified code style for 7 people; automatic checks before commit                        |
-| API mocking     | MSW                                          | Build screens against dummy responses before the backend is ready                      |
+| Area            | Technology                                                                          | Why                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Framework       | Next.js (App Router) + TypeScript                                                   | Screens split per route; frontend handles screens only                                                 |
+| Package manager | pnpm                                                                                | Fast installs; lockfile keeps dependency versions identical for all 7 members                          |
+| Styling         | CSS Modules + CSS variables                                                         | Component-scoped styles without extra libraries; shared design tokens                                  |
+| Server data     | TanStack Query                                                                      | Caching and refetching server data                                                                     |
+| Client state    | Zustand                                                                             | Only the minimum, such as login info                                                                   |
+| URL state       | nuqs                                                                                | Filters, tabs, sort, and selected month live in the URL                                                |
+| API integration | openapi-typescript + openapi-fetch                                                  | Types generated from Spring OpenAPI; type-safe calls                                                   |
+| Forms           | React Hook Form + Zod                                                               | Validation for onboarding, custom recipe input, ingredient edits                                       |
+| Dates           | dayjs                                                                               | Date display; meal-plan calendar                                                                       |
+| Icons           | @solar-icons/react (Solar)                                                          | Tree-shakable React components; work offline                                                           |
+| Font            | Pretendard (`pretendard` package, dynamic subset) + GmarketSans (`next/font/local`) | Pretendard: Korean UI font, downloads only the character groups on screen. GmarketSans: logo text only |
+| PWA             | Serwist                                                                             | Service worker, offline screen. Notifications are in-app only (no device push)                         |
+| Store release   | PWABuilder (TWA)                                                                    | Generates the Android app package                                                                      |
+| Web deploy      | `output: "standalone"` + nginx                                                      | Node server running behind nginx                                                                       |
+| Code quality    | ESLint + Prettier, Husky + lint-staged                                              | Unified code style for 7 people; automatic checks before commit                                        |
+| API mocking     | MSW                                                                                 | Build screens against dummy responses before the backend is ready                                      |
 
 ## 3. Folder structure
 
@@ -46,13 +46,14 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 frontend/
 ├─ app/                  # routes. Each route folder colocates the code only it uses (see §3.1)
 │  ├─ layout.tsx         # root layout, globals.css
-│  ├─ fonts/             # font files (woff2) + fonts.ts (next/font/local)
+│  ├─ fonts/             # GmarketSans files (woff2) + fonts.ts (next/font/local) + pretendard.css (generated)
 │  ├─ page.tsx           # splash (/)
 │  ├─ public/            # /public/... routes (before login, §4)
 │  ├─ user/              # /user/... routes (after login, §4). Example: user/fridge/ingredients/ — see §3.1
 │  ├─ sw.ts              # service worker (caching)
 │  ├─ serwist/[path]/    # service-worker serving route
 │  ├─ ~offline/          # offline fallback screen
+│  ├─ dev/               # dev-only state previews of screen containers (§3.1 rule 7, 404 in production)
 │  └─ manifest.ts        # PWA manifest
 ├─ components/           # reusable UI shared by several routes, no domain knowledge (Button, Input, BottomSheet ...)
 ├─ hooks/                # reusable React hooks shared by several routes, no domain knowledge (useDebounce ...)
@@ -97,6 +98,8 @@ app/user/fridge/ingredients/
 3. **Isolate by component.** Each component has its own folder with its `.tsx`, `.module.css`, and any hook or util only it uses. Do not import another component's CSS module or internal files.
 4. **Promote when shared.** When two unrelated routes need the same code, move it up — UI component → `components/<Name>/`, React hook → `hooks/`, query keys and query hooks → `lib/queries/<domain>.ts`, other functions → `lib/`. Shared code must not know about a specific page.
 5. **Import paths.** Import colocated code with relative paths (`./_components/...`, `../_lib/...`). Import shared code with `@/` (`@/components/Button`). Never import from `@/app/...` (enforced by ESLint).
+6. **Screen container.** Each screen has one top-level component named `<Screen>Container` (e.g. `LoginContainer`) in its route's `_components/`. `page.tsx` only exports `metadata` and renders that container. Do not name it `...Screen`. A state that is hard to reach by hand (a stored value, an open drawer) is a container prop with a default, so the dev preview (rule 7) can render it; the real route uses the defaults.
+7. **Dev preview (`app/dev/`).** `/dev/p<N>` lists the states of one Figma area and `/dev/p<N>/<state>` renders one state by passing props to the screen containers. Every page under `app/dev/` calls `notFound()` unless `env.isDev`, so production returns 404. This folder is the only exception to rule 2: it may import route containers (and their `_lib` types and sample values) with relative paths. Never import `app/dev/` from anywhere else. Container defaults are what the real route shows before the API is wired: empty values, or a loading state for server data. Sample values (Figma copies) are passed only from `app/dev/`, never used as container defaults, because `dev` is deployed. In production `generateStaticParams` returns one placeholder param (an empty array is a build error with Cache Components), so no preview paths are built.
 
 Shared component layout:
 
@@ -204,13 +207,13 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 
 - No Tailwind or CSS-in-JS libraries. Use only **CSS Modules (`*.module.css`) + CSS variables in `globals.css`**.
 - Import icons from the per-style paths of `@solar-icons/react`. Example: `import { HomeIcon } from "@solar-icons/react/linear"`. Default size, color, and stroke width come from the `--solar-*` variables in `globals.css`.
-- Design tokens follow [`docs/agent/design-tokens.md`](../docs/agent/design-tokens.md): Figma variables and styles copied with their Figma names. `design/tokens/build_tokens.py` generates them; the result is copied to `app/tokens.css`, which `globals.css` imports. Never edit `app/tokens.css` by hand. If a Figma value has a variable or style, use the token with the same name. If it has none (spacing, radius, shadow, glass, ...), use the Figma frame value as is.
-- Mobile first. Design for a 360px width. The default max layout width is `--layout-max-width` (480px) and the side gutter is `--layout-gutter`. Wider screens show the 480px container centered.
+- Design tokens follow [`docs/agent/design-tokens.md`](../docs/agent/design-tokens.md): the variables and styles of the Figma design system (`0. 기초`) copied with their names; CSS variable names equal the Figma Dev Mode code names (`var(--color-text-strong)`, `var(--space-16)`, `font: var(--font-content)`). `design/tokens/build_tokens.py` generates them; the result is copied to `app/tokens.css`, which `globals.css` imports. Never edit `app/tokens.css` by hand. If a Figma value has a variable or style, use the token with the same name. If it has none, use the Figma frame value as is.
+- Mobile first. Design for a 360px width. The default max layout width is `--layout-max-width` (480px) and the side gutter is `--layout-gutter`. Wider screens show the 480px container centered: the root `app/layout.tsx` wraps every screen in one container (`app/layout.module.css`), so screens do not set the max width themselves. Elements outside that container — `position: fixed` bars and portals to `body` (bottom bar, sheets, modals, drawers) — set `max-width: var(--layout-max-width)` themselves.
 - Light theme only; no dark mode.
 - Units: rem (1rem = 16px; never change the root font size). Convert Figma px by dividing by 16 (10px → 0.625rem). Use px only for lines such as borders.
-- Font: both are loaded with `next/font/local` in `app/fonts/fonts.ts` and attached to `<html>` in `app/layout.tsx`. Use woff2 files only.
-  - Pretendard (body text): weights 500/600/700/800 only (the ones Figma uses). CSS variable `--font-pretendard`, used by `--font-family-base` in `tokens.css`.
-  - GmarketSans (logo text only): weights 300/500/700, `preload: false`. Use `font-family: var(--font-family-logo)` (defined in `globals.css`). Do not use it for other text.
+- Font: use woff2 files only.
+  - Pretendard (body text): use the dynamic subset files of the `pretendard` package (each weight is split into character groups with `unicode-range`, so the browser downloads only the groups that appear on screen; the full file is about 770 KB per weight). `app/fonts/pretendard.css` is generated by `pnpm gen:fonts` (`scripts/gen-pretendard-css.mjs`) and imported in `app/layout.tsx`. Never edit it by hand. Weights 400/500/700/800 only (the ones in use; 400 is the `Remake/content-regular` and `Remake/error` text styles, 800 is the store badge). To add a weight, edit `WEIGHTS` in the script and run it again. Font family name `Pretendard`, used by `--font-family-base` in `tokens.css`.
+  - GmarketSans (logo text only): loaded with `next/font/local` in `app/fonts/fonts.ts` and attached to `<html>` in `app/layout.tsx`. Weights 300/500/700, `preload: false`. Use `font-family: var(--font-family-logo)` (defined in `globals.css`). Do not use it for other text.
 - Full-screen height uses `100dvh`. Bottom-fixed elements add `env(safe-area-inset-bottom)`.
 - Mostly flat. Apply glass effects only to elements that have them in Figma.
 - Put a style file next to its component with the same name. Example: `IngredientCard.tsx` + `IngredientCard.module.css`
@@ -278,10 +281,13 @@ Refer to the [Google SEO Starter Guide](https://developers.google.com/search/doc
 
 ### 7.1 Back button closes sheets
 
-- Bottom sheets, modals, and drawers never add URL history (their open state is local). The back action (Android back button, iOS swipe back) closes only the open sheet, without navigating.
-- Handle this in one shared hook, `useBackToClose(isOpen, onClose)` in `hooks/`. Components never handle `popstate` themselves.
-- Chromium browsers (including the TWA): receive the close request with `CloseWatcher` and set the state to closed.
-- Browsers without `CloseWatcher` (Safari, Firefox): on open, push one temporary entry with `history.pushState` without changing the URL, and close on `popstate`. When the sheet is closed by a close button, remove that entry with `history.back()`.
+- Bottom sheets, modals, and drawers never touch history: no URL change and no `history.pushState` (their open state is local).
+- Handle closing in one shared hook, `useBackToClose(isOpen, onClose)` in `hooks/` (used by `useDialogLayer`). Components never handle `popstate` themselves.
+- Chromium browsers (including the TWA): receive the Android back button and Esc as a close request with `CloseWatcher`, and close only the open sheet without navigating. `CloseWatcher` does not use history.
+- Browsers without `CloseWatcher` (Safari, Firefox): Esc closes the sheet. The back action (iOS swipe back) navigates to the previous screen as usual.
+- When a screen with an open sheet is hidden (navigation from inside the sheet, or back), the sheet closes. With `cacheComponents` the previous screen keeps its state, so without this the sheet would still be open when the user comes back.
+- While a sheet or modal is open, the screen behind it does not scroll.
+- `onClose` only sets the closed state; it is also called when the screen is hidden. Do not put other actions (such as recording a cancel event) in it; put them in the cancel button's handler. To navigate after confirming, close the sheet first, then navigate.
 - When sheets are stacked, close only the topmost one.
 
 ## 8. Development flow

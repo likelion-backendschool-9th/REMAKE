@@ -8,7 +8,7 @@ import com.remake.ingredient.domain.FridgeSummary;
 import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.StorageLocation;
 
-/** 냉장고 화면 조회. 진행 중(ACTIVE)인 재료만 다룬다. */
+/** 냉장고 화면 조회. */
 public interface GetFridgeUseCase {
 
 	/**
@@ -18,6 +18,6 @@ public interface GetFridgeUseCase {
 	List<FridgeIngredient> getFridgeIngredients(Long userId, ExpiryStatus status, StorageLocation storage,
 			IngredientCategoryCode categoryCode);
 
-	/** 필터 없이 사용자의 모든 ACTIVE 재료를 센다. 없으면 모두 0이다. */
+	/** 필터 없이 사용자의 모든 재료를 센다. 없으면 모두 0이다. */
 	FridgeSummary getFridgeSummary(Long userId);
 }

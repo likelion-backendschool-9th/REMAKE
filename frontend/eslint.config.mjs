@@ -67,6 +67,11 @@ const eslintConfig = defineConfig([
             },
             { name: "lucide-react", message: "아이콘은 @solar-icons/react 를 사용합니다." },
             { name: "clsx", message: "스타일은 CSS Modules 로 작성합니다." },
+            {
+              // 패키지 루트만 막는다. patterns 로 막으면 하위 경로(@solar-icons/react/linear)까지 막힌다
+              name: "@solar-icons/react",
+              message: "스타일별 경로에서 import 하세요. 예: @solar-icons/react/linear",
+            },
           ],
           patterns: [
             {
@@ -78,10 +83,6 @@ const eslintConfig = defineConfig([
               group: ["@/app", "@/app/**"],
               message:
                 "다른 라우트의 코드는 import 하지 않습니다. 여러 라우트가 쓰면 components/, hooks/, lib/ 로 올리세요.",
-            },
-            {
-              group: ["@solar-icons/react"],
-              message: "스타일별 경로에서 import 하세요. 예: @solar-icons/react/linear",
             },
           ],
         },

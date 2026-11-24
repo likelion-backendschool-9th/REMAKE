@@ -30,7 +30,7 @@ class ErrorTestController {
 
 	@GetMapping("/business")
 	void business() {
-		throw new BusinessException(ErrorCode.CONCURRENT_UPDATE);
+		throw new BusinessException(ErrorCode.INGREDIENT_NOT_FOUND);
 	}
 
 	@GetMapping("/business-message")

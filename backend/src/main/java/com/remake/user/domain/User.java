@@ -20,6 +20,9 @@ public record User(
 		String lastMealPurpose,
 		LocalDateTime deletedAt) {
 
+	/** 가구원 수 상한(1~50). 온보딩·설정 PATCH 공통. */
+	public static final int MAX_HOUSEHOLD_SIZE = 50;
+
 	public static User signUp(AuthProvider provider, String providerUserId, String email) {
 		return new User(null, provider, providerUserId, email, UserRole.USER, UserStatus.ACTIVE, UserPlan.BASIC,
 				null, false, false, true, null, null);
@@ -36,5 +39,38 @@ public record User(
 	public User withId(Long id) {
 		return new User(id, provider, providerUserId, email, role, status, plan, householdSize, onboardingCompleted,
 				recipeSupplementEnabled, notificationEnabled, lastMealPurpose, deletedAt);
+	}
+
+	/**
+	 * 온보딩 완료. 가구원 수는 필수(1~50). 이미 완료된 회원은 다시 호출하지 않는다.
+	 */
+	public User completeOnboarding(int householdSize) {
+		if (onboardingCompleted) {
+			throw new IllegalStateException("이미 온보딩을 마쳤습니다.");
+		}
+		validateHouseholdSize(householdSize);
+		return new User(id, provider, providerUserId, email, role, status, plan, householdSize, true,
+				recipeSupplementEnabled, notificationEnabled, lastMealPurpose, deletedAt);
+	}
+
+	/**
+	 * 설정 PATCH. null인 필드는 그대로 둔다. householdSize를 보내면 1~50이어야 한다.
+	 */
+	public User updateProfile(Integer householdSize, Boolean recipeSupplementEnabled, Boolean notificationEnabled) {
+		Integer nextHousehold = this.householdSize;
+		if (householdSize != null) {
+			validateHouseholdSize(householdSize);
+			nextHousehold = householdSize;
+		}
+		return new User(id, provider, providerUserId, email, role, status, plan, nextHousehold, onboardingCompleted,
+				recipeSupplementEnabled != null ? recipeSupplementEnabled : this.recipeSupplementEnabled,
+				notificationEnabled != null ? notificationEnabled : this.notificationEnabled,
+				lastMealPurpose, deletedAt);
+	}
+
+	private static void validateHouseholdSize(int householdSize) {
+		if (householdSize < 1 || householdSize > MAX_HOUSEHOLD_SIZE) {
+			throw new IllegalArgumentException("가구원 수는 1명 이상 " + MAX_HOUSEHOLD_SIZE + "명 이하여야 합니다.");
+		}
 	}
 }

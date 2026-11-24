@@ -1,0 +1,115 @@
+/* 피그마 p1-로그인: 내용 폭 328(옆 여백 16)을 화면 세로 가운데에 두고 아래 여백 50만큼 위로 올림.
+   로고·버튼·약관 사이 간격 30 */
+.main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: 0 var(--layout-gutter);
+  background: var(--color-bg-surface);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.875rem;
+  width: 100%;
+  padding-bottom: 3.125rem;
+}
+
+/* 로고 그림 110×65, 글자와 간격 15. 글자 GmarketSans Bold 40, 자간 -0.8, text/strong */
+.logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9375rem;
+  color: var(--color-text-strong);
+  font-family: var(--font-family-logo);
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: normal;
+  letter-spacing: -0.05rem;
+}
+
+/* 피그마 p1-로그인 > 소셜 로그인 버튼: 세로 간격 13 */
+.buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8125rem;
+  width: 100%;
+}
+
+.item {
+  position: relative;
+}
+
+/* 피그마 p1-로그인-최근 로그인: 버튼 위쪽 가운데에 겹치는 말풍선. bg/surface, radius 2, text/primary, 아래로 꼬리.
+   피그마(Medium 10, 그림자 없음)와 달리 요청에 따라 글자 12(Remake/assist), shadow-control, 위아래로 뜨는 애니메이션 */
+.bubble {
+  position: absolute;
+  top: -0.875rem;
+  left: 50%;
+  z-index: 1;
+  padding: 0.125rem 0.375rem;
+  border-radius: 2px;
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-control);
+  color: var(--color-text-primary);
+  font: var(--font-assist);
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: float 1.6s ease-in-out infinite alternate;
+}
+
+.bubble::after {
+  content: "";
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 50%;
+  border-top: 0.3125rem solid var(--color-bg-surface);
+  border-right: 0.1875rem solid transparent;
+  border-left: 0.1875rem solid transparent;
+  transform: translateX(-50%);
+}
+
+/* 위아래로 3px씩 둥둥 뜸 */
+@keyframes float {
+  from {
+    transform: translate(-50%, 0);
+  }
+  to {
+    transform: translate(-50%, -0.1875rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble {
+    animation: none;
+  }
+}
+
+/* 피그마 이용 약관/개인 정보 처리 방침: 세로 간격 10, Remake/assist·text/assist.
+   누르는 영역을 넓히려고 위아래 여백 4를 넣고 그만큼 간격을 줄였다(글자 위치는 피그마와 같음) */
+.links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  margin: -0.25rem 0;
+}
+
+.link {
+  padding: 0.25rem var(--space-8);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--color-text-assist);
+  font: var(--font-assist);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -2px;
+}

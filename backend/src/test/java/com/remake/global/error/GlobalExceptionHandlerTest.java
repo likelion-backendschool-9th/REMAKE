@@ -26,10 +26,10 @@ class GlobalExceptionHandlerTest extends IntegrationTestSupport {
 	@Test
 	void BusinessException은_ErrorCode의_상태와_코드로_응답한다() throws Exception {
 		mockMvc.perform(get("/test/errors/business"))
-				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("CONCURRENT_UPDATE"))
-				.andExpect(jsonPath("$.message").value(ErrorCode.CONCURRENT_UPDATE.getMessage()))
-				.andExpect(jsonPath("$.status").value(409))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("INGREDIENT_NOT_FOUND"))
+				.andExpect(jsonPath("$.message").value(ErrorCode.INGREDIENT_NOT_FOUND.getMessage()))
+				.andExpect(jsonPath("$.status").value(404))
 				.andExpect(jsonPath("$.traceId").isString())
 				// 값이 없어도 필드를 빼지 않고 null로 준다(컨벤션)
 				.andExpect(jsonPath("$.fieldErrors").value(nullValue()));

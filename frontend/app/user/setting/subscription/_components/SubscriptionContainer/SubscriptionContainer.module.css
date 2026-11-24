@@ -1,0 +1,142 @@
+/* 피그마 p1.3.4: 아래 고정 영역에 가리지 않게 아래 여백을 둔다 */
+.main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding-bottom: calc(9.5rem + env(safe-area-inset-bottom));
+}
+
+/* 멤버십 묶음: 헤더 아래 35에 제목 줄, 그 아래 20에 결제 정보. 아래 8px 구분선 bg/subtle */
+.summary {
+  padding: 2.1875rem var(--layout-gutter) 1.6875rem;
+  border-bottom: 0.5rem solid var(--color-bg-subtle);
+}
+
+/* 제목 줄: 원 30(파랑 15% 배경·그림자) + 그라데이션 별 18, "REMAKE"(Bold 18, #373737 변수 아님) + "프리미엄 멤버십"(Remake/title) + 배지, 간격 4 */
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: var(--radius-full);
+  background: rgba(203, 224, 255, 0.15);
+  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+.brand {
+  color: #373737;
+  font: var(--font-header);
+}
+
+.plan {
+  color: var(--color-text-title);
+  font: var(--font-title);
+}
+
+/* 결제 정보: border/default, radius 4, 옆 여백 15, 줄 여백 15/2, 줄 사이 선 border/default */
+.info {
+  margin-top: var(--space-20);
+  padding: 0 0.9375rem;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-surface);
+}
+
+.infoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: 0.9375rem 0.125rem;
+}
+
+.infoRow + .infoRow {
+  border-top: 1px solid var(--color-border-default);
+}
+
+.infoLabel {
+  color: var(--color-text-assist);
+  font: var(--font-content);
+}
+
+.infoValue {
+  color: var(--color-text-title);
+  font: var(--font-content-strong);
+}
+
+/* 혜택: 구분선 아래 35에 제목(Remake/subheader), 그 아래 11에 첫 혜택. 혜택 사이 22 */
+.benefits {
+  padding: 2.1875rem var(--layout-gutter) 0;
+}
+
+.benefitsTitle {
+  color: var(--color-text-strong);
+  font: var(--font-subheader);
+}
+
+.benefitList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.375rem;
+  margin-top: 0.6875rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* 그림 74 + 간격 8 + "혜택 N." / 이름(Remake/subheader·text/title, 강조 text/primary). 설명은 그림 아래 20, Remake/assist·text/body */
+.benefitHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.benefitHead img {
+  flex: none;
+}
+
+.benefitName {
+  color: var(--color-text-title);
+  font: var(--font-subheader);
+}
+
+.highlight {
+  color: var(--color-text-primary);
+}
+
+.benefitDescription {
+  margin-top: var(--space-20);
+  color: var(--color-text-body);
+  font: var(--font-assist);
+  white-space: pre-line;
+}
+
+/* 아래 고정 영역: 피그마는 위로 그림자(0 -2 4, 10%) */
+.bottom {
+  align-items: stretch;
+  gap: 0.9375rem;
+  box-shadow: 0 -2px 4px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* 결제 약관 동의 줄: 체크박스 + "결제 약관 동의"(Remake/content·text/body) + "자세히 보기"(text/warning), 간격 5 */
+.agree {
+  display: flex;
+  align-items: center;
+  gap: 0.3125rem;
+}
+
+.agreeLabel {
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+.terms {
+  color: var(--color-text-warning);
+}
