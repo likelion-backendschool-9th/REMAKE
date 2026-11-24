@@ -73,7 +73,7 @@ class EventPropertyFilterTest {
 		assertThat(EventPropertyFilter.filter(EventName.APP_OPENED,
 				Map.of("entry_source", "icon", "is_standalone", true))).isPresent();
 		assertThat(EventPropertyFilter.filter(EventName.CART_ITEM_ADDED,
-				Map.of("cart_source", "MEAL_PLAN", "item_count", 3))).isPresent();
+				Map.of("cart_source", "meal_plan", "item_count", 3))).isPresent();
 		assertThat(EventPropertyFilter.filter(EventName.CART_ITEM_ADDED,
 				Map.of("cart_source", "FREE_TEXT", "item_count", 3))).isEmpty();
 	}

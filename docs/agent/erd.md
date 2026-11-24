@@ -657,6 +657,8 @@ Missing-ingredient list (added automatically when saving a shared recipe, saving
 | `created_at` | timestamp |  |  | no |  | Added time |
 | `updated_at` | timestamp |  |  | no |  | Amount change time |
 
+Cart identity (#89): a partial unique index on `(user_id, recipe_id, name, unit)` where `recipe_id IS NOT NULL` prevents concurrent duplicate additions. New additions always use an original recipe ID. Existing quantities and initial slot sources are preserved. `amount` is positive. On cart-to-fridge movement, preserve the nine fridge units and convert only TBSP/TSP/CUP to ML (15/5/200); reject numeric overflow with `INVALID_INPUT`.
+
 ### 20. `shared_recipes` (Shared recipes)
 
 Posts in the shared space (fully anonymous). Owner 최유리 (7 sharing/cart).

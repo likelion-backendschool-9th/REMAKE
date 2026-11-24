@@ -4,7 +4,8 @@ import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.IngredientUnit;
 
 /**
- * 재료명으로 단위를 정한다. 재료 직접 추가·수정, 영수증 등록, 장바구니 → 냉장고가 모두 이 UseCase 하나를 쓴다.
+ * 재료명으로 단위를 정한다. 재료 직접 추가·수정과 영수증 등록이 이 UseCase를 쓴다.
+ * 장바구니 이동은 수량 보존 계약에 따라 기존 단위를 유지하고 계량 단위만 ml로 환산한다.
  * 사용자는 단위를 고르지 않고 서버가 정한다.
  */
 public interface ResolveIngredientUnitUseCase {
