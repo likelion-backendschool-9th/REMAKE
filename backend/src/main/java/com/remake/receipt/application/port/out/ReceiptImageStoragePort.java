@@ -7,5 +7,7 @@ public interface ReceiptImageStoragePort {
 
 	String save(InputStream image) throws IOException;
 
+	byte[] read(String imageKey) throws IOException;
+
 	void delete(String imageKey) throws IOException;
 }

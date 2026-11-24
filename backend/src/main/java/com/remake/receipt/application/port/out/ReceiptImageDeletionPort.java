@@ -1,0 +1,16 @@
+package com.remake.receipt.application.port.out;
+
+import java.util.List;
+
+public interface ReceiptImageDeletionPort {
+
+	void enqueue(String imageKey);
+
+	boolean lock(String imageKey);
+
+	List<String> lockPending();
+
+	void complete(String imageKey);
+
+	void defer(String imageKey);
+}
