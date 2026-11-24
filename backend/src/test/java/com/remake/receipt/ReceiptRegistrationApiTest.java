@@ -128,6 +128,19 @@ class ReceiptRegistrationApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 전체_중량은_사전_단위로_환산하고_구매_수량을_다시_곱하지_않는다() throws Exception {
+		mockMvc.perform(receiptWithItems("""
+				{"name":"한돈 돼지고기","categoryCode":"MEAT","purchaseQuantity":3,"storage":"FRIDGE",
+				 "volume":{"amount":0.6,"unit":"KG","scope":"TOTAL"}}
+				""")).andExpect(status().isCreated());
+
+		for (String table : List.of("receipt_items", "ingredients")) {
+			assertThat(jdbcTemplate.queryForObject("SELECT trim_scale(amount) || ':' || unit FROM " + table,
+					String.class)).isEqualTo("600:G");
+		}
+	}
+
+	@Test
 	void 사전이_G이고_용량이_ML이면_구매_수량으로_PACK을_저장한다() throws Exception {
 		mockMvc.perform(receiptWithItems("""
 				{"name":"고추장","categoryCode":"SEASONING","purchaseQuantity":1,"storage":"PANTRY",
