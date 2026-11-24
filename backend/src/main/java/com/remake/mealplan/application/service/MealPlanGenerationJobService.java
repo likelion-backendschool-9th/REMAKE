@@ -37,6 +37,8 @@ import com.remake.mealplan.domain.TrimResult;
 import com.remake.notification.domain.MealPlanFailReason;
 import com.remake.recipe.application.port.in.GetRecipeIngredientsUseCase;
 import com.remake.recipe.application.port.in.RecipeIngredientLine;
+import com.remake.user.application.port.in.GetUserGenerationPreferencesUseCase;
+import com.remake.user.domain.AllergenCode;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +61,7 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 	private final LoadMealPlanSlotPort loadMealPlanSlotPort;
 	private final GetFridgeUseCase getFridgeUseCase;
 	private final GetRecipeIngredientsUseCase getRecipeIngredientsUseCase;
+	private final GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase;
 	private final GenerateMealPlanAiPort generateMealPlanAiPort;
 	private final MealPlanResultWriter resultWriter;
 	private final Clock clock;
@@ -113,8 +116,12 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 			throw new NoIngredientsException();
 		}
 
+		// 설정의 제외 재료(알레르기)는 항상 AI에 "쓰지 말 재료"로 보낸다(domain-rules 공통 규칙, #201과 같은 기준)
+		List<AllergenCode> excludedAllergens = getUserGenerationPreferencesUseCase.getPreferences(plan.userId())
+				.excludedAllergenCodes();
 		List<GeneratedMealSlot> generated = generateMealPlanAiPort
-				.generate(new MealPlanAiRequest(plan.purpose(), plan.servings(), schedule, available))
+				.generate(new MealPlanAiRequest(plan.purpose(), plan.servings(), schedule, available,
+						excludedAllergens))
 				.stream()
 				.map(slot -> keepOwnFridgeIds(slot, fridge))
 				.toList();

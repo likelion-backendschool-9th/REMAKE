@@ -31,6 +31,7 @@ import com.remake.mealplan.domain.MealType;
 import com.remake.mealplan.domain.SlotIngredient;
 import com.remake.recipe.domain.RecipeUnit;
 import com.remake.support.IntegrationTestSupport;
+import com.remake.user.domain.AllergenCode;
 
 // API 38 식단표 생성: 접수(202·거절)와 서버 작업(완성·실패). 기본 시각 2026-03-04 10:00(서울), 일반 회원은 월 1회·최대 5일.
 class MealPlanGenerateApiTest extends IntegrationTestSupport {
@@ -284,6 +285,26 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 				.extracting(FridgeStock::amount)
 				.satisfies(amount -> assertThat(amount).isEqualByComparingTo("100"));
 		assertThat(mealPlan(newestPlanId(userId))).containsEntry("generated_days", 1);
+		assertThat(request.getValue().excludedAllergenCodes()).isEmpty();
+	}
+
+	@Test
+	void 설정의_제외_재료를_AI에_쓰지_말_재료로_보낸다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		for (AllergenCode code : List.of(AllergenCode.MILK, AllergenCode.EGG)) {
+			jdbcTemplate.update("INSERT INTO user_excluded_ingredients (user_id, allergen_code) VALUES (?, ?)", userId,
+					code.name());
+		}
+		aiUses(fridgeId, 100);
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		ArgumentCaptor<MealPlanAiRequest> request = ArgumentCaptor.forClass(MealPlanAiRequest.class);
+		verify(mealPlanAiAdapter).generate(request.capture());
+		assertThat(request.getValue().excludedAllergenCodes())
+				.containsExactlyInAnyOrder(AllergenCode.MILK, AllergenCode.EGG);
 	}
 
 	@Test
