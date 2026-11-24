@@ -18,6 +18,7 @@ import com.remake.recipe.application.port.out.SavedRecipePort;
 import com.remake.recipe.domain.IngredientSummary;
 import com.remake.recipe.domain.Recipe;
 import com.remake.recipe.domain.SavedRecipe;
+import com.remake.share.application.port.in.CheckRecipeSharedThisWeekUseCase;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,6 +29,7 @@ class RecipeQueryService implements GetRecipeUseCase, GetRecipeListItemsUseCase 
 
 	private final LoadRecipePort loadRecipePort;
 	private final SavedRecipePort savedRecipePort;
+	private final CheckRecipeSharedThisWeekUseCase checkRecipeSharedThisWeekUseCase;
 
 	@Override
 	@Transactional(readOnly = true)
@@ -36,7 +38,10 @@ class RecipeQueryService implements GetRecipeUseCase, GetRecipeListItemsUseCase 
 		Recipe recipe = (saved != null ? loadRecipePort.loadById(recipeId)
 				: loadRecipePort.loadByIdAndUserId(recipeId, userId))
 				.orElseThrow(() -> new BusinessException(ErrorCode.RECIPE_NOT_FOUND));
-		return new RecipeDetail(recipe, saved != null, saved != null && saved.favorite());
+		// 공유는 내가 만든 레시피만(남에게서 저장한 레시피는 공유 불가), 같은 원본은 주 1회
+		boolean shareable = recipe.userId().equals(userId)
+				&& !checkRecipeSharedThisWeekUseCase.isSharedThisWeek(recipeId);
+		return new RecipeDetail(recipe, saved != null, saved != null && saved.favorite(), shareable);
 	}
 
 	@Override

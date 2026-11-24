@@ -31,7 +31,7 @@ import com.remake.recipe.domain.RecipeSource;
 import com.remake.recipe.domain.RecipeUnit;
 import com.remake.support.IntegrationTestSupport;
 
-// API 33~37 저장 목록·저장·저장 취소·즐겨찾기와 상세(30)의 saved·favorite. 기본 시각 2026-03-04 10:00(서울)
+// API 33~37 저장 목록·저장·저장 취소·즐겨찾기와 상세(30)의 saved·favorite·shareable. 기본 시각 2026-03-04 10:00(서울)
 class SavedRecipeApiTest extends IntegrationTestSupport {
 
 	private static final String SAVED_URL = "/api/v1/user/saved-recipes";
@@ -215,11 +215,33 @@ class SavedRecipeApiTest extends IntegrationTestSupport {
 		mockMvc.perform(as(userId, get(RECIPE_URL + shared)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.title").value("남의 계란말이"))
-				.andExpect(jsonPath("$.saved").value(true));
+				.andExpect(jsonPath("$.saved").value(true))
+				// 남에게서 저장한 레시피는 공유할 수 없다
+				.andExpect(jsonPath("$.shareable").value(false));
 		list("").andExpect(jsonPath("$.content[0].recipeId").value(shared));
 
 		mockMvc.perform(as(userId, delete(SAVED_URL + "/" + shared))).andExpect(status().isNoContent());
 		mockMvc.perform(as(userId, get(RECIPE_URL + shared))).andExpect(status().isNotFound());
+	}
+
+	@Test
+	void 상세의_공유_가능은_이번_주에_공유했으면_false이고_다음_주_월요일에_다시_true다() throws Exception {
+		Long recipeId = recipe(userId, "계란말이", "계란");
+		mockMvc.perform(as(userId, get(RECIPE_URL + recipeId))).andExpect(jsonPath("$.shareable").value(true));
+
+		// 수요일(3/4)에 공유
+		LocalDateTime now = LocalDateTime.now(clock);
+		jdbcTemplate.update("INSERT INTO shared_recipes (recipe_id, title, image_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+				recipeId, "공유 제목", "shared-recipes/test.jpg", now, now);
+		mockMvc.perform(as(userId, get(RECIPE_URL + recipeId))).andExpect(jsonPath("$.shareable").value(false));
+
+		// 일요일(3/8) 23:59까지는 같은 주
+		clock.advance(Duration.ofDays(4).plusHours(13).plusMinutes(59));
+		mockMvc.perform(as(userId, get(RECIPE_URL + recipeId))).andExpect(jsonPath("$.shareable").value(false));
+
+		// 월요일(3/9) 0시부터 새 주
+		clock.advance(Duration.ofMinutes(1));
+		mockMvc.perform(as(userId, get(RECIPE_URL + recipeId))).andExpect(jsonPath("$.shareable").value(true));
 	}
 
 	@Test

@@ -1,11 +1,7 @@
 package com.remake.share.application.service;
 
 import java.time.Clock;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.temporal.TemporalAdjusters;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,8 +38,7 @@ class SharedRecipePublishingService implements PublishSharedRecipeUseCase {
 			throw new BusinessException(ErrorCode.INVALID_INPUT);
 		}
 		recipes.getForPublishing(userId, recipeId);
-		LocalDateTime start = LocalDate.now(clock.withZone(ZoneId.of("Asia/Seoul")))
-				.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).atStartOfDay();
+		LocalDateTime start = SharedRecipe.weekStart(clock);
 		if (sharedRecipes.existsInWeek(recipeId, start, start.plusWeeks(1))) {
 			throw new BusinessException(ErrorCode.ALREADY_SHARED);
 		}

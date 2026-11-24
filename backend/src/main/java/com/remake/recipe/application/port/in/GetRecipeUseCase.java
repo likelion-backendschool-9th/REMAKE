@@ -10,8 +10,9 @@ public interface GetRecipeUseCase {
 	/**
 	 * @param saved    내 저장 목록에 있음
 	 * @param favorite 저장했고 즐겨찾기를 켬
+	 * @param shareable 내가 만든 레시피이고 이번 주(KST 월요일 시작)에 아직 공유하지 않음. 저장한 남의 레시피는 false
 	 */
-	record RecipeDetail(Recipe recipe, boolean saved, boolean favorite) {
+	record RecipeDetail(Recipe recipe, boolean saved, boolean favorite, boolean shareable) {
 	}
 
 	RecipeDetail getRecipe(Long userId, Long recipeId);
