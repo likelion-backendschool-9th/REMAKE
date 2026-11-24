@@ -50,6 +50,12 @@ type MealPlanContainerProps = {
   calendar?: MealPlanCalendar;
   /** 날짜별 식단(API 40). 키는 "2026-11-17" */
   slotsByDate?: Record<string, MealSlot[]>;
+  /**
+   * 식단표를 한 번이라도 만들었는지. false면 달력 대신 빈 화면(피그마 p5-빈 리스트).
+   * 식단표가 있는데 이번(또는 고른) 달에만 없으면 빈 화면 없이 달력을 그대로 보인다(피그마 5891-6495).
+   * TODO: API에 아직 이 값이 없다. #80에서 정한다(예: 달력 응답에 hasAnyMealPlan)
+   */
+  hasMealPlans?: boolean;
   /** 이번 달에 남은 식단표 생성 횟수(API 27) */
   remainingPlans?: number;
   /** 가장 급한 알림 한 줄(API 43). 없으면 알림 띠를 그리지 않는다 */
@@ -67,7 +73,8 @@ type MealPlanContainerProps = {
 };
 
 /**
- * p5 식단표. 달력(식단 기간 띠) + 고른 날의 식단 드래그 시트. 식단표가 하나도 없으면 빈 화면(식단표 만들기).
+ * p5 식단표. 달력(식단 있는 날 띠) + 고른 날의 식단 드래그 시트. 식단표를 한 번도 만들지 않았으면 빈 화면(식단표 만들기).
+ * 식단이 없는 달·날도 달력과 "이 날은 식단이 없어요"로 보인다. 지난 달·지난 날도 볼 수 있다(domain-rules 5).
  * "2026년 11월 ∨"는 월 선택 휠, 시트의 +는 식단표 추가 시트, ⋮는 식단 삭제·레시피 교체(domain-rules 5).
  * 상태: 불러오는 중 / 식단표 / 시트 펼침 / ⋮ 시트 / 월 선택 / 식단표 추가 / 식단 없는 날 / 빈 화면.
  */
@@ -98,6 +105,7 @@ export function MealPlanContainer({ calendar, notice, ...rest }: MealPlanContain
 function MealPlanBody({
   calendar,
   slotsByDate = {},
+  hasMealPlans = true,
   remainingPlans = 0,
   today: todayProp,
   initialDate,
@@ -117,8 +125,8 @@ function MealPlanBody({
   const daySlots = slots[selectedDate] ?? [];
   const menuSlot = daySlots.find((slot) => slot.slotId === menuSlotId) ?? null;
   const isPast = selectedDate < today;
-  // 이번 달 식단표가 하나도 없으면 빈 화면(피그마 p5-빈 리스트)
-  const isEmpty = calendar.periods.length === 0 && month === today.slice(0, 7);
+  // 식단표를 한 번도 만들지 않았으면 빈 화면(피그마 p5-빈 리스트). 식단 없는 달은 달력을 그대로 보인다
+  const isEmpty = !hasMealPlans;
 
   const goSetup = () => {
     // 다른 화면으로 가기 전에 시트를 먼저 닫는다(blueprint §7.1)
@@ -187,6 +195,7 @@ function MealPlanBody({
           month={month}
           // TODO: 다른 달로 바꾸면 API 39(?month=)로 그 달 기간을 받는다
           periods={month === calendar.month ? calendar.periods : []}
+          datesWithMeals={month === calendar.month ? calendar.datesWithMeals : []}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
         />
@@ -231,7 +240,8 @@ function MealPlanBody({
           onClose={() => setSheet(null)}
           onConfirm={(next) => {
             setMonth(next);
-            setSelectedDate(`${next}-01`);
+            // 이번 달로 돌아오면 처음 화면처럼 오늘, 다른 달이면 1일을 고른다(#217 리뷰)
+            setSelectedDate(next === today.slice(0, 7) ? today : `${next}-01`);
             setSheet(null);
           }}
         />
@@ -287,7 +297,10 @@ function range(from: number, to: number, label: (n: number) => string): WheelOpt
   }));
 }
 
-/** 피그마 p5-식단표-날짜 수정: "캘린더 선택" 입력 시트, 연·월 휠 2열(26 / 11), "수정" */
+/**
+ * 피그마 p5-식단표-날짜 수정: "캘린더 선택" 입력 시트, 연·월 휠 2열(26 / 11), "수정".
+ * 지난 달·지난 해도 고를 수 있다(지난 식단 보기, domain-rules 5). 오늘 이전을 막는 건 식단표 생성의 시작일 휠뿐이다
+ */
 function MonthPickerSheet({
   month,
   onClose,

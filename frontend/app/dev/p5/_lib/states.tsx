@@ -64,14 +64,41 @@ export const P5_STATES: PreviewState[] = [
     render: () => <MealPlanContainer {...BASE} initialDate="2026-11-16" />,
   },
   {
+    slug: "calendar-no-plan-month",
+    label: "p5-식단표-식단 없는 달 (2026년 10월, 피그마 5891-6495)",
+    route: ROUTE,
+    render: () => (
+      <MealPlanContainer
+        {...BASE}
+        calendar={{ month: "2026-10", periods: [], datesWithMeals: [] }}
+        initialDate="2026-10-01"
+      />
+    ),
+  },
+  {
+    slug: "calendar-gap-day",
+    label: "p5-식단표-기간 안 식단 없는 날 (11월 20일 비움, 띠 끊김)",
+    route: ROUTE,
+    render: () => (
+      <MealPlanContainer
+        {...BASE}
+        calendar={{
+          ...SAMPLE_CALENDAR,
+          datesWithMeals: SAMPLE_CALENDAR.datesWithMeals.filter((date) => date !== "2026-11-20"),
+        }}
+      />
+    ),
+  },
+  {
     slug: "calendar-empty",
-    label: "p5-빈 리스트",
+    label: "p5-빈 리스트 (식단표를 한 번도 만들지 않음)",
     route: ROUTE,
     render: () => (
       <MealPlanContainer
         {...BASE}
         calendar={{ month: "2026-11", periods: [], datesWithMeals: [] }}
         slotsByDate={{}}
+        hasMealPlans={false}
       />
     ),
   },
