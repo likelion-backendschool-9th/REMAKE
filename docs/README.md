@@ -42,6 +42,10 @@ docs/
       ├─ 06_notification-admin.md    영역 6: 알림 (어드민은 보류)
       ├─ 07_shared-cart.md      영역 7: 공유 공간·장바구니
       └─ 08_event-tracking.md   전원: 이벤트 트래킹
+   └─ qa/                       QA 시나리오 (한글만 있음)
+      ├─ README.md              읽는 법, 결과 기록 양식, 테스트 준비물, 영역별 문서 목록
+      ├─ 01_auth-sub.md ~ 07_shared-cart.md   영역별 시나리오
+      └─ 08_common.md           공통·비기능, 동시성 점검표, 핵심 흐름 회귀 세트
 ```
 
 `docs/` 밖에도 문서가 있습니다. 에이전트가 그 자리에서 읽어야 해서 원래 위치에 둡니다.
