@@ -13,7 +13,7 @@ import { formatWon } from "@/lib/format";
 import { formatAmount, getCategoryImage, getStorage } from "@/lib/ingredients";
 
 import { StoreBadge } from "../../../../_components/StoreBadge/StoreBadge";
-import { formatPurchaseDateTime, type ReceiptDetail } from "../../../_lib/receipts";
+import { formatPurchaseDate, type ReceiptDetail } from "../../../_lib/receipts";
 
 import styles from "./ReceiptDetailContainer.module.css";
 
@@ -134,7 +134,7 @@ function ReceiptSummary({ receipt }: { receipt: ReceiptDetail }) {
       <dl className={styles.facts}>
         <div className={styles.fact}>
           <dt>구매일</dt>
-          <dd>{formatPurchaseDateTime(receipt.purchasedOn, receipt.purchasedTime)}</dd>
+          <dd>{formatPurchaseDate(receipt.purchasedOn)}</dd>
         </div>
         <div className={styles.fact}>
           <dt>식재료</dt>

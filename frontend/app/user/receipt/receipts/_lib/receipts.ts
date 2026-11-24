@@ -61,13 +61,8 @@ export type ReceiptDetail = {
   id: number;
   storeCode: string | null;
   storeName: string;
-  /** "2026-11-21" */
+  /** "2026-11-21". 구매 시각은 보이지 않는다(API 23에 없음, 11/25 결정으로 피그마의 시각 표시를 뺌) */
   purchasedOn: string;
-  /**
-   * 구매 시각 "14:32". 피그마 p3.2는 시각까지 보이지만 API 23 응답에는 없다(확인 필요).
-   * 없으면 날짜만 보인다
-   */
-  purchasedTime?: string | null;
   /** 영수증 원본 이미지. 없으면 원본 칸을 그리지 않는다 */
   imageUrl: string | null;
   items: ReceiptItem[];
@@ -85,10 +80,9 @@ export type ReceiptItem = {
   price: number;
 };
 
-/** "2026-11-21", "14:32" → "2026. 11. 21.(토) 14:32" */
-export function formatPurchaseDateTime(date: string, time?: string | null): string {
-  const day = dayjs(date).format("YYYY. M. D.(ddd)");
-  return time ? `${day} ${time}` : day;
+/** "2026-11-21" → "2026. 11. 21.(토)" */
+export function formatPurchaseDate(date: string): string {
+  return dayjs(date).format("YYYY. M. D.(ddd)");
 }
 
 /** 마크업 확인용 값(피그마 p3-영수증과 같음 + 지난주 묶음 하나). 미리보기(app/dev)에서만 쓴다 */
@@ -146,7 +140,6 @@ export const SAMPLE_RECEIPT_DETAIL: ReceiptDetail = {
   storeCode: "GS_FRESH",
   storeName: "GS 프레쉬 마트 봉천점",
   purchasedOn: "2026-11-21",
-  purchasedTime: "14:32",
   imageUrl: "/images/receipt/sample-receipt.webp",
   totalAmount: 95800,
   items: [

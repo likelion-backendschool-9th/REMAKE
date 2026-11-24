@@ -161,7 +161,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Monthly total: food item amounts of that month's receipts (by purchase date).
 - Average: difference from my past average (monthly average of the last 6 months). Excluding this month, using only months with records, and hiding when there is no history are (proposal).
 - Store icon: match the store name to 14 codes (CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS). No match: leave empty and show the default icon (matching method is a proposal).
-- Detail: original image, "2026년 11월 영수증", store and branch, items (image, name, storage, amount, price), total (food items), delete.
+- Detail: original image, "2026년 11월 영수증", store and branch, purchase date (date only; the purchase time is not shown, decided 11/25), items (image, name, storage, amount, price), total (food items), delete.
 - Registered receipts cannot be edited, only deleted. Fridge ingredients are edited in the fridge (editing a price there does not change the receipt).
 - Delete: modal → delete receipt, items, and image; it leaves spending and patterns; fridge ingredients stay.
 - Retention: 6 months from the purchase date; a daily early-morning job deletes older receipts with their images.
