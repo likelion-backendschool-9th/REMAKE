@@ -53,6 +53,7 @@ frontend/
 │  ├─ sw.ts              # 서비스 워커 (캐싱)
 │  ├─ serwist/[path]/    # 서비스 워커 서빙 라우트
 │  ├─ ~offline/          # 오프라인 대체 화면
+│  ├─ dev/               # 화면 컨테이너의 개발 전용 상태 미리보기 (3.1의 7번, 운영에서는 404)
 │  └─ manifest.ts        # PWA 매니페스트
 ├─ components/           # 여러 라우트에서 재사용하는 UI, 도메인을 모름 (Button, Input, BottomSheet ...)
 ├─ hooks/                # 여러 라우트에서 재사용하는 React 훅, 도메인을 모름 (useDebounce ...)
@@ -97,6 +98,8 @@ app/user/fridge/ingredients/
 3. **컴포넌트 단위 고립.** 컴포넌트마다 폴더 하나를 두고 `.tsx`, `.module.css`, 그 컴포넌트만 쓰는 훅·유틸을 함께 둡니다. 다른 컴포넌트의 CSS Module이나 내부 파일을 import하지 않습니다.
 4. **공유되면 올리기.** 관련 없는 두 라우트가 같은 코드를 필요로 하면 위로 올립니다 — UI 컴포넌트 → `components/<이름>/`, React 훅 → `hooks/`, queryKey와 Query 훅 → `lib/queries/<도메인>.ts`, 그 밖의 함수 → `lib/`. 공용 코드는 특정 페이지를 알면 안 됩니다.
 5. **import 경로.** 코로케이션 코드는 상대 경로(`./_components/...`, `../_lib/...`)로, 공용 코드는 `@/`(`@/components/Button`)로 import합니다. `@/app/...`에서는 import하지 않습니다 (ESLint로 막음).
+6. **화면 컨테이너.** 화면마다 최상위 컴포넌트 하나를 `<화면>Container`라는 이름으로 그 라우트의 `_components/`에 둡니다 (예: `LoginContainer`). `page.tsx`는 `metadata`를 내보내고 그 컨테이너만 그립니다. `...Screen` 이름은 쓰지 않습니다. 손으로 만들기 번거로운 상태(저장된 값, 열린 드로워)는 기본값이 있는 컨테이너 props로 받아서 개발용 미리보기(7번)가 그릴 수 있게 합니다. 실제 라우트는 기본값을 씁니다.
+7. **개발용 미리보기(`app/dev/`).** `/dev/p<N>`은 피그마 영역 하나의 상태 목록이고, `/dev/p<N>/<상태>`는 화면 컨테이너에 props를 넘겨 상태 하나를 그립니다. `app/dev/` 아래 모든 페이지는 `env.isDev`가 아니면 `notFound()`를 불러서 운영에서는 404입니다. 이 폴더만 2번 규칙의 예외로, 라우트의 컨테이너(와 그 `_lib` 타입·예시 값)를 상대 경로로 import할 수 있습니다. 다른 곳에서 `app/dev/`를 import하지 않습니다. 컨테이너 기본값은 API를 붙이기 전 실제 라우트가 보일 값으로, 빈 값이거나 서버 값이면 불러오는 중 상태입니다. 예시 값(피그마 그대로의 값)은 `app/dev/`에서만 넘기고 컨테이너 기본값으로 쓰지 않습니다. `dev`는 개발 서버에 배포되기 때문입니다. 운영에서는 `generateStaticParams`가 자리표시 값 하나만 돌려줘서(Cache Components에서는 빈 배열이 빌드 오류) 미리보기 경로를 만들지 않습니다.
 
 공용 컴포넌트 구성:
 
@@ -205,7 +208,7 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - Tailwind나 CSS-in-JS 라이브러리를 쓰지 않습니다. **CSS Modules(`*.module.css`) + `globals.css`의 CSS 변수**만 씁니다.
 - 아이콘은 `@solar-icons/react`의 스타일별 경로에서 import합니다. 예: `import { HomeIcon } from "@solar-icons/react/linear"`. 기본 크기·색·선 두께는 `globals.css`의 `--solar-*` 변수로 정합니다.
 - 디자인 토큰은 [`design-tokens.md`](./design-tokens.md)를 따릅니다. 피그마 디자인 시스템(`0. 기초`)의 변수·스타일을 이름 그대로 옮긴 것이고, CSS 변수 이름은 피그마 Dev Mode의 코드 이름과 같습니다(`var(--color-text-strong)`, `var(--space-16)`, `font: var(--font-content)`). `design/tokens/build_tokens.py`가 만들고, 결과를 `app/tokens.css`로 복사해 `globals.css`에서 불러옵니다. `app/tokens.css`는 손으로 고치지 않습니다. 피그마에서 변수·스타일이 걸린 값은 같은 이름의 토큰을, 걸리지 않은 값은 프레임 값을 그대로 씁니다.
-- 모바일 우선입니다. 기준 폭은 360px입니다. 기본 레이아웃 최대 폭은 `--layout-max-width`(480px), 좌우 여백은 `--layout-gutter`입니다. 480px보다 넓은 화면은 480px 컨테이너를 가운데 정렬해 보여 줍니다.
+- 모바일 우선입니다. 기준 폭은 360px입니다. 기본 레이아웃 최대 폭은 `--layout-max-width`(480px), 좌우 여백은 `--layout-gutter`입니다. 480px보다 넓은 화면은 480px 컨테이너를 가운데 정렬해 보여 줍니다. 최상위 `app/layout.tsx`가 모든 화면을 컨테이너 하나(`app/layout.module.css`)로 감싸므로 화면마다 최대 폭을 걸지 않습니다. 그 컨테이너 밖에 있는 요소 — `position: fixed` 고정 영역과 `body`에 포털로 붙는 요소(하단 고정 영역, 시트, 모달, 드로워) — 는 각자 `max-width: var(--layout-max-width)`를 겁니다.
 - 라이트 모드만 있습니다. 다크 모드는 없습니다.
 - 단위는 rem입니다(1rem = 16px, 루트 font-size는 바꾸지 않음). 피그마 px 값은 16으로 나눠 씁니다(10px → 0.625rem). 테두리 같은 선만 px로 씁니다.
 - 폰트: 파일은 woff2만 씁니다.

@@ -53,6 +53,7 @@ frontend/
 │  ├─ sw.ts              # service worker (caching)
 │  ├─ serwist/[path]/    # service-worker serving route
 │  ├─ ~offline/          # offline fallback screen
+│  ├─ dev/               # dev-only state previews of screen containers (§3.1 rule 7, 404 in production)
 │  └─ manifest.ts        # PWA manifest
 ├─ components/           # reusable UI shared by several routes, no domain knowledge (Button, Input, BottomSheet ...)
 ├─ hooks/                # reusable React hooks shared by several routes, no domain knowledge (useDebounce ...)
@@ -97,6 +98,8 @@ app/user/fridge/ingredients/
 3. **Isolate by component.** Each component has its own folder with its `.tsx`, `.module.css`, and any hook or util only it uses. Do not import another component's CSS module or internal files.
 4. **Promote when shared.** When two unrelated routes need the same code, move it up — UI component → `components/<Name>/`, React hook → `hooks/`, query keys and query hooks → `lib/queries/<domain>.ts`, other functions → `lib/`. Shared code must not know about a specific page.
 5. **Import paths.** Import colocated code with relative paths (`./_components/...`, `../_lib/...`). Import shared code with `@/` (`@/components/Button`). Never import from `@/app/...` (enforced by ESLint).
+6. **Screen container.** Each screen has one top-level component named `<Screen>Container` (e.g. `LoginContainer`) in its route's `_components/`. `page.tsx` only exports `metadata` and renders that container. Do not name it `...Screen`. A state that is hard to reach by hand (a stored value, an open drawer) is a container prop with a default, so the dev preview (rule 7) can render it; the real route uses the defaults.
+7. **Dev preview (`app/dev/`).** `/dev/p<N>` lists the states of one Figma area and `/dev/p<N>/<state>` renders one state by passing props to the screen containers. Every page under `app/dev/` calls `notFound()` unless `env.isDev`, so production returns 404. This folder is the only exception to rule 2: it may import route containers (and their `_lib` types and sample values) with relative paths. Never import `app/dev/` from anywhere else. Container defaults are what the real route shows before the API is wired: empty values, or a loading state for server data. Sample values (Figma copies) are passed only from `app/dev/`, never used as container defaults, because `dev` is deployed. In production `generateStaticParams` returns one placeholder param (an empty array is a build error with Cache Components), so no preview paths are built.
 
 Shared component layout:
 
@@ -205,7 +208,7 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 - No Tailwind or CSS-in-JS libraries. Use only **CSS Modules (`*.module.css`) + CSS variables in `globals.css`**.
 - Import icons from the per-style paths of `@solar-icons/react`. Example: `import { HomeIcon } from "@solar-icons/react/linear"`. Default size, color, and stroke width come from the `--solar-*` variables in `globals.css`.
 - Design tokens follow [`docs/agent/design-tokens.md`](../docs/agent/design-tokens.md): the variables and styles of the Figma design system (`0. 기초`) copied with their names; CSS variable names equal the Figma Dev Mode code names (`var(--color-text-strong)`, `var(--space-16)`, `font: var(--font-content)`). `design/tokens/build_tokens.py` generates them; the result is copied to `app/tokens.css`, which `globals.css` imports. Never edit `app/tokens.css` by hand. If a Figma value has a variable or style, use the token with the same name. If it has none, use the Figma frame value as is.
-- Mobile first. Design for a 360px width. The default max layout width is `--layout-max-width` (480px) and the side gutter is `--layout-gutter`. Wider screens show the 480px container centered.
+- Mobile first. Design for a 360px width. The default max layout width is `--layout-max-width` (480px) and the side gutter is `--layout-gutter`. Wider screens show the 480px container centered: the root `app/layout.tsx` wraps every screen in one container (`app/layout.module.css`), so screens do not set the max width themselves. Elements outside that container — `position: fixed` bars and portals to `body` (bottom bar, sheets, modals, drawers) — set `max-width: var(--layout-max-width)` themselves.
 - Light theme only; no dark mode.
 - Units: rem (1rem = 16px; never change the root font size). Convert Figma px by dividing by 16 (10px → 0.625rem). Use px only for lines such as borders.
 - Font: use woff2 files only.
