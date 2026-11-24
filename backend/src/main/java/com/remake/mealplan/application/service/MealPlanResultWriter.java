@@ -56,7 +56,7 @@ class MealPlanResultWriter {
 	 * 완성: 덮어쓸 칸 삭제 → 레시피 저장 → 칸 저장 → COMPLETED → 월 차감 → 완성 알림.
 	 *
 	 * @param slots           새로 채울 칸(날짜·끼니 순)
-	 * @param replacedSlotIds 지울 기존 칸(만든 날 안의 요리 안 한 칸)
+	 * @param replacedSlotIds 지울 기존 칸(요청 기간 안의 요리 안 한 칸 전부. 못 만든 뒤쪽 날도 지워 빈 날이 된다)
 	 */
 	@Transactional
 	public void complete(MealPlanGenerationJob job, List<GeneratedMealSlot> slots, int generatedDays,

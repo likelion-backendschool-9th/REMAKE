@@ -96,22 +96,33 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 			return;
 		}
 		LocalDate today = LocalDate.now(clock);
-		LocalDate lastPossibleDay = plan.startDate().plusDays(job.maxDays() - 1L);
+		LocalDate lastRequestedDay = plan.startDate().plusDays(job.maxDays() - 1L);
 
 		// 내 다른 식단표의 오늘 이후 칸. 새 식단표에는 아직 칸이 없다.
 		List<MealPlanSlot> futureSlots = loadMealPlanSlotPort.loadUserSlotsFrom(plan.userId(), today);
 		List<MealPlanSlot> slotsInRange = futureSlots.stream()
-				.filter(slot -> !slot.slotDate().isBefore(plan.startDate()) && !slot.slotDate().isAfter(lastPossibleDay))
+				.filter(slot -> !slot.slotDate().isBefore(plan.startDate()) && !slot.slotDate().isAfter(lastRequestedDay))
 				.toList();
 		Set<MealSlotKey> keptSlots = slotsInRange.stream()
 				.filter(MealPlanSlot::isCooked)
 				.map(slot -> new MealSlotKey(slot.slotDate(), slot.mealType()))
 				.collect(Collectors.toSet());
+		// 덮어쓰기는 요청 기간 전체를 바꾼다(#78 11-24): 기간 안의 요리 안 한 칸은 성공하면 모두 지우고,
+		// 그 재료는 처음부터 이번 생성이 쓸 수 있다. 재료가 모자라 못 만든 뒤쪽 날은 빈 날이 된다.
+		// 덮어쓰기 없이 겹치면 접수에서 막히므로, 덮어쓰기가 아니면 이 목록은 비어 있다.
+		List<Long> replacedSlotIds = slotsInRange.stream()
+				.filter(slot -> !slot.isCooked())
+				.map(MealPlanSlot::id)
+				.toList();
 		MealSchedule schedule = new MealSchedule(plan.startDate(), job.maxDays(), plan.mealTypes(), keptSlots);
 
 		List<FridgeStock> fridge = loadFridge(plan.userId());
-		StockLedger ledger = StockLedger.of(fridge, allocatedSlots(plan.userId(), futureSlots), today);
-		List<FridgeStock> available = ledger.available(schedule);
+		Set<Long> replaced = Set.copyOf(replacedSlotIds);
+		List<MealPlanSlot> remainingSlots = futureSlots.stream()
+				.filter(slot -> !replaced.contains(slot.id()))
+				.toList();
+		StockLedger ledger = StockLedger.of(fridge, allocatedSlots(plan.userId(), remainingSlots), today);
+		List<FridgeStock> available = ledger.available();
 		if (available.isEmpty()) {
 			throw new NoIngredientsException();
 		}
@@ -131,11 +142,6 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 			throw new NoIngredientsException();
 		}
 
-		LocalDate lastDay = plan.startDate().plusDays(trim.generatedDays() - 1L);
-		List<Long> replacedSlotIds = slotsInRange.stream()
-				.filter(slot -> !slot.isCooked() && !slot.slotDate().isAfter(lastDay))
-				.map(MealPlanSlot::id)
-				.toList();
 		resultWriter.complete(job, slotsToSave(schedule, trim.generatedDays(), generated), trim.generatedDays(),
 				trim.shortages().size(), replacedSlotIds);
 	}

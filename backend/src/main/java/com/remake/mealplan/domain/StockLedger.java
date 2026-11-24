@@ -20,22 +20,23 @@ import com.remake.mealplan.domain.StockUnits.BaseAmount;
  * <li>양이 없거나 꼬집·약간인 재료는 빼지 않는다.</li>
  * </ul>
  * 소비기한이 지난 재료는 처음부터 넣지 않는다(오늘까지인 재료는 쓴다).
- * 장부는 바꾸지 않고, 칸을 더하거나 뺄 때마다 새 장부를 돌려준다.
+ * 장부는 바꾸지 않고, 칸을 더할 때마다 새 장부를 돌려준다.
+ *
+ * <p>덮어쓰기는 장부가 모른다. 덮어써서 지울 칸은 부르는 쪽이 처음부터 배정 목록에서 빼고 넘긴다
+ * (요청 기간 전체를 바꾸므로 그 칸들의 재료는 이번 생성이 모두 쓸 수 있다, #78 11-24).
  */
 public final class StockLedger {
 
 	private final Map<Long, Stock> stocks;
-	private final List<AllocatedSlot> allocated;
 
-	private StockLedger(Map<Long, Stock> stocks, List<AllocatedSlot> allocated) {
+	private StockLedger(Map<Long, Stock> stocks) {
 		this.stocks = stocks;
-		this.allocated = allocated;
 	}
 
 	/**
-	 * 냉장고 재료에서 이미 있는 칸들의 배정량을 뺀 장부를 만든다.
+	 * 냉장고 재료에서 남는 칸들의 배정량을 뺀 장부를 만든다.
 	 *
-	 * @param allocated 다른 식단표의 오늘 이후·요리 안 한 칸들
+	 * @param allocated 이번 생성 뒤에도 남는 칸들: 다른 식단표의 오늘 이후·요리 안 한 칸 중 덮어써서 지울 칸을 뺀 것
 	 * @param today     소비기한이 지났는지 볼 오늘 날짜
 	 */
 	public static StockLedger of(List<FridgeStock> fridgeStocks, List<AllocatedSlot> allocated, LocalDate today) {
@@ -48,9 +49,8 @@ public final class StockLedger {
 				stocks.put(fridgeStock.ingredientId(), Stock.of(fridgeStock));
 			}
 		}
-		List<AllocatedSlot> slots = List.copyOf(allocated);
-		StockLedger ledger = new StockLedger(stocks, slots);
-		for (AllocatedSlot slot : slots) {
+		StockLedger ledger = new StockLedger(stocks);
+		for (AllocatedSlot slot : allocated) {
 			ledger.claim(slot.ingredients());
 		}
 		return ledger;
@@ -59,22 +59,9 @@ public final class StockLedger {
 	/**
 	 * 이번 생성에서 쓸 수 있는 냉장고 재료와 남은 양(냉장고 단위). 남은 양이 0이면 뺀다.
 	 * AI에 보낼 재료 목록이고, 비어 있으면 하루도 만들 수 없다(MEAL_PLAN_NO_INGREDIENTS).
-	 *
-	 * <p>덮어쓸 기간 안의 이미 있는 칸은 새 식단표로 바뀔 칸이라 그 배정량을 돌려받은 양으로 계산한다.
-	 * 실제로 돌려받는 것은 자르기에서 그날을 만들 때뿐이라(못 만든 날은 예전 칸이 남음),
-	 * 앞쪽 날에 몰아 쓰면 아직 돌려받지 않은 뒤쪽 날 몫이라 그날에서 잘린다.
+	 * 자르기도 같은 장부로 계산하므로 AI에 알려 준 양과 자르기의 기준이 같다.
 	 */
-	public List<FridgeStock> available(MealSchedule schedule) {
-		StockLedger released = copy();
-		for (AllocatedSlot slot : allocated) {
-			if (schedule.contains(slot.date())) {
-				released.unclaim(slot.ingredients());
-			}
-		}
-		return released.remainingStocks();
-	}
-
-	private List<FridgeStock> remainingStocks() {
+	public List<FridgeStock> available() {
 		List<FridgeStock> result = new ArrayList<>();
 		for (Stock stock : stocks.values()) {
 			BigDecimal remaining = stock.remaining();
@@ -87,17 +74,9 @@ public final class StockLedger {
 		return result;
 	}
 
-	/**
-	 * 그날 칸들을 배정한 새 장부. 먼저 그날의 이미 있는 칸(덮어써서 지울 칸)의 배정량을 돌려받는다.
-	 * 칸 하나라도 배정할 수 없으면 비어 있다(장부는 그대로).
-	 */
-	Optional<StockLedger> reserveDay(LocalDate date, List<PlannedSlot> slots) {
+	/** 그날 칸들을 배정한 새 장부. 칸 하나라도 배정할 수 없으면 비어 있다(장부는 그대로). */
+	Optional<StockLedger> reserveDay(List<PlannedSlot> slots) {
 		StockLedger next = copy();
-		for (AllocatedSlot slot : allocated) {
-			if (slot.date().equals(date)) {
-				next.unclaim(slot.ingredients());
-			}
-		}
 		for (PlannedSlot slot : slots) {
 			if (!next.tryClaim(slot.ingredients())) {
 				return Optional.empty();
@@ -126,22 +105,15 @@ public final class StockLedger {
 		return usesFridge;
 	}
 
+	/** 이미 있는 칸의 배정량을 뺀다. 남은 양을 넘어도 그대로 뺀다(남은 양은 0 아래로 내려가지 않는다). */
 	private void claim(List<SlotIngredient> ingredients) {
-		forEachMeasuredStock(ingredients, Stock::claim);
-	}
-
-	private void unclaim(List<SlotIngredient> ingredients) {
-		forEachMeasuredStock(ingredients, Stock::unclaim);
-	}
-
-	private void forEachMeasuredStock(List<SlotIngredient> ingredients, StockAction action) {
 		for (SlotIngredient ingredient : ingredients) {
 			if (!ingredient.usesFridge() || !ingredient.isMeasured()) {
 				continue;
 			}
 			Stock stock = stocks.get(ingredient.fridgeIngredientId());
 			if (stock != null) {
-				action.apply(stock, ingredient);
+				stock.claim(ingredient);
 			}
 		}
 	}
@@ -149,17 +121,12 @@ public final class StockLedger {
 	private StockLedger copy() {
 		Map<Long, Stock> copied = new LinkedHashMap<>();
 		stocks.forEach((id, stock) -> copied.put(id, stock.copy()));
-		return new StockLedger(copied, allocated);
-	}
-
-	@FunctionalInterface
-	private interface StockAction {
-		void apply(Stock stock, SlotIngredient ingredient);
+		return new StockLedger(copied);
 	}
 
 	/**
 	 * 재료 하나의 장부. claimed는 같은 종류 단위로 쓰기로 한 양의 합(기준 단위), wholeClaims는 통째로 쓴 칸 수다.
-	 * 순서와 관계없이 더하고 뺄 수 있게 두 값을 따로 센다.
+	 * 통째로 쓴 칸이 하나라도 있으면 남은 양은 0이다.
 	 */
 	private static final class Stock {
 
@@ -199,10 +166,6 @@ public final class StockLedger {
 
 		void claim(SlotIngredient ingredient) {
 			sameDimension(ingredient).ifPresentOrElse(need -> claimed = claimed.add(need), () -> wholeClaims++);
-		}
-
-		void unclaim(SlotIngredient ingredient) {
-			sameDimension(ingredient).ifPresentOrElse(need -> claimed = claimed.subtract(need), () -> wholeClaims--);
 		}
 
 		/** 같은 종류 단위면 기준 단위로 바꾼 필요량, 계산할 수 없으면 비어 있다. */

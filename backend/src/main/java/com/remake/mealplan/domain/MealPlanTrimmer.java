@@ -16,7 +16,7 @@ import com.remake.mealplan.domain.TrimResult.Shortage;
  *
  * <p>시작일부터 하루씩 본다. 그날 채울 칸이 모두 있고 모두 장부 안에서 배정되면 그날을 확정한다.
  * 칸 하나라도 없거나 배정할 수 없으면 그날부터 멈춘다(뒤 날이 되더라도 건너뛰지 않는다).
- * 덮어쓸 날의 이미 있는 칸은 그날을 확정할 때만 배정량을 돌려받으므로, 못 만든 날의 예전 칸은 계속 배정된 채로 남는다.
+ * 장부는 AI에 보낸 재료 양과 같은 기준이다(덮어써서 지울 칸은 처음부터 빠져 있음, {@link StockLedger}).
  * 요청하지 않은 칸은 무시한다(형식 검사에서 거른다).
  */
 public final class MealPlanTrimmer {
@@ -35,7 +35,7 @@ public final class MealPlanTrimmer {
 			if (slots.isEmpty()) {
 				break;
 			}
-			Optional<StockLedger> next = current.reserveDay(date, slots.get());
+			Optional<StockLedger> next = current.reserveDay(slots.get());
 			if (next.isEmpty()) {
 				break;
 			}

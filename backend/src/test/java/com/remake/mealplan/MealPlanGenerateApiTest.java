@@ -355,7 +355,7 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 덮어쓰면_만든_날의_기존_칸을_바꾸고_오늘_요리한_칸과_범위_밖_칸은_남긴다() throws Exception {
+	void 덮어쓰면_요청_기간의_기존_칸을_바꾸고_오늘_요리한_칸과_범위_밖_칸은_남긴다() throws Exception {
 		Long userId = createUser();
 		Long fridgeId = fridgeGrams(userId, "대파", 1000);
 		Long oldPlan = completedPlan(userId, TODAY, 7);
@@ -375,6 +375,29 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", cookedToday)).isEqualTo(1);
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", tomorrow)).isZero();
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", outside)).isEqualTo(1);
+		assertThat(eventProperty("meal_plan_generated", "was_overwritten")).isEqualTo("true");
+	}
+
+	@Test
+	void 덮어쓰면_기존_칸의_재료를_처음부터_쓰고_못_만든_뒤쪽_날은_빈_날이_된다() throws Exception {
+		// 대파 1000g을 기존 식단 5일이 하루 200g씩 모두 잡아 둠. 같은 5일을 덮어쓰고 새 레시피는 하루 300g.
+		// 기존 칸의 1000g을 처음부터 돌려받아 3일치(900g)를 만들고, 4·5일의 기존 칸은 지워 빈 날이 된다.
+		// (하루씩 돌려받던 이전 규칙이면 첫날 200g < 300g이라 하루도 못 만들었다, #78 11-24)
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		Long oldPlan = completedPlan(userId, TODAY, 5);
+		for (int day = 0; day < 5; day++) {
+			slot(userId, oldPlan, TODAY.plusDays(day), fridgeId, 200, false);
+		}
+		aiUses(fridgeId, 300);
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", true)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		Long newPlan = newestPlanId(userId);
+		assertThat(mealPlan(newPlan)).containsEntry("status", "COMPLETED").containsEntry("generated_days", 3);
+		assertThat(slotDates(newPlan)).containsExactly(TODAY, TODAY.plusDays(1), TODAY.plusDays(2));
+		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE meal_plan_id = ?", oldPlan)).isZero();
 		assertThat(eventProperty("meal_plan_generated", "was_overwritten")).isEqualTo("true");
 	}
 
