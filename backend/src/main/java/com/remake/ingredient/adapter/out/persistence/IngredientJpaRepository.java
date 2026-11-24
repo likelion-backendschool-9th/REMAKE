@@ -5,8 +5,11 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 import com.remake.ingredient.domain.ExpiredIngredient;
 import com.remake.ingredient.domain.ExpiredIngredientCount;
@@ -20,6 +23,15 @@ interface IngredientJpaRepository extends JpaRepository<IngredientJpaEntity, Lon
 
 	/** 사용자 본인의 재료만 읽는다. 다른 사용자의 재료는 없는 것과 같다. */
 	Optional<IngredientJpaEntity> findByIdAndUserId(Long id, Long userId);
+
+	/**
+	 * findByIdAndUserId와 같지만 행을 잠그고(SELECT ... FOR UPDATE) 읽는다. 쓰기 트랜잭션 안에서만 쓴다.
+	 * 같은 재료에 대한 사용·폐기·수정·삭제가 차례로 처리되고, 늦은 요청은 앞 요청이 끝난 뒤의 값을 읽는다
+	 * (이미 지워졌으면 비어 있다). 잠금은 트랜잭션이 끝날 때 풀린다.
+	 */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select i from IngredientJpaEntity i where i.id = :id and i.userId = :userId")
+	Optional<IngredientJpaEntity> findByIdAndUserIdForUpdate(@Param("id") Long id, @Param("userId") Long userId);
 
 	@Query("""
 			select i from IngredientJpaEntity i

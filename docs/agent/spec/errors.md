@@ -244,8 +244,8 @@ No data returns 200 with empty values; the screen draws its empty state.
 | Case | Handling |
 | --- | --- |
 | Receipt registration pressed twice | Disable the button until the request ends (frontend). No server duplicate-request key |
-| Cook deduction pressed twice | Same. The server checks the remaining amount before subtracting; `INSUFFICIENT_QUANTITY` if short |
-| Same ingredient edited on two devices | Last write wins (no `version`). Deduction as above |
+| Cook deduction pressed twice | Same. The server locks the ingredient row and checks the remaining amount before subtracting; `INSUFFICIENT_QUANTITY` if short. If the first request used the last stock, the row is gone and the second gets `INGREDIENT_NOT_FOUND` (404) |
+| Same ingredient edited on two devices | Requests are handled one by one (row lock, no `version`), so the last request wins. Use/discard as above |
 | Same recipe saved twice | PUT, same result (not an error). `saved_recipes` UK(user_id + recipe_id) |
 | Same recipe shared twice in a week | `ALREADY_SHARED` |
 | Same post reported twice | `REPORT_ALREADY_EXISTS` |
@@ -262,7 +262,7 @@ Removed (do not use in new code; remove from `ErrorCode` when the related code i
 
 | Code | Why |
 | --- | --- |
-| `CONCURRENT_UPDATE` | `ingredients.version` removed. Deduction checks the remaining amount (`INSUFFICIENT_QUANTITY`) |
+| `CONCURRENT_UPDATE` | `ingredients.version` removed. Concurrent requests are serialized by a row lock; deduction checks the remaining amount (`INSUFFICIENT_QUANTITY`), and a request that comes after the last stock was used gets `INGREDIENT_NOT_FOUND` |
 | `CATALOG_ITEM_NOT_FOUND` | No dictionary id in requests. Unknown allergen codes are `INVALID_INPUT` |
 | `INVALID_UNIT` | Clients do not send units; the server picks them |
 | `INGREDIENT_ALREADY_FINISHED` | Rows are deleted at 0 -> `INGREDIENT_NOT_FOUND` |
