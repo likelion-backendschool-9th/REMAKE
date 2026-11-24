@@ -59,4 +59,8 @@ interface NotificationJpaRepository extends JpaRepository<NotificationJpaEntity,
 	@Modifying(clearAutomatically = true)
 	@Query("delete from NotificationJpaEntity n where n.createdAt < :before")
 	int deleteByCreatedAtBefore(@Param("before") LocalDateTime before);
+
+	@Modifying(clearAutomatically = true)
+	@Query("delete from NotificationJpaEntity n where n.userId = :userId")
+	int deleteByUserId(@Param("userId") Long userId);
 }
