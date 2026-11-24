@@ -29,6 +29,8 @@ public enum ErrorCode {
 	SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 요청을 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
 
 	// 기능별 (기능을 만드는 PR에서 추가. 마지막 줄만 ;로 끝낸다)
+	// 장바구니
+	CART_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "이미 삭제된 항목이에요"),
 	// 공유
 	RECIPE_NOT_SHAREABLE(HttpStatus.BAD_REQUEST, "공유할 수 없는 레시피예요"),
 	ALREADY_SHARED(HttpStatus.CONFLICT, "이번 주에 이미 공유한 레시피예요"),

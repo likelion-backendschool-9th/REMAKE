@@ -155,7 +155,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Purchase date and store name: empty if OCR cannot read them; both are required at registration.
 - Receipts older than 6 months cannot be registered (rejected at scan as an OCR failure).
 - **Duplicate receipts are blocked.** Same store + receipt number + purchase time = duplicate (without a number: store + purchase date + food items; without a time: purchase date). Checked right after the scan (OCR failure screen "이미 등록한 영수증이에요", `RECEIPT_DUPLICATE` 409) and again at registration.
-- Cart auto-remove: cart items with the same name as a registered ingredient are removed, with the toast "장바구니에서 N개를 뺐어요" (screen pending).
+- Receipt cart deduction (#57): select a cart row in the bottom sheet immediately before final registration, or skip. Each receipt item can select at most one cart row. Deduct only in the identical unit, within the actual registered amount; sum requests for the same target and validate the cart balance. Delete only rows reaching zero; `cartRemovedCount` counts these deleted rows. Receipt, fridge and cart changes share one transaction. The screen is a separate FE task.
 - List: month picker "2026년 11월 ∨" (last 6 months), monthly total, "내 평균보다 N원 더 썼어요", groups by week (week, range, total), receipt rows (store icon, store, date, "식재료 N개", amount).
 - Monthly total: food item amounts of that month's receipts (by purchase date).
 - Average: difference from my past average (monthly average of the last 6 months). Excluding this month, using only months with records, and hiding when there is no history are (proposal).
@@ -247,7 +247,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Rows: checkbox, image, source recipe name, ingredient + amount, "수량 변경". The same ingredient from different recipes stays separate.
 - Actions: amount sheet, select all (N), "선택 삭제" → delete mode (red checks, "삭제 해제" to undo) → "N개의 재료 삭제".
 - "N개의 재료 냉장고에 추가": moves to the fridge without input. Storage and expiry from category defaults, no price. Moved items leave the cart, toast "냉장고에 N개 넣었어요" (screen pending).
-- Registering a receipt with the same ingredient name removes it automatically.
+- Receipt registration deducts only selected rows under #57, matching the final ingredient name and identical server-decided unit. No selection leaves the cart unchanged; no automatic name-based removal.
 - Empty: "장바구니가 비어있습니다", buttons disabled.
 - No external shop or checkout. If the schedule slips, cart and sharing (P1) move to release 2.
 
