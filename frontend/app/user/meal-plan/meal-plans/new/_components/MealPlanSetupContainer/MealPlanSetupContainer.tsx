@@ -92,6 +92,8 @@ function MealPlanSetupBody({
   const [isOverlapOpen, setIsOverlapOpen] = useState(initialOverlapOpen);
 
   const closeSheet = () => setSheet(null);
+  // TODO: 횟수 소진 화면(정책: 생성 주소 안의 상태, 디자인 대기)이 생기면 여기서 그 화면을 보이고,
+  // 식단표 빈 화면·추가 시트의 "식단표 만들기"는 켜 두어 이 화면까지 들어오게 한다(#217 리뷰)
   const canSubmit = defaults.remainingPlans > 0 && meals.length > 0;
   const purposeLabel = MEAL_PURPOSES.find((item) => item.code === purpose)?.label;
   const mealsLabel = MEAL_TYPES.filter((meal) => meals.includes(meal.code))
