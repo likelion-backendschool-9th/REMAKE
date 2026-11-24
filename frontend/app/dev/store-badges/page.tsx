@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 
 import { env } from "@/lib/env";
 
-import { StoreBadge } from "../_components/StoreBadge/StoreBadge";
-import { STORE_CODES, STORES } from "../_components/StoreBadge/stores";
+import { StoreBadge } from "../../user/receipt/_components/StoreBadge/StoreBadge";
+import { STORE_CODES, STORES } from "../../user/receipt/_components/StoreBadge/stores";
 
 import styles from "./page.module.css";
 
