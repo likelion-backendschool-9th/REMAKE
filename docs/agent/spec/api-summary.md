@@ -141,12 +141,13 @@ Receipt integration contract (#57, agreed 2026-11-24): API 21 accepts 0–1 `car
 
 Cart items cannot be added manually. No "take down my shared post" API.
 
-Cart contract for APIs 34, 35, 38, 41, 45, 48, 53 and 54 (#57):
+Cart contract for APIs 34, 35, 38, 41, 45, 48, 53 and 54 (#57 and the subsequent approvals cited in the domain rules):
 
 - API 45 returns flat `items`, with non-null positive `amount` (`numeric(10,3)`). Source-slot metadata does not require a new response field; keep the documented response shape.
 - Persist the original recipe ID for every add path. The nullable slot FK is initial source metadata, not a list of all meal assignments. Slot deletion clears this FK only; unsaving my/shared recipes and removing meal assignments keep cart rows and edited quantities. API 48 deletes only the selected owned cart IDs and does not unsave recipes or remove meal assignments.
 - Match existing rows by user, original recipe ID, exact ingredient name and unit. A new save after unsaving adds only absent missing ingredients; keep already-saved PUT retries idempotent. Before meal-plan additions, aggregate repeated occurrences of the same recipe/name/unit within that one generation. Preserve pre-existing rows and count only new rows in `cartAddedCount` and E62.
-- Consult [domain rules](domain-rules.md#cart) for pending unmeasured-ingredient handling, unit conversion and slot replacement/overwrite integration. These pending points do not change API 45's non-null persisted amount or permit automatic cart deletion.
+- Exclude ingredients with `amount=null`, PINCH or TO_TASTE from all three cart add paths; keep them in recipe responses and do not substitute an arbitrary quantity. This is confirmed by the [cart owner in PR #216](https://github.com/likelion-backendschool-9th/REMAKE/pull/216#issuecomment-7123595032); API 45 keeps its non-null amount contract.
+- Consult [domain rules](domain-rules.md#cart) for pending unit conversion and slot replacement/overwrite integration. These pending points do not permit automatic cart deletion.
 
 ## Common: events (owner: 이준호)
 
