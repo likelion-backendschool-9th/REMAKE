@@ -10,8 +10,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
@@ -20,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import com.remake.auth.domain.SocialProfile;
+import com.remake.global.config.UploadProperties;
 import com.remake.global.web.LoginUserIdArgumentResolver;
 import com.remake.support.IntegrationTestSupport;
 import com.remake.user.application.port.in.PurgeExpiredDeletionCodesUseCase;
@@ -30,8 +34,15 @@ class AccountDeletionApiTest extends IntegrationTestSupport {
 	@Autowired
 	private PurgeExpiredDeletionCodesUseCase purgeExpiredDeletionCodesUseCase;
 
+	@Autowired
+	private UploadProperties uploadProperties;
+
 	private MockHttpServletRequestBuilder asUser(Long userId, MockHttpServletRequestBuilder builder) {
 		return builder.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, userId);
+	}
+
+	private Path receiptImagePath(String imageKey) {
+		return Path.of(uploadProperties.rootDirectory(), "receipts", imageKey);
 	}
 
 	private Long createUserWithEmail(AuthProvider provider, String providerUserId, String email) {
@@ -73,6 +84,16 @@ class AccountDeletionApiTest extends IntegrationTestSupport {
 				VALUES (?, 'hash-del-1', ?, ?)
 				""", userId, LocalDateTime.now(clock).plusDays(1), LocalDateTime.now(clock));
 
+		String imageKey = UUID.randomUUID().toString();
+		Path imageFile = receiptImagePath(imageKey);
+		Files.createDirectories(imageFile.getParent());
+		Files.writeString(imageFile, "receipt-bytes");
+		LocalDateTime now = LocalDateTime.now(clock);
+		jdbcTemplate.update("""
+				INSERT INTO receipts (user_id, purchased_on, store_name, image_key, created_at)
+				VALUES (?, ?, '동네마트', ?, ?)
+				""", userId, now.toLocalDate(), imageKey, now);
+
 		String code = captureDeletionCode(userId);
 
 		mockMvc.perform(asUser(userId, post("/api/v1/user/account/deletion"))
@@ -89,6 +110,9 @@ class AccountDeletionApiTest extends IntegrationTestSupport {
 				.isNotNull();
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ingredients WHERE user_id = ?", Integer.class,
 				userId)).isZero();
+		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM receipts WHERE user_id = ?", Integer.class, userId))
+				.isZero();
+		assertThat(Files.exists(imageFile)).isFalse();
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = ?", Integer.class,
 				userId)).isZero();
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account_deletion_requests WHERE user_id = ?",
