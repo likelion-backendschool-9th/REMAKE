@@ -181,6 +181,8 @@ Current pairs:
 | `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
 | `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |
 | `docs/agent/design-tokens.md` | `docs/developer/design-tokens.md` |
+| `docs/agent/terms-of-service.md` | `docs/developer/terms-of-service.md` |
+| `docs/agent/privacy-policy.md` | `docs/developer/privacy-policy.md` |
 | `docs/agent/issue-coverage-audit.md` | `docs/developer/issue-coverage-audit.md` |
 
 When you add a new pair, add a row to this table and to the matching table in `docs/developer/agent-guide.md`.

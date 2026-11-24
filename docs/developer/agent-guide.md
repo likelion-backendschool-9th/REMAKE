@@ -181,6 +181,8 @@ PR에서 CI가 무엇을 검사하고 결과를 어떻게 보는지는 [`docs/de
 | `frontend/AGENTS.md` | `docs/developer/frontend-agent-guide.md` |
 | `frontend/blueprint.md` | `docs/developer/frontend-blueprint.md` |
 | `docs/agent/design-tokens.md` | `docs/developer/design-tokens.md` |
+| `docs/agent/terms-of-service.md` | `docs/developer/terms-of-service.md` |
+| `docs/agent/privacy-policy.md` | `docs/developer/privacy-policy.md` |
 | `docs/agent/issue-coverage-audit.md` | `docs/developer/issue-coverage-audit.md` |
 
 새 짝을 추가하면 이 표와 `AGENTS.md`의 표에 모두 한 줄씩 추가합니다.
