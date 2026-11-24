@@ -1,0 +1,73 @@
+/* 피그마 p5-식단표 달력: 폭 360(화면 폭에 맞춰 7등분), 머리줄 높이 46, 날짜 칸 51.43 정사각형,
+   글자 Remake/title(16 Medium), 일·토 머리글 text/danger */
+.calendar {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.weekday {
+  height: 2.875rem;
+  padding: 0;
+  color: var(--color-text-body);
+  font: var(--font-title);
+  text-align: center;
+}
+
+.weekday[data-weekend] {
+  color: var(--color-text-danger);
+}
+
+.cell {
+  height: 3.2144rem;
+  padding: 0;
+}
+
+/* 식단 기간: 파란 띠(#3182F6 16%). 시작·끝 칸은 바깥쪽을 둥글게 */
+.cell[data-period] {
+  background: rgba(49, 130, 246, 0.16);
+}
+
+.cell[data-start] {
+  border-radius: var(--radius-full) 0 0 var(--radius-full);
+}
+
+.cell[data-end] {
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+}
+
+.cell[data-start][data-end] {
+  border-radius: var(--radius-full);
+}
+
+.day {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-body);
+  font: var(--font-title);
+  cursor: pointer;
+}
+
+.day[data-other] {
+  color: var(--color-text-assist);
+}
+
+/* 기간 시작일: text/primary */
+.day[data-start] {
+  color: var(--color-text-primary);
+}
+
+/* 고른 날: Remake/subheader(16 Bold)·text/warning */
+.day[data-selected] {
+  color: var(--color-text-warning);
+  font: var(--font-subheader);
+}
+
+.day:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -4px;
+  border-radius: var(--radius-full);
+}
