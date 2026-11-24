@@ -150,7 +150,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - No scan limit. OCR is synchronous (up to 30 s) with the OCR result skeleton. No "analysis done" notification.
 - OCR failure: one failure screen with different wording for: unreadable (not a receipt, OCR error, timeout), no food items, purchase date older than 6 months, already registered. The user rescans (screen pending).
 - Results contain food only (non-food such as 수세미, 냄비 is filtered out). Each item is filled with category, storage, amount, price, and expiry.
-- Review on "영수증 재료": edit (p3.3.1), add (p3.3.2). The OCR result shows food items only, so there is no item removal (screens to add no. 5 canceled, 11/22). Edits stay in screen state and are sent with registration.
+- Review on "영수증 재료": edit (p3.3.1), add (p3.3.2), remove. Removal is allowed so the user can drop an item OCR read wrongly: trash icon on p3.3.1 → confirm modal "재료를 삭제할까요?" (restored 11/24; it was canceled on 11/22). Add and rescan open from the app bar ⋮ sheet ("재료 추가", "영수증 재촬영"). Edits, additions and removals stay in screen state and are sent with registration (removed items are simply not sent).
 - Notice: "소비 기한은 카테고리 기본 보관 기간으로 추정 했어요. 소비기한을 확인 하시고 수정해 주세요".
 - Register ("식재료 N개 등록 하기"): save the image, receipt, items, and fridge ingredients at once. Unregistered OCR results are never stored; leaving without registering records only an accuracy event.
 - Purchase date and store name: empty if OCR cannot read them; both are required at registration.
