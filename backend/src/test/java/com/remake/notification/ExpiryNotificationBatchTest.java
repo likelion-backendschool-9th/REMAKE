@@ -100,12 +100,15 @@ class ExpiryNotificationBatchTest extends IntegrationTestSupport {
 	@Test
 	void 알림_이벤트_속성은_명세대로_들어가고_명세에_없는_속성은_없다() {
 		createIngredient(onUser, "DAIRY_EGG", "우유", TODAY.plusDays(1));
+		createIngredient(onUser, "FRUIT", "임박사과", TODAY);
+		createIngredient(onUser, "MEAT", "그저께고기", TODAY.minusDays(2));
 		createIngredient(onUser, "MEAT", "어제고기", TODAY.minusDays(1), 3000L);
 		createIngredient(onUser, "FRUIT", "어제사과", TODAY.minusDays(1));
 
 		runExpiryNotificationBatchUseCase.runExpiryNotificationBatch();
 		awaitEventWrites();
 
+		// 임박은 재료마다 한 건, 기한 지남은 하루 한 건(batch_count = 기한 지난 재료 전체 개수)
 		List<Map<String, Object>> sent = jdbcTemplate.queryForList("""
 				SELECT properties ->> 'notification_type' AS notification_type,
 				       properties ->> 'batch_count' AS batch_count
@@ -115,7 +118,22 @@ class ExpiryNotificationBatchTest extends IntegrationTestSupport {
 				""", onUser);
 		assertThat(sent)
 				.extracting(row -> row.get("notification_type"), row -> row.get("batch_count"))
-				.containsExactly(tuple("expired", "2"), tuple("expiry_soon", "1"));
+				.containsExactly(
+						tuple("expired", "3"),
+						tuple("expiry_soon", "1"),
+						tuple("expiry_soon", "1"));
+
+		// 타입은 명세대로: batch_count는 number, has_price는 boolean
+		Integer badBatchType = jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM events WHERE event_name = 'notification_sent' AND user_id = ?"
+						+ " AND jsonb_typeof(properties -> 'batch_count') <> 'number'",
+				Integer.class, onUser);
+		assertThat(badBatchType).isZero();
+		Integer badPriceType = jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM events WHERE event_name = 'ingredient_expired' AND user_id = ?"
+						+ " AND jsonb_typeof(properties -> 'has_price') <> 'boolean'",
+				Integer.class, onUser);
+		assertThat(badPriceType).isZero();
 
 		List<Map<String, Object>> expired = jdbcTemplate.queryForList("""
 				SELECT properties ->> 'category_code' AS category_code,
