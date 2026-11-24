@@ -51,12 +51,12 @@ class RecipePersistenceAdapter implements SaveRecipePort, LoadRecipePort {
 						stepRepository.findByRecipeIdOrderByStepNoAsc(recipeId)));
 	}
 
-    @Override
-    public Optional<Recipe> loadById(Long recipeId) {
-        return recipeRepository.findById(recipeId)
-                .map(entity -> toDomain(entity, ingredientRepository.findByRecipeIdOrderBySortOrderAsc(recipeId),
-                        stepRepository.findByRecipeIdOrderByStepNoAsc(recipeId)));
-    }
+	@Override
+	public Optional<Recipe> loadById(Long recipeId) {
+		return recipeRepository.findById(recipeId)
+				.map(entity -> toDomain(entity, ingredientRepository.findByRecipeIdOrderBySortOrderAsc(recipeId),
+						stepRepository.findByRecipeIdOrderByStepNoAsc(recipeId)));
+	}
 
 	private static Recipe toDomain(RecipeJpaEntity entity, List<RecipeIngredientJpaEntity> ingredients,
 			List<RecipeStepJpaEntity> steps) {

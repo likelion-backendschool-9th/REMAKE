@@ -84,6 +84,31 @@ class SharedRecipePublishingApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 공유제목은_100자까지_저장한다() throws Exception {
+		Long user = createUser(); Long recipe = createRecipe(user);
+		String title = "가".repeat(100);
+		mockMvc.perform(request(recipe, title, JPEG).requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, user))
+				.andExpect(status().isCreated());
+		assertThat(jdbcTemplate.queryForObject("SELECT title FROM shared_recipes", String.class)).isEqualTo(title);
+		assertThat(fileCount()).isEqualTo(1);
+	}
+
+	@Test
+	void 공유제목이_101자면_필드오류이며_파일과_게시글과_이벤트가_생기지않는다() throws Exception {
+		Long user = createUser(); Long recipe = createRecipe(user);
+		mockMvc.perform(request(recipe, "가".repeat(101), JPEG)
+				.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, user))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+				.andExpect(jsonPath("$.fieldErrors[0].field").value("title"));
+		assertThat(fileCount()).isZero();
+		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM shared_recipes", Long.class)).isZero();
+		awaitEventWrites();
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM events WHERE event_name = 'shared_recipe_published'", Long.class)).isZero();
+	}
+
+	@Test
 	void 타인원본과_없는원본을_구분하고_비로그인은_거절한다() throws Exception {
 		Long user = createUser(); Long otherRecipe = createRecipe(createUser());
 		mockMvc.perform(request(otherRecipe, "제목", JPEG).requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, user))

@@ -21,6 +21,7 @@ import com.remake.share.application.port.in.SharedRecipePhotoUpload;
 import com.remake.share.application.port.in.StoreSharedRecipePhotoUseCase;
 import com.remake.share.application.port.out.LoadSharedRecipePort;
 import com.remake.share.application.port.out.SaveSharedRecipePort;
+import com.remake.share.domain.SharedRecipe;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -36,7 +37,8 @@ class SharedRecipePublishingService implements PublishSharedRecipeUseCase {
 	@Override
 	@Transactional
 	public Long publish(Long userId, Long recipeId, String title, SharedRecipePhotoUpload photo) {
-		if (recipeId == null || recipeId <= 0 || title == null || title.isBlank()) {
+		if (recipeId == null || recipeId <= 0 || title == null || title.isBlank()
+				|| title.length() > SharedRecipe.TITLE_MAX_LENGTH) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT);
 		}
 		recipes.getForPublishing(userId, recipeId);
