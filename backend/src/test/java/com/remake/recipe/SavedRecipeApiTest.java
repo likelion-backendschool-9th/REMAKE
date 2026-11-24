@@ -98,7 +98,7 @@ class SavedRecipeApiTest extends IntegrationTestSupport {
 		assertThat(jdbcTemplate.queryForList(
 				"SELECT properties::text FROM events WHERE event_name = 'recipe_saved' AND user_id = ?", String.class,
 				userId)).singleElement().asString()
-				.contains("\"recipe_id\": " + recipeId, "\"save_source\": \"RECIPE\"", "\"cart_added_count\": 0");
+				.contains("\"recipe_id\": " + recipeId, "\"save_source\": \"own\"", "\"cart_added_count\": 0");
 	}
 
 	@Test

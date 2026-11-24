@@ -121,6 +121,15 @@
 - #64에서 사진 파일 처리 기반을 구현해요. 게시·사진 조회 API와 DB 연결은 #86에서 이어가요. 이전 가이드의 레시피 묶음 표시, 공유 확인 모달, 사진 여러 장, 공유 저장 사본, `shared_recipe_saved` 이벤트는 없어졌어요.
 - 장바구니 → 냉장고와 영수증 등록 시 선택 차감이 있어요(#57).
 
+## 공유 레시피 저장·취소 (#90)
+
+- API 53 `PUT /api/v1/user/shared-recipes/{id}/save`는 `200 { saveCount, saved, cartAddedCount }`, API 54 `DELETE /api/v1/user/shared-recipes/{id}/save`는 `200 { saveCount, saved }`를 반환해요. 두 API 모두 로그인과 공개 게시글 확인이 필요해요. 없는 글·숨긴 글은 `SHARED_RECIPE_NOT_FOUND`예요.
+- `share` 영역은 `SaveSharedRecipeReferenceUseCase`를 통해 `recipe` 영역의 저장을 변경해요. 원본 `recipe_id`와 저장 출처 `shared_recipe_id`를 연결하고 레시피·재료·단계 사본을 만들지 않아요. 저장 수는 해당 게시글을 출처로 가진 현재 `saved_recipes` 행 수예요.
+- 같은 사용자의 같은 원본은 한 번만 저장해요. 다른 주 게시글이나 내 저장 목록에서 이미 저장한 원본도 출처·즐겨찾기·저장 시각을 바꾸지 않아요. 이미 저장한 PUT에서는 장바구니 담기와 E44를 다시 실행하지 않아요.
+- 부족 재료는 공유 상세와 같이 요청자의 소비기한이 지나지 않은 냉장고 재료명으로 판단해요. 작성자의 `ingredientId`나 수량은 보유 판정에 쓰지 않아요. 공통 담기가 물·수량 없는 재료·PINCH·TO_TASTE를 제외해요. 사전 미등록 재료는 레시피에 서버 확정 카테고리가 없으므로 `INVALID_INPUT`으로 전체 저장을 거절해요. 임의 카테고리는 넣지 않아요.
+- 저장 취소는 원본의 내 저장만 삭제하고 장바구니를 유지해요. 반복 취소도 성공해요. 취소 후 재저장은 현재 부족한 재료 중 기존 장바구니에 없는 행만 추가하고 사용자가 수정한 수량과 최초 슬롯 출처를 보존해요.
+- 신규 저장과 장바구니 담기는 같은 트랜잭션이에요. 실패하면 저장·장바구니가 함께 롤백되고 성공 이벤트도 남지 않아요. E44 `recipe_saved`는 `save_source=shared`, `cart_added_count`에 실제 추가 행 수를 기록해요. 내 레시피 저장 E44는 `own`을 사용하고, 클라이언트 E45도 저장 출처에 맞는 `own` 또는 `shared`만 허용해요. E62는 공통 담기만 발행하며 `shared_recipe_saved`는 사용하지 않아요.
+
 ## 조리 사진 저장 (#64)
 
 - 사진은 최신 명세대로 1장 필수이며, [#64 합의](https://github.com/likelion-backendschool-9th/REMAKE/issues/64#issuecomment-7089190543)의 장당 최대 5MiB·JPEG/PNG/WebP를 적용해요. 영수증은 기존 10MB·jpg/png/heic를 유지해요. 누락·빈 파일은 `PHOTO_REQUIRED`, MIME·헤더 불일치는 `UNSUPPORTED_FILE_TYPE`, 용량 초과는 `FILE_TOO_LARGE`예요. 신고된 크기뿐 아니라 실제 스트림 길이도 검사하고, 이미지 전체 디코딩·변환까지 하지는 않아요.
