@@ -52,7 +52,7 @@ public enum EventName {
 	RECEIPT_SCAN_FAILED("receipt_scan_failed", EventSource.SERVER, Set.of("error_code", "duration_ms")), // E31
 	RECEIPT_ITEM_EDITED("receipt_item_edited", EventSource.CLIENT, Set.of("item_index", "edit_field")), // E32
 	RECEIPT_ITEM_ADDED_MANUALLY("receipt_item_added_manually", EventSource.CLIENT, Set.of()), // E33
-	RECEIPT_SAVED("receipt_saved", EventSource.SERVER, Set.of("receipt_id", "registered_count", "ocr_item_count", "edited_item_count", "deleted_item_count", "added_item_count", "duration_sec", "food_total_amount")), // E34
+	RECEIPT_SAVED("receipt_saved", EventSource.SERVER, Set.of("receipt_id", "registered_count", "ocr_item_count", "edited_item_count", "deleted_item_count", "added_item_count", "duration_sec", "food_total_amount", "cart_removed_count")), // E34
 	RECEIPT_RESULT_ABANDONED("receipt_result_abandoned", EventSource.CLIENT, Set.of("ocr_item_count", "edited_item_count", "deleted_item_count", "added_item_count", "duration_sec")), // E76
 	RECEIPT_LIST_VIEWED("receipt_list_viewed", EventSource.CLIENT, Set.of("month_offset", "has_comparison")), // E35
 	RECEIPT_DETAIL_VIEWED("receipt_detail_viewed", EventSource.CLIENT, Set.of()), // E36

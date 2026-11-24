@@ -62,6 +62,10 @@ public final class EventPropertyFilter {
 			if (!eventName.getAllowedProperties().contains(normalized)) {
 				continue;
 			}
+			if (eventName == EventName.RECEIPT_ITEM_EDITED && normalized.equals("edit_field")
+					&& "expiration_date".equals(value)) {
+				value = "expiration";
+			}
 			if (!isAllowedValue(normalized, value)) {
 				return Optional.empty();
 			}
