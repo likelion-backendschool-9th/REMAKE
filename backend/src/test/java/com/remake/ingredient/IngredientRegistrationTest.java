@@ -77,8 +77,8 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 	@Test
 	void 영수증_품목이면_RECEIPT로_남고_여러_건이면_건마다_하나씩_남는다() {
 		transactionTemplate.executeWithoutResult(status -> registerUseCase.registerIngredients(List.of(
-				command("우유", IngredientCategoryCode.DAIRY_EGG, null, LocalDate.of(2026, 3, 1), BigDecimal.ONE, 1L),
-				command("두부", IngredientCategoryCode.BEAN_TOFU, null, LocalDate.of(2026, 3, 1), BigDecimal.ONE, 2L))));
+				command("우유", IngredientCategoryCode.DAIRY_EGG, null, LocalDate.of(2026, 3, 1), BigDecimal.ONE, createReceiptItem(userId, "우유", "DAIRY_EGG")),
+				command("두부", IngredientCategoryCode.BEAN_TOFU, null, LocalDate.of(2026, 3, 1), BigDecimal.ONE, createReceiptItem(userId, "두부", "BEAN_TOFU")))));
 		awaitEventWrites();
 
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM events WHERE properties::text LIKE '%RECEIPT%'",
@@ -137,7 +137,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 	@Test
 	void 넘긴_소비기한이_있으면_기준일과_상관없이_그대로_저장한다() {
 		Long id = registerUseCase.registerIngredient(command("양파", IngredientCategoryCode.VEGETABLE,
-				LocalDate.of(2026, 3, 9), LocalDate.of(2026, 3, 1), BigDecimal.ONE, 55L));
+				LocalDate.of(2026, 3, 9), LocalDate.of(2026, 3, 1), BigDecimal.ONE, createReceiptItem(userId, "양파", "VEGETABLE")));
 
 		Ingredient saved = getUseCase.getIngredient(userId, id).ingredient();
 		assertThat(saved.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 9));
@@ -145,30 +145,32 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 
 	@Test
 	void 영수증은_여러_건을_입력_순서대로_등록하고_품목을_연결한다() {
+		Long milkItemId = createReceiptItem(userId, "우유", "DAIRY_EGG");
+		Long porkItemId = createReceiptItem(userId, "삼겹살", "MEAT");
 		List<Long> ids = registerUseCase.registerIngredients(List.of(
-				command("우유", IngredientCategoryCode.DAIRY_EGG, null, LocalDate.of(2026, 3, 2), BigDecimal.ONE, 11L),
+				command("우유", IngredientCategoryCode.DAIRY_EGG, null, LocalDate.of(2026, 3, 2), BigDecimal.ONE, milkItemId),
 				command("삼겹살", IngredientCategoryCode.MEAT, LocalDate.of(2026, 3, 6), null,
-						new BigDecimal("0.6"), 12L)));
+						new BigDecimal("0.6"), porkItemId)));
 
 		assertThat(ids).hasSize(2);
 		Ingredient milk = getUseCase.getIngredient(userId, ids.get(0)).ingredient();
 		Ingredient pork = getUseCase.getIngredient(userId, ids.get(1)).ingredient();
 		assertThat(milk.name()).isEqualTo("우유");
-		assertThat(milk.receiptItemId()).isEqualTo(11L);
+		assertThat(milk.receiptItemId()).isEqualTo(milkItemId);
 		// 달걀·유제품의 기본 보관 일수 10일
 		assertThat(milk.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 12));
 		assertThat(pork.name()).isEqualTo("삼겹살");
-		assertThat(pork.receiptItemId()).isEqualTo(12L);
+		assertThat(pork.receiptItemId()).isEqualTo(porkItemId);
 	}
 
 	@Test
 	void 여러_건_중_하나가_실패하면_호출한_쪽의_트랜잭션이_롤백되어_하나도_남지_않는다() {
 		List<RegisterIngredientCommand> commands = List.of(
 				command("우유", IngredientCategoryCode.DAIRY_EGG, LocalDate.of(2026, 3, 12), null, BigDecimal.ONE,
-						11L),
+						createReceiptItem(userId, "우유", "DAIRY_EGG")),
 				// 수량이 0이라 규칙을 어긴다
 				command("두부", IngredientCategoryCode.BEAN_TOFU, LocalDate.of(2026, 3, 8), null, BigDecimal.ZERO,
-						12L));
+						createReceiptItem(userId, "두부", "BEAN_TOFU")));
 
 		// 영수증 확정처럼 호출한 쪽이 연 트랜잭션 안에서 부른다.
 		assertThatThrownBy(() -> transactionTemplate.execute(status -> registerUseCase.registerIngredients(commands)))

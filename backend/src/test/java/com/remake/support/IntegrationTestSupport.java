@@ -168,6 +168,19 @@ public abstract class IntegrationTestSupport {
 				""", Long.class, userId, LocalDateTime.now(clock));
 	}
 
+	// 출처 외래 키를 만족하도록 테스트에서 실제 영수증 품목을 만든다.
+	protected Long createReceiptItem(Long userId, String name, String categoryCode) {
+		LocalDateTime now = LocalDateTime.now(clock);
+		Long receiptId = jdbcTemplate.queryForObject("""
+				INSERT INTO receipts (user_id, purchased_on, store_name, image_key, created_at)
+				VALUES (?, ?, '동네마트', 'test-image', ?) RETURNING id
+				""", Long.class, userId, now.toLocalDate(), now);
+		return jdbcTemplate.queryForObject("""
+				INSERT INTO receipt_items (receipt_id, category_id, name, storage, created_at)
+				VALUES (?, ?, ?, 'FRIDGE', ?) RETURNING id
+				""", Long.class, receiptId, categoryId(categoryCode), name, now);
+	}
+
 	@AfterEach
 	void cleanUp() throws IOException {
 		awaitEventWrites();
