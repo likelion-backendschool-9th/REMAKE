@@ -1,5 +1,8 @@
 package com.remake.support;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,6 +30,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import com.remake.auth.adapter.out.oauth.SocialOAuthAdapter;
 import com.remake.global.config.AsyncConfig;
+import com.remake.global.config.UploadProperties;
 import com.remake.recipe.adapter.out.ai.GeminiRecipeAdapter;
 import com.remake.user.domain.AuthProvider;
 
@@ -85,6 +89,9 @@ public abstract class IntegrationTestSupport {
 
 	@Autowired
 	private TestDatabase testDatabase;
+
+	@Autowired
+	private UploadProperties uploadProperties;
 
 	// 이벤트 비동기 적재가 truncate 전에 끝나게 기다린다. SyncTaskExecutor로 바꾸지 않는다.
 	@Autowired
@@ -178,9 +185,16 @@ public abstract class IntegrationTestSupport {
 	}
 
 	@AfterEach
-	void cleanUp() {
+	void cleanUp() throws IOException {
 		awaitEventWrites();
 		clock.reset();
 		testDatabase.cleanUp();
+		// 파일 저장 어댑터는 가짜로 바꾸지 않는다. 테스트 전용 폴더의 파일만 지운다.
+		Path root = Path.of(uploadProperties.rootDirectory());
+		try (var files = Files.walk(root)) {
+			for (Path file : files.filter(path -> !Files.isDirectory(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)).toList()) {
+				Files.deleteIfExists(file);
+			}
+		}
 	}
 }

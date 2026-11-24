@@ -105,8 +105,18 @@
 
 ## 지금 코드와 다른 점
 
-- 아직 이 영역 코드는 없어요. 이전 가이드의 레시피 묶음 표시, 공유 확인 모달, 사진 여러 장, 공유 저장 사본, `shared_recipe_saved` 이벤트는 없어졌어요.
+- #64에서 사진 파일 처리 기반을 구현해요. 게시·사진 조회 API와 DB 연결은 #86에서 이어가요. 이전 가이드의 레시피 묶음 표시, 공유 확인 모달, 사진 여러 장, 공유 저장 사본, `shared_recipe_saved` 이벤트는 없어졌어요.
 - 장바구니 → 냉장고와 영수증 등록 때 자동 빼기가 새로 생겼어요.
+
+## 조리 사진 저장 (#64)
+
+- 사진은 최신 명세대로 1장 필수이며, [#64 합의](https://github.com/likelion-backendschool-9th/REMAKE/issues/64#issuecomment-7089190543)의 장당 최대 5MiB·JPEG/PNG/WebP를 적용해요. 영수증은 기존 10MB·jpg/png/heic를 유지해요. 누락·빈 파일은 `PHOTO_REQUIRED`, MIME·헤더 불일치는 `UNSUPPORTED_FILE_TYPE`, 용량 초과는 `FILE_TOO_LARGE`예요. 신고된 크기뿐 아니라 실제 스트림 길이도 검사하고, 이미지 전체 디코딩·변환까지 하지는 않아요.
+- `StoreSharedRecipePhotoUseCase.store(SharedRecipePhotoUpload)`는 사진 1장을 저장하고 임의 `imageKey`를 반환해요. #86 게시 UseCase가 쓰기 트랜잭션을 시작하고 같은 트랜잭션에서 `shared_recipes.image_key`에 저장해야 해요. 별도 사진 테이블은 만들지 않아요.
+- 저장 경로는 `remake.upload.root-directory`이며 `REMAKE_UPLOAD_ROOT_DIRECTORY`와 명시적으로 연결해요. 로컬 기본값은 `${java.io.tmpdir}/remake-uploads`, 운영은 환경변수가 필수이고 공용 볼륨 `/data/uploads`를 사용해요. 운영에서 임시 폴더로 대체하지 않아요. 배포 담당자가 별도 PR로 볼륨·compose 변수·Nginx 제한을 추가하므로 기능 머지 전에 반영을 확인해요.
+- `FileSystemSharedRecipePhotoStorageAdapter`는 `shared-recipes/` 아래에 저장하고 기존 키를 덮어쓰지 않아요. 잘못된 경로·심볼릭 링크 읽기를 거절해요. `LoadSharedRecipePhotoPort`는 스트림·MIME·길이를 반환하며 호출자가 스트림을 닫아야 해요. 없는 파일은 빈 결과이고, 이미 없는 파일 삭제는 성공해요.
+- 저장 실패 때 시도한 파일을 정리하고 트랜잭션 롤백 때 새 파일을 삭제해요. 즉시 삭제 실패는 롤백 때 재시도하며, 계속 실패하면 외부 오류 원문 없이 경고를 남기고 운영 정리가 필요해요. 프로세스 중단 복구까지 보장하지는 않아요. 사진 처리 자체에서는 이벤트를 발행하지 않아요.
+- Spring 제한은 영수증과 공존하도록 파일당 10MB·요청 전체 30MB이고 공유 서비스가 별도로 5MiB를 검사해요. 두 Nginx의 32m 제한은 배포 담당자 작업이에요.
+- #86에서 게시·DB 연결과 로그인 및 공유 글 공개 상태를 확인하는 사진 API를 구현해요. 요청에서 임의 파일 경로를 받거나 볼륨을 공개 정적 폴더로 열지 않아요. 내 공유 내리기 API는 없고, 탈퇴해도 익명 공유 글과 사진은 유지하므로 영수증 이미지와 함께 삭제하지 않아요. FE 축소·압축과 인증 사진 표시는 #112 범위예요.
 
 ## 에러 코드
 
