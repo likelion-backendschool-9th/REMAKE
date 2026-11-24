@@ -81,7 +81,7 @@ class NotificationApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.content.length()").value(2))
 				.andExpect(jsonPath("$.content[0].message").value("두번째"))
 				.andExpect(jsonPath("$.content[0].type").value("EXPIRY_SOON"))
-				.andExpect(jsonPath("$.content[0].mealPlanId").doesNotExist())
+				.andExpect(jsonPath("$.content[0].mealPlanId").value(org.hamcrest.Matchers.nullValue()))
 				.andExpect(jsonPath("$.content[1].message").value("첫번째"))
 				.andExpect(jsonPath("$.page").value(0))
 				.andExpect(jsonPath("$.size").value(20))

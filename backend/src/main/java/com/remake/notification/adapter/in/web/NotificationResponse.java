@@ -2,11 +2,10 @@ package com.remake.notification.adapter.in.web;
 
 import java.time.LocalDateTime;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.remake.notification.domain.Notification;
 import com.remake.notification.domain.NotificationType;
 
-@JsonInclude(JsonInclude.Include.NON_NULL)
+// mealPlanId는 MEAL_PLAN_COMPLETED가 아니면 null로 내려간다(API 44 명세).
 record NotificationResponse(
 		Long id,
 		NotificationType type,
