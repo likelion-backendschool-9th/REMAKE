@@ -139,7 +139,7 @@ Photo delivery for API 52: `GET /api/v1/user/shared-recipe-photos/{id}`, where `
 
 Receipt integration contract (#57, agreed 2026-11-24): API 21 accepts 0–1 `cartDeductions` entries per receipt item; omitted/empty means no deduction. The receipt UseCase validates positive quantities and each item's deduction <= its actual fridge registration amount. It then calls `DeductCartItemsUseCase.deduct(Long userId, List<CartDeductionCommand> deductions)` inside the registration transaction. Each command has `cartItemId`, final `ingredientName`, `BigDecimal amount`, and server-decided `IngredientUnit unit`. The cart UseCase validates ownership and exact name/unit equality, sums requests for the same target, and rejects a total above its current balance. No unit conversion. Its `int` result is the number of rows deleted at zero (`cartRemovedCount`), not the deducted quantity or request count. Partial deduction returns 0. Any failure rolls back receipt, fridge, and cart together. Missing/foreign target -> `CART_ITEM_NOT_FOUND`; name/unit/quantity mismatch -> `INVALID_INPUT`; insufficient remaining amount -> `INSUFFICIENT_QUANTITY` with `details.remaining`. This describes the integration contract; the receipt endpoint and frontend integration are separate implementations.
 
-Cart items cannot be added manually. No "take down my shared post" API.
+Cart items cannot be added manually. No "take down my shared post" API yet; authors may delete their own posts (11/24 terms decision), see open questions.
 
 Cart contract for APIs 34, 35, 38, 41, 45, 48, 53 and 54 (#57 and the subsequent approvals cited in the domain rules):
 
@@ -161,7 +161,7 @@ Cart contract for APIs 34, 35, 38, 41, 45, 48, 53 and 54 (#57 and the subsequent
 | --- | --- |
 | p1 "recent login" bubble | Last provider stored on the device (localStorage) |
 | p1.2, p1.3.2 allergy chips (19) | Frontend constants (ERD Appendix B codes) |
-| Terms and privacy drawers | Static text |
+| Terms drawer (terms of service, privacy policy, payment terms) | Static text from the docs terms md (11/24 terms decision) |
 | p4.1.1 "play steps" | Device speech synthesis reads the step text |
 | p3.4 month tabs | The frontend builds the last 6 months from today |
 | p3.3.1, p3.3.2 OCR item edit/add | Not stored before registration; screen state only, sent with API 21 |
@@ -177,10 +177,12 @@ Cart contract for APIs 34, 35, 38, 41, 45, 48, 53 and 54 (#57 and the subsequent
 | Weekly recipe reward | Monday 00:00 | +10 / +6 / +3 to the members who shared last week's top 1-3 recipes by saves (per recipe rank), valid one month. Store last week's TOP 100 as rank records | generation_quota_grants, shared_recipe_weekly_ranks | weekly_reward_granted |
 | Receipt cleanup | Daily early morning | Delete receipts older than 6 months by purchase date with items and images | receipts, receipt_items | |
 | Notification and code cleanup | Daily early morning | Delete notifications older than 30 days and deletion codes older than a day | notifications, account_deletion_requests | |
-| Subscription auto-payment | Daily early morning | Charge 9,900 KRW with the billingKey for ACTIVE subscriptions whose next billing date is today; on success extend by a month. CANCELED subscriptions are not charged and end (ENDED, `users.plan` BASIC, billingKey cleared). Failure handling is an open question | subscriptions, subscription_payments, users | subscription_renewed, subscription_payment_failed, subscription_ended |
+| Subscription auto-payment | Daily early morning | Charge 9,900 KRW with the billingKey for ACTIVE subscriptions whose next billing date is today; on success extend by a month. CANCELED subscriptions are not charged and end (ENDED, `users.plan` BASIC, billingKey cleared). On payment failure end the subscription at once (ENDED, `users.plan` BASIC, billingKey cleared) (11/24 terms decision) | subscriptions, subscription_payments, users | subscription_renewed, subscription_payment_failed, subscription_ended |
 
 ## Open questions (do not decide in code; ask the PO)
 
-- Auto-payment failure handling (card limit, suspended card, etc.).
 - What the subscription screen shows after scheduling cancellation, and whether a confirm modal is needed.
-- Whether the demo uses Toss test keys only (real auto-billing needs a separate contract with Toss).
+- Which API and flow handle the 7-day full refund (Toss payment cancel, subscription status, events)?
+- Which API and screen let an author delete their own shared post?
+- How report sanctions (sharing bans, account suspension) are stored and returned to the frontend (tables, error codes)?
+- Which E88 `end_reason` value marks an auto-payment failure ending?

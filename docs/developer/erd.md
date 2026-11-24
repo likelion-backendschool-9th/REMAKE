@@ -833,7 +833,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 
 | 상황 | 규칙 |
 | --- | --- |
-| 탈퇴 | provider_user_id·email을 비우고 deleted_at 기록. 제외 재료·토큰·인증번호·냉장고 재료·사용 기록·영수증·식단표·장바구니·알림은 삭제. users 행과 레시피·공유 레시피(익명)는 남김. events는 회원 번호만 남김 |
+| 탈퇴 | provider_user_id·email을 비우고 deleted_at 기록. 제외 재료·토큰·인증번호·냉장고 재료·사용 기록·영수증·식단표·장바구니·알림은 삭제. users 행과 레시피, 작성자가 지우지 않은 공유 레시피(익명)는 남김(11/24 약관 결정). events는 회원 번호만 남김 |
 | 재료 수량 0 | "사용 했어요/버렸어요"나 요리 완료로 0이 되면 ingredients 행 삭제. 기록은 ingredient_logs에 이름과 함께 남음 |
 | 수량 수정 | 입력 실수를 고치는 용도라 `amount`와 `initial_amount`를 같이 바꿈. `ingredient_logs`에 기록이 하나라도 있으면 `INVALID_INPUT`으로 거절(#128) |
 | 재료 삭제 | 재료 수정 화면의 삭제 아이콘(추가 예정)은 행 삭제. 기록·레시피 재료·알림의 연결만 비움 |
@@ -847,10 +847,10 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | 요리 완료 표시 | 오늘 식단 칸에서 연 레시피로 요리 완료하면 그 칸 cooked_at 기록(다른 날 칸에는 기록 안 함) |
 | 영수증 삭제 | receipts·receipt_items 행 삭제(이미지 포함). 식비·소비 패턴에서 빠지고, 등록된 냉장고 재료는 남음(receipt_item_id만 비움) |
 | 레시피 삭제 하기 | 저장 목록(saved_recipes)에서만 지움. 공유 글과 남이 저장한 것은 그대로 |
-| 탈퇴와 구독 | 탈퇴하면 구독을 바로 끝냄(ENDED, billing_key 비움, 더 결제하지 않음). subscription_payments는 결제 기록이라 지우지 않음. 남은 기간 환불은 확인 필요(정책 12장 13) |
+| 탈퇴와 구독 | 탈퇴하면 구독을 바로 끝냄(ENDED, billing_key 비움, 더 결제하지 않음). subscription_payments는 결제 기록이라 지우지 않음. 남은 기간은 환불하지 않음(11/24 약관 결정, 정책 12장 13 해결) |
 | 정리 작업 | 매일 새벽: 구매일 6개월 지난 영수증(이미지 포함), 30일 지난 알림, 하루 지난 인증번호 삭제 |
 | 구독 시작 | 토스 카드 등록 → 서버가 billingKey 발급 → 첫 결제 성공하면 subscriptions(ACTIVE)·subscription_payments(DONE) 만들고 users.plan = PREMIUM. 첫 결제가 실패하면 구독을 만들지 않음(실패 기록만). 한도는 바로 구독 한도(레시피 하루 4회, 식단표 이번 달 4회·7일치) |
-| 구독 자동 연장 | 매일 새벽, next_billing_date가 오늘인 ACTIVE 구독을 billingKey로 결제. 성공하면 기간을 한 달 늘림. 실패 처리는 확인 필요(정책 12장 11) |
+| 구독 자동 연장 | 매일 새벽, next_billing_date가 오늘인 ACTIVE 구독을 billingKey로 결제. 성공하면 기간을 한 달 늘림. 실패하면 구독을 바로 끝냄(ENDED, billing_key 비움, users.plan = BASIC). 다시 구독하려면 카드를 새로 등록(11/24 약관 결정, 정책 12장 11 해결) |
 | 구독 해지 | 해지 예약은 status = CANCELED, canceled_at 기록. 다음 결제일 전날까지 PREMIUM 유지, 다음 결제일 새벽에 결제하지 않고 ENDED·billing_key 비움·users.plan = BASIC. 그 뒤 한도는 일반 한도(이번 달 이미 쓴 횟수는 그대로 셈) |
 | 공통 규칙 | 수량 numeric(10,3), 금액 bigint(원), 시각 timestamp(한국 시간), JSON jsonb. created_at은 앱이 만드는 행 전부, updated_at은 값이 바뀌는 테이블만 |
 
