@@ -8,5 +8,7 @@ import com.remake.recipe.domain.Recipe;
 public interface LoadRecipePort {
 
 	/** 재료는 화면 순서, 단계는 번호 순서로 채운다. */
+	Optional<Recipe> loadById(Long recipeId);
+
 	Optional<Recipe> loadByIdAndUserId(Long recipeId, Long userId);
 }

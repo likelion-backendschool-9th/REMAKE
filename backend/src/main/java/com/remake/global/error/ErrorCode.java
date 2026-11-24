@@ -29,7 +29,11 @@ public enum ErrorCode {
 	SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 요청을 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
 
 	// 기능별 (기능을 만드는 PR에서 추가. 마지막 줄만 ;로 끝낸다)
-	// 공유 사진
+	// 공유
+    RECIPE_NOT_SHAREABLE(HttpStatus.BAD_REQUEST, "공유할 수 없는 레시피예요"),
+    ALREADY_SHARED(HttpStatus.CONFLICT, "이번 주에 이미 공유한 레시피예요"),
+    SHARED_RECIPE_NOT_FOUND(HttpStatus.NOT_FOUND, "삭제되었거나 볼 수 없는 레시피예요"),
+    // 공유 사진
 	PHOTO_REQUIRED(HttpStatus.BAD_REQUEST, "조리 사진 1장을 첨부해 주세요."),
 	UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 파일 형식입니다."),
 	// 인증
