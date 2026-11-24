@@ -1,6 +1,5 @@
 package com.remake.ingredient;
 
-import static com.remake.ingredient.domain.IngredientStatus.ACTIVE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -16,8 +15,11 @@ import com.remake.ingredient.application.port.in.GetIngredientUseCase;
 import com.remake.ingredient.application.port.in.UpdateIngredientCommand;
 import com.remake.ingredient.application.port.in.UpdateIngredientCommand.PriceChange;
 import com.remake.ingredient.application.port.in.UpdateIngredientUseCase;
+import com.remake.ingredient.domain.ExpiryStatus;
+import com.remake.ingredient.domain.FridgeIngredient;
 import com.remake.ingredient.domain.Ingredient;
 import com.remake.ingredient.domain.IngredientCategoryCode;
+import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.ingredient.domain.StorageLocation;
 import com.remake.support.IntegrationTestSupport;
 
@@ -39,7 +41,7 @@ class IngredientServiceTest extends IntegrationTestSupport {
 	private DeleteIngredientUseCase deleteUseCase;
 
 	private Long createMilk(Long userId, Long price) {
-		return createIngredient(userId, "DAIRY_EGG", "우유", EXPIRATION, ACTIVE, price);
+		return createIngredient(userId, "DAIRY_EGG", "우유", EXPIRATION, price);
 	}
 
 	private void assertNotFound(Runnable call) {
@@ -53,41 +55,38 @@ class IngredientServiceTest extends IntegrationTestSupport {
 	void 본인_재료의_상세를_읽는다() {
 		Long id = createMilk(OWNER, 3000L);
 
-		Ingredient ingredient = getUseCase.getIngredient(OWNER, id);
+		Ingredient ingredient = getUseCase.getIngredient(OWNER, id).ingredient();
 
 		assertThat(ingredient.id()).isEqualTo(id);
 		assertThat(ingredient.name()).isEqualTo("우유");
 		assertThat(ingredient.expirationDate()).isEqualTo(EXPIRATION);
 		assertThat(ingredient.price()).isEqualTo(3000L);
-		assertThat(ingredient.status()).isEqualTo(ACTIVE);
 	}
 
 	@Test
 	void 다른_사용자의_재료는_없는_것과_같이_404이다() {
 		Long id = createMilk(OTHER, null);
 
-		assertNotFound(() -> getUseCase.getIngredient(OWNER, id));
+		assertNotFound(() -> getUseCase.getIngredient(OWNER, id).ingredient());
 	}
 
 	@Test
 	void 없는_재료는_404이다() {
-		assertNotFound(() -> getUseCase.getIngredient(OWNER, 999_999L));
+		assertNotFound(() -> getUseCase.getIngredient(OWNER, 999_999L).ingredient());
 	}
 
 	@Test
-	void 소비기한을_고치면_추정_표시가_꺼진다() {
+	void 소비기한을_고치면_응답용_D_day와_상태도_새_날짜로_계산한다() {
 		Long id = createMilk(OWNER, null);
-		jdbcTemplate.update("UPDATE ingredients SET is_expiration_estimated = true WHERE id = ?", id);
-		assertThat(jdbcTemplate.queryForObject("SELECT is_expiration_estimated FROM ingredients WHERE id = ?",
-				Boolean.class, id)).isTrue();
 
-		Ingredient updated = updateUseCase.updateIngredient(
+		FridgeIngredient updated = updateUseCase.updateIngredient(
 				new UpdateIngredientCommand(OWNER, id, null, null, LocalDate.of(2026, 3, 20), null, null));
 
-		assertThat(updated.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 20));
-		assertThat(updated.expirationEstimated()).isFalse();
-		assertThat(jdbcTemplate.queryForObject("SELECT is_expiration_estimated FROM ingredients WHERE id = ?",
-				Boolean.class, id)).isFalse();
+		// 시험용 시계의 오늘은 2026-03-04이다
+		assertThat(updated.ingredient().expirationDate()).isEqualTo(LocalDate.of(2026, 3, 20));
+		assertThat(updated.dDay()).isEqualTo(16);
+		assertThat(updated.status()).isEqualTo(ExpiryStatus.OK);
+		assertThat(updated.category().code()).isEqualTo(IngredientCategoryCode.DAIRY_EGG);
 	}
 
 	@Test
@@ -96,12 +95,12 @@ class IngredientServiceTest extends IntegrationTestSupport {
 
 		updateUseCase.updateIngredient(
 				new UpdateIngredientCommand(OWNER, id, null, null, null, StorageLocation.FREEZER, new PriceChange(2500L)));
-		Ingredient changed = getUseCase.getIngredient(OWNER, id);
+		Ingredient changed = getUseCase.getIngredient(OWNER, id).ingredient();
 		assertThat(changed.storage()).isEqualTo(StorageLocation.FREEZER);
 		assertThat(changed.price()).isEqualTo(2500L);
 
 		updateUseCase.updateIngredient(new UpdateIngredientCommand(OWNER, id, null, null, null, null, new PriceChange(null)));
-		assertThat(getUseCase.getIngredient(OWNER, id).price()).isNull();
+		assertThat(getUseCase.getIngredient(OWNER, id).ingredient().price()).isNull();
 	}
 
 	@Test
@@ -110,7 +109,7 @@ class IngredientServiceTest extends IntegrationTestSupport {
 
 		updateUseCase.updateIngredient(new UpdateIngredientCommand(OWNER, id, null, null, LocalDate.of(2026, 4, 1), null, null));
 
-		Ingredient ingredient = getUseCase.getIngredient(OWNER, id);
+		Ingredient ingredient = getUseCase.getIngredient(OWNER, id).ingredient();
 		assertThat(ingredient.storage()).isEqualTo(StorageLocation.FRIDGE);
 		assertThat(ingredient.price()).isEqualTo(3000L);
 	}
@@ -125,7 +124,7 @@ class IngredientServiceTest extends IntegrationTestSupport {
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.INVALID_INPUT);
 
-		Ingredient ingredient = getUseCase.getIngredient(OWNER, id);
+		Ingredient ingredient = getUseCase.getIngredient(OWNER, id).ingredient();
 		assertThat(ingredient.expirationDate()).isEqualTo(EXPIRATION);
 		assertThat(ingredient.price()).isEqualTo(3000L);
 	}
@@ -137,7 +136,7 @@ class IngredientServiceTest extends IntegrationTestSupport {
 		updateUseCase.updateIngredient(new UpdateIngredientCommand(OWNER, id, "  두부  ", IngredientCategoryCode.BEAN_TOFU,
 				null, null, null));
 
-		Ingredient changed = getUseCase.getIngredient(OWNER, id);
+		Ingredient changed = getUseCase.getIngredient(OWNER, id).ingredient();
 		assertThat(changed.name()).isEqualTo("두부");
 		assertThat(changed.categoryId()).isEqualTo(categoryId("BEAN_TOFU"));
 	}
@@ -152,7 +151,7 @@ class IngredientServiceTest extends IntegrationTestSupport {
 				.extracting(e -> ((BusinessException) e).getErrorCode())
 				.isEqualTo(ErrorCode.INVALID_INPUT);
 
-		assertThat(getUseCase.getIngredient(OWNER, id).name()).isEqualTo("우유");
+		assertThat(getUseCase.getIngredient(OWNER, id).ingredient().name()).isEqualTo("우유");
 	}
 
 	@Test
@@ -188,7 +187,7 @@ class IngredientServiceTest extends IntegrationTestSupport {
 		assertNotFound(() -> updateUseCase.updateIngredient(
 				new UpdateIngredientCommand(OWNER, id, null, null, LocalDate.of(2026, 4, 1), null, null)));
 
-		assertThat(getUseCase.getIngredient(OTHER, id).expirationDate()).isEqualTo(EXPIRATION);
+		assertThat(getUseCase.getIngredient(OTHER, id).ingredient().expirationDate()).isEqualTo(EXPIRATION);
 	}
 
 	@Test
@@ -209,5 +208,60 @@ class IngredientServiceTest extends IntegrationTestSupport {
 
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredients WHERE id = ?", Long.class, id))
 				.isEqualTo(1L);
+	}
+
+	@Test
+	void 이름을_바꾸면_단위만_다시_정하고_수량_숫자는_그대로다() {
+		Long id = createMilk(OWNER, null);
+		jdbcTemplate.update("UPDATE ingredients SET amount = 3, initial_amount = 3 WHERE id = ?", id);
+
+		FridgeIngredient updated = updateUseCase.updateIngredient(
+				new UpdateIngredientCommand(OWNER, id, "대파", null, null, null, null));
+
+		// 우유(EA로 넣은 시험 데이터) → 대파: 사전에 있는 이름이라 BUNCH
+		assertThat(updated.ingredient().unit()).isEqualTo(IngredientUnit.BUNCH);
+		assertThat(updated.ingredient().amount()).isEqualByComparingTo("3");
+		assertThat(updated.ingredient().initialAmount()).isEqualByComparingTo("3");
+	}
+
+	@Test
+	void 사용_기록이_있어도_이름을_바꾸면_단위를_다시_정하고_기록은_그대로다() {
+		Long id = createMilk(OWNER, null);
+		jdbcTemplate.update("""
+				INSERT INTO ingredient_logs (user_id, ingredient_id, type, name, amount, unit, created_at)
+				VALUES (?, ?, 'USED', '우유', 1, 'EA', ?)
+				""", OWNER, id, java.time.LocalDateTime.now(clock));
+
+		FridgeIngredient updated = updateUseCase.updateIngredient(
+				new UpdateIngredientCommand(OWNER, id, "대파", null, null, null, null));
+
+		assertThat(updated.ingredient().unit()).isEqualTo(IngredientUnit.BUNCH);
+		assertThat(jdbcTemplate.queryForMap("SELECT name, unit FROM ingredient_logs WHERE ingredient_id = ?", id))
+				.containsEntry("name", "우유").containsEntry("unit", "EA");
+	}
+
+	@Test
+	void 카테고리만_바꿔도_저장될_단위가_미리보기와_같도록_다시_정한다() {
+		// 같은 카테고리의 사전 이름("우유")이 들어 있는 이름은 그 카테고리일 때만 PACK이다
+		Long id = createIngredient(OWNER, "VEGETABLE", "유기농 우유", EXPIRATION, null);
+
+		FridgeIngredient updated = updateUseCase.updateIngredient(
+				new UpdateIngredientCommand(OWNER, id, null, IngredientCategoryCode.DAIRY_EGG, null, null, null));
+
+		assertThat(updated.ingredient().unit()).isEqualTo(IngredientUnit.PACK);
+	}
+
+	@Test
+	void 이름과_카테고리를_바꾸지_않으면_단위를_건드리지_않는다() {
+		Long id = createMilk(OWNER, null);
+
+		// 같은 이름·같은 카테고리를 그대로 보내도, 다른 값만 고쳐도 단위는 그대로(시험 데이터는 EA)
+		FridgeIngredient same = updateUseCase.updateIngredient(
+				new UpdateIngredientCommand(OWNER, id, "우유", IngredientCategoryCode.DAIRY_EGG, null, null, null));
+		FridgeIngredient other = updateUseCase.updateIngredient(
+				new UpdateIngredientCommand(OWNER, id, null, null, null, StorageLocation.FREEZER, null));
+
+		assertThat(same.ingredient().unit()).isEqualTo(IngredientUnit.EA);
+		assertThat(other.ingredient().unit()).isEqualTo(IngredientUnit.EA);
 	}
 }

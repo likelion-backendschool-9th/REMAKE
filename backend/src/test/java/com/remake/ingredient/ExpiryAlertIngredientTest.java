@@ -1,7 +1,5 @@
 package com.remake.ingredient;
 
-import static com.remake.ingredient.domain.IngredientStatus.ACTIVE;
-import static com.remake.ingredient.domain.IngredientStatus.FINISHED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
@@ -31,11 +29,11 @@ class ExpiryAlertIngredientTest extends IntegrationTestSupport {
 
 	@Test
 	void 임박은_오늘부터_3일_뒤까지이고_D_DAY를_포함한다() {
-		Long dDay = createIngredient(USER_1, "MEAT", "닭가슴살", LocalDate.of(2026, 3, 4), ACTIVE);
-		Long d1 = createIngredient(USER_1, "VEGETABLE", "양파", LocalDate.of(2026, 3, 5), ACTIVE);
-		Long d3 = createIngredient(USER_1, "DAIRY_EGG", "우유", LocalDate.of(2026, 3, 7), ACTIVE);
-		createIngredient(USER_1, "VEGETABLE", "당근", LocalDate.of(2026, 3, 8), ACTIVE); // D-4: 아직 임박 아님
-		createIngredient(USER_1, "VEGETABLE", "시금치", LocalDate.of(2026, 3, 3), ACTIVE); // 어제 만료: 임박이 아니라 만료
+		Long dDay = createIngredient(USER_1, "MEAT", "닭가슴살", LocalDate.of(2026, 3, 4));
+		Long d1 = createIngredient(USER_1, "VEGETABLE", "양파", LocalDate.of(2026, 3, 5));
+		Long d3 = createIngredient(USER_1, "DAIRY_EGG", "우유", LocalDate.of(2026, 3, 7));
+		createIngredient(USER_1, "VEGETABLE", "당근", LocalDate.of(2026, 3, 8)); // D-4: 아직 임박 아님
+		createIngredient(USER_1, "VEGETABLE", "시금치", LocalDate.of(2026, 3, 3)); // 어제 만료: 임박이 아니라 만료
 
 		assertThat(useCase.getExpiringIngredients())
 				.extracting(ExpiringIngredient::ingredientId)
@@ -44,7 +42,7 @@ class ExpiryAlertIngredientTest extends IntegrationTestSupport {
 
 	@Test
 	void 임박_재료는_알림에_쓸_값을_담는다() {
-		Long id = createIngredient(USER_1, "DAIRY_EGG", "우유", LocalDate.of(2026, 3, 6), ACTIVE);
+		Long id = createIngredient(USER_1, "DAIRY_EGG", "우유", LocalDate.of(2026, 3, 6));
 
 		assertThat(useCase.getExpiringIngredients())
 				.containsExactly(new ExpiringIngredient(USER_1, id, "우유", LocalDate.of(2026, 3, 6)));
@@ -52,9 +50,9 @@ class ExpiryAlertIngredientTest extends IntegrationTestSupport {
 
 	@Test
 	void 임박은_사용자별로_모아_소비기한_순으로_돌려준다() {
-		Long user2Late = createIngredient(USER_2, "VEGETABLE", "파", LocalDate.of(2026, 3, 6), ACTIVE);
-		Long user1Late = createIngredient(USER_1, "VEGETABLE", "양파", LocalDate.of(2026, 3, 6), ACTIVE);
-		Long user1Early = createIngredient(USER_1, "MEAT", "돼지고기", LocalDate.of(2026, 3, 5), ACTIVE);
+		Long user2Late = createIngredient(USER_2, "VEGETABLE", "파", LocalDate.of(2026, 3, 6));
+		Long user1Late = createIngredient(USER_1, "VEGETABLE", "양파", LocalDate.of(2026, 3, 6));
+		Long user1Early = createIngredient(USER_1, "MEAT", "돼지고기", LocalDate.of(2026, 3, 5));
 
 		assertThat(useCase.getExpiringIngredients())
 				.extracting(ExpiringIngredient::ingredientId)
@@ -62,21 +60,11 @@ class ExpiryAlertIngredientTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 다_쓴_재료는_임박에도_만료에도_포함하지_않는다() {
-		createIngredient(USER_1, "MEAT", "닭가슴살", LocalDate.of(2026, 3, 5), FINISHED);
-		createIngredient(USER_1, "MEAT", "소고기", LocalDate.of(2026, 3, 1), FINISHED);
-
-		assertThat(useCase.getExpiringIngredients()).isEmpty();
-		assertThat(useCase.getExpiredIngredientCounts()).isEmpty();
-		assertThat(useCase.getIngredientsExpiredYesterday()).isEmpty();
-	}
-
-	@Test
 	void 만료는_소비기한이_오늘보다_이전인_재료를_사용자별로_센다() {
-		createIngredient(USER_1, "VEGETABLE", "상추", LocalDate.of(2026, 3, 3), ACTIVE);
-		createIngredient(USER_1, "VEGETABLE", "깻잎", LocalDate.of(2026, 2, 20), ACTIVE);
-		createIngredient(USER_2, "MEAT", "닭고기", LocalDate.of(2026, 3, 1), ACTIVE);
-		createIngredient(USER_1, "VEGETABLE", "오늘이_기한", LocalDate.of(2026, 3, 4), ACTIVE); // D-DAY는 만료가 아니다
+		createIngredient(USER_1, "VEGETABLE", "상추", LocalDate.of(2026, 3, 3));
+		createIngredient(USER_1, "VEGETABLE", "깻잎", LocalDate.of(2026, 2, 20));
+		createIngredient(USER_2, "MEAT", "닭고기", LocalDate.of(2026, 3, 1));
+		createIngredient(USER_1, "VEGETABLE", "오늘이_기한", LocalDate.of(2026, 3, 4)); // D-DAY는 만료가 아니다
 
 		assertThat(useCase.getExpiredIngredientCounts())
 				.containsExactly(new ExpiredIngredientCount(USER_1, 2), new ExpiredIngredientCount(USER_2, 1));
@@ -84,10 +72,10 @@ class ExpiryAlertIngredientTest extends IntegrationTestSupport {
 
 	@Test
 	void 어제_만료된_재료만_골라_이벤트_속성을_담는다() {
-		Long withPrice = createIngredient(USER_1, "MEAT", "삼겹살", LocalDate.of(2026, 3, 3), ACTIVE, 12000L);
-		Long noPrice = createIngredient(USER_2, "SEASONING", "간장", LocalDate.of(2026, 3, 3), ACTIVE);
-		createIngredient(USER_1, "VEGETABLE", "그저께_만료", LocalDate.of(2026, 3, 2), ACTIVE);
-		createIngredient(USER_1, "VEGETABLE", "오늘이_기한", LocalDate.of(2026, 3, 4), ACTIVE);
+		Long withPrice = createIngredient(USER_1, "MEAT", "삼겹살", LocalDate.of(2026, 3, 3), 12000L);
+		Long noPrice = createIngredient(USER_2, "SEASONING", "간장", LocalDate.of(2026, 3, 3));
+		createIngredient(USER_1, "VEGETABLE", "그저께_만료", LocalDate.of(2026, 3, 2));
+		createIngredient(USER_1, "VEGETABLE", "오늘이_기한", LocalDate.of(2026, 3, 4));
 
 		assertThat(useCase.getIngredientsExpiredYesterday()).containsExactly(
 				new ExpiredIngredient(USER_1, withPrice, IngredientCategoryCode.MEAT, true),
@@ -96,7 +84,7 @@ class ExpiryAlertIngredientTest extends IntegrationTestSupport {
 
 	@Test
 	void 자정이_지나면_기준_날짜가_바뀐다() {
-		Long id = createIngredient(USER_1, "VEGETABLE", "양파", LocalDate.of(2026, 3, 7), ACTIVE);
+		Long id = createIngredient(USER_1, "VEGETABLE", "양파", LocalDate.of(2026, 3, 7));
 
 		// 3월 4일 23:59: 3월 7일은 D-3이라 임박이고, 아직 만료가 아니다.
 		clock.setNow(ZonedDateTime.of(2026, 3, 4, 23, 59, 0, 0, MutableClock.ZONE));

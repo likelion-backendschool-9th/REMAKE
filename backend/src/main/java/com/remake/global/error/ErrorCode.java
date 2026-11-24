@@ -22,7 +22,6 @@ public enum ErrorCode {
 	NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 주소를 찾을 수 없습니다."),
 	METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 방식입니다."),
 	NOT_ACCEPTABLE(HttpStatus.NOT_ACCEPTABLE, "요청한 응답 형식을 지원하지 않습니다."),
-	CONCURRENT_UPDATE(HttpStatus.CONFLICT, "다른 요청이 먼저 수정했습니다. 다시 불러온 뒤 시도해 주세요."),
 	FILE_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE, "파일 크기가 너무 큽니다."),
 	UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 요청 형식입니다."),
 	RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."),
@@ -30,6 +29,9 @@ public enum ErrorCode {
 	SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 요청을 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
 
 	// 기능별 (기능을 만드는 PR에서 추가. 마지막 줄만 ;로 끝낸다)
+	// 공유 사진
+	PHOTO_REQUIRED(HttpStatus.BAD_REQUEST, "조리 사진 1장을 첨부해 주세요."),
+	UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 파일 형식입니다."),
 	// 인증
 	OAUTH_FAILED(HttpStatus.UNAUTHORIZED, "소셜 로그인에 실패했습니다."),
 	OAUTH_PROVIDER_UNSUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 로그인 방식입니다."),
@@ -37,12 +39,14 @@ public enum ErrorCode {
 	// 재료
 	INGREDIENT_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "재료 카테고리를 찾을 수 없습니다."),
 	INGREDIENT_NOT_FOUND(HttpStatus.NOT_FOUND, "재료를 찾을 수 없습니다."),
-	INVALID_UNIT(HttpStatus.BAD_REQUEST, "사용할 수 없는 단위입니다."),
 	INSUFFICIENT_QUANTITY(HttpStatus.BAD_REQUEST, "가진 양보다 많이 뺄 수 없습니다."),
 	// AI 레시피 (문구는 에러 정의서 v2. 모두 횟수 차감 없음)
+	GENERATION_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "오늘의 레시피 생성 횟수를 모두 사용했어요"),
+	NO_INGREDIENTS(HttpStatus.UNPROCESSABLE_CONTENT, "냉장고 재료가 부족해서 레시피를 만들지 못했어요. 설정에서 레시피 재료 보충을 켜 보세요"),
 	AI_UPSTREAM_ERROR(HttpStatus.BAD_GATEWAY, "레시피를 만들지 못했어요. 횟수는 차감되지 않았어요"),
 	AI_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "생성이 오래 걸리고 있어요. 횟수는 차감되지 않았어요"),
 	AI_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "레시피를 만들지 못했어요. 횟수는 차감되지 않았어요"),
+	RECIPE_NOT_FOUND(HttpStatus.NOT_FOUND, "레시피를 찾을 수 없어요"),
 	// 이벤트
 	EVENT_BATCH_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE, "이벤트는 한 번에 50개까지 보낼 수 있습니다.");
 

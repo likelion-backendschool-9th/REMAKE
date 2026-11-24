@@ -30,12 +30,21 @@ class ErrorTestController {
 
 	@GetMapping("/business")
 	void business() {
-		throw new BusinessException(ErrorCode.CONCURRENT_UPDATE);
+		throw new BusinessException(ErrorCode.INGREDIENT_NOT_FOUND);
 	}
 
 	@GetMapping("/business-message")
 	void businessMessage() {
 		throw new BusinessException(ErrorCode.INVALID_INPUT, "남은 수량은 300g입니다.");
+	}
+
+	@GetMapping("/business-details")
+	void businessDetails() {
+		java.util.Map<String, Object> details = new java.util.LinkedHashMap<>();
+		details.put("remaining", 0);
+		details.put("resetsAt", java.time.LocalDateTime.of(2026, 11, 21, 0, 0));
+		details.put("note", null);
+		throw new BusinessException(ErrorCode.INVALID_INPUT, details);
 	}
 
 	@PostMapping("/body")

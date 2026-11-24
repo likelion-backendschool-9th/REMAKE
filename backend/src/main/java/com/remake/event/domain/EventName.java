@@ -40,7 +40,7 @@ public enum EventName {
 	FRIDGE_LIST_VIEWED("fridge_list_viewed", EventSource.CLIENT, Set.of("total_count", "danger_count", "soon_count", "ok_count")), // E19
 	FRIDGE_FILTER_APPLIED("fridge_filter_applied", EventSource.CLIENT, Set.of("filter_type", "filter_value")), // E20
 	INGREDIENT_ADD_STARTED("ingredient_add_started", EventSource.CLIENT, Set.of("add_source")), // E21
-	INGREDIENT_ADDED("ingredient_added", EventSource.SERVER, Set.of("add_source", "category_code", "storage", "has_price", "is_expiration_estimated", "duration_sec")), // E22
+	INGREDIENT_ADDED("ingredient_added", EventSource.SERVER, Set.of("add_source", "category_code", "storage", "has_price", "duration_sec")), // E22
 	INGREDIENT_EDITED("ingredient_edited", EventSource.CLIENT, Set.of("edit_field")), // E23
 	INGREDIENT_DELETED("ingredient_deleted", EventSource.CLIENT, Set.of("category_code")), // E24
 	INGREDIENT_USED("ingredient_used", EventSource.SERVER, Set.of("use_via", "category_code", "expiry_status", "used_ratio")), // E25
@@ -59,8 +59,8 @@ public enum EventName {
 	RECEIPT_DELETED("receipt_deleted", EventSource.CLIENT, Set.of()), // E37
 	CONSUMPTION_PATTERN_VIEWED("consumption_pattern_viewed", EventSource.CLIENT, Set.of("month_offset")), // E38
 	RECIPE_GENERATE_STARTED("recipe_generate_started", EventSource.CLIENT, Set.of("recipe_mode", "servings", "option_count", "supplement_enabled")), // E39
-	RECIPE_GENERATED("recipe_generated", EventSource.SERVER, Set.of("recipe_id", "recipe_mode", "duration_ms", "expiring_used_count", "shortage_count", "allergen_warning", "remaining_quota")), // E40
-	RECIPE_GENERATE_FAILED("recipe_generate_failed", EventSource.SERVER, Set.of("recipe_mode", "error_code", "duration_ms")), // E41
+	RECIPE_GENERATED("recipe_generated", EventSource.SERVER, Set.of("recipe_id", "recipe_mode", "is_regenerated", "duration_ms", "expiring_used_count", "shortage_count", "remaining_quota")), // E40
+	RECIPE_GENERATE_FAILED("recipe_generate_failed", EventSource.SERVER, Set.of("recipe_mode", "is_regenerated", "error_code", "duration_ms")), // E41
 	RECIPE_REGENERATED("recipe_regenerated", EventSource.CLIENT, Set.of("recipe_mode")), // E42
 	RECIPE_DETAIL_VIEWED("recipe_detail_viewed", EventSource.CLIENT, Set.of("recipe_id", "detail_origin")), // E43
 	RECIPE_SAVED("recipe_saved", EventSource.SERVER, Set.of("recipe_id", "save_source", "cart_added_count")), // E44

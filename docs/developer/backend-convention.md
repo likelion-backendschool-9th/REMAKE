@@ -161,7 +161,7 @@ com.remake
 { "content": [], "page": 0, "size": 20, "totalElements": 0, "hasNext": false }
 ```
 
-실패하면 모든 API가 아래 모양으로 돌려줍니다. `fieldErrors`(`{ field, message }` 항목)는 입력값 검증 실패(`INVALID_INPUT`)일 때만 넣습니다. `details`는 화면에 값이 더 필요할 때만 넣습니다. 예를 들어 `GENERATION_LIMIT_EXCEEDED`의 남은 횟수와 초기화 시각(`"details": { "remaining": 0, "resetsAt": "2026-11-21T00:00:00+09:00" }`)입니다. `details`는 아직 `ErrorResponse`에 없습니다([#45](https://github.com/likelion-backendschool-9th/REMAKE/issues/45)). 에러 코드 목록은 [`spec/errors.md`](../agent/spec/errors.md)(영문)에 있습니다.
+실패하면 모든 API가 아래 모양으로 돌려줍니다. `fieldErrors`(`{ field, message }` 항목)는 입력값 검증 실패(`INVALID_INPUT`)일 때만 넣습니다. `details`는 화면에 값이 더 필요할 때만 넣습니다. 예를 들어 `GENERATION_LIMIT_EXCEEDED`의 남은 횟수와 초기화 시각(`"details": { "remaining": 0, "resetsAt": "2026-11-21T00:00:00+09:00" }`)입니다. `fieldErrors`에 값이 없으면 필드를 빼지 않고 `null`로 돌려주고, `details`에 값이 없으면 필드를 뺍니다(`@JsonInclude(NON_NULL)`). `details`는 `new BusinessException(ErrorCode.XXX, Map.of(...))`나 `new BusinessException(ErrorCode.XXX, message, Map.of(...))`로 넘기면 `GlobalExceptionHandler`가 응답에 그대로 담습니다. 에러 코드 목록은 [`spec/errors.md`](../agent/spec/errors.md)(영문)에 있습니다.
 
 ```json
 {
@@ -212,13 +212,13 @@ com.remake
 
 - LLM은 `port/out` 인터페이스 하나로 부르고, 구현은 `adapter/out/ai`에 둡니다. 입력은 요청의 ID·enum과 DB 데이터(냉장고 재료, 제외 재료 코드)뿐입니다. **사용자가 입력한 글을 프롬프트에 넣지 않습니다.**
 - 응답은 구조화된 JSON으로 받아 검증합니다: 스키마, 단위는 14개 코드 중 하나, 조리 단계가 비어 있지 않음. 검증에 실패하면 `AI_INVALID_RESPONSE`이고, 저장하지 않으며 횟수도 차감하지 않습니다.
-- "레시피 재료 보충" 설정이 ON이면 냉장고에 없는 재료도 쓸 수 있습니다. OFF면 냉장고 재료로만 만들고, 너무 적으면 `NO_INGREDIENTS`입니다. 제외(알레르기) 재료는 빼고 요청합니다.
+- "레시피 재료 보충" 설정이 ON이면 냉장고에 없는 재료도 쓸 수 있습니다. OFF면 냉장고 재료로만 만들고, 양념을 뺀 재료가 2개 미만이면(소비기한 지난 재료 제외) AI를 부르지 않고 `NO_INGREDIENTS`입니다. 기준 2개는 레시피 영역 담당이 정한 값이고(정책에는 "너무 적으면"만 있음) `GenerationIngredients.MIN_MAIN_INGREDIENTS`에 있습니다. AI에 보내는 제외(알레르기) 재료는 설정의 제외 재료(`GetUserGenerationPreferencesUseCase`, 지금 값. 빠른 생성·커스텀·다시 받기 모두 항상)에 커스텀에서 고른 칩을 더한 것입니다. 요청과 도메인 타입은 `AllergenCode`(`user/domain`, ERD 부록 B)이고, 모르는 코드는 `400 INVALID_INPUT`입니다.
 - 식단표: 칸마다 생성 때 레시피 전체를 만듭니다(칸 상세를 나중에 만들지 않음). 같은 재료 수량을 여러 끼니에 겹쳐 쓰지 않게 계산합니다(각 칸 레시피 재료 기준, 칸별 예정 재료 테이블 없음). 재료로 만들 수 있는 일수까지만 생성하고(BASIC 최대 5일, PREMIUM 7일), 그다음 부족한 재료를 장바구니에 담습니다.
-- 성공한 생성만 횟수를 차감합니다. 한도는 [`spec/domain-rules.md`](../agent/spec/domain-rules.md)(영문)에 있습니다.
+- 성공한 생성만 횟수를 차감합니다. 한도는 [`spec/domain-rules.md`](../agent/spec/domain-rules.md)(영문)에 있습니다. 횟수 기능(`quota`)은 남은 횟수를 저장하지 않고 `usage_logs`에서 오늘(레시피)·이번 달 1일(식단표) 이후 행을 세어 계산합니다. 차감은 결과를 저장하는 트랜잭션 안에서 `ConsumeRecipeQuotaUseCase`로 하고, 회원 단위 advisory lock을 걸어 동시에 요청해도 한도를 넘지 않습니다. `remake.quota.enforced=false`면 한도 검사만 끕니다(기록은 남음). 이 값은 `application-local.yml`에만 있고(`QUOTA_ENFORCED`, 로컬 기본 `false`) 개발자가 자기 Gemini 키로 반복 테스트하기 위한 것입니다. 운영과 테스트는 기본값 `true`입니다. 개발자는 각자 자기 무료 키를 `backend/.env`에 넣습니다.
 - LLM은 Google Gemini(무료 티어)입니다. `GenerateRecipeAiPort`(`recipe/application/port/out`)를 `GeminiRecipeAdapter`(`recipe/adapter/out/ai`)가 구현하고, 식단표도 같은 포트를 씁니다. 서버에 기록을 남기지 않는 `generateContent` API에 `responseMimeType: application/json`과 `responseSchema`를 지정해 부르고, 규칙은 시스템 지시에, 데이터(옵션 코드, 냉장고 재료)는 사용자 메시지에 JSON으로 넣습니다. 냉장고 재료 이름은 DB 값이지만 사용자가 입력한 글자라서, 지시가 아니라 데이터로 다루라고 시스템 지시에 적습니다.
 - 설정: `remake.gemini.api-key`(`GEMINI_API_KEY`), `remake.gemini.model`(`GEMINI_MODEL`, 기본 `gemini-3.5-flash-lite`). 키는 로컬은 `backend/.env`, 운영은 서버 `.env`에 넣고 `compose.prod.yml`이 백엔드에 넘깁니다. 운영 키는 운영 전용 Google Cloud 프로젝트의 키라 로컬에서 쓰지 않습니다. 키가 비어 있으면 `AI_UPSTREAM_ERROR`가 납니다. 키를 요청 본문이나 로그에 넣지 않습니다.
 - 어댑터 호출 한 번은 25초 제한이고 재시도하지 않습니다. 재시도는 Service가 1회 하므로(`AI_INVALID_RESPONSE` 뒤에도) 두 번 불러도 API 제한 60초 안에 끝납니다. 에러 변환: 시간 초과 → `AI_TIMEOUT`, HTTP 오류(429·503 포함)·연결 실패·안전 필터 거절·키 없음 → `AI_UPSTREAM_ERROR`, JSON 아님·후보 없음·`MAX_TOKENS` → `AI_INVALID_RESPONSE`. 공급자 쪽은 상태 코드만 로그에 남기고 에러 문구는 남기지 않습니다.
-- `GeneratedRecipeValidator`가 AI 응답을 `Recipe`로 바꿉니다: 인분은 요청 값을 쓰고, 14개 코드에 없는 단위의 재료는 그 줄만 빼고(남은 줄이 없으면 `AI_INVALID_RESPONSE`), 모르는 냉장고 ID는 "냉장고에 없는 재료"로 보고, `TO_TASTE`는 양을 비우고, 양은 소수 셋째 자리로 반올림합니다. 재료 보충이 OFF면 냉장고에 없는 재료는 `PINCH`·`TO_TASTE`이거나 `BASIC_PANTRY`(물, 소금, 후추, 설탕, 식용유)에 있을 때만 허용합니다. `BASIC_PANTRY`는 정책 문서에 없는 임시 규칙이라, 팀이 기능 공통의 기본 양념 기준을 정하면 그에 맞춰 바꿉니다.
+- `GeneratedRecipeValidator`가 AI 응답을 `Recipe`로 바꿉니다: 인분은 요청 값을 쓰고, 14개 코드에 없는 단위의 재료는 그 줄만 빼고(남은 줄이 없으면 `AI_INVALID_RESPONSE`), 모르는 냉장고 ID는 "냉장고에 없는 재료"로 보고, `TO_TASTE`는 양을 비우고, 양은 소수 셋째 자리로 반올림합니다. 재료 보충이 OFF면 냉장고에 없는 재료는 모두 `AI_INVALID_RESPONSE`입니다. 기본 양념(소금, 식용유)과 `PINCH`·`TO_TASTE` 줄도 예외가 아닙니다. 양념도 다른 재료처럼 사용자가 등록해 관리하는 품목입니다(#158). 예외는 물 하나입니다(`GeneratedRecipeValidator.WATER`, 이름이 정확히 "물", 레시피 영역 담당 결정). 물은 냉장고에 등록하는 품목이 아니라서 냉장고에 없어도 쓰고, 부족한 재료로 세지 않습니다(이벤트 `shortage_count`, 장바구니). `PINCH`·`TO_TASTE`는 "요리 완료 때 차감하지 않는다"는 뜻일 뿐입니다.
 - 무료 티어 한도는 Google Cloud 프로젝트 단위로 분당 15회, 하루 500회입니다(미국 태평양 시간 자정에 초기화). 레시피 한 건은 약 800토큰, 5~10초입니다. 식단표 생성은 칸마다 모델을 부르면 안 되고, 식단표 하나를 한 번(또는 몇 번)에 만들어야 분당 15회 안에 들어옵니다.
 
 ## 예약 작업 (한국 시간)

@@ -85,13 +85,27 @@ class GeneratedRecipeValidatorTest {
 	}
 
 	@Test
-	void 재료_보충이_꺼져_있어도_기본_양념과_꼬집_약간은_쓸_수_있다() {
-		Recipe recipe = GeneratedRecipeValidator.toRecipe(USER_ID, quickRequest(false),
-				generated(item(EGG_ID, "계란", "3", "EA"), item(null, "식용유", "1", "TBSP"),
-						item(null, "후춧가루", "1", "PINCH"), item(null, "깨", "2", "TO_TASTE")));
+	void 재료_보충이_꺼져_있으면_냉장고에_없는_기본_양념과_꼬집_약간도_형식_오류다() {
+		assertInvalid(quickRequest(false), generated(item(EGG_ID, "계란", "3", "EA"), item(null, "식용유", "1", "TBSP")));
+		assertInvalid(quickRequest(false), generated(item(EGG_ID, "계란", "3", "EA"), item(null, "후춧가루", "1", "PINCH")));
+		assertInvalid(quickRequest(false), generated(item(EGG_ID, "계란", "3", "EA"), item(null, "소금", null, "TO_TASTE")));
+	}
 
-		assertThat(recipe.ingredients()).hasSize(4);
-		assertThat(recipe.ingredients().get(3).amount()).as("약간은 양을 비운다").isNull();
+	@Test
+	void 재료_보충이_꺼져_있어도_물은_냉장고에_없이_쓸_수_있다() {
+		Recipe recipe = GeneratedRecipeValidator.toRecipe(USER_ID, quickRequest(false),
+				generated(item(EGG_ID, "계란", "3", "EA"), item(null, " 물 ", "500", "ML")));
+
+		assertThat(recipe.ingredients().get(1).ingredientId()).isNull();
+		assertInvalid(quickRequest(false), generated(item(EGG_ID, "계란", "3", "EA"), item(null, "생수", "500", "ML")));
+	}
+
+	@Test
+	void 냉장고에_있는_재료는_꼬집_약간으로도_쓸_수_있고_약간은_양을_비운다() {
+		Recipe recipe = GeneratedRecipeValidator.toRecipe(USER_ID, quickRequest(false),
+				generated(item(EGG_ID, "계란", "2", "TO_TASTE")));
+
+		assertThat(recipe.ingredients().get(0).amount()).isNull();
 	}
 
 	@Test
