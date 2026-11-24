@@ -4,6 +4,10 @@
   position: fixed;
   inset: 0;
   z-index: var(--z-sheet);
+  /* 딤·시트는 화면 영역(최대 480, 가운데) 안에만 둔다. 바깥 회색 배경은 덮지 않음(피그마 딤 배경 폭 360) */
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -24,7 +28,6 @@
   flex-direction: column;
   gap: var(--space-16);
   width: 100%;
-  max-width: calc(var(--layout-max-width) - var(--space-16) * 2);
   max-height: 90dvh;
   overflow-y: auto;
   padding: var(--space-12) var(--space-14) var(--space-14);

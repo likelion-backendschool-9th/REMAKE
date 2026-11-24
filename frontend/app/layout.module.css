@@ -7,4 +7,9 @@
   width: 100%;
   max-width: var(--layout-max-width);
   margin: 0 auto;
+  /* 바깥은 회색(body), 화면 영역은 흰 바탕 */
+  background: var(--color-bg-surface);
+  /* 그림자 등 화면 영역을 넘는 것은 잘라 바깥에 보이지 않게 한다.
+     hidden 대신 clip: 스크롤 영역을 만들지 않아 헤더의 position: sticky가 그대로 동작한다 */
+  overflow: clip;
 }

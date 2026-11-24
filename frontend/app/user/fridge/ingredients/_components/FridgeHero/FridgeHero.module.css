@@ -1,0 +1,106 @@
+/* 피그마 p2-냉장고 위쪽: 배경 bg/section, 헤더 아래 30에 문구(Medium 18·text/title, 줄 간격 normal),
+   문구-링크 15, 링크 Remake/content-regular·text/body + 화살표 16, 그 아래 16에 요약 카드, 카드 아래 33 */
+.hero {
+  position: relative;
+  overflow: hidden;
+  padding: 1.875rem var(--layout-gutter) 2.0625rem;
+  background: var(--color-bg-section);
+}
+
+.copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.9375rem;
+}
+
+.title {
+  color: var(--color-text-title);
+  font: 500 1.125rem / normal var(--font-family-base);
+}
+
+/* 피그마 p2-냉장고-빈 리스트: "냉장고가 비어 있어요"는 Remake/header(Bold 18, 줄 간격 1.4) */
+.title[data-empty] {
+  font: var(--font-header);
+}
+
+.recipeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  color: var(--color-text-body);
+  font: 400 0.875rem / normal var(--font-family-base);
+}
+
+.recipeLink:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+.arrow {
+  width: 1rem;
+  height: 1rem;
+}
+
+.summary {
+  position: relative;
+  z-index: 1;
+  margin-top: var(--space-16);
+}
+
+/* 얼음 장식: 피그마 위치를 위쪽 영역 기준(헤더 아래 0)으로 옮겼다. 오른쪽 것은 화면 오른쪽 끝 기준 */
+.ice {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.iceItem {
+  position: absolute;
+  height: auto;
+  transform: translate(-50%, -50%) rotate(var(--rotate));
+  max-width: none;
+}
+
+.iceItem[data-ice="1"] {
+  top: 4.1375rem;
+  left: calc(100% + 0.369rem);
+  width: 23.25rem;
+  opacity: 0.52;
+  --rotate: -32.91deg;
+}
+
+.iceItem[data-ice="2"] {
+  top: 11.7875rem;
+  left: calc(100% - 3.481rem);
+  width: 6.1rem;
+  --rotate: 62.23deg;
+}
+
+.iceItem[data-ice="3"] {
+  top: 9.056rem;
+  left: calc(100% - 5.856rem);
+  width: 3.609rem;
+  opacity: 0.3;
+  --rotate: -62.23deg;
+}
+
+.iceItem[data-ice="4"] {
+  top: 12.44rem;
+  left: 0.794rem;
+  width: 8.764rem;
+  opacity: 0.32;
+  --rotate: -75.17deg;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
