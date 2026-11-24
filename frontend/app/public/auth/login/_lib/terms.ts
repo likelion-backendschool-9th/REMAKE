@@ -1,15 +1,13 @@
-// 로그인 화면 약관 드로워 본문. 별도 동의 화면 없이 로그인 화면 링크로 갈음한다(정책 "약관 동의", 제안).
-// TODO: 확정된 이용 약관·개인정보 처리 방침 본문으로 바꾼다. 피그마 본문은 다른 서비스의 예시 글이라 옮기지 않았다.
+// 로그인 화면 약관 드로워 본문. 별도 동의 화면 없이 로그인 화면 링크로 갈음한다(이용 약관 제3조 1항).
+// 본문은 lib/legal(원문 docs/developer/terms-of-service.md, privacy-policy.md)에서 가져온다.
+
+import { PRIVACY_POLICY } from "@/lib/legal/privacy-policy";
+import { TERMS_OF_SERVICE } from "@/lib/legal/terms-of-service";
+import type { LegalDocumentData } from "@/lib/legal/types";
 
 export type TermsKind = "terms" | "privacy";
 
-export const TERMS: Record<TermsKind, { title: string; body: string }> = {
-  terms: {
-    title: "이용 약관",
-    body: "이용 약관 본문을 준비하고 있어요.",
-  },
-  privacy: {
-    title: "개인정보 처리 방침",
-    body: "개인정보 처리 방침 본문을 준비하고 있어요.",
-  },
+export const TERMS: Record<TermsKind, LegalDocumentData> = {
+  terms: TERMS_OF_SERVICE,
+  privacy: PRIVACY_POLICY,
 };
