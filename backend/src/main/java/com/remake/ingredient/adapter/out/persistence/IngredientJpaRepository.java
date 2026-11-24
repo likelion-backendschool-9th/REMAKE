@@ -11,7 +11,6 @@ import org.springframework.data.repository.query.Param;
 import com.remake.ingredient.domain.ExpiredIngredient;
 import com.remake.ingredient.domain.ExpiredIngredientCount;
 import com.remake.ingredient.domain.ExpiringIngredient;
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.ingredient.domain.StorageLocation;
 
 /**
@@ -24,35 +23,33 @@ interface IngredientJpaRepository extends JpaRepository<IngredientJpaEntity, Lon
 
 	@Query("""
 			select i from IngredientJpaEntity i
-			where i.userId = :userId and i.status = :status
+			where i.userId = :userId
 			  and (:storage is null or i.storage = :storage)
 			  and (:categoryId is null or i.categoryId = :categoryId)
 			order by i.expirationDate, i.id
 			""")
-	List<IngredientJpaEntity> search(@Param("userId") Long userId, @Param("status") IngredientStatus status,
+	List<IngredientJpaEntity> search(@Param("userId") Long userId,
 			@Param("storage") StorageLocation storage, @Param("categoryId") Long categoryId);
 
-	@Query("select i.expirationDate from IngredientJpaEntity i where i.userId = :userId and i.status = :status")
-	List<LocalDate> findExpirationDates(@Param("userId") Long userId, @Param("status") IngredientStatus status);
+	@Query("select i.expirationDate from IngredientJpaEntity i where i.userId = :userId")
+	List<LocalDate> findExpirationDates(@Param("userId") Long userId);
 
 	@Query("""
 			select new com.remake.ingredient.domain.ExpiringIngredient(i.userId, i.id, i.name, i.expirationDate)
 			from IngredientJpaEntity i
-			where i.status = :status and i.expirationDate between :from and :to
+			where i.expirationDate between :from and :to
 			order by i.userId, i.expirationDate, i.id
 			""")
-	List<ExpiringIngredient> findExpiringBetween(@Param("status") IngredientStatus status,
-			@Param("from") LocalDate from, @Param("to") LocalDate to);
+	List<ExpiringIngredient> findExpiringBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
 	@Query("""
 			select new com.remake.ingredient.domain.ExpiredIngredientCount(i.userId, count(i))
 			from IngredientJpaEntity i
-			where i.status = :status and i.expirationDate < :date
+			where i.expirationDate < :date
 			group by i.userId
 			order by i.userId
 			""")
-	List<ExpiredIngredientCount> countByUserExpiredBefore(@Param("status") IngredientStatus status,
-			@Param("date") LocalDate date);
+	List<ExpiredIngredientCount> countByUserExpiredBefore(@Param("date") LocalDate date);
 
 	// 카테고리 code는 같은 기능의 기준 데이터 테이블과 묶어서 한 번에 읽는다.
 	@Query("""
@@ -60,8 +57,8 @@ interface IngredientJpaRepository extends JpaRepository<IngredientJpaEntity, Lon
 					case when i.price is null then false else true end)
 			from IngredientJpaEntity i
 			join IngredientCategoryJpaEntity c on c.id = i.categoryId
-			where i.status = :status and i.expirationDate = :date
+			where i.expirationDate = :date
 			order by i.userId, i.id
 			""")
-	List<ExpiredIngredient> findExpiredOn(@Param("status") IngredientStatus status, @Param("date") LocalDate date);
+	List<ExpiredIngredient> findExpiredOn(@Param("date") LocalDate date);
 }

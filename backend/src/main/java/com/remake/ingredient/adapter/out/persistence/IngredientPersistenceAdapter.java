@@ -12,7 +12,6 @@ import com.remake.ingredient.application.port.out.DeleteIngredientPort;
 import com.remake.ingredient.application.port.out.LoadIngredientPort;
 import com.remake.ingredient.application.port.out.SaveIngredientPort;
 import com.remake.ingredient.domain.Ingredient;
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.ingredient.domain.StorageLocation;
 
 import lombok.RequiredArgsConstructor;
@@ -30,15 +29,15 @@ class IngredientPersistenceAdapter implements LoadIngredientPort, SaveIngredient
 	}
 
 	@Override
-	public List<Ingredient> loadActiveByUserId(Long userId, StorageLocation storage, Long categoryId) {
-		return repository.search(userId, IngredientStatus.ACTIVE, storage, categoryId).stream()
+	public List<Ingredient> loadByUserId(Long userId, StorageLocation storage, Long categoryId) {
+		return repository.search(userId, storage, categoryId).stream()
 				.map(IngredientJpaEntity::toDomain)
 				.toList();
 	}
 
 	@Override
-	public List<LocalDate> loadActiveExpirationDates(Long userId) {
-		return repository.findExpirationDates(userId, IngredientStatus.ACTIVE);
+	public List<LocalDate> loadExpirationDates(Long userId) {
+		return repository.findExpirationDates(userId);
 	}
 
 	@Override
@@ -46,7 +45,7 @@ class IngredientPersistenceAdapter implements LoadIngredientPort, SaveIngredient
 		if (ingredient.id() == null) {
 			return repository.save(IngredientJpaEntity.from(ingredient)).toDomain();
 		}
-		// 이미 있는 재료는 불러와서 값을 옮긴다. 트랜잭션이 끝날 때 변경 감지로 저장되고 @Version이 충돌을 막는다.
+		// 이미 있는 재료는 불러와서 값을 옮긴다. 트랜잭션이 끝날 때 변경 감지로 저장된다.
 		IngredientJpaEntity entity = repository.findById(ingredient.id())
 				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_NOT_FOUND));
 		entity.apply(ingredient);

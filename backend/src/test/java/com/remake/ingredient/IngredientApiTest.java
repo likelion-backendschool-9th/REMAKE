@@ -16,7 +16,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import com.remake.global.web.LoginUserIdArgumentResolver;
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.support.IntegrationTestSupport;
 
 // 재료 API. 통합 테스트는 요청 속성으로 로그인 사용자를 넣는다(AuthCookieFilter가 SecurityContext로 옮긴다).
@@ -49,7 +48,7 @@ class IngredientApiTest extends IntegrationTestSupport {
 	}
 
 	private Long createMilk(Long userId) {
-		return createIngredient(userId, "DAIRY_EGG", "우유", EXPIRATION, IngredientStatus.ACTIVE, 3000L);
+		return createIngredient(userId, "DAIRY_EGG", "우유", EXPIRATION, 3000L);
 	}
 
 	@Test
@@ -67,10 +66,13 @@ class IngredientApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.categoryCode").value("DAIRY_EGG"))
 				.andExpect(jsonPath("$.storage").value("FRIDGE"))
 				.andExpect(jsonPath("$.expirationDate").value("2026-03-12"))
-				.andExpect(jsonPath("$.isExpirationEstimated").value(false))
+				.andExpect(jsonPath("$.imageUrl").value("/images/categories/dairy-egg.png"))
 				.andExpect(jsonPath("$.unit").value("PACK"))
 				.andExpect(jsonPath("$.price").value(3000))
-				.andExpect(jsonPath("$.status").value("ACTIVE"));
+				// 시험용 시계의 오늘(2026-03-04)부터 8일 남아 여유다
+				.andExpect(jsonPath("$.dDay").value(8))
+				.andExpect(jsonPath("$.status").value("OK"))
+				.andExpect(jsonPath("$.isExpirationEstimated").doesNotExist());
 
 		Long id = jdbcTemplate.queryForObject("SELECT id FROM ingredients", Long.class);
 		mockMvc.perform(as(ME, get(URL + "/" + id)))
@@ -124,9 +126,8 @@ class IngredientApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 수정하면_보낸_값만_바뀌고_소비기한을_고치면_추정_표시가_꺼진다() throws Exception {
+	void 수정하면_보낸_값만_바뀐다() throws Exception {
 		Long id = createMilk(ME);
-		jdbcTemplate.update("UPDATE ingredients SET is_expiration_estimated = true WHERE id = ?", id);
 
 		String body = """
 				{ "name": "  두유  ", "categoryCode": "BEAN_TOFU", "expirationDate": "2026-03-20" }
@@ -136,7 +137,8 @@ class IngredientApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.name").value("두유"))
 				.andExpect(jsonPath("$.categoryCode").value("BEAN_TOFU"))
 				.andExpect(jsonPath("$.expirationDate").value("2026-03-20"))
-				.andExpect(jsonPath("$.isExpirationEstimated").value(false))
+				.andExpect(jsonPath("$.dDay").value(16))
+				.andExpect(jsonPath("$.status").value("OK"))
 				.andExpect(jsonPath("$.storage").value("FRIDGE"))
 				.andExpect(jsonPath("$.price").value(3000));
 	}

@@ -1,0 +1,29 @@
+/* 피그마 7. 목록 행·카드 > 묶음 제목: 여백 위 12·아래 8, 간격 space/6
+   제목 Remake/content-strong·text/title, 보조·오른쪽 Remake/assist·text/sub */
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  width: 100%;
+  padding: var(--space-12) 0 var(--space-8);
+}
+
+.title {
+  flex: none;
+  color: var(--color-text-title);
+  font: var(--font-content-strong);
+}
+
+.description {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+.trailing {
+  flex: none;
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+  white-space: nowrap;
+}

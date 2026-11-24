@@ -1,0 +1,48 @@
+/* 피그마 2. 버튼 > 작은 버튼: 여백 6/10, Remake/assist-strong */
+.button {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-10);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-primary-subtle);
+  color: var(--color-text-primary);
+  font: var(--font-assist-strong);
+  white-space: nowrap;
+}
+
+/* 보이는 크기는 피그마대로, 누르는 영역만 44×44까지 넓힌다(blueprint §6.2) */
+.button::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 2.75rem);
+  height: max(100%, 2.75rem);
+  transform: translate(-50%, -50%);
+}
+
+.button[data-tone="neutral"] {
+  background: var(--color-bg-section);
+  color: var(--color-text-body);
+}
+
+.button[data-tone="outline"] {
+  border: 1px solid var(--color-border-chip);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-surface);
+  color: var(--color-text-body);
+}
+
+.button:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}

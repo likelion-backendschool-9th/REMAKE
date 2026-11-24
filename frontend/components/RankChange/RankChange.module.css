@@ -1,0 +1,27 @@
+/* 피그마 5. 칩·배지 > 순위 변동: 아이콘 16, 간격 space/2, Remake/title */
+.change {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-primary);
+  font: var(--font-title);
+}
+
+.change[data-direction="down"] {
+  color: var(--color-text-danger);
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

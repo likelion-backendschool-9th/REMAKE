@@ -9,7 +9,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.recipe.domain.CookTime;
 import com.remake.recipe.domain.Cuisine;
 import com.remake.recipe.domain.CustomOptions;
@@ -29,7 +28,7 @@ class RecipePersistenceAdapterTest extends IntegrationTestSupport {
 	@Test
 	void 커스텀_레시피를_저장하면_재료_순서와_단계_번호와_선택값이_그대로_읽힌다() {
 		Long userId = createUser();
-		Long eggId = createIngredient(userId, "DAIRY_EGG", "계란", LocalDate.of(2026, 3, 10), IngredientStatus.ACTIVE);
+		Long eggId = createIngredient(userId, "DAIRY_EGG", "계란", LocalDate.of(2026, 3, 10));
 		CustomOptions options = new CustomOptions(2, List.of(eggId), Taste.SPICY, CookTime.WITHIN_15, null, null,
 				Cuisine.KOREAN, List.of("EGG"));
 		Recipe recipe = Recipe.create(userId, RecipeSource.CUSTOM, "매운 계란말이", 2, 15, "약불로 익혀요.", options,
@@ -92,7 +91,7 @@ class RecipePersistenceAdapterTest extends IntegrationTestSupport {
 	@Test
 	void 냉장고_재료를_지우면_레시피_재료의_연결만_끊긴다() {
 		Long userId = createUser();
-		Long eggId = createIngredient(userId, "DAIRY_EGG", "계란", LocalDate.of(2026, 3, 10), IngredientStatus.ACTIVE);
+		Long eggId = createIngredient(userId, "DAIRY_EGG", "계란", LocalDate.of(2026, 3, 10));
 		Recipe saved = transactionTemplate.execute(status -> adapter.save(Recipe.create(userId, RecipeSource.QUICK,
 				"계란프라이", 1, 5, null, null, List.of(new RecipeIngredient(eggId, "계란", BigDecimal.ONE, RecipeUnit.EA)),
 				List.of("굽는다."))));

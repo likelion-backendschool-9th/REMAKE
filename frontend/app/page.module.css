@@ -13,11 +13,11 @@
 }
 
 .title {
-  color: var(--text-header);
-  font: var(--font-header-mobile);
+  color: var(--color-text-strong);
+  font: var(--font-header);
 }
 
 .description {
-  color: var(--text-assist);
-  font: var(--font-content-mobile);
+  color: var(--color-text-assist);
+  font: var(--font-content);
 }

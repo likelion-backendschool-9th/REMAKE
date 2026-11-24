@@ -1,7 +1,6 @@
 package com.remake.ingredient.adapter.in.web;
 
 import com.remake.ingredient.domain.IngredientCategory;
-import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.StorageLocation;
 
@@ -15,11 +14,10 @@ public record IngredientCategoryResponse(
 		String name,
 		String imageUrl,
 		StorageLocation defaultStorage,
-		IngredientUnit defaultUnit,
 		int defaultShelfLifeDays) {
 
 	public static IngredientCategoryResponse from(IngredientCategory category) {
 		return new IngredientCategoryResponse(category.id(), category.code(), category.name(), category.imageUrl(),
-				category.defaultStorage(), category.defaultUnit(), category.defaultShelfLifeDays());
+				category.defaultStorage(), category.defaultShelfLifeDays());
 	}
 }

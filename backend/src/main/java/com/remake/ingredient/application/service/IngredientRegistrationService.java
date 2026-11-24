@@ -64,17 +64,15 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase 
 				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND));
 
 		LocalDate expirationDate = command.expirationDate();
-		boolean estimated = command.expirationEstimated();
 		if (expirationDate == null) {
 			// 소비기한을 모르면 기준일(영수증은 구매일, 없으면 오늘)에 카테고리 기본 보관 일수를 더해 추정한다.
 			LocalDate baseDate = command.expirationBaseDate() != null ? command.expirationBaseDate() : today;
 			expirationDate = ExpiryPolicy.estimateExpirationDate(baseDate, category.defaultShelfLifeDays());
-			estimated = true;
 		}
 
 		try {
 			Ingredient ingredient = Ingredient.register(command.userId(), category.id(), command.receiptItemId(),
-					command.name(), command.storage(), expirationDate, estimated, command.amount(), command.unit(),
+					command.name(), command.storage(), expirationDate, command.amount(), command.unit(),
 					command.price());
 			Ingredient saved = saveIngredientPort.save(ingredient);
 			trackAdded(saved, category, command.receiptItemId() != null);
@@ -95,8 +93,7 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase 
 				Map.of("add_source", fromReceipt ? "RECEIPT" : "MANUAL",
 						"category_code", category.code().name(),
 						"storage", ingredient.storage().name(),
-						"has_price", ingredient.price() != null,
-						"is_expiration_estimated", ingredient.expirationEstimated()),
+						"has_price", ingredient.price() != null),
 				EventTrackCommand.ofUser(ingredient.userId()));
 	}
 }

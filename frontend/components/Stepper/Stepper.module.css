@@ -1,0 +1,53 @@
+/* 피그마 3. 입력 > 스테퍼: 버튼 24(원, bg/section), 빼기 16(solar minus bold)·더하기 14(선 1.5), 간격 space/16 */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-16);
+}
+
+.control {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-section);
+  color: var(--color-icon-default);
+}
+
+.control::after {
+  content: "";
+  position: absolute;
+  inset: -0.625rem;
+}
+
+.control svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.control .plus {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.control:disabled {
+  color: var(--color-icon-disabled);
+  cursor: default;
+}
+
+.control:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+.value {
+  color: var(--color-text-body);
+  font: var(--font-content);
+  white-space: nowrap;
+}

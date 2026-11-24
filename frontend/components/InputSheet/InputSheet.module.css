@@ -1,0 +1,56 @@
+/* 피그마 6. 겹쳐 뜨는 것 > 입력 시트: 좌우 16 여백의 카드, bg/surface, radius/lg, 여백 위 12·옆 14·아래 14,
+   간격 space/16, shadow-modal */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 var(--space-16) calc(var(--space-16) + env(safe-area-inset-bottom));
+}
+
+.dim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-dim);
+  animation: fade-in 0.2s ease-out;
+}
+
+.sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 100%;
+  max-width: calc(var(--layout-max-width) - var(--space-16) * 2);
+  max-height: 90dvh;
+  overflow-y: auto;
+  padding: var(--space-12) var(--space-14) var(--space-14);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-modal);
+  outline: 0;
+  animation: slide-up 0.25s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(1.5rem);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dim,
+  .sheet {
+    animation: none;
+  }
+}
