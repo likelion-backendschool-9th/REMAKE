@@ -35,7 +35,7 @@ export function FridgeHero({
         {[1, 2, 3, 4].map((n) => (
           <Image
             key={n}
-            src="/images/fridge/ice.png"
+            src="/images/fridge/ice.webp"
             alt=""
             width={372}
             height={372}
