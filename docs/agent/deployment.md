@@ -77,7 +77,7 @@ bash deploy/deploy.sh status              # active slot per app and container st
 
 Deploy flow. Only the app being deployed changes; the other app's slots are never touched.
 
-1. (Backend only) Start `postgres` only if it is not running. If it is already running, leave it untouched.
+1. (Backend only) Start `postgres` only if it is not running. If it is already running, leave it untouched. If the synced migration files include a number the DB has not applied yet, back up the whole DB before the new slot applies it ([Backup before a new migration](#backup-before-a-new-migration)). If the backup fails, stop without starting the new slot.
 2. Build and start the new version in that app's inactive slot, then wait until its health check (backend `/actuator/health/readiness`, frontend `/`) is healthy.
 3. When healthy, rewrite `proxy/<app>.conf` to point to the new slot, validate with `nginx -t`, and reload the proxy.
 4. Confirm that the proxy actually routes requests to the new slot, and that the app's path on the host port (`APP_PORT`) responds (backend `/api/`, frontend `/`). Only 5xx or a connection failure counts as failure; a 4xx such as 404 means the request reached the app and passes.
@@ -102,6 +102,29 @@ Changing the `postgres` settings in `compose.prod.yml` is not applied by a deplo
 The DB schema is managed by Flyway. Change tables only through versioned SQL files (`V<number>__<description>.sql`) in `backend/src/main/resources/db/migration`; JPA only runs `validate` (checks that entities match the tables) in both the production and local profiles. When a new slot starts, Flyway runs the files not yet applied, in order. If a migration fails or a table required by an entity is missing, the new slot never becomes healthy, so the switch does not happen and the previous version keeps serving. PostgreSQL runs DDL inside transactions, so the changes in a failed file are rolled back together (statements that run outside a transaction, such as `CREATE INDEX CONCURRENTLY`, are the exception). During a deployment the old and new versions briefly share the same DB, so make schema changes in backward-compatible steps. The backend and the frontend are also deployed separately, so between the two deploys a new frontend may briefly run against the previous backend (or the reverse).
 
 To pause deployment (server maintenance, freezing the version for a demo, or waiting for a fix PR after a rollback), set `REMAKE_DEPLOY_ENABLED` to `false`. The CD workflows then only run their checks and skip the server deploy, and the server keeps running the last deployed version.
+
+## Backup before a new migration
+
+When a new backend slot starts, Flyway applies the migrations the DB does not have yet. A migration that drops a column or deletes rows cannot be undone with a rollback: the previous image does not start on the new schema (`validate` fails), and the deleted data is gone. So before starting a new backend slot, `deploy/deploy.sh` compares the largest `V<number>` among the synced migration files with the largest version in `flyway_schema_history`. When the files are ahead, it backs up the whole DB with `pg_dump` (custom format).
+
+- Location: `backups/remake-<time>-V<applied>-before-V<new>.dump` in the deploy directory. A backup contains member data, so the folder is `700` and each file `600`. The CD sync does not touch this folder.
+- Only the 5 most recent backups are kept (`BACKUP_KEEP`). No backup is taken when there is no new migration, or on the first deployment (no `flyway_schema_history` yet).
+- If the backup fails (the applied version cannot be read, `pg_dump` fails, or the folder cannot be created), the deploy stops without starting the new slot, and the previous version keeps serving. Fix the cause and re-run the failed Backend CD.
+
+To bring the DB back to the state right before a migration (for example, when a migration deleted data by mistake):
+
+1. Set `REMAKE_DEPLOY_ENABLED` to `false` so that CD does not deploy in the meantime.
+2. Restore the backup taken right before that migration. Data written after the backup (from the start of that deployment) is lost.
+
+   ```bash
+   cd <DEPLOY_PATH>
+   ls -l backups/
+   docker compose --env-file .env -f compose.prod.yml exec -T postgres \
+     sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --single-transaction' < backups/<file>.dump
+   ```
+
+3. Run `bash deploy/deploy.sh backend rollback`. The DB has the previous schema again, so the previous image starts. If more backend deploys happened after that migration, the previous slot is not the version before the migration; decide with the deployment owner.
+4. The restored DB no longer has that migration applied, so the next backend deploy runs it again. Fix the migration with the deployment owner before setting `REMAKE_DEPLOY_ENABLED` back to `true`.
 
 ## What the app needs because of the deployment setup
 
