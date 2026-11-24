@@ -52,7 +52,7 @@ public class RecipeController {
 		return RecipeDetailResponse.from(regenerateRecipeUseCase.regenerate(userId, id));
 	}
 
-	@Operation(summary = "레시피 상세", description = "내가 만든 레시피만 볼 수 있습니다. 없거나 다른 사람의 레시피면 RECIPE_NOT_FOUND(404)입니다.")
+	@Operation(summary = "레시피 상세", description = "내가 만들었거나 저장한 레시피(저장한 공유 레시피 포함)만 볼 수 있습니다. 그 밖은 RECIPE_NOT_FOUND(404)입니다.")
 	@GetMapping("/{id}")
 	public RecipeDetailResponse detail(@LoginUserId Long userId, @PathVariable Long id) {
 		return RecipeDetailResponse.from(getRecipeUseCase.getRecipe(userId, id));
