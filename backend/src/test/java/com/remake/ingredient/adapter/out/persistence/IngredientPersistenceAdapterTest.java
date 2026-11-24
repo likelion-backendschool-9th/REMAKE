@@ -22,7 +22,8 @@ class IngredientPersistenceAdapterTest extends IntegrationTestSupport {
 	@Test
 	void 새_재료를_저장하면_id가_채워지고_같은_값으로_읽힌다() {
 		Long userId = createUser();
-		Ingredient registered = Ingredient.register(userId, categoryId("MEAT"), 77L, "삼겹살", StorageLocation.FREEZER,
+		Long receiptItemId = createReceiptItem(userId, "삼겹살", "MEAT");
+		Ingredient registered = Ingredient.register(userId, categoryId("MEAT"), receiptItemId, "삼겹살", StorageLocation.FREEZER,
 				LocalDate.of(2026, 3, 12), new BigDecimal("0.001"), IngredientUnit.KG, 12000L);
 
 		Ingredient saved = transactionTemplate.execute(status -> adapter.save(registered));
@@ -32,7 +33,7 @@ class IngredientPersistenceAdapterTest extends IntegrationTestSupport {
 		assertThat(saved.id()).isNotNull();
 		assertThat(loaded.userId()).isEqualTo(userId);
 		assertThat(loaded.categoryId()).isEqualTo(categoryId("MEAT"));
-		assertThat(loaded.receiptItemId()).isEqualTo(77L);
+		assertThat(loaded.receiptItemId()).isEqualTo(receiptItemId);
 		assertThat(loaded.name()).isEqualTo("삼겹살");
 		assertThat(loaded.storage()).isEqualTo(StorageLocation.FREEZER);
 		assertThat(loaded.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 12));
