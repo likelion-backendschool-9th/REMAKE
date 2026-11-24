@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.jayway.jsonpath.JsonPath;
@@ -36,7 +38,8 @@ class SharedRecipeDetailApiTest extends IntegrationTestSupport {
 		return transactionTemplate.execute(tx -> recipes.save(Recipe.create(author, RecipeSource.QUICK,
 				"원본 제목", 2, 15, "조리 팁", null,
 				List.of(new RecipeIngredient(onion, "양파", new BigDecimal("2"), RecipeUnit.EA),
-						new RecipeIngredient(null, "소금", null, RecipeUnit.TO_TASTE)),
+						new RecipeIngredient(null, "소금", null, RecipeUnit.TO_TASTE),
+						new RecipeIngredient(null, "물", new BigDecimal("200"), RecipeUnit.ML)),
 				List.of("양파를 썬다", "익힌다"))));
 	}
 	private Long post(Long author, Long recipe) {
@@ -65,6 +68,8 @@ class SharedRecipeDetailApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.ingredients[0].unit").value("EA"))
 				.andExpect(jsonPath("$.ingredients[0].have").value(true))
 				.andExpect(jsonPath("$.ingredients[1].have").value(false))
+				.andExpect(jsonPath("$.ingredients[2].name").value("물"))
+				.andExpect(jsonPath("$.ingredients[2].have").value(true))
 				.andExpect(jsonPath("$.steps[0].stepNo").value(1))
 				.andExpect(jsonPath("$.steps[1].content").value("익힌다"))
 				.andExpect(jsonPath("$.saved").value(false)).andExpect(jsonPath("$.saveCount").value(0))
@@ -83,7 +88,22 @@ class SharedRecipeDetailApiTest extends IntegrationTestSupport {
 		createIngredient(reader, "VEGETABLE", "다진 양파", LocalDate.of(2026, 3, 10));
 		mockMvc.perform(get(url(id)).requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, reader))
 				.andExpect(status().isOk()).andExpect(jsonPath("$.ingredients[0].have").value(false))
-				.andExpect(jsonPath("$.ingredients[1].have").value(false));
+				.andExpect(jsonPath("$.ingredients[1].have").value(false))
+				.andExpect(jsonPath("$.ingredients[2].name").value("물"))
+				.andExpect(jsonPath("$.ingredients[2].have").value(true));
+	}
+
+	@ParameterizedTest
+	@ValueSource(ints = {-1, 0, 1})
+	void 보유여부는_소비기한이_오늘이거나_이후인_재료만_인정한다(int dDay) throws Exception {
+		Long author = createUser(); Recipe recipe = original(author); Long id = post(author, recipe.id());
+		Long reader = createUser();
+		createIngredient(reader, "VEGETABLE", "양파", LocalDate.now(clock).plusDays(dDay));
+		mockMvc.perform(get(url(id)).requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, reader))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ingredients[0].have").value(dDay >= 0))
+				.andExpect(jsonPath("$.ingredients[1].have").value(false))
+				.andExpect(jsonPath("$.ingredients[2].have").value(true));
 	}
 
 	@Test
