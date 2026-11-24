@@ -58,8 +58,8 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		LocalDateTime now = LocalDateTime.now(clock);
 		return jdbcTemplate.queryForObject("""
 				INSERT INTO ingredients (user_id, category_id, name, storage, expiration_date, amount, initial_amount,
-				                         unit, price, status, created_at, updated_at)
-				VALUES (?, ?, ?, 'FRIDGE', ?, ?, ?, 'G', NULL, 'ACTIVE', ?, ?)
+				                         unit, price, created_at, updated_at)
+				VALUES (?, ?, ?, 'FRIDGE', ?, ?, ?, 'G', NULL, ?, ?)
 				RETURNING id
 				""", Long.class, userId, categoryId("VEGETABLE"), name, TODAY.plusDays(30), grams, grams, now, now);
 	}
