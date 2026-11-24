@@ -90,6 +90,22 @@ export const P5_STATES: PreviewState[] = [
     ),
   },
   {
+    slug: "calendar-cross-month",
+    label: "p5-식단표-달을 넘는 식단 (11/28~12/3, 12월 달력, 피그마 없음)",
+    route: ROUTE,
+    render: () => (
+      <MealPlanContainer
+        {...BASE}
+        calendar={{
+          month: "2026-12",
+          periods: [{ mealPlanId: 14, startDate: "2026-11-28", endDate: "2026-12-03" }],
+          datesWithMeals: ["2026-12-01", "2026-12-02", "2026-12-03"],
+        }}
+        initialDate="2026-12-02"
+      />
+    ),
+  },
+  {
     slug: "calendar-empty",
     label: "p5-빈 리스트 (식단표를 한 번도 만들지 않음)",
     route: ROUTE,

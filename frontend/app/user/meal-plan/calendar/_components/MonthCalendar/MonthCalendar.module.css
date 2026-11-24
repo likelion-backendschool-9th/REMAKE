@@ -55,8 +55,8 @@
   color: var(--color-text-assist);
 }
 
-/* 기간 시작일: text/primary */
-.day[data-start] {
+/* 오늘: text/primary */
+.day[data-today] {
   color: var(--color-text-primary);
 }
 

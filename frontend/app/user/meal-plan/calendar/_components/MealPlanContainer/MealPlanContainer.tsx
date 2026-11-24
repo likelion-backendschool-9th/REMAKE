@@ -196,6 +196,7 @@ function MealPlanBody({
           // TODO: 다른 달로 바꾸면 API 39(?month=)로 그 달 기간을 받는다
           periods={month === calendar.month ? calendar.periods : []}
           datesWithMeals={month === calendar.month ? calendar.datesWithMeals : []}
+          today={today}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
         />

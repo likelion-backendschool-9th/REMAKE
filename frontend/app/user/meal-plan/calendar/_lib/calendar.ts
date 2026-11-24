@@ -37,14 +37,14 @@ export type CalendarDay = {
   /** 식단 있는 날이 이어진 묶음의 첫날·끝날(띠 끝을 둥글게) */
   isRunStart: boolean;
   isRunEnd: boolean;
-  /** 식단 기간 시작일(파란 글자) */
-  isPeriodStart: boolean;
 };
 
 /**
  * 달력 칸: 그 달 1일이 있는 주의 일요일부터, 마지막 날이 있는 주의 토요일까지.
  * 파란 띠는 식단 기간 전체가 아니라 식단이 있는 날(datesWithMeals)에만 칠한다. 기간 안이라도 식단을 지웠거나
  * 재료가 부족해 만들지 못한 날은 비워 둔다.
+ * datesWithMeals는 "그 달의" 날짜만 오므로, 달력 첫·끝 주의 다른 달 칸과 달 경계의 이웃은 식단 기간(periods) 안인지로
+ * 판단한다. 그래야 달을 넘어 이어지는 식단의 띠가 1일·말일에서 끊기지 않는다(#217 리뷰).
  */
 export function buildMonthGrid(
   month: string,
@@ -53,6 +53,12 @@ export function buildMonthGrid(
 ): CalendarDay[][] {
   const mealDates = new Set(datesWithMeals);
   const first = dayjs(`${month}-01`);
+  const hasMealsOn = (value: ReturnType<typeof dayjs>) => {
+    const date = value.format("YYYY-MM-DD");
+    if (value.month() === first.month() && value.year() === first.year())
+      return mealDates.has(date);
+    return periods.some((p) => date >= p.startDate && date <= p.endDate);
+  };
   const start = first.subtract(first.day(), "day");
   const last = first.endOf("month");
   const end = last.add(6 - last.day(), "day");
@@ -60,15 +66,14 @@ export function buildMonthGrid(
   for (let cursor = start; !cursor.isAfter(end, "day"); cursor = cursor.add(1, "day")) {
     if (cursor.day() === 0) weeks.push([]);
     const date = cursor.format("YYYY-MM-DD");
-    const hasMeals = mealDates.has(date);
+    const hasMeals = hasMealsOn(cursor);
     weeks.at(-1)?.push({
       date,
       day: cursor.date(),
       isOtherMonth: cursor.month() !== first.month(),
       hasMeals,
-      isRunStart: hasMeals && !mealDates.has(cursor.subtract(1, "day").format("YYYY-MM-DD")),
-      isRunEnd: hasMeals && !mealDates.has(cursor.add(1, "day").format("YYYY-MM-DD")),
-      isPeriodStart: periods.some((p) => p.startDate === date),
+      isRunStart: hasMeals && !hasMealsOn(cursor.subtract(1, "day")),
+      isRunEnd: hasMeals && !hasMealsOn(cursor.add(1, "day")),
     });
   }
   return weeks;
