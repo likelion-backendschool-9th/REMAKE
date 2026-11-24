@@ -13,6 +13,8 @@
   /* layout: 모바일 기준 최대 폭 */
   --layout-max-width: 480px;
   --layout-gutter: 1rem;
+  /* 480px 컨테이너 바깥(넓은 화면의 좌우) 배경 */
+  --layout-outside-bg: #000;
 
   /* font: 본문은 tokens.css의 --font-family-base(Pretendard), 로고 글자만 GmarketSans */
   --font-family-logo: var(--font-gmarket), var(--font-family-base);
@@ -36,7 +38,7 @@ body {
 body {
   display: flex;
   flex-direction: column;
-  background: var(--color-bg-surface);
+  background: var(--layout-outside-bg);
   color: var(--color-text-body);
   font-family: var(--font-family-base);
   line-height: 1.4;

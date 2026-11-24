@@ -7,4 +7,6 @@
   width: 100%;
   max-width: var(--layout-max-width);
   margin: 0 auto;
+  /* 바깥은 검정(body), 화면 영역은 흰 바탕 */
+  background: var(--color-bg-surface);
 }
