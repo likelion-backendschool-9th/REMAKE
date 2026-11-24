@@ -18,6 +18,7 @@ import com.remake.recipe.domain.RecipeSource;
 import com.remake.recipe.domain.RecipeUnit;
 import com.remake.recipe.domain.Taste;
 import com.remake.support.IntegrationTestSupport;
+import com.remake.user.domain.AllergenCode;
 
 // 레시피·재료·단계 세 테이블 저장과 jsonb(custom_options) 변환, 본인 소유 조회, 재료 삭제 시 SET NULL을 확인한다.
 class RecipePersistenceAdapterTest extends IntegrationTestSupport {
@@ -30,7 +31,7 @@ class RecipePersistenceAdapterTest extends IntegrationTestSupport {
 		Long userId = createUser();
 		Long eggId = createIngredient(userId, "DAIRY_EGG", "계란", LocalDate.of(2026, 3, 10));
 		CustomOptions options = new CustomOptions(2, List.of(eggId), Taste.SPICY, CookTime.WITHIN_15, null, null,
-				Cuisine.KOREAN, List.of("EGG"));
+				Cuisine.KOREAN, List.of(AllergenCode.EGG));
 		Recipe recipe = Recipe.create(userId, RecipeSource.CUSTOM, "매운 계란말이", 2, 15, "약불로 익혀요.", options,
 				List.of(new RecipeIngredient(eggId, "계란", new BigDecimal("3"), RecipeUnit.EA),
 						new RecipeIngredient(null, "고춧가루", new BigDecimal("0.5"), RecipeUnit.TSP),

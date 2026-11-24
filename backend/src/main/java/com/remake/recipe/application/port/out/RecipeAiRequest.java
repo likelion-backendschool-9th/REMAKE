@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.remake.recipe.domain.CustomOptions;
 import com.remake.recipe.domain.RecipeSource;
+import com.remake.user.domain.AllergenCode;
 
 /**
  * AI에 레시피 생성을 요청할 때 넘기는 값. 고른 옵션(id·enum)과 DB 재료 정보만 담는다.
@@ -16,7 +17,7 @@ import com.remake.recipe.domain.RecipeSource;
  * @param supplementEnabled     재료 보충. 켜져 있으면 냉장고에 없는 재료도 넣을 수 있다
  * @param fridgeIngredients     쓸 수 있는 내 냉장고 재료. 소비기한이 빠른 순
  * @param customOptions         커스텀 생성의 선택값. 빠른 생성은 null
- * @param excludedAllergenCodes 빼야 할 알레르기 칩 코드. 없으면 빈 목록
+ * @param excludedAllergenCodes 빼야 할 알레르기 칩 코드(설정의 제외 재료 + 커스텀에서 고른 칩). 없으면 빈 목록
  */
 public record RecipeAiRequest(
 		RecipeSource source,
@@ -24,7 +25,7 @@ public record RecipeAiRequest(
 		boolean supplementEnabled,
 		List<FridgeItem> fridgeIngredients,
 		CustomOptions customOptions,
-		List<String> excludedAllergenCodes) {
+		List<AllergenCode> excludedAllergenCodes) {
 
 	public RecipeAiRequest {
 		fridgeIngredients = fridgeIngredients == null ? List.of() : List.copyOf(fridgeIngredients);

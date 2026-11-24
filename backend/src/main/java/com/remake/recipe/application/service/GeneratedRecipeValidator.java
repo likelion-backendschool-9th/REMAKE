@@ -22,17 +22,14 @@ import com.remake.recipe.domain.RecipeUnit;
  * <li>필수 값(이름·조리 시간·재료·단계)이 없거나 Recipe 규칙을 어기면 실패</li>
  * <li>14개 단위 코드에 없는 단위의 재료는 그 줄만 뺀다. 남은 재료가 없으면 실패</li>
  * <li>요청에 없는 냉장고 재료 id는 냉장고에 없는 재료(null)로 본다</li>
- * <li>재료 보충이 꺼져 있으면 냉장고에 없는 재료는 기본 양념(BASIC_PANTRY)이나 꼬집·약간만 허용하고, 그 밖에는 실패</li>
+ * <li>재료 보충이 꺼져 있으면 냉장고에 없는 재료는 실패. 물({@link #WATER})만 예외이고, 소금·식용유 같은 양념과 꼬집·약간은 예외가 아니다(#158)</li>
  * <li>인분은 AI 값이 아니라 요청한 인분을 쓴다. "약간"(TO_TASTE)은 양을 비우고, 양은 소수 셋째 자리로 반올림한다</li>
  * </ul>
  */
 final class GeneratedRecipeValidator {
 
-	/**
-	 * 재료 보충이 꺼져 있어도 냉장고에 없이 쓸 수 있는 기본 양념. 집에 늘 있다고 보는 것만 둔다.
-	 * 정책 문서에는 없는 임시 규칙이다. 팀이 기능 공통의 기본 양념 기준을 정하면 그 결정에 맞춰 바꾸거나 없앤다.
-	 */
-	static final Set<String> BASIC_PANTRY = Set.of("물", "소금", "후추", "설탕", "식용유");
+	/** 재료 보충이 꺼져 있어도 냉장고에 없이 쓸 수 있는 유일한 재료. 물은 냉장고에 등록하는 품목이 아니다(레시피 영역 담당 결정) */
+	static final String WATER = "물";
 
 	private static final int AMOUNT_SCALE = 3;
 
@@ -57,7 +54,7 @@ final class GeneratedRecipeValidator {
 				continue;
 			}
 			Long ingredientId = fridgeIds.contains(item.fridgeIngredientId()) ? item.fridgeIngredientId() : null;
-			if (ingredientId == null && !request.supplementEnabled() && !allowedWithoutFridge(item.name(), unit)) {
+			if (ingredientId == null && !request.supplementEnabled() && !isWater(item.name())) {
 				throw invalid();
 			}
 			ingredients.add(toIngredient(ingredientId, item.name(), item.amount(), unit));
@@ -87,9 +84,9 @@ final class GeneratedRecipeValidator {
 		return stripped.scale() < 0 ? stripped.setScale(0) : stripped;
 	}
 
-	private static boolean allowedWithoutFridge(String name, RecipeUnit unit) {
-		return unit == RecipeUnit.PINCH || unit == RecipeUnit.TO_TASTE
-				|| (name != null && BASIC_PANTRY.contains(name.strip()));
+	/** 물인지. 물은 냉장고에 없어도 부족한 재료로 세지 않는다(장바구니에도 담지 않는다) */
+	static boolean isWater(String name) {
+		return name != null && WATER.equals(name.strip());
 	}
 
 	/** 앞뒤 공백·대소문자는 맞춰 주고, 14개 코드에 없으면 null */

@@ -41,6 +41,9 @@ remake:
       client-secret: test-google-secret
       token-uri: http://localhost:1/token
       user-info-uri: http://localhost:1/userinfo
+  recipe:
+    # AI 실패 뒤 다시 시도하기 전 쉬는 시간. 테스트는 기다리지 않는다(운영 기본 1500ms)
+    ai-retry-delay: 0ms
   gemini:
     # 통합 테스트는 GeminiRecipeAdapter를 @MockitoBean으로 바꾸므로 실제 HTTP는 나가지 않는다.
     api-key: test-gemini-key

@@ -31,7 +31,21 @@ class GlobalExceptionHandlerTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.message").value(ErrorCode.INGREDIENT_NOT_FOUND.getMessage()))
 				.andExpect(jsonPath("$.status").value(404))
 				.andExpect(jsonPath("$.traceId").isString())
-				// 값이 없어도 필드를 빼지 않고 null로 준다(컨벤션)
+				// fieldErrors는 값이 없어도 null로 주고, details는 값이 없으면 필드를 뺀다(컨벤션)
+				.andExpect(jsonPath("$.fieldErrors").value(nullValue()))
+				.andExpect(jsonPath("$.details").doesNotExist());
+	}
+
+	@Test
+	void BusinessException의_details를_응답에_그대로_담는다() throws Exception {
+		mockMvc.perform(get("/test/errors/business-details"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+				.andExpect(jsonPath("$.message").value(ErrorCode.INVALID_INPUT.getMessage()))
+				.andExpect(jsonPath("$.details.remaining").value(0))
+				// 시각은 다른 응답과 같이 +09:00을 붙인다(JacksonConfig)
+				.andExpect(jsonPath("$.details.resetsAt").value("2026-11-21T00:00:00+09:00"))
+				.andExpect(jsonPath("$.details.note").value(nullValue()))
 				.andExpect(jsonPath("$.fieldErrors").value(nullValue()));
 	}
 

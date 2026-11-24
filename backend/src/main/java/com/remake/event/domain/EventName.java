@@ -59,8 +59,8 @@ public enum EventName {
 	RECEIPT_DELETED("receipt_deleted", EventSource.CLIENT, Set.of()), // E37
 	CONSUMPTION_PATTERN_VIEWED("consumption_pattern_viewed", EventSource.CLIENT, Set.of("month_offset")), // E38
 	RECIPE_GENERATE_STARTED("recipe_generate_started", EventSource.CLIENT, Set.of("recipe_mode", "servings", "option_count", "supplement_enabled")), // E39
-	RECIPE_GENERATED("recipe_generated", EventSource.SERVER, Set.of("recipe_id", "recipe_mode", "duration_ms", "expiring_used_count", "shortage_count", "allergen_warning", "remaining_quota")), // E40
-	RECIPE_GENERATE_FAILED("recipe_generate_failed", EventSource.SERVER, Set.of("recipe_mode", "error_code", "duration_ms")), // E41
+	RECIPE_GENERATED("recipe_generated", EventSource.SERVER, Set.of("recipe_id", "recipe_mode", "is_regenerated", "duration_ms", "expiring_used_count", "shortage_count", "remaining_quota")), // E40
+	RECIPE_GENERATE_FAILED("recipe_generate_failed", EventSource.SERVER, Set.of("recipe_mode", "is_regenerated", "error_code", "duration_ms")), // E41
 	RECIPE_REGENERATED("recipe_regenerated", EventSource.CLIENT, Set.of("recipe_mode")), // E42
 	RECIPE_DETAIL_VIEWED("recipe_detail_viewed", EventSource.CLIENT, Set.of("recipe_id", "detail_origin")), // E43
 	RECIPE_SAVED("recipe_saved", EventSource.SERVER, Set.of("recipe_id", "save_source", "cart_added_count")), // E44
