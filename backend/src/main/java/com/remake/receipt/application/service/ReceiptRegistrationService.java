@@ -30,7 +30,6 @@ import com.remake.ingredient.application.port.in.ResolveIngredientUnitUseCase;
 import com.remake.receipt.application.port.in.RegisterReceiptUseCase;
 import com.remake.receipt.application.port.out.ReceiptImageStoragePort;
 import com.remake.receipt.application.port.out.SaveReceiptPort;
-import com.remake.receipt.domain.ReceiptStoreCode;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,9 +62,8 @@ class ReceiptRegistrationService implements RegisterReceiptUseCase {
 			throw new BusinessException(ErrorCode.RECEIPT_DUPLICATE);
 		}
 		String imageKey = saveImage(image);
-		ReceiptStoreCode storeCode = command.storeCode() == null ? ReceiptStoreCode.ETC : command.storeCode();
 		Long receiptId = saveReceiptPort.saveReceipt(userId, command.purchasedOn(), command.purchasedTime(),
-				command.receiptNumber(), command.storeName(), storeCode, imageKey);
+				command.receiptNumber(), command.storeName(), command.storeCode(), imageKey);
 		var registrations = new ArrayList<RegisterIngredientCommand>();
 		var deductions = new ArrayList<CartDeductionCommand>();
 		for (int index = 0; index < items.size(); index++) {

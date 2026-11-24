@@ -90,6 +90,7 @@ class ReceiptRegistrationApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.receiptId").isNumber()).andExpect(jsonPath("$.ingredientCount").value(2));
 
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM receipt_items", Long.class)).isEqualTo(2);
+		assertThat(jdbcTemplate.queryForObject("SELECT store_code FROM receipts", String.class)).isNull();
 		assertThat(jdbcTemplate.queryForObject("SELECT receipt_number FROM receipts", String.class))
 				.isEqualTo("000123");
 		assertThat(jdbcTemplate.queryForObject("SELECT purchased_time::text FROM receipts", String.class))
