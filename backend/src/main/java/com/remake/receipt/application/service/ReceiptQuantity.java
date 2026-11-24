@@ -1,6 +1,7 @@
 package com.remake.receipt.application.service;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
@@ -15,33 +16,36 @@ final class ReceiptQuantity {
 	private ReceiptQuantity() {
 	}
 
-	static Item resolve(ItemRequest request, IngredientUnit unit) {
+	static Item resolve(ItemRequest request, IngredientUnit unit, int itemIndex) {
 		BigDecimal amount = request.amount();
 		BigDecimal purchaseQuantity = request.purchaseQuantity();
 		Volume volume = request.volume();
 
-		if (volume != null && !isMeasurement(volume.unit())) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT, "용량에는 무게 또는 부피 단위를 사용해 주세요.");
+		int group = measurementGroup(unit);
+		int volumeGroup = volume == null ? 0 : measurementGroup(volume.unit());
+		if (volume != null && volumeGroup == 0) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT, "용량에는 무게 또는 부피 단위를 사용해 주세요.",
+					Map.of("itemIndex", itemIndex));
+		}
+		if (group != 0 && purchaseQuantity != null && group != volumeGroup) {
+			unit = IngredientUnit.PACK;
 		}
 		if (amount == null) {
-			if (!isMeasurement(unit)) {
+			if (measurementGroup(unit) == 0) {
 				amount = purchaseQuantity;
-			}
-			else if (volume != null && (volume.scope() == VolumeScope.TOTAL || purchaseQuantity != null)) {
-				amount = convert(volume, unit);
+			} else if (volume != null && group == volumeGroup
+					&& (volume.scope() == VolumeScope.TOTAL || purchaseQuantity != null)) {
+				amount = volume.amount().scaleByPowerOfTen(unitScale(volume.unit()) - unitScale(unit));
 				if (volume.scope() == VolumeScope.PER_PACK) {
 					amount = amount.multiply(purchaseQuantity);
 				}
-			}
-			else if (purchaseQuantity != null) {
-				amount = purchaseQuantity;
-				unit = IngredientUnit.PACK;
 			}
 		}
 
 		if (amount == null || amount.signum() <= 0 || amount.stripTrailingZeros().scale() > 3
 				|| amount.compareTo(new BigDecimal("10000000")) >= 0) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT, "등록할 품목 수량을 확인해 주세요.");
+			throw new BusinessException(ErrorCode.INVALID_INPUT, "등록할 품목 수량을 확인해 주세요.",
+					Map.of("itemIndex", itemIndex));
 		}
 		var deductions = request.cartDeductions();
 		if (deductions.size() > 1) {
@@ -54,29 +58,15 @@ final class ReceiptQuantity {
 				request.expirationDate());
 	}
 
-	private static boolean isMeasurement(IngredientUnit unit) {
+	private static int measurementGroup(IngredientUnit unit) {
 		return switch (unit) {
-			case G, KG, ML, L -> true;
-			default -> false;
+			case G, KG -> 1;
+			case ML, L -> 2;
+			default -> 0;
 		};
 	}
 
-	private static BigDecimal convert(Volume volume, IngredientUnit target) {
-		IngredientUnit source = volume.unit();
-		BigDecimal amount = volume.amount();
-		if (source == target) {
-			return amount;
-		}
-		return switch (source) {
-			case G -> target == IngredientUnit.KG ? amount.movePointLeft(3) : incompatibleVolume();
-			case KG -> target == IngredientUnit.G ? amount.movePointRight(3) : incompatibleVolume();
-			case ML -> target == IngredientUnit.L ? amount.movePointLeft(3) : incompatibleVolume();
-			case L -> target == IngredientUnit.ML ? amount.movePointRight(3) : incompatibleVolume();
-			default -> incompatibleVolume();
-		};
-	}
-
-	private static BigDecimal incompatibleVolume() {
-		throw new BusinessException(ErrorCode.INVALID_INPUT, "품목 수량과 용량의 단위 종류가 다릅니다.");
+	private static int unitScale(IngredientUnit unit) {
+		return unit == IngredientUnit.KG || unit == IngredientUnit.L ? 3 : 0;
 	}
 }

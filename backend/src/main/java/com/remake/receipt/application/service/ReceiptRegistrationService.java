@@ -55,9 +55,12 @@ class ReceiptRegistrationService implements RegisterReceiptUseCase {
 		if (command.purchasedOn().isBefore(LocalDate.now(clock).minusMonths(6))) {
 			throw new BusinessException(ErrorCode.RECEIPT_TOO_OLD);
 		}
-		var items = command.items().stream()
-				.map(item -> ReceiptQuantity.resolve(item, ingredientUnits.resolveUnit(item.name(), item.categoryCode())))
-				.toList();
+		var items = new ArrayList<Item>(command.items().size());
+		for (int index = 0; index < command.items().size(); index++) {
+			ItemRequest request = command.items().get(index);
+			var unit = ingredientUnits.resolveUnit(request.name(), request.categoryCode());
+			items.add(ReceiptQuantity.resolve(request, unit, index));
+		}
 		if (saveReceiptPort.lockOwnerAndCheckDuplicate(userId, command)) {
 			throw new BusinessException(ErrorCode.RECEIPT_DUPLICATE);
 		}

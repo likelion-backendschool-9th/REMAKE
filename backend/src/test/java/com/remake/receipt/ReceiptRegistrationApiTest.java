@@ -128,6 +128,34 @@ class ReceiptRegistrationApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 사전이_G이고_용량이_ML이면_구매_수량으로_PACK을_저장한다() throws Exception {
+		mockMvc.perform(receiptWithItems("""
+				{"name":"고추장","categoryCode":"SEASONING","purchaseQuantity":1,"storage":"PANTRY",
+				 "volume":{"amount":500,"unit":"ML","scope":"PER_PACK"}},
+				{"name":"고추장","categoryCode":"SEASONING","purchaseQuantity":1,"amount":2,"storage":"PANTRY",
+				 "volume":{"amount":500,"unit":"ML","scope":"PER_PACK"}}
+				""")).andExpect(status().isCreated());
+
+		for (String table : List.of("receipt_items", "ingredients")) {
+			assertThat(jdbcTemplate.queryForList(
+					"SELECT name || ':' || trim_scale(amount) || ':' || unit FROM " + table, String.class))
+					.containsExactlyInAnyOrder("고추장:1:PACK", "고추장:2:PACK");
+		}
+	}
+
+	@Test
+	void 사전과_용량의_단위가_다르고_수량도_없으면_문제_품목의_위치를_반환한다() throws Exception {
+		mockMvc.perform(receiptWithItems("""
+				{"name":"양파","categoryCode":"VEGETABLE","purchaseQuantity":1,"storage":"PANTRY"},
+				{"name":"고추장","categoryCode":"SEASONING","storage":"PANTRY",
+				 "volume":{"amount":500,"unit":"ML","scope":"TOTAL"}}
+				""")).andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+				.andExpect(jsonPath("$.details.itemIndex").value(1));
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM receipts", Long.class)).isZero();
+	}
+
+	@Test
 	void 수량을_확정할_수_없거나_총차감량이_과하면_저장하지_않는다() throws Exception {
 		mockMvc.perform(receiptWithItems("""
 				{"name":"돼지고기","categoryCode":"MEAT","storage":"FRIDGE",
