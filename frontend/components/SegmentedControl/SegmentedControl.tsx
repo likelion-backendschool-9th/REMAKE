@@ -14,15 +14,21 @@ type SegmentedControlProps<T extends string> = {
   onChange: (value: T) => void;
   /** 스크린 리더용 묶음 이름. 예: "재료 처리 방법" */
   label: string;
+  /** 가로(기본, 재료 사용 시트) / 세로(영수증 재료 ⋮ 시트: 항목이 줄마다 흰 칸) */
+  orientation?: "horizontal" | "vertical";
   className?: string;
 };
 
-/** 피그마 디자인 시스템 > 4. 선택 > 세그먼트. 둘 중 하나 고르기(재료 사용 시트: 사용 했어요/버렸어요). */
+/**
+ * 피그마 디자인 시스템 > 4. 선택 > 세그먼트. 하나 고르기.
+ * 가로: 재료 사용 시트(사용 했어요/버렸어요). 세로: 영수증 재료 ⋮ 시트(재료 추가/영수증 재촬영).
+ */
 export function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
   label,
+  orientation = "horizontal",
   className,
 }: SegmentedControlProps<T>) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -38,7 +44,13 @@ export function SegmentedControl<T extends string>({
   };
 
   return (
-    <div className={cx(styles.group, className)} role="radiogroup" aria-label={label}>
+    <div
+      className={cx(styles.group, className)}
+      role="radiogroup"
+      aria-label={label}
+      aria-orientation={orientation}
+      data-orientation={orientation}
+    >
       {options.map((option, index) => {
         const isSelected = option.value === value;
         return (
