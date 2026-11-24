@@ -160,6 +160,7 @@ components/Button/
 | `/user/receipt/scan/items/new`               | p3.3.2 OCR 재료 추가              |                                                                          |
 | `/user/receipt/scan/items/[index]/edit`      | p3.3.1 OCR 재료 수정              | 고친 값은 등록할 때까지 화면 상태로만 둠                                 |
 | `/user/receipt/patterns`                     | p3.4 나의 소비                    |                                                                          |
+| `/user/receipt/patterns/discarded`           | p3.4.1 이번 달 버린 식재료        | p3.4 "N월 버린 식비"를 누르면 들어옴. `?month=2026-11`                   |
 | `/user/recipe/saved-recipes`                 | p4.1 레시피(메인)                 | 금주 TOP 3, 저장 목록, 빠른 생성 모달이 이 화면 안                       |
 | `/user/recipe/custom`                        | p4.1.2 커스텀 레시피              | 선택식만, 자유 입력 없음                                                 |
 | `/user/recipe/results/[id]`                  | p4.1.3 생성 결과                  | 로딩·실패·횟수 소진은 이 주소 안의 상태                                  |

@@ -160,6 +160,7 @@ Source: WBS v2 §3 "Frontend URL" (2026-11-22). Format `/{role}/{feature}/{resou
 | `/user/receipt/scan/items/new`               | p3.3.2 Add OCR item                       |                                                                              |
 | `/user/receipt/scan/items/[index]/edit`      | p3.3.1 Edit OCR item                      | Edits stay in screen state until registration                                |
 | `/user/receipt/patterns`                     | p3.4 My spending                          |                                                                              |
+| `/user/receipt/patterns/discarded`           | p3.4.1 Discarded this month               | Opened from "N월 버린 식비" on p3.4; `?month=2026-11`                        |
 | `/user/recipe/saved-recipes`                 | p4.1 Recipes (main)                       | Weekly TOP 3, saved list, quick-generate modal inside                        |
 | `/user/recipe/custom`                        | p4.1.2 Custom recipe                      | Selections only, no free text                                                |
 | `/user/recipe/results/[id]`                  | p4.1.3 Generation result                  | Loading, failure, and quota-used-up are states of this URL                   |
