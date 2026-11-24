@@ -28,8 +28,7 @@ import { MAIN_TABS, NOTIFICATIONS_HREF, SETTINGS_HREF } from "@/lib/navigation";
 
 import {
   type FridgeIngredient,
-  SAMPLE_INGREDIENTS,
-  SAMPLE_NOTICE,
+  type FridgeNotice,
   STATUS_LABEL,
   STATUS_ORDER,
 } from "../../_lib/fridge";
@@ -58,10 +57,10 @@ function getUseSuccessMessage(name: string, kind: UseKind): string {
 }
 
 type FridgeContainerProps = {
-  /** 재료 목록. 기본은 마크업 확인용 값(목록 API를 붙이기 전) */
+  /** 재료 목록(API 12). 없으면 불러오는 중(p2-냉장고-스켈레톤). 마크업 확인용 값은 미리보기(app/dev)에서만 넘긴다 */
   ingredients?: FridgeIngredient[];
-  /** 불러오는 중(p2-냉장고-스켈레톤). 미리보기용 */
-  isLoading?: boolean;
+  /** 가장 급한 알림 한 줄. 없으면 알림 띠를 그리지 않는다 */
+  notice?: FridgeNotice;
   /** 처음부터 열어 둘 시트. 미리보기용 */
   initialSheet?: FridgeSheet | null;
   /** 처음부터 사용 시트를 열 재료 id. 미리보기용(p2-냉장고-재료 사용 여부) */
@@ -78,14 +77,15 @@ type FridgeContainerProps = {
  * 상태: 기본 / 불러오는 중 / 재료 사용 시트 / 사용·폐기 성공·실패 토스트 / 재료 위치 시트 / 재료 종류 시트 / 빈 냉장고 / 거른 결과 없음.
  */
 export function FridgeContainer({
-  ingredients: initialIngredients = SAMPLE_INGREDIENTS,
-  isLoading = false,
+  ingredients: initialIngredients,
+  notice,
   initialSheet = null,
   initialUseId,
   simulateUseFailure = false,
 }: FridgeContainerProps) {
   // TODO: 목록 API를 붙이면 서버 값(쿼리)을 쓰고, 사용·폐기 뒤에는 목록·요약 쿼리를 무효화한다
-  const [ingredients, setIngredients] = useState(initialIngredients);
+  const isLoading = initialIngredients === undefined;
+  const [ingredients, setIngredients] = useState(initialIngredients ?? []);
   const toast = useTimedToast<UseToast>();
   const [statusFilter, setStatusFilter] = useState<ExpiryStatus | null>(null);
   const [placeFilter, setPlaceFilter] = useState<PlaceFilter | null>(null);
@@ -145,7 +145,7 @@ export function FridgeContainer({
         tabs={MAIN_TABS}
         activeHref={LIST_PATH}
         settingsHref={SETTINGS_HREF}
-        notice={isLoading ? undefined : { ...SAMPLE_NOTICE, href: NOTIFICATIONS_HREF }}
+        notice={isLoading || !notice ? undefined : { ...notice, href: NOTIFICATIONS_HREF }}
         isNoticeLoading={isLoading}
       />
       <main className={styles.main} aria-busy={isLoading || undefined}>

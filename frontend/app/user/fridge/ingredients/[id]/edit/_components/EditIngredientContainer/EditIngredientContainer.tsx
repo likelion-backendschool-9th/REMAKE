@@ -10,6 +10,7 @@ import { Button } from "@/components/Button/Button";
 import { ConfirmModal } from "@/components/ConfirmModal/ConfirmModal";
 import { IconButton } from "@/components/IconButton/IconButton";
 import { IngredientRow } from "@/components/IngredientRow/IngredientRow";
+import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
 import { getCategoryImage } from "@/lib/ingredients";
 
@@ -23,14 +24,13 @@ import {
   type IngredientDraft,
   isDraftChanged,
   isDraftComplete,
-  SAMPLE_DETAIL,
   toDraft,
 } from "../../../../_lib/ingredient-form";
 
 import styles from "./EditIngredientContainer.module.css";
 
 type EditIngredientContainerProps = {
-  /** 저장된 재료. 기본은 마크업 확인용 값(API 13을 붙이기 전) */
+  /** 저장된 재료(API 13). 없으면 불러오는 중. 마크업 확인용 값은 미리보기(app/dev)에서만 넘긴다 */
   ingredient?: IngredientDetail;
   /** 처음 입력 값. 미리보기용, 기본은 저장된 값 그대로 */
   initialDraft?: IngredientDraft;
@@ -43,14 +43,41 @@ type EditIngredientContainerProps = {
 /**
  * p2.1 재료 수정. 위에 저장된 값 요약, 아래 입력 카드(재료 추가와 같음), 오른쪽 위 휴지통=삭제.
  * 바뀐 값이 있고 필수 값이 모두 있을 때만 "재료 수정" 버튼이 켜진다(API 16은 바뀐 값만 보냄).
- * 상태: 기본 / 값을 바꿈(피그마 p2.1) / 값 시트 / 삭제 확인 모달.
+ * 상태: 불러오는 중 / 기본 / 값을 바꿈(피그마 p2.1) / 값 시트 / 삭제 확인 모달.
  */
-export function EditIngredientContainer({
-  ingredient = SAMPLE_DETAIL,
+export function EditIngredientContainer({ ingredient, ...rest }: EditIngredientContainerProps) {
+  if (!ingredient) return <EditIngredientLoading />;
+  // 재료가 바뀌면 입력 값을 처음부터 다시 잡는다
+  return <EditIngredientBody key={ingredient.id} ingredient={ingredient} {...rest} />;
+}
+
+/** 불러오는 중: 요약 줄과 카드 자리만 회색으로, 버튼은 막는다 */
+function EditIngredientLoading() {
+  return (
+    <>
+      <SubHeader title="재료 수정" />
+      <main className={styles.main} aria-busy="true">
+        <div className={styles.loadingRow}>
+          <Skeleton width="2.75rem" height="1.8125rem" radius="var(--radius-xs)" />
+          <Skeleton width="10rem" height="2.25rem" />
+        </div>
+        <div className={styles.form}>
+          <Skeleton width="100%" height="25rem" radius="var(--radius-lg)" />
+        </div>
+      </main>
+      <BottomBar>
+        <Button disabled>재료 수정</Button>
+      </BottomBar>
+    </>
+  );
+}
+
+function EditIngredientBody({
+  ingredient,
   initialDraft,
   initialSheet = null,
   initialDeleteOpen = false,
-}: EditIngredientContainerProps) {
+}: EditIngredientContainerProps & { ingredient: IngredientDetail }) {
   const router = useRouter();
   const [draft, setDraft] = useState(() => initialDraft ?? toDraft(ingredient));
   const [isDeleteOpen, setIsDeleteOpen] = useState(initialDeleteOpen);

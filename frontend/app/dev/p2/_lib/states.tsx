@@ -2,7 +2,9 @@
 // 상태를 더하면 여기에 한 줄 추가한다(blueprint §3.1 7번). 실제 라우트는 컨테이너 기본값을 쓴다.
 
 import { FridgeContainer } from "../../../user/fridge/ingredients/_components/FridgeContainer/FridgeContainer";
+import { SAMPLE_INGREDIENTS, SAMPLE_NOTICE } from "../../../user/fridge/ingredients/_lib/fridge";
 import {
+  SAMPLE_DETAIL,
   SAMPLE_EDITED_DRAFT,
   SAMPLE_FILLED_DRAFT,
 } from "../../../user/fridge/ingredients/_lib/ingredient-form";
@@ -15,43 +17,64 @@ export const P2_STATES: PreviewState[] = [
     slug: "fridge",
     label: "p2-냉장고",
     route: "/user/fridge/ingredients",
-    render: () => <FridgeContainer />,
+    render: () => <FridgeContainer ingredients={SAMPLE_INGREDIENTS} notice={SAMPLE_NOTICE} />,
   },
   {
     slug: "fridge-skeleton",
-    label: "p2-냉장고-스켈레톤",
+    label: "p2-냉장고-스켈레톤 (실제 라우트 처음 상태)",
     route: "/user/fridge/ingredients",
-    render: () => <FridgeContainer isLoading />,
+    render: () => <FridgeContainer />,
   },
   {
     slug: "fridge-use",
     label: "p2-냉장고-재료 사용 여부 (쪽파)",
     route: "/user/fridge/ingredients",
-    render: () => <FridgeContainer initialUseId={3} />,
+    render: () => (
+      <FridgeContainer ingredients={SAMPLE_INGREDIENTS} notice={SAMPLE_NOTICE} initialUseId={3} />
+    ),
   },
   {
     slug: "fridge-use-fail",
     label: "p2-냉장고-재료 사용 여부 실패(확인을 누르면 실패 토스트)",
     route: "/user/fridge/ingredients",
-    render: () => <FridgeContainer initialUseId={3} simulateUseFailure />,
+    render: () => (
+      <FridgeContainer
+        ingredients={SAMPLE_INGREDIENTS}
+        notice={SAMPLE_NOTICE}
+        initialUseId={3}
+        simulateUseFailure
+      />
+    ),
   },
   {
     slug: "fridge-location",
     label: "p2-냉장고-재료 위치",
     route: "/user/fridge/ingredients",
-    render: () => <FridgeContainer initialSheet="location" />,
+    render: () => (
+      <FridgeContainer
+        ingredients={SAMPLE_INGREDIENTS}
+        notice={SAMPLE_NOTICE}
+        initialSheet="location"
+      />
+    ),
   },
   {
     slug: "fridge-category",
     label: "p2-재료 카테고리",
     route: "/user/fridge/ingredients",
-    render: () => <FridgeContainer initialSheet="category" />,
+    render: () => (
+      <FridgeContainer
+        ingredients={SAMPLE_INGREDIENTS}
+        notice={SAMPLE_NOTICE}
+        initialSheet="category"
+      />
+    ),
   },
   {
     slug: "fridge-empty",
     label: "p2-냉장고-빈 리스트",
     route: "/user/fridge/ingredients",
-    render: () => <FridgeContainer ingredients={[]} />,
+    render: () => <FridgeContainer ingredients={[]} notice={SAMPLE_NOTICE} />,
   },
   {
     slug: "add",
@@ -99,24 +122,32 @@ export const P2_STATES: PreviewState[] = [
     slug: "edit",
     label: "p2.1-재료 수정-기본(바뀐 값 없음)",
     route: "/user/fridge/ingredients/1/edit",
+    render: () => <EditIngredientContainer ingredient={SAMPLE_DETAIL} />,
+  },
+  {
+    slug: "edit-loading",
+    label: "p2.1-재료 수정-불러오는 중 (실제 라우트 처음 상태)",
+    route: "/user/fridge/ingredients/1/edit",
     render: () => <EditIngredientContainer />,
   },
   {
     slug: "edit-changed",
     label: "p2.1-재료 수정",
     route: "/user/fridge/ingredients/1/edit",
-    render: () => <EditIngredientContainer initialDraft={SAMPLE_EDITED_DRAFT} />,
+    render: () => (
+      <EditIngredientContainer ingredient={SAMPLE_DETAIL} initialDraft={SAMPLE_EDITED_DRAFT} />
+    ),
   },
   {
     slug: "edit-expiry",
     label: "p2.1-재료 수정-소비 기한 시트",
     route: "/user/fridge/ingredients/1/edit",
-    render: () => <EditIngredientContainer initialSheet="expiry" />,
+    render: () => <EditIngredientContainer ingredient={SAMPLE_DETAIL} initialSheet="expiry" />,
   },
   {
     slug: "edit-delete",
     label: "p2.1-재료 수정-삭제 확인(피그마 없음)",
     route: "/user/fridge/ingredients/1/edit",
-    render: () => <EditIngredientContainer initialDeleteOpen />,
+    render: () => <EditIngredientContainer ingredient={SAMPLE_DETAIL} initialDeleteOpen />,
   },
 ];

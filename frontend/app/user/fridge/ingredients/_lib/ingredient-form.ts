@@ -122,7 +122,7 @@ export function describeIngredient(detail: IngredientDetail): string {
   ].join(" · ");
 }
 
-/** 마크업 확인용 값(피그마 p2.1-재료 수정 위 요약 줄과 같음) */
+/** 마크업 확인용 값(피그마 p2.1-재료 수정 위 요약 줄과 같음). 미리보기(app/dev)에서만 쓴다 */
 export const SAMPLE_DETAIL: IngredientDetail = {
   id: 1,
   name: "목살",

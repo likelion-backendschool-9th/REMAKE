@@ -26,7 +26,7 @@ export const STATUS_LABEL: Record<ExpiryStatus, string> = {
 
 export const STATUS_ORDER: readonly ExpiryStatus[] = ["DANGER", "SOON", "OK"];
 
-/** 마크업 확인용 값(피그마 p2-냉장고와 같음). 서버가 소비기한이 가까운 순으로 준다 */
+/** 마크업 확인용 값(피그마 p2-냉장고와 같음). 미리보기(app/dev)에서만 쓴다. 서버는 소비기한이 가까운 순으로 준다 */
 export const SAMPLE_INGREDIENTS: FridgeIngredient[] = [
   {
     id: 1,
@@ -70,5 +70,11 @@ export const SAMPLE_INGREDIENTS: FridgeIngredient[] = [
   },
 ];
 
-/** 알림 띠 예시(서버가 주는 가장 급한 알림 한 줄) */
-export const SAMPLE_NOTICE = { message: "당근의 소비기한이 임박했어요!", unreadCount: 2 };
+/** 알림 띠 한 줄(서버가 주는 가장 급한 알림) */
+export type FridgeNotice = { message: string; unreadCount: number };
+
+/** 알림 띠 예시. 미리보기(app/dev)에서만 쓴다 */
+export const SAMPLE_NOTICE: FridgeNotice = {
+  message: "당근의 소비기한이 임박했어요!",
+  unreadCount: 2,
+};

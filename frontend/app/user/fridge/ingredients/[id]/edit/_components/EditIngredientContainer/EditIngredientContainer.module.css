@@ -12,3 +12,11 @@
   flex-direction: column;
   margin-top: 1.375rem;
 }
+
+/* 불러오는 중: 재료 행 자리(위아래 8, 그림-글 10) */
+.loadingRow {
+  display: flex;
+  gap: var(--space-10);
+  align-items: center;
+  padding: var(--space-8) 0;
+}
