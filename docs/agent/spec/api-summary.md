@@ -129,11 +129,13 @@ In-app only: no push subscription APIs.
 | 48 | POST | `/user/cart-items/delete` | Delete selected | `{ ids: [] }` | `204` | |
 | 49 | GET | `/user/shared-recipes/weekly-top` | TOP 3 by saves this week | - | `200 { items: [{ rank, id, title, imageUrl, ingredientSummary, extraIngredientCount }] }` | |
 | 50 | GET | `/user/shared-recipes/ranking` | Popular = TOP 100 by saves this week, rank change vs last week's rank. Latest = by shared time, "—" instead of a rank | `?sort=popular\|latest &q= &page=0&size=20` | `200 { weekLabel, content: [{ id, rank?, rankChange?, title, imageUrl, ingredientSummary, extraIngredientCount, sharedAt }], page, size, totalElements, hasNext }` | |
-| 51 | POST | `/user/shared-recipes` | Share. Title and one photo required, no confirm modal. The same recipe once per week | multipart `image` + `payload { recipeId, title }` | `201 { id }` | shared_recipe_published |
+| 51 | POST | `/user/shared-recipes` | Share. Title (1–100 UTF-16 code units, nonblank) and one photo required, no confirm modal. The same recipe once per week | multipart `image` + `payload { recipeId, title }` | `201 { id }` | shared_recipe_published |
 | 52 | GET | `/user/shared-recipes/{id}` | Shared detail. Fully anonymous (no author info). `have` per ingredient (red border when I do not have it) | - | `200 { id, title, imageUrl, servings, cookMinutes, tips, ingredients: [{ name, amount, unit, have }], steps: [{ stepNo, content }], saveCount, saved }` | |
 | 53 | PUT | `/user/shared-recipes/{id}/save` | Save (the original goes into my list, no copy). Missing ingredients go to the cart | no body | `200 { saveCount, saved: true, cartAddedCount }` | recipe_saved, cart_item_added |
 | 54 | DELETE | `/user/shared-recipes/{id}/save` | Unsave (cart items stay) | - | `200 { saveCount, saved: false }` | |
 | 55 | POST | `/user/shared-recipes/{id}/reports` | Report. No text input even for OTHER; an operator reviews. One report per post per member | `{ reason: "OFFENSIVE_IMAGE"\|"AD_TITLE"\|"DANGEROUS_RECIPE"\|"OTHER" }` | `201` | shared_recipe_reported |
+
+Photo delivery for API 52: `GET /api/v1/user/shared-recipe-photos/{id}`, where `id` is the shared post ID. Requires login and a VISIBLE post; returns the image bytes with its MIME/length and `Cache-Control: no-store`. Missing/hidden posts or missing files return `SHARED_RECIPE_NOT_FOUND` (404). `imageUrl` points at this endpoint, never a storage key or public static directory.
 
 Cart items cannot be added manually. No "take down my shared post" API.
 

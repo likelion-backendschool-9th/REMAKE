@@ -39,6 +39,7 @@ public enum Screen {
 	CART("cart"),
 	RANKING("ranking"),
 	SHARED_RECIPE("shared_recipe"),
+	SHARED_REPORT("shared_report"),
 	SHARED_WRITE("shared_write"),
 	NOTIFICATION_LIST("notification_list"),
 	ADMIN("admin"),

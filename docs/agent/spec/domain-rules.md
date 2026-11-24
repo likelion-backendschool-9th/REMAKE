@@ -261,7 +261,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Popular count: saves received this week (from Monday); ties go to the earlier share (proposal).
 - Search over shared recipes; 0 results empty state (screen pending).
 - Only recipes I generated with Remake can be shared, not recipes saved from others. Fully anonymous: no nickname or author info.
-- Write: detail ⋮ "공유 하기" → 1 photo (required, "탭해서 이미지 수정"), title (required), recipe content (read only) → "레시피 공유 하기". Enabled only with title and photo. No confirm modal.
+- Write: detail ⋮ "공유 하기" → 1 photo (required, "탭해서 이미지 수정"), title (required, maximum 100 UTF-16 code units before trimming, matching Java `@Size` and HTML `maxlength`), recipe content (read only) → "레시피 공유 하기". Enabled only with title and photo. No confirm modal.
 - The same recipe can be shared once per week (again next week).
 - Shared detail: photo, title, flag (report), "재료 준비 · servings · time", ingredients (missing ones with a red border), steps with read-aloud, Tips!, heart + save count, "레시피 저장", "레시피 저장 시 부족한 재료는 장바구니로 들어가요".
 - Save: the heart and "레시피 저장" are the same action. Puts the original recipe in my saved list (no copy). Save count +1; tapping again cancels (-1). Missing ingredients go to the cart. Removing it from my list leaves the shared post.
