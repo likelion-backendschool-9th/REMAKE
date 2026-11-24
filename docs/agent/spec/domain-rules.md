@@ -25,7 +25,7 @@ Source: PRD v4 and policy doc v4 (Figma-based, 2026-11-22; Korean, kept in Notio
 - Toasts use the design-system component `토스트` with three types: default, success, error (decided 11/22).
 - Excluded ingredients (allergies) from settings are always applied to recipe and meal-plan generation: they are sent to the AI as ingredients to avoid and never appear in a generated recipe.
 - No health or medical information is collected. Settings values are visible to the owner only.
-- Terms of service and privacy policy: links on the login screen open a drawer (screen pending). No separate consent screen (proposal).
+- Terms: no separate consent screen or checkbox. Logging in with a social account means agreeing to the terms of service and having checked the privacy policy (11/24 terms decision). The login screen shows one line "로그인하면 이용 약관에 동의하는 것으로 봅니다" (final wording per Figma). Login screen links open the terms drawer (common-약관드로워) with three documents: terms of service, privacy policy, payment terms; text from the docs terms md. All three: operator 이준호, effective 2026-12-01, service URL https://remake.newlecture.com/.
 
 ## Plans and quota
 
@@ -108,19 +108,20 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
   - Email: Kakao requires email consent at login (biz app); Google always provides it. If still missing, `ACCOUNT_EMAIL_MISSING` (contact support).
   - Naver with a different Naver account: do not delete, back to settings (`REAUTH_ACCOUNT_MISMATCH`). Canceling re-authentication: do not delete (proposal).
   - Unlink the provider on deletion; if unlinking fails, still delete and log it (proposal).
-  - Data: delete excluded ingredients, tokens, codes, fridge ingredients, logs, receipts, meal plans, cart, notifications. Keep the `users` row with social ID and email cleared (re-signup possible). Recipes and anonymous shared recipes stay. Shared recipes of deleted members get no reward (proposal).
+  - Data: delete excluded ingredients, tokens, codes, fridge ingredients, logs, receipts, meal plans, cart, notifications. Keep the `users` row with social ID and email cleared (re-signup possible). Recipes stay; only shared recipes the author has not deleted stay, as anonymous posts (11/24 terms decision). Shared recipes of deleted members get no reward (proposal).
 - **Subscription** (Toss Payments card auto-billing):
   - Settings "구독 하기" → p1.3.4. Before subscribing: next payment date (today + 1 month), price, 2 benefits, payment terms checkbox, subscribe button. While subscribed: "구독 중" badge, next payment date, price, "구독 해지 하기".
-  - Price 9,900 KRW per month. Benefits: 4 recipes per day, 4 meal plans per month of 7 days.
+  - Price 9,900 KRW per month, VAT included (11/24 terms decision). Benefits: 4 recipes per day, 4 meal plans per month of 7 days.
   - Flow: check the terms (button disabled until then) → Toss payment window (register card for auto-billing) → on return the server charges the first month and starts the subscription on success. Failure or cancel in the Toss window returns to the before-subscription screen with a toast.
-  - Payment terms go in the terms drawer (screen pending).
+  - Payment terms go in the terms drawer (common-약관드로워) (11/24 terms decision).
   - Renewal: on the next payment date (start + 1 month; the last day when that date does not exist) charge the same card and extend one month on success.
-  - Auto-payment failure: (open).
+  - Auto-payment failure: end the subscription at once (ENDED, clear `billing_key`, `users.plan` = BASIC). To subscribe again, register a card again (11/24 terms decision).
   - Cancel: schedules the cancellation. Benefits stay until the day before the next payment date; no charge then, and the member returns to basic. The screen or modal after scheduling is (open).
   - After it ends: basic limits; meal plans already used this month still count. No re-subscribing while a cancellation is scheduled (`ALREADY_SUBSCRIBED`); after it ends, subscribe as new (proposal).
-  - Account deletion ends the subscription immediately with no more charges. Payment records are kept. Refunds for the remaining period are (open).
+  - Account deletion ends the subscription immediately with no more charges. Payment records are kept. No refund for the remaining period (11/24 terms decision).
+  - Cooling-off and refunds: full refund within 7 days of payment if no premium benefit (recipe or meal-plan generation beyond basic limits) was used; otherwise cancel only, no refund (11/24 terms decision). Refund API and flow: (open).
   - The Toss secret key and `billingKey` stay on the server only; `billingKey` is stored encrypted.
-  - Demo payment (Toss test keys or not): (open).
+  - Demo payment: Toss Payments test keys only, no real charge (11/24 terms decision).
 
 ## 2. Fridge (김재연)
 
@@ -179,7 +180,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - One response, no streaming. Loading screen up to 60 s (screen pending).
 - Recipe supplement OFF: use only my ingredients. Too few (including an empty fridge) → `NO_INGREDIENTS` → generation failure screen "설정에서 레시피 재료 보충을 켜 보세요"; not charged (screen pending). ON: may use ingredients not in the fridge.
 - AI error, timeout, or format failure: retry once, then fail with the failure screen (wording differs); not charged.
-- No "AI가 생성한 레시피" label.
+- No "AI가 생성한 레시피" label (11/22, kept). The AI-results disclaimer (no guarantee of accuracy, nutrition, or allergy safety; users check before cooking; meal plans do not replace medical or nutrition advice) is only in the terms of service, never on screens (11/24 terms decision).
 - Result: name, bookmark (empty before save, filled after), "재료 준비 · servings · time", ingredients, steps with read-aloud, Tips!, "레시피 다시 받기 N회", 요리 완료.
 - Regenerate: always tappable (only dimmed); charges the daily quota.
 - Generated recipes are stored but hidden from lists until saved. Recipes are never edited after creation.
@@ -203,7 +204,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Day: tapping a date opens "N월 N일 식단" with meal rows (meal label, recipe name, ★, ingredient summary +N, ⋮). Row tap opens the recipe detail. No-plan day empty state (screen pending).
 - Add: "+" next to the sheet title → add sheet (remaining count + 식단표 만들기) → setup. No manual add to an empty meal.
 - Setup: start date (from today, not earlier), one purpose, meals (any of breakfast, lunch, dinner), servings (default household size, proposal).
-- Purposes: BALANCED (default), DIET, HIGH_PROTEIN, SIMPLE, SAVING. Remember the last choice as the next default. No medical or calorie targets. No "참고용 식단" label.
+- Purposes: BALANCED (default), DIET, HIGH_PROTEIN, SIMPLE, SAVING. Remember the last choice as the next default. No medical or calorie targets. No "참고용 식단" label (the disclaimer is in the terms of service only, 11/24 terms decision).
 - Days: basic up to 5, premium up to 7. With too few ingredients, only as many days as possible.
 - Short of days but >= 1 day: missing ingredients still go to the cart. The completion notification adds "재료가 부족해 N일치만 만들었어요" and "부족한 재료 N개를 장바구니에 담았어요" (wording is a proposal). No separate toasts.
 - Not even one day: `MEAL_PLAN_NO_INGREDIENTS` → failure notification; the plan is `FAILED`, not charged.
@@ -279,7 +280,8 @@ Apply #57, the [ERD](../erd.md#19-cart_items-cart), and the subsequently approve
 - Shared detail: photo, title, flag (report), "재료 준비 · servings · time", ingredients (missing ones with a red border), steps with read-aloud, Tips!, heart + save count, "레시피 저장", "레시피 저장 시 부족한 재료는 장바구니로 들어가요".
 - Save: the heart and "레시피 저장" are the same action. Puts the original recipe in my saved list (no copy). Save count +1; tapping again cancels (-1). Missing ingredients go to the cart. Removing it from my list leaves the shared post.
 - Report: flag → 4 reasons (`OFFENSIVE_IMAGE` 불쾌한 이미지 사용, `AD_TITLE` 광고성 제목, `DANGEROUS_RECIPE` 위험한 조리법 공유, `OTHER` 기타) → 신고 하기. No text input, even for 기타. Once per person per recipe; again → `REPORT_ALREADY_EXISTS` toast. No auto hide; operators review (handling screen comes with the admin design, on hold).
-- No way to take down my own post (no screen).
+- Sanctions after an operator confirms a report as a violation: 1st 7-day recipe sharing ban, 2nd 30-day recipe sharing ban, 3rd 30-day account suspension, 4th permanent account suspension (11/24 terms decision). How sanctions are stored, checked, and returned (API, error codes): (open).
+- Authors can delete their own shared posts at any time (11/24 terms decision). This is separate from ⋮ "삭제 하기", which only removes a recipe from my saved list. Screen and API for deleting my shared post: (open).
 - **Reward**: members who posted last week's top 1–3 recipes by saves. Per recipe rank, so one member can receive more than once. 1st +10, 2nd +6, 3rd +3 recipe generations, usable for one month from the grant.
 - Week = Monday 00:00 to Sunday 24:00 KST. The Monday 00:00 job records last week's TOP 100 and grants rewards, counting only saves that still exist then. Never grant the same week twice. Own saves do not count; 0 saves get no reward (proposal). No reward screen or notification; only the remaining count changes.
 
@@ -290,7 +292,7 @@ Apply #57, the [ERD](../erd.md#19-cart_items-cart), and the subsequently approve
 - `FileSystemSharedRecipePhotoStorageAdapter` writes under `shared-recipes/`, does not overwrite existing keys and rejects invalid paths or symbolic-link reads. `LoadSharedRecipePhotoPort` returns the stream, MIME and length; close the stream after use. A missing file returns empty. Delete is idempotent.
 - Storage failures remove the attempted file; transaction rollback removes the newly stored file. An immediate deletion failure is retried on rollback; persistent deletion failures are logged without provider details and need manual cleanup. Process-crash recovery is not guaranteed. Photo handling emits no event.
 - Global Spring multipart limits are 10 MB per file and 30 MB per request, preserving receipts; the photo service applies its stricter 5 MiB limit. The deployment owner sets both Nginx limits to 32m.
-- #86 connects publishing, DB storage and an authenticated image API that checks the shared post's visibility before reading its DB key. Do not expose the volume as a public static directory or accept arbitrary file paths from a request. There is no user post-removal API; withdrawal keeps anonymous shared posts and their photos. Do not delete those files as receipt images. FE resize/compression and authenticated image display belong to #112.
+- #86 connects publishing, DB storage and an authenticated image API that checks the shared post's visibility before reading its DB key. Do not expose the volume as a public static directory or accept arbitrary file paths from a request. There is no user post-removal API yet (see the rule above); withdrawal keeps the shared posts the author has not deleted, as anonymous posts, with their photos. Do not delete those files as receipt images. FE resize/compression and authenticated image display belong to #112.
 
 ## Admin (on hold)
 

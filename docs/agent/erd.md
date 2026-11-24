@@ -835,7 +835,7 @@ These values appear on screens but have no column. They are computed from the so
 
 | Case | Rule |
 | --- | --- |
-| Withdrawal | Clear `provider_user_id` and `email`, set `deleted_at`. Delete excluded ingredients, tokens, deletion codes, fridge ingredients, use logs, receipts, meal plans, cart, and notifications. Keep the `users` row, recipes, and shared recipes (anonymous). Events keep only the member number |
+| Withdrawal | Clear `provider_user_id` and `email`, set `deleted_at`. Delete excluded ingredients, tokens, deletion codes, fridge ingredients, use logs, receipts, meal plans, cart, and notifications. Keep the `users` row, recipes, and the shared recipes the author has not deleted (anonymous) (11/24 terms decision). Events keep only the member number |
 | Amount reaches 0 | When "used / discarded" or cooking brings the amount to 0, delete the `ingredients` row. The record stays in `ingredient_logs` with the name |
 | Amount edit | Editing the amount (input mistake) sets `amount` and `initial_amount` together. Reject with `INVALID_INPUT` if the ingredient has any `ingredient_logs` row (#128) |
 | Ingredient delete | The delete icon on the edit screen (to be added) deletes the row. Links from logs, recipe ingredients, and notifications are only cleared |
@@ -849,10 +849,10 @@ These values appear on screens but have no column. They are computed from the so
 | Cooked mark | Cooking a recipe opened from today's slot sets that slot's `cooked_at` (never for other days) |
 | Receipt delete | Delete the `receipts` and `receipt_items` rows (image included). It leaves spending and patterns; registered fridge ingredients stay (only `receipt_item_id` is cleared) |
 | Recipe "delete" | Remove only from the saved list (`saved_recipes`). Shared posts and others' saves stay |
-| Withdrawal and subscription | End the subscription immediately on withdrawal (ENDED, clear `billing_key`, no more payments). Keep `subscription_payments` (payment records). Refunds for the remaining period are an open question (policy ch. 12 item 13) |
+| Withdrawal and subscription | End the subscription immediately on withdrawal (ENDED, clear `billing_key`, no more payments). Keep `subscription_payments` (payment records). No refund for the remaining period (11/24 terms decision; resolves policy ch. 12 item 13) |
 | Cleanup jobs | Every early morning: receipts older than 6 months by purchase date (with images), notifications older than 30 days, deletion codes older than a day |
 | Subscription start | Toss card registration -> the server issues a billingKey -> on first payment success create `subscriptions` (ACTIVE) and `subscription_payments` (DONE) and set `users.plan` = PREMIUM. If the first payment fails, do not create a subscription (record the failure only). Premium limits apply at once (recipes 4 per day, meal plans 4 this month and 7 days) |
-| Subscription renewal | Every early morning, charge ACTIVE subscriptions whose `next_billing_date` is today with the billingKey. On success extend the period by a month. Failure handling is an open question (policy ch. 12 item 11) |
+| Subscription renewal | Every early morning, charge ACTIVE subscriptions whose `next_billing_date` is today with the billingKey. On success extend the period by a month. On failure end the subscription at once (ENDED, clear `billing_key`, `users.plan` = BASIC); to subscribe again, register a card again (11/24 terms decision; resolves policy ch. 12 item 11) |
 | Subscription cancel | Cancel request sets `status` = CANCELED and `canceled_at`. PREMIUM stays until the day before the next billing date; on that date's early morning do not charge, set ENDED, clear `billing_key`, set `users.plan` = BASIC. Basic limits apply afterwards (counts already used this month still count) |
 | Common | Amounts `numeric(10,3)`, money `bigint` (KRW), time `timestamp` (Korea time), JSON `jsonb`. `created_at` on every app-created row, `updated_at` only on tables whose values change |
 

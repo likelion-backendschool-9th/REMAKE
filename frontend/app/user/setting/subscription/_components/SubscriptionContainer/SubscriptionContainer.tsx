@@ -9,6 +9,7 @@ import { Button } from "@/components/Button/Button";
 import { Checkbox } from "@/components/Checkbox/Checkbox";
 import { ConfirmModal } from "@/components/ConfirmModal/ConfirmModal";
 import { Drawer } from "@/components/Drawer/Drawer";
+import { LegalDocument } from "@/components/LegalDocument/LegalDocument";
 import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
 import { TextButton } from "@/components/TextButton/TextButton";
@@ -164,7 +165,7 @@ export function SubscriptionContainer({
         onClose={() => setIsTermsOpen(false)}
         title={PAYMENT_TERMS.title}
       >
-        {PAYMENT_TERMS.body}
+        <LegalDocument document={PAYMENT_TERMS} />
       </Drawer>
     </>
   );

@@ -38,8 +38,5 @@ export const BENEFITS = [
   },
 ] as const;
 
-// TODO: 확정된 결제 약관 본문으로 바꾼다(정책: "자세히 보기"는 약관 드로워에 결제 약관을 넣음, 화면 대기)
-export const PAYMENT_TERMS = {
-  title: "결제 약관",
-  body: "결제 약관 본문을 준비하고 있어요.",
-};
+// "자세히 보기" 약관 드로워의 결제 약관 본문(11/24 확정). 원문 docs/developer/payment-terms.md
+export { PAYMENT_TERMS } from "@/lib/legal/payment-terms";

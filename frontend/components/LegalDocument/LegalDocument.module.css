@@ -1,0 +1,85 @@
+/* 피그마 common-이용 약관: 폭 328, Remake/title(Medium 16·행간 1.4), 본문 text/body, 조 제목 text/title.
+   조 제목 아래 한 줄(22.4), 조 사이 한 줄 */
+.document {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  color: var(--color-text-body);
+  font: var(--font-title);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.title {
+  color: var(--color-text-title);
+  font: var(--font-title);
+}
+
+/* 문단 다음 번호 목록은 바로 붙인다(피그마). 표·글머리 목록 앞뒤는 반 줄 */
+.blocks {
+  display: flex;
+  flex-direction: column;
+}
+
+.blocks > .tableWrap,
+.blocks > .bullets,
+.blocks > .tableWrap + *,
+.blocks > p + p {
+  margin-top: 0.7rem;
+}
+
+.blocks > :first-child {
+  margin-top: 0;
+}
+
+/* 번호 목록: "1." 뒤로 글을 맞추고, 넘친 줄은 글 시작에 맞춘다 */
+.ordered {
+  margin: 0;
+  padding-left: 1.5rem;
+  list-style: decimal;
+}
+
+.bullets {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+/* 표: 화면이 좁으면 옆으로 넘긴다. 글은 Remake/content(14), 머리줄 bg/section */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--font-content);
+  /* 좁은 칸에서도 한글을 단어 단위로 줄바꿈한다("회원 가입·로그인"이 글자 중간에서 끊기지 않게) */
+  word-break: keep-all;
+}
+
+.table th,
+.table td {
+  padding: var(--space-8);
+  border: 1px solid var(--color-border-default);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table th {
+  background: var(--color-bg-section);
+  color: var(--color-text-title);
+  white-space: nowrap;
+}
+
+/* 시행일: 본문 끝에 Remake/content·text/assist */
+.effective {
+  color: var(--color-text-assist);
+  font: var(--font-content);
+}

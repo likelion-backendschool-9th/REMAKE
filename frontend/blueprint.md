@@ -311,7 +311,7 @@ Source: [`docs/agent/spec/domain-rules.md`](../docs/agent/spec/domain-rules.md).
 
 - **No free-text input for AI.** Recipe customization (ingredients, taste, time, tools, method, cuisine, excluded allergens) and meal-plan settings (start date, purpose, meals, servings) are selections only. Send IDs and enums.
 - **Expiry state**: show the `status` and `dDay` the server returns (DANGER = expired or D-DAY, SOON = D-1 to D-3, OK = later). Do not recompute them with the device clock.
-- **Labels**: do not add an "AI가 생성한 레시피" label or a "참고용 식단" label (policy v4: neither is in Figma).
+- **Labels**: do not add an "AI가 생성한 레시피" label or a "참고용 식단" label (policy v4: neither is in Figma). The AI-results disclaimer lives only in the terms of service, Article 5 (11/24 terms decision).
 - **Receipt flow**: scan → loading screen (synchronous wait) → result and confirm screen → save. Nothing is saved until the user confirms. Leaving the result screen discards the OCR result and sends `receipt_result_abandoned`. A confirmed receipt cannot be edited, only deleted; fix ingredient data later in the fridge.
 - **Quantity input**: stepper steps are g and ml 50, kg and L 0.5, EA/PACK/BUNCH/PIECE/SHEET 1. Typed input accepts numbers and decimals only, no fractions. The fridge uses 9 units (G, KG, ML, L, EA, PACK, BUNCH, PIECE, SHEET); recipes use all 14, and recipe amounts may be shown as 1/2, 1/3, or 1/4.
 - **Sharing**: exactly one photo (required) and a title (required); the share button is enabled only when both are present. No confirm modal. The same recipe can be shared once per week. Never show author information.
