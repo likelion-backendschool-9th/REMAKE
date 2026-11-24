@@ -9,17 +9,18 @@ import { AltArrowRightIcon } from "@solar-icons/react/linear";
 
 import { ConfirmModal } from "@/components/ConfirmModal/ConfirmModal";
 import { SettingRow } from "@/components/SettingRow/SettingRow";
+import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
 import { Switch } from "@/components/Switch/Switch";
 
-import { type Profile, PROVIDER_LABEL, SAMPLE_PROFILE } from "../../_lib/profile";
+import { type Profile, PROVIDER_LABEL } from "../../_lib/profile";
 
 import styles from "./SettingContainer.module.css";
 
 type SettingModal = "logout" | "delete";
 
 type SettingContainerProps = {
-  /** 화면 값. 기본은 마크업 확인용 값(API 5를 붙이기 전) */
+  /** 화면 값(API 5). 없으면 불러오는 중으로 그린다. 마크업 확인용 값은 미리보기(app/dev)에서만 넘긴다 */
   profile?: Profile;
   /** 처음부터 열어 둘 모달. 미리보기용, 기본 닫힘 */
   initialModal?: SettingModal | null;
@@ -29,15 +30,14 @@ type SettingContainerProps = {
  * p1.3 설정. 계정 카드, 프리미엄 이용권, 설정 행(가구원 수·알레르기 관리·토글 2개·로그아웃·계정 삭제).
  * 상태: 기본(p1.3-설정) / 로그아웃 모달(p1.3-설정-로그아웃) / 계정 삭제 모달(p1.3-설정-계정 삭제).
  */
-export function SettingContainer({
-  profile = SAMPLE_PROFILE,
-  initialModal = null,
-}: SettingContainerProps) {
+export function SettingContainer({ profile, initialModal = null }: SettingContainerProps) {
   const router = useRouter();
   const [modal, setModal] = useState<SettingModal | null>(initialModal);
   // TODO: 토글은 API 6(PATCH /user/profile)으로 저장하고 E14 setting_changed를 보낸다
-  const [recipeSupplement, setRecipeSupplement] = useState(profile.recipeSupplementEnabled);
-  const [notification, setNotification] = useState(profile.notificationEnabled);
+  const [recipeSupplement, setRecipeSupplement] = useState(
+    profile?.recipeSupplementEnabled ?? false,
+  );
+  const [notification, setNotification] = useState(profile?.notificationEnabled ?? false);
 
   const closeModal = () => setModal(null);
 
@@ -57,20 +57,40 @@ export function SettingContainer({
     <>
       <SubHeader title="설정" />
       <main className={styles.main}>
-        <section className={styles.account} aria-labelledby="setting-account-title">
+        <section
+          className={styles.account}
+          aria-labelledby="setting-account-title"
+          aria-busy={!profile || undefined}
+        >
           <h2 id="setting-account-title" className={styles.accountTitle}>
             계정
           </h2>
           <div className={styles.accountBody}>
-            <p className={styles.accountLabel}>{PROVIDER_LABEL[profile.provider]}</p>
+            {profile ? (
+              <p className={styles.accountLabel}>{PROVIDER_LABEL[profile.provider]}</p>
+            ) : (
+              <Skeleton width="5.5rem" height="1.25rem" />
+            )}
             <dl className={styles.accountList}>
               <div className={styles.accountRow}>
                 <dt className={styles.accountLabel}>가구원</dt>
-                <dd className={styles.accountValue}>{profile.householdSize}명</dd>
+                <dd className={styles.accountValue}>
+                  {profile ? (
+                    `${profile.householdSize}명`
+                  ) : (
+                    <Skeleton width="2rem" height="1.25rem" />
+                  )}
+                </dd>
               </div>
               <div className={styles.accountRow}>
                 <dt className={styles.accountLabel}>알레르기</dt>
-                <dd className={styles.accountValue}>{profile.excludedIngredientCount}개</dd>
+                <dd className={styles.accountValue}>
+                  {profile ? (
+                    `${profile.excludedIngredientCount}개`
+                  ) : (
+                    <Skeleton width="2rem" height="1.25rem" />
+                  )}
+                </dd>
               </div>
             </dl>
           </div>
@@ -88,12 +108,14 @@ export function SettingContainer({
         <div className={styles.rows}>
           <SettingRow
             label="가구원 수"
-            value={`${profile.householdSize}명`}
+            value={profile && `${profile.householdSize}명`}
+            placeholder=""
             href="/user/setting/household"
           />
           <SettingRow
             label="알레르기 관리"
-            value={`${profile.excludedIngredientCount}개`}
+            value={profile && `${profile.excludedIngredientCount}개`}
+            placeholder=""
             href="/user/setting/excluded-ingredients"
           />
           <SettingRow

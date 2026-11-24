@@ -1,5 +1,5 @@
 // p1(로그인·온보딩·설정) 화면 상태 목록. /dev/p1이 이 순서로 목록을 보이고, /dev/p1/[state]가 하나를 그린다.
-// 상태를 더하면 여기에 한 줄 추가한다(blueprint §3.1 7번). 실제 라우트는 컨테이너 기본값을 쓴다.
+// 상태를 더하면 여기에 한 줄 추가한다(blueprint §3.1 7번). 실제 라우트는 컨테이너 기본값(빈 값·불러오는 중)을 쓰고, 마크업 확인용 값은 여기서만 넘긴다.
 
 import { LoginContainer } from "../../../public/auth/login/_components/LoginContainer/LoginContainer";
 import { AllergiesContainer } from "../../../user/onboarding/allergies/_components/AllergiesContainer/AllergiesContainer";
@@ -8,7 +8,9 @@ import { AccountDeletionContainer } from "../../../user/setting/account-deletion
 import { ExcludedIngredientsContainer } from "../../../user/setting/excluded-ingredients/_components/ExcludedIngredientsContainer/ExcludedIngredientsContainer";
 import { SettingHouseholdContainer } from "../../../user/setting/household/_components/SettingHouseholdContainer/SettingHouseholdContainer";
 import { SettingContainer } from "../../../user/setting/profile/_components/SettingContainer/SettingContainer";
+import { SAMPLE_PROFILE } from "../../../user/setting/profile/_lib/profile";
 import { SubscriptionContainer } from "../../../user/setting/subscription/_components/SubscriptionContainer/SubscriptionContainer";
+import { SAMPLE_SUBSCRIPTION } from "../../../user/setting/subscription/_lib/subscription";
 import type { PreviewState } from "../../_lib/preview";
 
 export const P1_STATES: PreviewState[] = [
@@ -70,19 +72,25 @@ export const P1_STATES: PreviewState[] = [
     slug: "setting",
     label: "p1.3-설정",
     route: "/user/setting/profile",
+    render: () => <SettingContainer profile={SAMPLE_PROFILE} />,
+  },
+  {
+    slug: "setting-loading",
+    label: "p1.3-설정 (불러오는 중, 실제 라우트 처음 상태)",
+    route: "/user/setting/profile",
     render: () => <SettingContainer />,
   },
   {
     slug: "setting-logout",
     label: "p1.3-설정-로그아웃",
     route: "/user/setting/profile",
-    render: () => <SettingContainer initialModal="logout" />,
+    render: () => <SettingContainer profile={SAMPLE_PROFILE} initialModal="logout" />,
   },
   {
     slug: "setting-delete",
     label: "p1.3-설정-계정 삭제",
     route: "/user/setting/profile",
-    render: () => <SettingContainer initialModal="delete" />,
+    render: () => <SettingContainer profile={SAMPLE_PROFILE} initialModal="delete" />,
   },
   {
     slug: "setting-household",
@@ -100,7 +108,7 @@ export const P1_STATES: PreviewState[] = [
     slug: "setting-excluded",
     label: "p1.3.2-알러지 재료 제외 (쇠고기)",
     route: "/user/setting/excluded-ingredients",
-    render: () => <ExcludedIngredientsContainer />,
+    render: () => <ExcludedIngredientsContainer defaultSelected={["BEEF"]} />,
   },
   {
     slug: "setting-excluded-empty",
@@ -141,19 +149,25 @@ export const P1_STATES: PreviewState[] = [
     slug: "subscription",
     label: "p1.3.4-구독하기 (약관 동의 전)",
     route: "/user/setting/subscription",
+    render: () => <SubscriptionContainer subscription={SAMPLE_SUBSCRIPTION} />,
+  },
+  {
+    slug: "subscription-loading",
+    label: "p1.3.4-구독 관리 (불러오는 중, 실제 라우트 처음 상태)",
+    route: "/user/setting/subscription",
     render: () => <SubscriptionContainer />,
   },
   {
     slug: "subscription-agreed",
     label: "p1.3.4-구독하기 (약관 동의, 피그마 없음)",
     route: "/user/setting/subscription",
-    render: () => <SubscriptionContainer defaultAgreed />,
+    render: () => <SubscriptionContainer subscription={SAMPLE_SUBSCRIPTION} defaultAgreed />,
   },
   {
     slug: "subscription-terms",
     label: "p1.3.4 결제 약관 드로워",
     route: "/user/setting/subscription",
-    render: () => <SubscriptionContainer initialOpenTerms />,
+    render: () => <SubscriptionContainer subscription={SAMPLE_SUBSCRIPTION} initialOpenTerms />,
   },
   {
     slug: "subscription-active",

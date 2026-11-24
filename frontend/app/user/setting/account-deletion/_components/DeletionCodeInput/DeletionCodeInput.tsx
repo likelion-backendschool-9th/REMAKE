@@ -76,8 +76,9 @@ export function DeletionCodeInput({ digits, onChange, isError = false }: Deletio
             isError={isError}
             className={styles.cell}
             aria-label={`인증 번호 ${index + 1}번째 자리`}
-            // 자동 완성은 첫 칸에서 6자리를 한 번에 넣는다
-            maxLength={index === 0 ? CODE_LENGTH : 1}
+            // 자동 완성은 첫 칸에서 6자리를 한 번에 넣는다. 나머지 칸은 2자:
+            // 이미 숫자가 있는 칸에 커서가 있어도(터치 기기는 선택이 풀리기 쉬움) 새 숫자를 받을 수 있게 한다
+            maxLength={index === 0 ? CODE_LENGTH : 2}
             onChange={(event) => {
               const value = event.target.value;
               if (value === "") {
@@ -86,8 +87,18 @@ export function DeletionCodeInput({ digits, onChange, isError = false }: Deletio
                 onChange(next);
                 return;
               }
-              // 이미 숫자가 있는 칸 끝에 이어 쳤으면 새로 친 글자만 쓴다
-              fillFrom(index, digit && value.startsWith(digit) ? value.slice(digit.length) : value);
+              // 이미 숫자가 있는 칸에 한 글자를 더 쳤으면(앞·뒤 어디든) 원래 숫자 하나를 빼고 새 글자만 쓴다
+              const typed =
+                digit && value.length === digit.length + 1 ? value.replace(digit, "") : value;
+              fillFrom(index, typed);
+            }}
+            onBeforeInput={(event) => {
+              // 칸의 숫자와 같은 숫자를 다시 치면 값이 그대로라 onChange가 불리지 않는다. 다음 칸으로만 넘긴다
+              const typed = (event.nativeEvent as InputEvent).data;
+              if (typed && typed === digit) {
+                event.preventDefault();
+                focusCell(index + 1);
+              }
             }}
             onKeyDown={(event) => handleKeyDown(index, event)}
             onPaste={(event) => handlePaste(index, event)}

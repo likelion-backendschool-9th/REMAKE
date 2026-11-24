@@ -12,7 +12,7 @@ import {
 import { QuestionLayout } from "../../../../_components/QuestionLayout/QuestionLayout";
 
 type ExcludedIngredientsContainerProps = {
-  /** 지금 저장된 제외 재료. 기본은 마크업 확인용 값(피그마 p1.3.2: 쇠고기) */
+  /** 지금 저장된 제외 재료(API 7). 기본 빈 값. 마크업 확인용 값(피그마 p1.3.2: 쇠고기)은 미리보기에서만 넘긴다 */
   defaultSelected?: AllergenCode[];
 };
 
@@ -22,7 +22,7 @@ type ExcludedIngredientsContainerProps = {
  */
 export function ExcludedIngredientsContainer({
   // TODO: API 7(GET /user/excluded-ingredients) 값을 쓴다
-  defaultSelected = ["BEEF"],
+  defaultSelected = [],
 }: ExcludedIngredientsContainerProps) {
   const [selected, setSelected] = useState<ReadonlySet<AllergenCode>>(
     () => new Set(defaultSelected),

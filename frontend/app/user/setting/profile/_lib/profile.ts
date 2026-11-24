@@ -17,7 +17,7 @@ export const PROVIDER_LABEL: Record<Provider, string> = {
   GOOGLE: "구글 로그인",
 };
 
-/** 마크업 확인용 값(피그마 p1.3-설정과 같음) */
+/** 마크업 확인용 값(피그마 p1.3-설정과 같음). 미리보기(app/dev)에서만 쓴다 */
 export const SAMPLE_PROFILE: Profile = {
   provider: "KAKAO",
   householdSize: 3,

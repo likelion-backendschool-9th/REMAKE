@@ -97,3 +97,9 @@
   margin-left: -0.1875rem; /* "구독하기"와 간격 5 */
   color: var(--color-icon-sub);
 }
+
+/* 설정 행 묶음: 행끼리는 간격 없이 붙고 아래 선으로 나뉜다(피그마 p1.3) */
+.rows {
+  display: flex;
+  flex-direction: column;
+}

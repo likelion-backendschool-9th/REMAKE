@@ -35,8 +35,19 @@ export function useTimedToast<T>(initialValue: T | null = null, visibleMs = TOAS
   }, [state, visibleMs]);
 
   const show = useCallback((value: T) => setState({ value, isLeaving: false }), []);
+  /** 보이는 토스트를 지금 내려 보낸다(사라지는 애니메이션 뒤 지워짐). 토스트 내용이 더는 맞지 않을 때 쓴다 */
+  const dismiss = useCallback(
+    () => setState((prev) => (prev && !prev.isLeaving ? { ...prev, isLeaving: true } : prev)),
+    [],
+  );
   /** 사라지는 중인 토스트를 지운다(Toast의 onLeft에 넘긴다) */
   const remove = useCallback(() => setState((prev) => (prev?.isLeaving ? null : prev)), []);
 
-  return { value: state?.value ?? null, isLeaving: state?.isLeaving ?? false, show, remove };
+  return {
+    value: state?.value ?? null,
+    isLeaving: state?.isLeaving ?? false,
+    show,
+    dismiss,
+    remove,
+  };
 }

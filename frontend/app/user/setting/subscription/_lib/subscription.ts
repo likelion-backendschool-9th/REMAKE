@@ -11,7 +11,7 @@ export type Subscription = {
   nextBillingDate: string;
 };
 
-/** 마크업 확인용 값(피그마 p1.3.4와 같음) */
+/** 마크업 확인용 값(피그마 p1.3.4와 같음). 미리보기(app/dev)에서만 쓴다 */
 export const SAMPLE_SUBSCRIPTION: Subscription = {
   status: "NONE",
   price: 9900,
