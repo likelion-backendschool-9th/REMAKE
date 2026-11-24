@@ -12,7 +12,9 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+// 운영 빌드에서는 미리보기 경로를 만들지 않는다. cacheComponents라 빈 배열은 빌드 오류여서 자리표시 하나만 둔다(페이지는 404)
 export function generateStaticParams() {
+  if (!env.isDev) return [{ state: "__none__" }];
   return P1_STATES.map((state) => ({ state: state.slug }));
 }
 

@@ -9,21 +9,17 @@ import { Button } from "@/components/Button/Button";
 import { Checkbox } from "@/components/Checkbox/Checkbox";
 import { ConfirmModal } from "@/components/ConfirmModal/ConfirmModal";
 import { Drawer } from "@/components/Drawer/Drawer";
+import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
 import { TextButton } from "@/components/TextButton/TextButton";
 import { formatFullDate, formatWon } from "@/lib/format";
 
-import {
-  BENEFITS,
-  PAYMENT_TERMS,
-  SAMPLE_SUBSCRIPTION,
-  type Subscription,
-} from "../../_lib/subscription";
+import { BENEFITS, PAYMENT_TERMS, type Subscription } from "../../_lib/subscription";
 
 import styles from "./SubscriptionContainer.module.css";
 
 type SubscriptionContainerProps = {
-  /** 화면 값. 기본은 마크업 확인용 값(API 57을 붙이기 전) */
+  /** 화면 값(API 57). 없으면 불러오는 중으로 그린다. 마크업 확인용 값은 미리보기(app/dev)에서만 넘긴다 */
   subscription?: Subscription;
   /** 결제 약관 동의 체크. 미리보기용, 기본 해제 */
   defaultAgreed?: boolean;
@@ -38,7 +34,7 @@ type SubscriptionContainerProps = {
  * 상태: 구독 전(p1.3.4-구독하기) / 약관 동의 / 결제 약관 드로워 / 구독 중(p1.3.4-구독 해지) / 해지 확인 모달(p1.3.4-구독혜지 모달).
  */
 export function SubscriptionContainer({
-  subscription = SAMPLE_SUBSCRIPTION,
+  subscription,
   defaultAgreed = false,
   initialOpenTerms = false,
   initialOpenCancel = false,
@@ -50,7 +46,7 @@ export function SubscriptionContainer({
   const [isTermsOpen, setIsTermsOpen] = useState(initialOpenTerms);
   const [isCancelOpen, setIsCancelOpen] = useState(initialOpenCancel);
   // 해지 예약(CANCELED) 뒤 화면은 미결이라 구독 중과 같게 그린다
-  const isSubscribed = subscription.status !== "NONE";
+  const isSubscribed = subscription !== undefined && subscription.status !== "NONE";
 
   const handleSubscribe = () => {
     // TODO: E83 subscription_checkout_started → API 58로 받은 값으로 토스 SDK requestBillingAuth(카드 등록 창)
@@ -65,7 +61,11 @@ export function SubscriptionContainer({
     <>
       <SubHeader title="구독 관리" />
       <main className={styles.main}>
-        <section className={styles.summary} aria-labelledby={titleId}>
+        <section
+          className={styles.summary}
+          aria-labelledby={titleId}
+          aria-busy={!subscription || undefined}
+        >
           <h2 id={titleId} className={styles.titleRow}>
             <span className={styles.icon} aria-hidden="true">
               <Image src="/images/premium-sparkle.svg" alt="" width={18} height={18} />
@@ -77,11 +77,23 @@ export function SubscriptionContainer({
           <dl className={styles.info}>
             <div className={styles.infoRow}>
               <dt className={styles.infoLabel}>다음 결제일</dt>
-              <dd className={styles.infoValue}>{formatFullDate(subscription.nextBillingDate)}</dd>
+              <dd className={styles.infoValue}>
+                {subscription ? (
+                  formatFullDate(subscription.nextBillingDate)
+                ) : (
+                  <Skeleton width="6rem" height="1.25rem" />
+                )}
+              </dd>
             </div>
             <div className={styles.infoRow}>
               <dt className={styles.infoLabel}>결제 금액</dt>
-              <dd className={styles.infoValue}>{formatWon(subscription.price)}</dd>
+              <dd className={styles.infoValue}>
+                {subscription ? (
+                  formatWon(subscription.price)
+                ) : (
+                  <Skeleton width="4rem" height="1.25rem" />
+                )}
+              </dd>
             </div>
           </dl>
         </section>
@@ -128,8 +140,8 @@ export function SubscriptionContainer({
                 자세히 보기
               </TextButton>
             </div>
-            {/* 결제 약관에 동의해야 결제할 수 있다(정책) */}
-            <Button disabled={!isAgreed} onClick={handleSubscribe}>
+            {/* 결제 약관에 동의해야 결제할 수 있다(정책). 값을 불러오기 전에도 막는다 */}
+            <Button disabled={!subscription || !isAgreed} onClick={handleSubscribe}>
               구독 결제
             </Button>
           </>
