@@ -68,7 +68,7 @@ public enum EventName {
 	RECIPE_SAVED_LIST_VIEWED("recipe_saved_list_viewed", EventSource.CLIENT, Set.of("saved_count")), // E46
 	STEP_PLAY_STARTED("step_play_started", EventSource.CLIENT, Set.of("recipe_id")), // E47
 	COOK_DEDUCT_VIEWED("cook_deduct_viewed", EventSource.CLIENT, Set.of("recipe_id", "deduct_item_count", "needs_check_count")), // E48
-	COOK_COMPLETED("cook_completed", EventSource.SERVER, Set.of("recipe_id", "deducted_count", "adjusted_count", "servings")), // E49
+	COOK_COMPLETED("cook_completed", EventSource.SERVER, Set.of("recipe_id", "deducted_count", "adjusted_count", "from_meal_plan")), // E49
 	COOK_FEEDBACK_ANSWERED("cook_feedback_answered", EventSource.CLIENT, Set.of("feedback_value")), // E50
 	MEAL_PLAN_SETUP_VIEWED("meal_plan_setup_viewed", EventSource.CLIENT, Set.of("remaining_quota")), // E51
 	MEAL_PLAN_GENERATE_STARTED("meal_plan_generate_started", EventSource.CLIENT, Set.of("meal_purpose", "meal_type_count", "servings", "start_offset_days")), // E52

@@ -5,17 +5,13 @@ import java.util.Optional;
 
 import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.recipe.domain.RecipeUnit;
+import com.remake.recipe.domain.UnitConversion;
+import com.remake.recipe.domain.UnitConversion.Dimension;
 
 /**
- * 단위 환산 표(domain-rules "Units"). 같은 종류끼리만 바꾼다: 무게는 g, 부피는 ml(큰술 15·작은술 5·컵 200)로 모은다.
- * 개수 단위(개·팩·단·쪽·장)는 서로 바꾸지 않아 같은 단위끼리만 같은 종류다. 꼬집·약간은 양이 없다.
+ * 식단표 재료 배정용 단위 환산. 환산 표(종류·배수)는 레시피 영역의 UnitConversion 한 곳에 있고(#63), 여기서는 기준 단위 양으로 모으고 되돌리기만 한다.
  */
 final class StockUnits {
-
-	/** 기준 단위로 모은 양의 종류. 이 값이 같아야 서로 더하고 뺄 수 있다. */
-	enum Dimension {
-		WEIGHT, VOLUME, EA, PACK, BUNCH, PIECE, SHEET
-	}
 
 	/** 기준 단위(g, ml, 개수 단위는 그 단위)로 바꾼 양. */
 	record BaseAmount(Dimension dimension, BigDecimal amount) {
@@ -44,29 +40,14 @@ final class StockUnits {
 	}
 
 	private static RecipeUnit asRecipeUnit(IngredientUnit unit) {
-		return RecipeUnit.valueOf(unit.name());
+		return UnitConversion.asRecipeUnit(unit);
 	}
 
 	private static Dimension dimensionOf(RecipeUnit unit) {
-		return switch (unit) {
-			case G, KG -> Dimension.WEIGHT;
-			case ML, L, TBSP, TSP, CUP -> Dimension.VOLUME;
-			case EA -> Dimension.EA;
-			case PACK -> Dimension.PACK;
-			case BUNCH -> Dimension.BUNCH;
-			case PIECE -> Dimension.PIECE;
-			case SHEET -> Dimension.SHEET;
-			case PINCH, TO_TASTE -> null;
-		};
+		return UnitConversion.dimensionOf(unit).orElse(null);
 	}
 
 	private static BigDecimal factorOf(RecipeUnit unit) {
-		return switch (unit) {
-			case KG, L -> BigDecimal.valueOf(1000);
-			case CUP -> BigDecimal.valueOf(200);
-			case TBSP -> BigDecimal.valueOf(15);
-			case TSP -> BigDecimal.valueOf(5);
-			default -> BigDecimal.ONE;
-		};
+		return UnitConversion.factorOf(unit);
 	}
 }
