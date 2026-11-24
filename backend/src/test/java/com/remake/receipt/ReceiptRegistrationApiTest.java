@@ -151,7 +151,8 @@ class ReceiptRegistrationApiTest extends IntegrationTestSupport {
 				 "volume":{"amount":500,"unit":"ML","scope":"TOTAL"}}
 				""")).andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"))
-				.andExpect(jsonPath("$.details.itemIndex").value(1));
+				.andExpect(jsonPath("$.fieldErrors[0].field").value("items[1].purchaseQuantity"))
+				.andExpect(jsonPath("$.fieldErrors[0].message").value("구매 수량을 확인해 주세요."));
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM receipts", Long.class)).isZero();
 	}
 
@@ -224,12 +225,52 @@ class ReceiptRegistrationApiTest extends IntegrationTestSupport {
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM receipts", Long.class)).isZero();
 	}
 
+	@Test
+	void PACK_등록_품목에_G_장바구니_항목을_선택하면_전체_등록을_롤백한다() throws Exception {
+		Long target = cartItem(userId, "SEASONING", "고추장", "G", "500");
+		mockMvc.perform(receiptWithItems("""
+				{"name":"양파","categoryCode":"VEGETABLE","purchaseQuantity":1,"storage":"PANTRY"},
+				{"name":"고추장","categoryCode":"SEASONING","purchaseQuantity":1,"storage":"PANTRY",
+				 "volume":{"amount":500,"unit":"ML","scope":"PER_PACK"},
+				 "cartDeductions":[{"cartItemId":%d,"amount":1}]}
+				""".formatted(target))).andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+
+		assertThat(cartAmount(target)).isEqualByComparingTo("500");
+		awaitEventWrites();
+		for (String table : List.of("receipts", "receipt_items", "ingredients", "events")) {
+			assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM " + table, Long.class)).isZero();
+		}
+		try (var files = Files.list(imageDirectory())) {
+			assertThat(files).isEmpty();
+		}
+	}
+
+	@Test
+	void 차감을_선택하지_않으면_G_장바구니를_유지하고_PACK으로_등록한다() throws Exception {
+		Long target = cartItem(userId, "SEASONING", "고추장", "G", "500");
+		mockMvc.perform(receiptWithItems("""
+				{"name":"고추장","categoryCode":"SEASONING","purchaseQuantity":1,"storage":"PANTRY",
+				 "volume":{"amount":500,"unit":"ML","scope":"PER_PACK"}}
+				""")).andExpect(status().isCreated())
+				.andExpect(jsonPath("$.ingredientCount").value(1))
+				.andExpect(jsonPath("$.cartRemovedCount").value(0));
+
+		assertThat(cartAmount(target)).isEqualByComparingTo("500");
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM receipts", Long.class)).isEqualTo(1);
+		assertThat(jdbcTemplate.queryForObject("SELECT unit FROM ingredients", String.class)).isEqualTo("PACK");
+	}
+
 	private Long cartItem(Long owner, String amount) {
+		return cartItem(owner, "VEGETABLE", "양파", "EA", amount);
+	}
+
+	private Long cartItem(Long owner, String category, String name, String unit, String amount) {
 		var now = LocalDateTime.now(clock);
 		return jdbcTemplate.queryForObject("""
 				INSERT INTO cart_items (user_id, category_id, name, amount, unit, created_at, updated_at)
-				VALUES (?, ?, '양파', ?, 'EA', ?, ?) RETURNING id
-				""", Long.class, owner, categoryId("VEGETABLE"), new BigDecimal(amount), now, now);
+				VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id
+				""", Long.class, owner, categoryId(category), name, new BigDecimal(amount), unit, now, now);
 	}
 
 	private BigDecimal cartAmount(Long id) {

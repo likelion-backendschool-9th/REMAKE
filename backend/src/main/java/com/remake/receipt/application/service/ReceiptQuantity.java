@@ -1,10 +1,10 @@
 package com.remake.receipt.application.service;
 
 import java.math.BigDecimal;
-import java.util.Map;
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.global.error.InvalidFieldException;
 import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.receipt.application.port.in.RegisterReceiptUseCase.Item;
 import com.remake.receipt.application.port.in.RegisterReceiptUseCase.ItemRequest;
@@ -24,8 +24,7 @@ final class ReceiptQuantity {
 		int group = measurementGroup(unit);
 		int volumeGroup = volume == null ? 0 : measurementGroup(volume.unit());
 		if (volume != null && volumeGroup == 0) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT, "용량에는 무게 또는 부피 단위를 사용해 주세요.",
-					Map.of("itemIndex", itemIndex));
+			throw new InvalidFieldException("items[" + itemIndex + "].volume.unit", "용량에는 무게 또는 부피 단위를 사용해 주세요.");
 		}
 		if (group != 0 && purchaseQuantity != null && group != volumeGroup) {
 			unit = IngredientUnit.PACK;
@@ -42,10 +41,12 @@ final class ReceiptQuantity {
 			}
 		}
 
-		if (amount == null || amount.signum() <= 0 || amount.stripTrailingZeros().scale() > 3
+		if (amount == null) {
+			throw new InvalidFieldException("items[" + itemIndex + "].purchaseQuantity", "구매 수량을 확인해 주세요.");
+		}
+		if (amount.signum() <= 0 || amount.stripTrailingZeros().scale() > 3
 				|| amount.compareTo(new BigDecimal("10000000")) >= 0) {
-			throw new BusinessException(ErrorCode.INVALID_INPUT, "등록할 품목 수량을 확인해 주세요.",
-					Map.of("itemIndex", itemIndex));
+			throw new InvalidFieldException("items[" + itemIndex + "].amount", "등록할 품목 수량을 확인해 주세요.");
 		}
 		var deductions = request.cartDeductions();
 		if (deductions.size() > 1) {
