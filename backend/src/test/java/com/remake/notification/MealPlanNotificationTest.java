@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,6 +67,24 @@ class MealPlanNotificationTest extends IntegrationTestSupport {
 				"SELECT COUNT(*) FROM events WHERE event_name = 'notification_sent' AND user_id = ?",
 				Integer.class, me);
 		assertThat(sent).isEqualTo(1);
+		assertSentProperties("meal_plan_completed");
+	}
+
+	private void assertSentProperties(String notificationType) {
+		Map<String, Object> properties = jdbcTemplate.queryForMap("""
+				SELECT properties ->> 'notification_type' AS notification_type,
+				       properties ->> 'batch_count' AS batch_count
+				FROM events
+				WHERE event_name = 'notification_sent' AND user_id = ?
+				""", me);
+		assertThat(properties)
+				.containsEntry("notification_type", notificationType)
+				.containsEntry("batch_count", "1");
+
+		List<String> keys = jdbcTemplate.queryForList(
+				"SELECT DISTINCT jsonb_object_keys(properties) FROM events WHERE event_name = 'notification_sent'",
+				String.class);
+		assertThat(keys).containsExactlyInAnyOrder("notification_type", "batch_count");
 	}
 
 	@Test
@@ -84,5 +104,6 @@ class MealPlanNotificationTest extends IntegrationTestSupport {
 				"SELECT COUNT(*) FROM events WHERE event_name = 'notification_sent' AND user_id = ?",
 				Integer.class, me);
 		assertThat(sent).isEqualTo(1);
+		assertSentProperties("meal_plan_failed");
 	}
 }

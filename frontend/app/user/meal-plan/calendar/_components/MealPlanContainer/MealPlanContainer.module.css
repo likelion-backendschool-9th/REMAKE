@@ -1,0 +1,137 @@
+/* 피그마 p5-식단표: 메인 헤더 아래 달력 영역 bg/section. "2026년 11월 ∨" 줄은 헤더 아래 25(높이 22),
+   달력은 그 아래 17. 아래 드래그 시트(접힘 251)에 가리지 않게 아래 여백 */
+.main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100%;
+  padding-bottom: calc(15.6875rem + env(safe-area-inset-bottom));
+  background: var(--color-bg-section);
+}
+
+.monthRow {
+  display: flex;
+  align-items: center;
+  height: 1.375rem;
+  margin: 1.5625rem var(--layout-gutter) 1.0625rem;
+}
+
+/* 날짜 선택: Remake/title·text/strong + 아래 화살표 16, 간격 5 */
+.monthButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-strong);
+  font: var(--font-title);
+  cursor: pointer;
+}
+
+.monthButton:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+.monthArrow {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* 하루 식단 시트 내용: 옆 여백 16, 제목 줄 높이 24(손잡이 아래 10), 목록 위 14 */
+.day {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 0.625rem var(--layout-gutter) var(--space-16);
+}
+
+.dayTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 1.5rem;
+}
+
+.dayTitle {
+  color: var(--color-text-title);
+  font: var(--font-title);
+}
+
+/* + 아이콘 24를 오른쪽 끝에 두면서 누르는 영역 44를 지킨다 */
+.add {
+  margin-right: -0.625rem;
+}
+
+.slots {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  list-style: none;
+}
+
+/* 식단표 추가 시트 아래: 남은 횟수(Remake/assist) - 버튼 - 실패 안내(Remake/assist·text/assist), 간격 8, 가운데 */
+.addFooter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.addNotice {
+  color: var(--color-text-body);
+  font: var(--font-assist);
+}
+
+.addFail {
+  color: var(--color-text-assist);
+  font: var(--font-assist);
+}
+
+/* 빈 화면(피그마 p5-빈 리스트): 헤더 아래 전체 bg/section, 문구는 가운데보다 조금 위 */
+.emptyMain {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  min-height: calc(100dvh - 9.5rem);
+  padding-bottom: calc(9rem + env(safe-area-inset-bottom));
+  background: var(--color-bg-section);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: 5.25rem;
+  text-align: center;
+}
+
+/* "이번 주 식단표가 아직 없어요": Remake/assist·text/primary 계열 */
+.emptyLabel {
+  color: var(--color-text-primary);
+  font: var(--font-assist);
+}
+
+/* "냉장고 재료를 활용해서 식단을 만들어 드려요": Remake/header·text/strong */
+.emptyTitle {
+  color: var(--color-text-strong);
+  font: var(--font-header);
+}
+
+/* 지난 날 ⋮ 토스트: 시트(접힘 251) 위에 16 */
+.toastArea {
+  position: fixed;
+  right: 0;
+  bottom: calc(16.6875rem + env(safe-area-inset-bottom));
+  left: 0;
+  z-index: var(--z-toast);
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: 0 var(--layout-gutter);
+  pointer-events: none;
+}
