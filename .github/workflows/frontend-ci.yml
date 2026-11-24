@@ -65,7 +65,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         with:
           package_json_file: frontend/package.json
       - uses: actions/setup-node@v7
@@ -74,7 +74,7 @@ jobs:
       - name: Find pnpm store
         id: pnpm-store
         run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         id: pnpm-cache
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
@@ -83,7 +83,7 @@ jobs:
       # Next.js(Turbopack)는 빌드한 결과를 .next/cache 에 남기고, 다음 빌드에서 바뀌지 않은 부분은 다시 컴파일하지 않는다.
       # CI는 매번 빈 폴더에서 시작하므로, dev 에 머지될 때 저장한 캐시 중 가장 최근 것을 꺼내 쓴다.
       # 의존성(pnpm-lock.yaml)이 바뀌면 이전 캐시를 쓰지 않고 새로 시작한다.
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         with:
           path: frontend/.next/cache
           key: nextjs-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}-${{ github.sha }}
@@ -92,13 +92,13 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm build
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: github.event_name == 'push' && steps.pnpm-cache.outputs.cache-hit != 'true'
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: pnpm-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
       # PR에서는 저장하지 않는다. PR 캐시는 다른 PR이 쓰지 못하고 저장 한도(10GB)만 채운다.
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: github.event_name == 'push'
         with:
           path: frontend/.next/cache
