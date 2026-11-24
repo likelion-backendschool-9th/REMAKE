@@ -242,6 +242,16 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 
 ### Cart
 
+Apply the approved cart contract in #57 and the [ERD](../erd.md#19-cart_items-cart):
+
+- Store the original `recipe_id` for meal-plan additions as well as recipe saves. Use nullable `meal_plan_slot_id` only as the initial meal-slot source; keep it when an existing cart row is reused. Do not restore `meal_plan_id` or `group_name`.
+- Deleting a meal assignment clears the slot FK through `ON DELETE SET NULL`. Keep the recipe, cart row and user-edited amount. Do not call cart deletion before removing the assignment. Unsaving either my recipe or a shared recipe also keeps cart rows and amounts.
+- Deduplicate additions by user + original recipe ID + exactly matching ingredient name + unit. On a new save after unsaving, add only currently missing ingredients absent from that recipe's cart; preserve existing rows and amounts. Retrying an already-saved PUT stays idempotent and must not trigger a new add.
+- For repeated use of one original recipe within a single meal-plan generation, aggregate that generation's missing amounts per recipe/name/unit before adding. Keep pre-existing cart rows unchanged; never add the new total to a user-edited amount. Count actual inserted rows, not meals or summed quantities.
+- `cart_items.amount` is required, positive, and `numeric(10,3)`. API 45 returns a non-null amount for persisted cart rows. Do not infer nullable cart quantities from the nullable recipe-ingredient quantity.
+- Pending: whether to exclude unmeasured ingredients (`amount=null`, PINCH, TO_TASTE) in all three add paths is being checked in PR #216. Do not invent a quantity or make the cart amount nullable. Cart unit conversion and move integration remain deferred; the receipt deduction contract accepts identical units only.
+- Pending: exact unlinking/transaction procedure when replacing a recipe in an existing slot or overwriting a plan. Updating a slot's `recipe_id` does not trigger `ON DELETE SET NULL`; do not treat FK restoration as implementation of those flows.
+
 - Fifth top tab "장바구니".
 - Items are added automatically only: meal-plan shortages, supplemented missing ingredients when saving my recipe, missing ingredients when saving a shared recipe. No manual add. The server sets the category.
 - Rows: checkbox, image, source recipe name, ingredient + amount, "수량 변경". The same ingredient from different recipes stays separate.

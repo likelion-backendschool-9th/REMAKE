@@ -221,7 +221,7 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 | `edited_item_count` | number | >= 0 | E34, E76 |
 | `added_item_count` | number | >= 0 | E34, E76 |
 | `food_total_amount` | number | KRW | E34 |
-| `cart_removed_count` | number | >= 0 | E34 |
+| `cart_removed_count` | number | >= 0; actual cart rows deleted at zero after selected receipt deductions (#57), not deducted quantity or request count | E34 |
 | `month_offset` | number | 0 (this month), -1 (last month) ... | E35, E38, E56 |
 | `has_comparison` | boolean | true / false | E35 |
 | `recipe_mode` | string | quick / custom | E39, E40, E41, E42 |
