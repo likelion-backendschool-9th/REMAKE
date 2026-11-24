@@ -118,14 +118,14 @@ class ExpiryNotificationBatchTest extends IntegrationTestSupport {
 
 	@Test
 	void 임박은_D3까지_포함하고_D4는_제외한다() {
-		createIngredient(ON_USER, "FRUIT", "D3사과", TODAY.plusDays(3));
-		createIngredient(ON_USER, "FRUIT", "D4배", TODAY.plusDays(4));
+		createIngredient(onUser, "FRUIT", "D3사과", TODAY.plusDays(3));
+		createIngredient(onUser, "FRUIT", "D4배", TODAY.plusDays(4));
 
 		runExpiryNotificationBatchUseCase.runExpiryNotificationBatch();
 
 		List<Map<String, Object>> soon = jdbcTemplate.queryForList(
 				"SELECT message FROM notifications WHERE user_id = ? AND type = 'EXPIRY_SOON'",
-				ON_USER);
+				onUser);
 		assertThat(soon).hasSize(1);
 		assertThat(soon.get(0).get("message").toString()).contains("D3사과");
 	}

@@ -114,11 +114,11 @@ class NotificationApiTest extends IntegrationTestSupport {
 		LocalDateTime day0 = LocalDateTime.now(clock).minusDays(2);
 		LocalDateTime day1 = LocalDateTime.now(clock).minusDays(1);
 		LocalDateTime day2 = LocalDateTime.now(clock);
-		insertNotification(ME, "EXPIRED", "첫번째", day0, null);
-		insertNotification(ME, "EXPIRED", "두번째", day1, null);
-		insertNotification(ME, "MEAL_PLAN_FAILED", "세번째", day2, null);
+		insertNotification(me, "EXPIRED", "첫번째", day0, null);
+		insertNotification(me, "EXPIRED", "두번째", day1, null);
+		insertNotification(me, "MEAL_PLAN_FAILED", "세번째", day2, null);
 
-		mockMvc.perform(as(ME, get(BASE).param("page", "0").param("size", "2")))
+		mockMvc.perform(as(me, get(BASE).param("page", "0").param("size", "2")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content.length()").value(2))
 				.andExpect(jsonPath("$.content[0].message").value("세번째"))
@@ -127,7 +127,7 @@ class NotificationApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.totalElements").value(3))
 				.andExpect(jsonPath("$.hasNext").value(true));
 
-		mockMvc.perform(as(ME, get(BASE).param("page", "1").param("size", "2")))
+		mockMvc.perform(as(me, get(BASE).param("page", "1").param("size", "2")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content.length()").value(1))
 				.andExpect(jsonPath("$.content[0].message").value("첫번째"))
