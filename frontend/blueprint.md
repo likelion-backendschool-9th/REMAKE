@@ -155,7 +155,7 @@ Source: WBS v2 §3 "Frontend URL" (2026-11-22). Format `/{role}/{feature}/{resou
 | `/user/fridge/ingredients/[id]/edit`         | p2.1 Edit ingredient                      | Value sheets, delete icon                                                    |
 | `/user/receipt/receipts`                     | p3 Receipts                               | Month picker, weekly groups                                                  |
 | `/user/receipt/receipts/[id]`                | p3.2 Receipt detail                       | Delete modal inside                                                          |
-| `/user/receipt/scan`                         | p3.1 Camera / image upload                |                                                                              |
+| `/user/receipt/scan`                         | p3.1 Camera / image upload                | Device camera app via file input; no in-app camera (domain-rules 3)          |
 | `/user/receipt/scan/result`                  | p3.3 OCR result                           | Skeleton while waiting; OCR failure is a state of this URL                   |
 | `/user/receipt/scan/items/new`               | p3.3.2 Add OCR item                       |                                                                              |
 | `/user/receipt/scan/items/[index]/edit`      | p3.3.1 Edit OCR item                      | Edits stay in screen state until registration                                |

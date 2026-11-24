@@ -146,7 +146,8 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 ## 3. Receipts and spending (이동준)
 
 - Scan: "영수증 스캔 하기" → camera, or "첨부 하기" / gallery icon → image upload (screens after upload are pending).
-- Camera unavailable: shared toast "카메라를 쓸 수 없어요. 갤러리에서 골라 주세요" (`CAMERA_UNAVAILABLE`, wording is a proposal).
+- Camera (decided 11/25): open the device camera app, not an in-app camera. Use a file input: camera = `accept="image/*" capture="environment"`, album = `accept="image/*"` without `capture`. Both return one photo file that goes to the scan. No in-app viewfinder, receipt guide frame, flash, or focus control; no permission check or toggle (the device camera app handles its own permission). Devices without a camera open the file picker instead.
+- Camera unavailable: shared toast "카메라를 쓸 수 없어요. 갤러리에서 골라 주세요" (`CAMERA_UNAVAILABLE`, wording is a proposal). With the device camera app this rarely happens; keep it as a fallback when no photo can be taken.
 - No scan limit. OCR is synchronous (up to 30 s) with the OCR result skeleton. No "analysis done" notification.
 - OCR failure: one failure screen with different wording for: unreadable (not a receipt, OCR error, timeout), no food items, purchase date older than 6 months, already registered. The user rescans (screen pending).
 - Results contain food only (non-food such as 수세미, 냄비 is filtered out). Each item is filled with category, storage, amount, price, and expiry.

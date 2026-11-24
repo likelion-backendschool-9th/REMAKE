@@ -155,7 +155,7 @@ components/Button/
 | `/user/fridge/ingredients/[id]/edit`         | p2.1 재료 수정                    | 값 변경 시트, 삭제 아이콘                                                |
 | `/user/receipt/receipts`                     | p3 영수증                         | 월 선택, 주차 묶음                                                       |
 | `/user/receipt/receipts/[id]`                | p3.2 영수증 상세                  | 삭제 모달이 이 화면 안                                                   |
-| `/user/receipt/scan`                         | p3.1 카메라·이미지 업로드         |                                                                          |
+| `/user/receipt/scan`                         | p3.1 카메라·이미지 업로드         | 파일 입력으로 기본 카메라 앱, 앱 안 카메라 없음(domain-rules 3)          |
 | `/user/receipt/scan/result`                  | p3.3 OCR 결과                     | 기다리는 동안 스켈레톤. OCR 실패는 이 주소 안의 상태                     |
 | `/user/receipt/scan/items/new`               | p3.3.2 OCR 재료 추가              |                                                                          |
 | `/user/receipt/scan/items/[index]/edit`      | p3.3.1 OCR 재료 수정              | 고친 값은 등록할 때까지 화면 상태로만 둠                                 |
