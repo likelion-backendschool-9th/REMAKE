@@ -152,7 +152,19 @@ class ReceiptRegistrationApiTest extends IntegrationTestSupport {
 		for (String table : List.of("receipt_items", "ingredients")) {
 			assertThat(jdbcTemplate.queryForList(
 					"SELECT name || ':' || trim_scale(amount) || ':' || unit FROM " + table, String.class))
-					.containsExactlyInAnyOrder("고추장:1:PACK", "고추장:2:PACK");
+					.containsExactlyInAnyOrder("고추장:1:PACK", "고추장:2:G");
+		}
+	}
+
+	@Test
+	void 용량_없이_구매_수량과_직접_입력한_수량을_보내면_사전_단위로_저장한다() throws Exception {
+		mockMvc.perform(receiptWithItems("""
+				{"name":"삼겹살","categoryCode":"MEAT","purchaseQuantity":2,"amount":600,"storage":"FRIDGE"}
+				""")).andExpect(status().isCreated());
+
+		for (String table : List.of("receipt_items", "ingredients")) {
+			assertThat(jdbcTemplate.queryForObject("SELECT trim_scale(amount) || ':' || unit FROM " + table,
+					String.class)).isEqualTo("600:G");
 		}
 	}
 

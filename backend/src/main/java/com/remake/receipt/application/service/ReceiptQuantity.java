@@ -26,10 +26,10 @@ final class ReceiptQuantity {
 		if (volume != null && volumeGroup == 0) {
 			throw new InvalidFieldException("items[" + itemIndex + "].volume.unit", "용량에는 무게 또는 부피 단위를 사용해 주세요.");
 		}
-		if (group != 0 && purchaseQuantity != null && group != volumeGroup) {
-			unit = IngredientUnit.PACK;
-		}
 		if (amount == null) {
+			if (group != 0 && purchaseQuantity != null && group != volumeGroup) {
+				unit = IngredientUnit.PACK;
+			}
 			if (measurementGroup(unit) == 0) {
 				amount = purchaseQuantity;
 			} else if (volume != null && group == volumeGroup
