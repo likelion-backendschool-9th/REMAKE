@@ -25,11 +25,11 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.global.web.LoginUserIdArgumentResolver;
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.recipe.application.port.out.GeneratedRecipe;
 import com.remake.recipe.application.port.out.RecipeAiRequest;
 import com.remake.recipe.domain.RecipeSource;
 import com.remake.support.IntegrationTestSupport;
+import com.remake.user.domain.AllergenCode;
 
 // API 28 레시피 생성. Gemini 어댑터는 가짜(IntegrationTestSupport). 기본 시각 2026-03-04 10:00(서울), 일반 회원 하루 2회
 class RecipeGenerateApiTest extends IntegrationTestSupport {
@@ -53,7 +53,13 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 	}
 
 	private Long fridge(String category, String name, int daysLeft) {
-		return createIngredient(userId, category, name, TODAY.plusDays(daysLeft), IngredientStatus.ACTIVE);
+		return createIngredient(userId, category, name, TODAY.plusDays(daysLeft));
+	}
+
+	private void excludeInSettings(String... codes) {
+		for (String code : codes) {
+			jdbcTemplate.update("INSERT INTO user_excluded_ingredients (user_id, allergen_code) VALUES (?, ?)", userId, code);
+		}
 	}
 
 	private static GeneratedRecipe aiRecipe(Long... fridgeIds) {
@@ -101,6 +107,7 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 	@Test
 	void 빠른_생성은_가구원_수와_소비기한_지나지_않은_냉장고_재료로_만들고_저장과_차감을_한다() throws Exception {
 		jdbcTemplate.update("UPDATE users SET household_size = 3 WHERE id = ?", userId);
+		excludeInSettings("EGG");
 		Long egg = fridge("DAIRY_EGG", "계란", 1);
 		Long onion = fridge("VEGETABLE", "양파", 10);
 		fridge("MEAT", "상한 고기", -1);
@@ -124,6 +131,7 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 		assertThat(sent.source()).isEqualTo(RecipeSource.QUICK);
 		assertThat(sent.servings()).isEqualTo(3);
 		assertThat(sent.supplementEnabled()).isFalse();
+		assertThat(sent.excludedAllergenCodes()).as("빠른 생성도 설정의 제외 재료를 뺀다").containsExactly(AllergenCode.EGG);
 		assertThat(sent.fridgeIngredients()).extracting(RecipeAiRequest.FridgeItem::ingredientId)
 				.as("소비기한이 지난 재료는 보내지 않는다").containsExactly(egg, onion, salt);
 		assertThat(sent.fridgeIngredients().get(0).expiringSoon()).isTrue();
@@ -140,6 +148,7 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 		Long egg = fridge("DAIRY_EGG", "계란", 5);
 		Long onion = fridge("VEGETABLE", "양파", 5);
 		fridge("MEAT", "돼지고기", 5);
+		excludeInSettings("SHRIMP", "MILK");
 		when(geminiRecipeAdapter.generate(any())).thenReturn(aiRecipe(egg, onion));
 
 		generate("""
@@ -152,15 +161,15 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 		assertThat(sent.fridgeIngredients()).extracting(RecipeAiRequest.FridgeItem::ingredientId)
 				.containsExactly(egg, onion);
 		assertThat(sent.customOptions().taste().name()).isEqualTo("SPICY");
-		assertThat(sent.excludedAllergenCodes()).containsExactly("SHRIMP");
+		assertThat(sent.excludedAllergenCodes()).as("설정의 제외 재료에 고른 칩을 더하고 겹치면 한 번만")
+				.containsExactly(AllergenCode.MILK, AllergenCode.SHRIMP);
 		assertThat(jdbcTemplate.queryForObject("SELECT custom_options->>'taste' FROM recipes WHERE user_id = ?",
 				String.class, userId)).isEqualTo("SPICY");
 	}
 
 	@Test
-	void 커스텀은_인원이_필요하고_내_재료가_아니면_404다() throws Exception {
-		Long othersEgg = createIngredient(createUser(), "DAIRY_EGG", "남의 계란", TODAY.plusDays(5),
-				IngredientStatus.ACTIVE);
+	void 커스텀은_인원이_필요하고_내_재료가_아니면_404이고_모르는_알레르기_코드는_400이다() throws Exception {
+		Long othersEgg = createIngredient(createUser(), "DAIRY_EGG", "남의 계란", TODAY.plusDays(5));
 
 		generate("{\"mode\":\"CUSTOM\"}")
 				.andExpect(status().isBadRequest())
@@ -170,6 +179,10 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.code").value("INGREDIENT_NOT_FOUND"));
 		generate("{\"mode\":\"MEAL_PLAN\"}")
 				.andExpect(status().isBadRequest());
+		// 알레르기는 ERD 부록 B 코드만 받는다. 모르는 값은 AI에 가지 않는다
+		generate("{\"mode\":\"CUSTOM\",\"servings\":2,\"allergenCodes\":[\"NUTS\"]}")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
 		verify(geminiRecipeAdapter, never()).generate(any());
 	}
 
