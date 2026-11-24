@@ -91,7 +91,7 @@ public enum EventName {
 	RANKING_VIEWED("ranking_viewed", EventSource.CLIENT, Set.of("ranking_view", "query_used")), // E69
 	SHARED_RECIPE_VIEWED("shared_recipe_viewed", EventSource.CLIENT, Set.of("shared_recipe_id", "view_from", "rank_bucket")), // E70
 	SHARED_WRITE_STARTED("shared_write_started", EventSource.CLIENT, Set.of("recipe_id")), // E71
-	SHARED_RECIPE_PUBLISHED("shared_recipe_published", EventSource.SERVER, Set.of("shared_recipe_id", "photo_count")), // E72
+	SHARED_RECIPE_PUBLISHED("shared_recipe_published", EventSource.SERVER, Set.of("shared_recipe_id")), // E72
 	SHARED_RECIPE_SAVED("shared_recipe_saved", EventSource.SERVER, Set.of("shared_recipe_id", "cart_added_count")), // E73
 	SHARED_RECIPE_REPORTED("shared_recipe_reported", EventSource.SERVER, Set.of("shared_recipe_id", "report_reason")), // E74
 	WEEKLY_REWARD_GRANTED("weekly_reward_granted", EventSource.SERVER, Set.of("reward_rank", "reward_amount")); // E75
