@@ -1,4 +1,5 @@
-/* 피그마 2. 버튼 > 아이콘 버튼: 44×44, 아이콘 16·20·24(아이콘마다 다름), 색 icon/default */
+/* 피그마 2. 버튼 > 아이콘 버튼: 44×44, 아이콘 16·18·20·24(아이콘마다 다름), 색 icon/default
+   서브 헤더의 뒤로는 가운데가 아니라 왼쪽 여백 4(data-align="start") */
 .button {
   display: inline-flex;
   flex: none;
@@ -11,6 +12,11 @@
   border-radius: var(--radius-sm);
   background: none;
   color: var(--color-icon-default);
+}
+
+.button[data-align="start"] {
+  justify-content: flex-start;
+  padding-left: 0.25rem;
 }
 
 .button:disabled {
@@ -30,6 +36,11 @@
 .icon svg {
   width: 1.5rem;
   height: 1.5rem;
+}
+
+.icon[data-size="18"] svg {
+  width: 1.125rem;
+  height: 1.125rem;
 }
 
 .icon[data-size="20"] svg {

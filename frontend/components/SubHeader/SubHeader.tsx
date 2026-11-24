@@ -21,20 +21,40 @@ type SubHeaderProps = {
    * 글자: <TextButton tone="danger">삭제</TextButton>
    */
   right?: ReactNode;
+  /** 제목 요소. 화면 위에 겹쳐 뜨는 드로워 안에서는 "h2"(화면의 h1은 하나만) */
+  titleAs?: "h1" | "h2";
+  /** 제목 id. 드로워의 aria-labelledby에 쓴다 */
+  titleId?: string;
   className?: string;
 };
 
 /** 피그마 디자인 시스템 > 1. 앱 틀 > 서브 헤더. ← + 제목 + 오른쪽. */
-export function SubHeader({ title, onBack, right, className }: SubHeaderProps) {
+export function SubHeader({
+  title,
+  onBack,
+  right,
+  titleAs: Title = "h1",
+  titleId,
+  className,
+}: SubHeaderProps) {
   const router = useRouter();
   return (
     <header className={cx(styles.header, className)}>
       <IconButton
-        icon={<ArrowLeftIcon strokeWidth={2.85} />}
+        icon={<ArrowLeftIcon strokeWidth={2} />}
+        iconSize={18}
+        align="start"
         label="뒤로 가기"
         onClick={onBack ?? (() => router.back())}
       />
-      <h1 className={styles.title}>{title}</h1>
+      {/* 제목이 없으면(화면 본문에 h1이 있는 경우) 빈 제목 요소를 만들지 않고 자리만 채운다 */}
+      {title ? (
+        <Title id={titleId} className={styles.title}>
+          {title}
+        </Title>
+      ) : (
+        <span className={styles.title} />
+      )}
       {right && <div className={styles.right}>{right}</div>}
     </header>
   );
