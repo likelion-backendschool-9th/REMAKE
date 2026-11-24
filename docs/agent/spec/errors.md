@@ -262,7 +262,7 @@ Removed (do not use in new code; remove from `ErrorCode` when the related code i
 
 | Code | Why |
 | --- | --- |
-| `CONCURRENT_UPDATE` | `ingredients.version` removed. Deduction checks the remaining amount (`INSUFFICIENT_QUANTITY`) |
+| `CONCURRENT_UPDATE` | `ingredients.version` removed. Concurrent requests are serialized by a row lock; deduction checks the remaining amount (`INSUFFICIENT_QUANTITY`), and a request that comes after the last stock was used gets `INGREDIENT_NOT_FOUND` |
 | `CATALOG_ITEM_NOT_FOUND` | No dictionary id in requests. Unknown allergen codes are `INVALID_INPUT` |
 | `INVALID_UNIT` | Clients do not send units; the server picks them |
 | `INGREDIENT_ALREADY_FINISHED` | Rows are deleted at 0 -> `INGREDIENT_NOT_FOUND` |
