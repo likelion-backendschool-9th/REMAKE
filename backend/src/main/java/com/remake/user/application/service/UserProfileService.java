@@ -17,6 +17,7 @@ import com.remake.user.application.port.in.CompleteOnboardingUseCase;
 import com.remake.user.application.port.in.GetExcludedIngredientsUseCase;
 import com.remake.user.application.port.in.GetProfileUseCase;
 import com.remake.user.application.port.in.GetUserGenerationPreferencesUseCase;
+import com.remake.user.application.port.in.RememberMealPurposeUseCase;
 import com.remake.user.application.port.in.ReplaceExcludedIngredientsUseCase;
 import com.remake.user.application.port.in.UpdateProfileUseCase;
 import com.remake.user.application.port.out.LoadExcludedIngredientPort;
@@ -35,7 +36,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional
 public class UserProfileService implements CompleteOnboardingUseCase, GetProfileUseCase, UpdateProfileUseCase,
-		GetExcludedIngredientsUseCase, ReplaceExcludedIngredientsUseCase, GetUserGenerationPreferencesUseCase {
+		GetExcludedIngredientsUseCase, ReplaceExcludedIngredientsUseCase, GetUserGenerationPreferencesUseCase,
+		RememberMealPurposeUseCase {
 
 	private final LoadUserPort loadUserPort;
 	private final SaveUserPort saveUserPort;
@@ -92,6 +94,11 @@ public class UserProfileService implements CompleteOnboardingUseCase, GetProfile
 		List<AllergenCode> codes = normalizeCodes(allergenCodes);
 		saveExcludedIngredientPort.replaceAll(userId, codes);
 		return loadExcludedIngredientPort.findAllergenCodesByUserId(userId);
+	}
+
+	@Override
+	public void rememberMealPurpose(Long userId, String mealPurpose) {
+		saveUserPort.save(requireUser(userId).rememberMealPurpose(mealPurpose));
 	}
 
 	@Override

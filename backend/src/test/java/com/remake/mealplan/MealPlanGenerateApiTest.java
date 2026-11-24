@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -144,6 +145,35 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.mealPlanId").isNumber())
 				.andExpect(jsonPath("$.status").value("GENERATING"));
+	}
+
+	@Test
+	void 접수하면_고른_식단_목적을_다음_기본값으로_기억하고_거절된_요청은_바꾸지_않는다() throws Exception {
+		// 냉장고가 비어 생성은 재료 부족으로 실패하지만(차감 없음) 고른 목적은 기억한다
+		Long userId = createUser();
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+		assertThat(lastMealPurpose(userId)).isEqualTo("HIGH_PROTEIN");
+
+		generate(userId, purposeBody(TODAY.minusDays(1), "DIET")).andExpect(status().isBadRequest());
+		assertThat(lastMealPurpose(userId)).isEqualTo("HIGH_PROTEIN");
+
+		generate(userId, purposeBody(TODAY, "DIET")).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+		mockMvc.perform(get("/api/v1/user/profile").requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, userId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lastMealPurpose").value("DIET"));
+	}
+
+	private String lastMealPurpose(Long userId) {
+		return jdbcTemplate.queryForObject("SELECT last_meal_purpose FROM users WHERE id = ?", String.class, userId);
+	}
+
+	private static String purposeBody(LocalDate startDate, String purpose) {
+		return """
+				{"startDate":"%s","purpose":"%s","mealTypes":["DINNER"],"servings":2}
+				""".formatted(startDate, purpose);
 	}
 
 	@Test
