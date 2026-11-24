@@ -1,0 +1,37 @@
+/* 피그마 식단표-식단 레시피 생성: 서브 헤더 아래 17에 설정 카드(재료 추가 화면과 같은 카드), 카드 아래 10에 안내 박스.
+   아래 고정 영역(남은 횟수 + 버튼 + 안내)에 가리지 않게 아래 여백 */
+.main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 1.0625rem var(--layout-gutter) calc(10rem + env(safe-area-inset-bottom));
+}
+
+/* 설정 카드: bg/surface, border/default, radius/lg, 옆 여백 14 */
+.card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 var(--space-14);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
+
+/* 카드 안 설정형 행: 위 24·아래 23·옆 5 */
+.row {
+  padding: 1.5rem 0.3125rem 1.4375rem;
+}
+
+/* 스테퍼 행: 위 20·아래 19 */
+.stepperRow {
+  padding: 1.25rem 0.3125rem 1.1875rem;
+}
+
+.card > :last-child {
+  border-bottom: 0;
+}
+
+.info {
+  margin-top: var(--space-10);
+}

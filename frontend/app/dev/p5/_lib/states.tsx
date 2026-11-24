@@ -3,11 +3,14 @@
 
 import { MealPlanContainer } from "../../../user/meal-plan/calendar/_components/MealPlanContainer/MealPlanContainer";
 import { SAMPLE_CALENDAR, SAMPLE_SLOTS } from "../../../user/meal-plan/calendar/_lib/calendar";
+import { MealPlanSetupContainer } from "../../../user/meal-plan/meal-plans/new/_components/MealPlanSetupContainer/MealPlanSetupContainer";
 import type { PreviewState } from "../../_lib/preview";
 
 const ROUTE = "/user/meal-plan/calendar";
 const NOTICE = { message: "당근의 소비기한이 임박했어요!", unreadCount: 2 };
 const TODAY = "2026-11-17";
+const SETUP_ROUTE = "/user/meal-plan/meal-plans/new";
+const SETUP_DEFAULTS = { remainingPlans: 1, householdSize: 1, lastPurpose: null };
 const SLOTS = { [TODAY]: SAMPLE_SLOTS, "2026-11-16": SAMPLE_SLOTS };
 const BASE = {
   calendar: SAMPLE_CALENDAR,
@@ -77,5 +80,78 @@ export const P5_STATES: PreviewState[] = [
     label: "p5-식단표-불러오는 중 (실제 라우트 처음 상태, 피그마 없음)",
     route: ROUTE,
     render: () => <MealPlanContainer notice={NOTICE} />,
+  },
+  {
+    slug: "setup",
+    label: "p5.1-식단표 생성",
+    route: SETUP_ROUTE,
+    render: () => (
+      <MealPlanSetupContainer defaults={SETUP_DEFAULTS} initialStartDate="2026-11-18" />
+    ),
+  },
+  {
+    slug: "setup-start-date",
+    label: "p5.1-식단표 생성-시작일",
+    route: SETUP_ROUTE,
+    render: () => (
+      <MealPlanSetupContainer
+        defaults={SETUP_DEFAULTS}
+        initialStartDate="2026-11-18"
+        initialSheet="startDate"
+      />
+    ),
+  },
+  {
+    slug: "setup-purpose",
+    label: "p5.1-식단표 생성-식단 목적",
+    route: SETUP_ROUTE,
+    render: () => (
+      <MealPlanSetupContainer
+        defaults={SETUP_DEFAULTS}
+        initialStartDate="2026-11-18"
+        initialSheet="purpose"
+      />
+    ),
+  },
+  {
+    slug: "setup-meals",
+    label: "p5.1-식단표 생성-넣을 끼니",
+    route: SETUP_ROUTE,
+    render: () => (
+      <MealPlanSetupContainer
+        defaults={SETUP_DEFAULTS}
+        initialStartDate="2026-11-18"
+        initialSheet="meals"
+      />
+    ),
+  },
+  {
+    slug: "setup-overlap",
+    label: "p5.1-식단표 생성-겹침 경고 (피그마 없음)",
+    route: SETUP_ROUTE,
+    render: () => (
+      <MealPlanSetupContainer
+        defaults={SETUP_DEFAULTS}
+        initialStartDate="2026-11-18"
+        initialOverlapOpen
+      />
+    ),
+  },
+  {
+    slug: "setup-no-quota",
+    label: "p5.1-식단표 생성-남은 횟수 0 (버튼 꺼짐, 피그마 없음)",
+    route: SETUP_ROUTE,
+    render: () => (
+      <MealPlanSetupContainer
+        defaults={{ ...SETUP_DEFAULTS, remainingPlans: 0 }}
+        initialStartDate="2026-11-18"
+      />
+    ),
+  },
+  {
+    slug: "setup-loading",
+    label: "p5.1-식단표 생성-불러오는 중 (실제 라우트 처음 상태, 피그마 없음)",
+    route: SETUP_ROUTE,
+    render: () => <MealPlanSetupContainer />,
   },
 ];
