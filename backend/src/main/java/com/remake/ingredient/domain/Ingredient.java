@@ -18,10 +18,10 @@ public class Ingredient {
 	private final Long id;
 	private final Long userId;
 	private final Long receiptItemId;
-	private final IngredientUnit unit;
 
 	private Long categoryId;
 	private String name;
+	private IngredientUnit unit;
 	private StorageLocation storage;
 	private LocalDate expirationDate;
 	private BigDecimal amount;
@@ -74,6 +74,15 @@ public class Ingredient {
 		this.name = normalizeName(newName);
 	}
 
+	/**
+	 * 단위를 바꾼다. 재료명이나 카테고리를 바꿨을 때 서버가 다시 정한 단위를 넣는다. 사용자가 직접 고르는 값이 아니다.
+	 * 수량 숫자는 그대로 두므로 단위만 바뀐다(대파 1단 → 양파 1개).
+	 */
+	public void changeUnit(IngredientUnit newUnit) {
+		requireNonNull(newUnit, "단위");
+		this.unit = newUnit;
+	}
+
 	public void changeCategory(Long newCategoryId) {
 		requireNonNull(newCategoryId, "카테고리");
 		this.categoryId = newCategoryId;
@@ -83,7 +92,6 @@ public class Ingredient {
 	 * 수량을 고친다. 입력을 잘못 넣은 것을 바로잡는 용도라 남은 양과 처음 양을 함께 바꾼다.
 	 * 이미 쓰거나 버린 기록이 있는지는 기록 테이블을 봐야 알 수 있어서 Service가 먼저 확인한다
 	 * (기록이 있으면 처음 양을 바꾸면 안 되므로 이 메서드를 부르지 않는다).
-	 * 단위는 등록한 뒤에 바꾸지 않는다.
 	 */
 	public void changeAmount(BigDecimal newAmount) {
 		validateAmount(newAmount);
