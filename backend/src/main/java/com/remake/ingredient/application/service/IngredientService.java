@@ -44,7 +44,8 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 	@Override
 	@Transactional(readOnly = true)
 	public FridgeIngredient getIngredient(Long userId, Long ingredientId) {
-		return toFridgeIngredient(loadOwned(userId, ingredientId));
+		return toFridgeIngredient(loadIngredientPort.loadByIdAndUserId(ingredientId, userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_NOT_FOUND)));
 	}
 
 	@Override
@@ -112,8 +113,9 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND)).code();
 	}
 
+	// 수정·삭제용이라 행을 잠그고 읽는다(같은 재료의 동시 사용·폐기와 차례로 처리).
 	private Ingredient loadOwned(Long userId, Long ingredientId) {
-		return loadIngredientPort.loadByIdAndUserId(ingredientId, userId)
+		return loadIngredientPort.loadByIdAndUserIdForUpdate(ingredientId, userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_NOT_FOUND));
 	}
 }
