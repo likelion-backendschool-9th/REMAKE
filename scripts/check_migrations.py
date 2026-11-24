@@ -11,6 +11,11 @@ This script compares the PR with the base branch as it is now (not when the PR w
 
 Every file on dev is treated as applied on the server, because each merge into dev is deployed.
 Re-running the check right before merging compares with the latest dev again without a new push.
+(.github/workflows/migration-recheck.yml re-runs it on open PRs whenever a migration lands on dev.)
+
+One exception: if two files on the base branch share a number (a PR passed the check before another PR with the same
+number merged), Backend CD stops at its tests from that merge on, so the file that arrived later was never applied.
+A PR may delete or rename that later file (revert, or move it to a new number). The earlier one stays protected.
 
 It also warns, without failing, when a new migration contains a statement that breaks the previous version
 still running during a deployment or that cannot be undone (see RISKY below).
@@ -106,6 +111,39 @@ def version(path: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def first_parent_position(base: str, path: str) -> int | None:
+    """How far along the base branch's first-parent history the commit that added path is (larger = later)."""
+    commits = git("log", "--first-parent", "--diff-filter=A", "--format=%H", base, "--", path).split()
+    if not commits:
+        return None
+    return int(git("rev-list", "--first-parent", "--count", commits[-1]).strip())
+
+
+def late_duplicates(base: str, base_files: set[str]) -> set[str]:
+    """Files on base whose number is also used by a file that reached base earlier.
+
+    The merge that added such a file left two migrations with one number, so the app cannot start from that commit on
+    and Backend CD stops at its tests: the file was never applied on the server. If the order cannot be told
+    (history missing, or both added by the same commit), nothing is returned and every file stays protected.
+    """
+    by_version: dict[int, list[str]] = {}
+    for path in base_files:
+        v = version(path)
+        if v is not None:
+            by_version.setdefault(v, []).append(path)
+    late = set()
+    for paths in by_version.values():
+        if len(paths) < 2:
+            continue
+        positions = {path: first_parent_position(base, path) for path in paths}
+        if None in positions.values():
+            continue
+        earliest = min(positions.values())
+        if list(positions.values()).count(earliest) == 1:
+            late.update(path for path, position in positions.items() if position != earliest)
+    return late
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print(__doc__.strip().splitlines()[-1], file=sys.stderr)
@@ -120,14 +158,23 @@ def main() -> int:
     base_files = set(sql_files(base))
     branch_point_files = set(sql_files(merge_base))
 
+    late = late_duplicates(base, base_files)
+
     errors = []
     added = []
     for status, path in changes:
         if not path.endswith(".sql"):
             continue
+        if status == "D" and path in late:
+            print(f"::notice::{path}: {base}에 같은 번호 파일이 먼저 들어와 있어 이 파일은 서버에 적용되지 않았습니다. "
+                  "지우거나 새 번호로 옮기는 것을 허용합니다.")
+            continue
         if path in branch_point_files or path in base_files:
+            same_number_late = sorted(p for p in late if version(p) == version(path) and p != path)
+            hint = (f" 번호 겹침을 고치려면 나중에 들어온 {', '.join(same_number_late)}를 지우거나 새 번호로 옮기세요."
+                    if same_number_late and status == "D" else "")
             errors.append(f"{path}: dev에 이미 있는(서버에 적용된) 파일은 고치거나 지우거나 이름을 바꿀 수 없습니다. "
-                          "바꿀 내용은 새 번호 파일로 추가하세요.")
+                          f"바꿀 내용은 새 번호 파일로 추가하세요.{hint}")
         elif status == "A":
             added.append(path)
 
