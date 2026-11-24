@@ -69,6 +69,8 @@ Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo)
 | 25 | GET | `/user/expenses/patterns` | Consumption of the month: receipt items + ingredients added without a receipt with a price (by registration date) | `?month=2026-11` (within the last 6 months) | `200 { month, totalAmount, averageDiffAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | |
 | 26 | GET | `/user/expenses/daily-items` | Items of the chosen day | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | |
 
+API 20 response fields `purchaseQuantity` and `volume` are planned in #72. Frontend integration will be verified in #101.
+
 ### Receipt quantity contract (#173)
 
 - API 20 returns the preview `amount` and `unit` plus the observed `purchaseQuantity` and `volume` when available. If the preview amount cannot be resolved, ask the user to supply a quantity.

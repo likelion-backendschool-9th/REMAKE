@@ -71,6 +71,8 @@
 | 25 | GET | `/user/expenses/patterns` | 그 달 소비. 영수증 품목 + 영수증 없이 가격을 넣은 재료(등록일 기준, ERD 답 3) | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | receipt_items, ingredients |
 | 26 | GET | `/user/expenses/daily-items` | 고른 날의 품목 | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | receipt_items, ingredients |
 
+API 20 응답의 `purchaseQuantity`와 `volume`은 #72에서 반영 예정이며, #101에서 프론트 연동을 확인해요.
+
 ### 영수증 수량 계약 (#173)
 
 - API 20의 `amount`와 `unit`은 미리보기예요. 확인된 구매 수량은 `purchaseQuantity`, 포장 용량은 `volume { amount, unit, scope }`로 받아요. 용량 단위는 `G`, `KG`, `ML`, `L`이에요. 수량을 정할 수 없으면 확인 화면에서 값을 입력해요.
