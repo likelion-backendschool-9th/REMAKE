@@ -1,0 +1,79 @@
+/* 피그마 p2-냉장고: 위쪽(bg/section) 아래 흰 목록 영역이 화면 끝까지 */
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  background: var(--color-bg-section);
+}
+
+/* 목록 영역: bg/surface, 여백 23/16, 묶음 사이 18 */
+.panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1.125rem;
+  padding: 1.4375rem var(--layout-gutter) calc(1.4375rem + env(safe-area-inset-bottom));
+  background: var(--color-bg-surface);
+}
+
+/* 제목 줄 높이 24: "N개의 위험 재료"(Medium 16·text/title, 개수는 단계 색) + 더하기 아이콘 20 */
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 1.5rem;
+}
+
+.title {
+  color: var(--color-text-title);
+  font: 500 1rem / normal var(--font-family-base);
+}
+
+.titleCount[data-status="DANGER"] {
+  color: var(--color-text-danger);
+}
+
+.titleCount[data-status="SOON"] {
+  color: var(--color-text-warning);
+}
+
+.titleCount[data-status="OK"] {
+  color: var(--color-text-safe);
+}
+
+/* 아이콘 20을 오른쪽 끝에 두면서 누르는 영역 44를 지킨다 */
+.add {
+  margin-right: -0.75rem;
+}
+
+/* 필터 칩 줄: 간격 5 */
+.filters {
+  display: flex;
+  gap: 0.3125rem;
+}
+
+/* 재료 목록: 행 사이 5 */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* 스켈레톤: 피그마 행 자리 2개(높이 36, 간격 21) */
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 1.3125rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

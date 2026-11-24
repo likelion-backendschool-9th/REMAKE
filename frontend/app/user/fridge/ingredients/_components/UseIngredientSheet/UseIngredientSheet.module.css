@@ -1,0 +1,42 @@
+/* 피그마 바텀시트/재료 사용: 내용 간격 space/10, 내용-버튼 간격 space/20.
+   남은 수량 줄 여백 0/4·간격 12(Remake/content-strong·text/assist + 소비기한 배지),
+   뺄 수량 상자 border/default·radius/md·여백 10/14/10/12, 안내 Remake/assist·text/assist */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+.remaining {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: 0 var(--space-4);
+  color: var(--color-text-assist);
+  font: var(--font-content-strong);
+}
+
+.amount {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-10) var(--space-14) var(--space-10) var(--space-12);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+}
+
+.amountLabel {
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+.notice {
+  color: var(--color-text-assist);
+  font: var(--font-assist);
+}
+
+/* 내용과 버튼 사이는 20(내용 간격 10 + 10) */
+.confirm {
+  margin-top: var(--space-10);
+}
