@@ -116,6 +116,8 @@ export function CartContainer({
               checked={isAllSelected}
               onChange={toggleAll}
               disabled={isLoading || isEmpty}
+              // 삭제 모드에서는 항목 체크처럼 빨강
+              tone={isDeleteMode ? "danger" : "primary"}
             />
             {/* 피그마 p7-장바구니-빈 리스트: 비었으면 건수 없이 "전체 선택" */}
             {isLoading || isEmpty ? "전체 선택" : `전체 선택(${items.length}건)`}
