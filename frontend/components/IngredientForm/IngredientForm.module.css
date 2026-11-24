@@ -1,4 +1,4 @@
-/* 피그마 p2.1·p2.2 재료 정보 카드: bg/surface, border/default, radius/lg, 옆 여백 14 */
+/* 피그마 p2.1·p2.2·p3.3.1·p3.3.2 재료 정보 카드: bg/surface, border/default, radius/lg, 옆 여백 14 */
 .card {
   display: flex;
   flex-direction: column;
@@ -26,4 +26,17 @@
 /* 카드 아래 10에 안내 박스 */
 .info {
   margin-top: var(--space-10);
+}
+
+/* 스켈레톤 값 자리 + 화살표 16(icon/sub) */
+.skeletonValue {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.skeletonArrow {
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-icon-sub);
 }

@@ -9,12 +9,25 @@ import { z } from "zod";
 import { Button } from "@/components/Button/Button";
 import { InputSheet } from "@/components/InputSheet/InputSheet";
 import { TextField } from "@/components/TextField/TextField";
-
-import { INGREDIENT_NAME_MAX, PRICE_MAX_DIGITS } from "../../_lib/ingredient-form";
+import { INGREDIENT_NAME_MAX, PRICE_MAX_DIGITS } from "@/lib/ingredient-form";
 
 import styles from "./IngredientTextSheet.module.css";
 
 type TextSheetKind = "name" | "price";
+
+/**
+ * 화면별 시트 문구. 냉장고(p2.1·p2.2)는 기본 문구(안내 한 줄 + ⓘ), 영수증(p3.3.1·p3.3.2)은 제목·버튼이 다르고
+ * 안내가 "•" 여러 줄이다. 입력 검사(글자 수·숫자만)는 같다.
+ */
+export type TextSheetCopy = {
+  title?: string;
+  placeholder?: string;
+  confirmLabel?: string;
+  /** 입력칸 아래 "•" 안내 줄. 있으면 기본 안내 한 줄 대신 보인다 */
+  notes?: readonly string[];
+};
+
+export type TextSheetCopyByKind = Partial<Record<TextSheetKind, TextSheetCopy>>;
 
 const nameSchema = z.object({
   value: z
@@ -55,6 +68,8 @@ const CONFIG = {
 
 type IngredientTextSheetProps = {
   kind: TextSheetKind;
+  /** 화면별 문구. 없으면 냉장고 문구 */
+  copy?: TextSheetCopy;
   defaultValue: string;
   onClose: () => void;
   /** 확인: 재료명은 다듬은 글, 가격은 숫자 문자열(빈 값이면 가격 없음) */
@@ -67,12 +82,16 @@ type IngredientTextSheetProps = {
  */
 export function IngredientTextSheet({
   kind,
+  copy,
   defaultValue,
   onClose,
   onConfirm,
 }: IngredientTextSheetProps) {
   const config = CONFIG[kind];
   const formId = useId();
+  const notesId = useId();
+  const title = copy?.title ?? config.title;
+  const notes = copy?.notes;
   const { register, handleSubmit, control } = useForm<{ value: string }>({
     resolver: zodResolver(config.schema),
     defaultValues: { value: defaultValue },
@@ -86,10 +105,10 @@ export function IngredientTextSheet({
     <InputSheet
       isOpen
       onClose={onClose}
-      title={config.title}
+      title={title}
       footer={
         <Button type="submit" form={formId} size="md" disabled={Boolean(error)}>
-          확인
+          {copy?.confirmLabel ?? "확인"}
         </Button>
       }
     >
@@ -101,16 +120,25 @@ export function IngredientTextSheet({
       >
         <TextField
           {...register("value")}
-          aria-label={config.title}
-          placeholder={config.placeholder}
+          aria-label={title}
+          placeholder={copy?.placeholder ?? config.placeholder}
           inputMode={config.inputMode}
           maxLength={config.maxLength}
           unit={config.unit}
-          helperText={config.helperText}
+          helperText={notes ? undefined : config.helperText}
+          // "•" 안내는 입력칸 아래 목록으로 따로 그리므로 설명으로 연결한다(오류가 있으면 오류가 설명)
+          {...(notes && !shownError ? { "aria-describedby": notesId } : {})}
           errorMessage={shownError}
           autoComplete="off"
           data-autofocus
         />
+        {notes && !shownError && (
+          <ul id={notesId} className={styles.notes}>
+            {notes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        )}
       </form>
     </InputSheet>
   );
