@@ -13,7 +13,6 @@ import { IngredientRow } from "@/components/IngredientRow/IngredientRow";
 import { SegmentedControl } from "@/components/SegmentedControl/SegmentedControl";
 import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
-import { dayjs } from "@/lib/dayjs";
 import { formatNumber, formatWon } from "@/lib/format";
 import { formatAmount, getCategoryImage, getStorage } from "@/lib/ingredients";
 
@@ -27,6 +26,7 @@ import {
   scanItemEditHref,
   type ScanResult,
   sumScanPrice,
+  todayInKst,
 } from "../../../_lib/scan";
 
 import styles from "./ReceiptResultContainer.module.css";
@@ -132,7 +132,7 @@ export function ReceiptResultContainer({
 
 /** 값이 온 뒤의 목록. D-N을 셀 오늘 날짜는 이때 읽는다(cacheComponents) */
 function ResultItems({ result, today: todayProp }: { result: ScanResult; today?: string }) {
-  const [today] = useState(() => todayProp ?? dayjs().format("YYYY-MM-DD"));
+  const [today] = useState(() => todayProp ?? todayInKst());
 
   return (
     <>
