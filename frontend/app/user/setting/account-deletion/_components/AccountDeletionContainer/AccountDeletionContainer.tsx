@@ -44,12 +44,15 @@ export function AccountDeletionContainer({
   const handleChange = (next: string[]) => {
     setDigits(next);
     setErrorCode(undefined);
+    // 칸이 다시 평소 색이 되므로 오류 토스트도 내린다
+    toast.dismiss();
   };
 
   const handleResend = () => {
     // TODO: API 9(POST /user/account/deletion-code)로 새 번호를 받고 expiresAt으로 남은 시간을 맞춘다
     setDigits(EMPTY_DIGITS);
     setErrorCode(undefined);
+    toast.dismiss();
     restart(CODE_VALID_SECONDS);
   };
 
