@@ -17,15 +17,15 @@ import com.remake.support.IntegrationTestSupport;
 
 class UserProfileApiTest extends IntegrationTestSupport {
 
-	private static final Long ME = 201L;
+	private Long me;
 
 	@BeforeEach
 	void setUpUser() {
-		ensureUser(ME);
+		me = createUser();
 	}
 
 	private MockHttpServletRequestBuilder asMe(MockHttpServletRequestBuilder builder) {
-		return builder.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, ME);
+		return builder.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, me);
 	}
 
 	@Test
