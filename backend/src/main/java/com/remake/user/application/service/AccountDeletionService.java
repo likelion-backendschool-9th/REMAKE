@@ -27,6 +27,7 @@ import com.remake.event.domain.EventName;
 import com.remake.event.domain.Screen;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.notification.application.port.in.DeleteUserNotificationsUseCase;
 import com.remake.user.application.port.in.DeleteAccountUseCase;
 import com.remake.user.application.port.in.PurgeExpiredDeletionCodesUseCase;
 import com.remake.user.application.port.in.RequestAccountDeletionCodeUseCase;
@@ -57,6 +58,7 @@ public class AccountDeletionService
 	private final SaveAccountDeletionRequestPort saveAccountDeletionRequestPort;
 	private final SendDeletionCodeMailPort sendDeletionCodeMailPort;
 	private final PurgeUserOwnedDataPort purgeUserOwnedDataPort;
+	private final DeleteUserNotificationsUseCase deleteUserNotificationsUseCase;
 	private final DeleteRefreshTokensForUserUseCase deleteRefreshTokensForUserUseCase;
 	private final ExchangeOAuthProfileUseCase exchangeOAuthProfileUseCase;
 	private final EventTracker eventTracker;
@@ -67,6 +69,7 @@ public class AccountDeletionService
 			LoadAccountDeletionRequestPort loadAccountDeletionRequestPort,
 			SaveAccountDeletionRequestPort saveAccountDeletionRequestPort,
 			SendDeletionCodeMailPort sendDeletionCodeMailPort, PurgeUserOwnedDataPort purgeUserOwnedDataPort,
+			DeleteUserNotificationsUseCase deleteUserNotificationsUseCase,
 			DeleteRefreshTokensForUserUseCase deleteRefreshTokensForUserUseCase,
 			ExchangeOAuthProfileUseCase exchangeOAuthProfileUseCase, EventTracker eventTracker, Clock clock,
 			PlatformTransactionManager transactionManager) {
@@ -76,6 +79,7 @@ public class AccountDeletionService
 		this.saveAccountDeletionRequestPort = saveAccountDeletionRequestPort;
 		this.sendDeletionCodeMailPort = sendDeletionCodeMailPort;
 		this.purgeUserOwnedDataPort = purgeUserOwnedDataPort;
+		this.deleteUserNotificationsUseCase = deleteUserNotificationsUseCase;
 		this.deleteRefreshTokensForUserUseCase = deleteRefreshTokensForUserUseCase;
 		this.exchangeOAuthProfileUseCase = exchangeOAuthProfileUseCase;
 		this.eventTracker = eventTracker;
@@ -122,6 +126,7 @@ public class AccountDeletionService
 		LocalDateTime now = LocalDateTime.now(clock);
 		long tenureDays = tenureDays(user, now);
 
+		deleteUserNotificationsUseCase.deleteUserNotifications(user.id());
 		purgeUserOwnedDataPort.purge(user.id());
 		deleteRefreshTokensForUserUseCase.deleteAllForUser(user.id());
 		saveAccountDeletionRequestPort.deleteAllByUserId(user.id());
