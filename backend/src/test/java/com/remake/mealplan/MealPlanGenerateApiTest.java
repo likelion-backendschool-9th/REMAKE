@@ -28,6 +28,7 @@ import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.global.web.LoginUserIdArgumentResolver;
 import com.remake.mealplan.application.port.out.GeneratedMealSlot;
+import com.remake.mealplan.application.port.out.MealPlanAiBusyException;
 import com.remake.mealplan.application.port.out.MealPlanAiRequest;
 import com.remake.mealplan.domain.FridgeStock;
 import com.remake.mealplan.domain.MealType;
@@ -429,6 +430,34 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		assertThat(count("SELECT COUNT(*) FROM recipes WHERE user_id = ?", userId)).isZero();
 		assertThat(count("SELECT COUNT(*) FROM usage_logs WHERE user_id = ?", userId)).isZero();
 		assertThat(eventProperty("meal_plan_generate_failed", "error_code")).isEqualTo("AI_INVALID_RESPONSE");
+	}
+
+	@Test
+	void AI가_과부하로_거절하면_더_불러_만든다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		given(mealPlanAiAdapter.generate(any())).willThrow(new MealPlanAiBusyException(), new MealPlanAiBusyException(),
+				new MealPlanAiBusyException()).willAnswer(everySlotUses(fridgeId, 100));
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(4)).generate(any());
+		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "COMPLETED");
+	}
+
+	@Test
+	void AI가_10번_모두_과부하면_AI_UPSTREAM_ERROR로_실패한다() throws Exception {
+		Long userId = createUser();
+		fridgeGrams(userId, "대파", 1000);
+		given(mealPlanAiAdapter.generate(any())).willThrow(new MealPlanAiBusyException());
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(10)).generate(any());
+		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "FAILED");
+		assertThat(eventProperty("meal_plan_generate_failed", "error_code")).isEqualTo("AI_UPSTREAM_ERROR");
 	}
 
 	@Test

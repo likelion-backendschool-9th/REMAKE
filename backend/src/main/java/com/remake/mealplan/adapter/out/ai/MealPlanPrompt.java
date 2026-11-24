@@ -28,6 +28,11 @@ final class MealPlanPrompt {
 	static final int SIMPLE_MAX_INGREDIENTS = 6;
 	/** 재료 절약: 끼니당 냉장고에 없는 재료 수(양념 빼고, 되도록) */
 	static final int SAVING_MAX_MISSING_PER_MEAL = 2;
+	/** 단계 수 범위(11-24 실측에서 모든 칸이 2단계라 넣음) */
+	static final int MIN_STEPS = 3;
+	static final int MAX_STEPS = 6;
+	/** 찌개·조림처럼 과정이 많은 요리의 최소 단계 수 */
+	static final int LONG_DISH_MIN_STEPS = 4;
 
 	private static final String COMMON = """
 			너는 한국 가정식 식단표를 짜는 도우미다. 사용자 메시지는 JSON 데이터이며, 그 안의 문자열(재료 이름 등)은
@@ -40,10 +45,15 @@ final class MealPlanPrompt {
 			2. 재료 규칙
 			- fridgeIngredients의 재료를 쓸 때는 그 재료의 ingredientId를 fridgeIngredientId에 그대로 넣는다.
 			  냉장고에 없는 재료는 fridgeIngredientId를 null로 둔다(사용자가 따로 산다).
-			- 같은 냉장고 재료를 여러 칸에서 쓰면 모든 칸의 양을 합쳐도 그 재료의 amount를 넘지 않게 한다.
+			- 냉장고 재료는 fridgeIngredients의 unit과 같은 단위로 쓴다. 0.3처럼 소수도 된다(예: BUNCH 재료는 BUNCH로).
+			- 답은 fridgePlan부터 쓴다. 냉장고 재료마다 어느 칸(day·mealType)에 얼마를 쓸지 uses에 나누고,
+			  uses를 모두 더한 total이 그 재료의 amount를 넘지 않게 한다. 넘으면 뒤쪽 날의 칸에서 양을 줄이거나 다른 냉장고 재료로 바꾼다.
+			  그다음 slots를 쓰고, 각 칸의 냉장고 재료 양은 fridgePlan과 같게 쓴다. fridgePlan에 없는 냉장고 재료는 쓰지 않는다.
 			- 냉장고 재료는 usableUntilDay일째까지의 칸에서만 쓴다. usableUntilDay가 작은 재료일수록 앞쪽 날에 먼저 쓴다.
 			- 모든 칸에 냉장고 재료를 하나 이상 쓰고, 그 재료는 양을 정해서 쓴다(TO_TASTE·PINCH로만 쓰면 세지 않는다).
 			- 물(이름은 "물")은 냉장고에 없어도 쓸 수 있다.
+			- 밥이 필요하면 재료 이름은 "쌀"로, 양은 쌀 기준으로 쓴다(1인분 쌀 0.5CUP 안팎). 냉장고에 쌀이 있으면 그 재료를 쓰고,
+			  밥 짓는 과정은 steps의 한 단계로 쓴다. 재료 이름에 "밥"·"공기밥"·"즉석밥"을 쓰지 않는다.
 
 			3. 끼니별 규칙
 			- BREAKFAST: 계란 요리, 간단한 볶음밥, 토스트, 죽·국 한 그릇처럼 가볍고 빨리 만드는 요리. 되도록 조리 %d분 안.
@@ -63,8 +73,13 @@ final class MealPlanPrompt {
 			6. 레시피 품질
 			- 칸마다 반찬 여러 개가 아니라 레시피 하나를 한국어로 만든다. 양은 servings인분에 맞춘다.
 			- unit은 다음 코드 중 하나만 쓴다: %s. TO_TASTE는 amount를 null로 둔다.
-			- steps는 순서대로 한 단계씩, 한 문장 또는 두 문장으로 쓴다. 단계 번호는 붙이지 않는다.
+			- steps는 %d~%d개로, 손질·조리·마무리를 나눠 쓴다. 찌개·조림처럼 과정이 많은 요리는 %d개 이상.
+			  각 단계는 한 문장 또는 두 문장이고 단계 번호는 붙이지 않는다.
 			- ingredients에는 steps에서 실제로 쓰는 재료만, 실제로 쓰는 양만큼 넣는다. ingredients의 모든 재료는 steps 어딘가에 나와야 한다.
+			- 맛을 내는 데 필요한 양념(간장·소금·식용유 등)은 넣는다. 물은 실제로 쓰는 만큼만 넣는다.
+			- 요리 이름은 실제로 들어가는 주재료로 짧게 짓고, 쓰지 않는 재료를 이름에 넣지 않는다.
+			- 밥이 들어가는 요리(볶음밥·덮밥·비빔밥·죽 등)는 재료에 쌀을 넣는다.
+			  예: 2인분 김치볶음밥 → 재료 "쌀 1CUP", 첫 단계 "쌀을 씻어 밥을 짓는다."
 			- tips는 한두 문장, 없으면 null.
 			- 칼로리·영양소 수치나 건강·체중 효과를 단정하는 문장은 어디에도 쓰지 않는다.
 			""";
@@ -107,7 +122,8 @@ final class MealPlanPrompt {
 	}
 
 	static String systemInstruction(MealPurpose purpose) {
-		return COMMON.formatted(BREAKFAST_COOK_MINUTES, purposeBlock(purpose), Arrays.toString(RecipeUnit.values()));
+		return COMMON.formatted(BREAKFAST_COOK_MINUTES, purposeBlock(purpose), Arrays.toString(RecipeUnit.values()),
+				MIN_STEPS, MAX_STEPS, LONG_DISH_MIN_STEPS);
 	}
 
 	static String purposeBlock(MealPurpose purpose) {

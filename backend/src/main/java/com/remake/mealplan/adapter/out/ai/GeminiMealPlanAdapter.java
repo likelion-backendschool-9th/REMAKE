@@ -26,6 +26,7 @@ import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.mealplan.application.port.out.GenerateMealPlanAiPort;
 import com.remake.mealplan.application.port.out.GeneratedMealSlot;
+import com.remake.mealplan.application.port.out.MealPlanAiBusyException;
 import com.remake.mealplan.application.port.out.MealPlanAiRequest;
 import com.remake.mealplan.domain.FridgeStock;
 import com.remake.mealplan.domain.MealSchedule;
@@ -54,6 +55,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 
 	private static final int AMOUNT_SCALE = 3;
+	private static final int SERVICE_UNAVAILABLE = 503;
 
 	private final RestClient restClient;
 	private final GeminiProperties properties;
@@ -89,6 +91,10 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 		} catch (RestClientResponseException e) {
 			// 공급자 응답 본문(에러 문구)은 남기지 않는다. 상태 코드만 남긴다.
 			log.warn("Gemini 식단표 호출 실패: status={}", e.getStatusCode().value());
+			if (e.getStatusCode().value() == SERVICE_UNAVAILABLE) {
+				// 과부하로 잠시 거절. 서버 작업이 쉬었다가 더 시도한다
+				throw new MealPlanAiBusyException();
+			}
 			throw new BusinessException(ErrorCode.AI_UPSTREAM_ERROR);
 		} catch (ResourceAccessException e) {
 			if (isTimeout(e)) {
@@ -288,18 +294,45 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 		return ChronoUnit.DAYS.between(startDate, date) + 1;
 	}
 
-	/** Gemini 응답 스키마(OpenAPI 부분집합). parse가 읽는 모양과 같다. */
+	/** 끼니 코드 목록(스키마 enum) */
+	private static final List<String> MEAL_TYPES = Arrays.stream(MealType.values()).map(Enum::name).toList();
+
+	/**
+	 * 냉장고 재료 배분표. 칸을 쓰기 전에 재료별로 어느 칸에 얼마를 쓸지 먼저 쓰게 해 합계 초과를 줄인다
+	 * (11-24 실측: 지시 문장만으로는 계란 12~19개/10개처럼 합계가 넘쳐 3일 안팎에서 잘림). 서버는 읽지 않는다(자르기가 최종 판단).
+	 */
+	private static final Map<String, Object> FRIDGE_PLAN_SCHEMA = Map.of(
+			"type", "ARRAY",
+			"items", Map.of(
+					"type", "OBJECT",
+					"properties", Map.of(
+							"ingredientId", Map.of("type", "INTEGER"),
+							"uses", Map.of(
+									"type", "ARRAY",
+									"items", Map.of(
+											"type", "OBJECT",
+											"properties", Map.of(
+													"day", Map.of("type", "INTEGER"),
+													"mealType", Map.of("type", "STRING", "enum", MEAL_TYPES),
+													"amount", Map.of("type", "NUMBER")),
+											"required", List.of("day", "mealType", "amount"))),
+							"total", Map.of("type", "NUMBER")),
+					"propertyOrdering", List.of("ingredientId", "uses", "total"),
+					"required", List.of("ingredientId", "uses", "total")));
+
+	/** Gemini 응답 스키마(OpenAPI 부분집합). 배분표(fridgePlan)를 먼저, 칸(slots)을 나중에 쓰게 한다. parse는 slots만 읽는다. */
 	static final Map<String, Object> RESPONSE_SCHEMA = Map.of(
 			"type", "OBJECT",
+			"propertyOrdering", List.of("fridgePlan", "slots"),
 			"properties", Map.of(
+					"fridgePlan", FRIDGE_PLAN_SCHEMA,
 					"slots", Map.of(
 							"type", "ARRAY",
 							"items", Map.of(
 									"type", "OBJECT",
 									"properties", Map.of(
 											"day", Map.of("type", "INTEGER"),
-											"mealType", Map.of("type", "STRING", "enum",
-													Arrays.stream(MealType.values()).map(Enum::name).toList()),
+											"mealType", Map.of("type", "STRING", "enum", MEAL_TYPES),
 											"title", Map.of("type", "STRING"),
 											"cookMinutes", Map.of("type", "INTEGER"),
 											"tips", Map.of("type", "STRING", "nullable", true),
@@ -310,7 +343,8 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 															"properties", Map.of(
 																	"fridgeIngredientId",
 																	Map.of("type", "INTEGER", "nullable", true),
-																	"name", Map.of("type", "STRING"),
+																	"name", Map.of("type", "STRING", "description",
+																			"재료 이름. 밥이 필요하면 \"밥\"이 아니라 \"쌀\"로 쓴다"),
 																	"amount", Map.of("type", "NUMBER", "nullable", true),
 																	"unit", Map.of("type", "STRING", "enum",
 																			Arrays.stream(RecipeUnit.values())
@@ -319,7 +353,7 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 											"steps", Map.of("type", "ARRAY", "items", Map.of("type", "STRING"))),
 									"required", List.of("day", "mealType", "title", "cookMinutes", "ingredients",
 											"steps")))),
-			"required", List.of("slots"));
+			"required", List.of("fridgePlan", "slots"));
 
 	private static BusinessException invalid() {
 		return new BusinessException(ErrorCode.AI_INVALID_RESPONSE);

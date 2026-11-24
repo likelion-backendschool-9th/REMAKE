@@ -36,6 +36,7 @@ import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.mealplan.application.port.out.GeneratedMealSlot;
+import com.remake.mealplan.application.port.out.MealPlanAiBusyException;
 import com.remake.mealplan.application.port.out.MealPlanAiRequest;
 import com.remake.mealplan.domain.FridgeStock;
 import com.remake.mealplan.domain.MealPurpose;
@@ -89,7 +90,8 @@ class GeminiMealPlanAdapterTest {
 	}
 
 	private static final String PLAN_JSON = """
-			{"slots": [
+			{"fridgePlan": [{"ingredientId": 31, "uses": [{"day": 1, "mealType": "DINNER", "amount": 200}], "total": 200}],
+			 "slots": [
 			  {"day": 1, "mealType": "DINNER", "title": "버섯 돼지고기 볶음", "cookMinutes": 20, "tips": null,
 			   "ingredients": [
 			     {"fridgeIngredientId": 31, "name": "버섯", "amount": 200, "unit": "G"},
@@ -151,6 +153,7 @@ class GeminiMealPlanAdapterTest {
 				.andExpect(content().string(allOf(
 						containsString("\"responseMimeType\":\"application/json\""),
 						containsString("\"responseSchema\""),
+						containsString("\"propertyOrdering\":[\"fridgePlan\",\"slots\"]"),
 						containsString("장보기를 줄이는 식단"),
 						containsString("끼니당 2개"),
 						not(containsString("가벼운 식단")),
@@ -172,7 +175,8 @@ class GeminiMealPlanAdapterTest {
 			assertThat(instruction).contains(MealPlanPrompt.purposeBlock(purpose));
 			Arrays.stream(MealPurpose.values()).filter(other -> other != purpose).forEach(other -> assertThat(instruction)
 					.doesNotContain(MealPlanPrompt.purposeBlock(other).lines().findFirst().orElseThrow()));
-			assertThat(instruction).contains("excludedAllergenCodes", "TO_TASTE", "조리 15분 안");
+			assertThat(instruction).contains("excludedAllergenCodes", "TO_TASTE", "조리 15분 안", "steps는 3~6개",
+					"unit과 같은 단위", "fridgePlan부터", "\"쌀\"");
 		}
 	}
 
@@ -182,6 +186,17 @@ class GeminiMealPlanAdapterTest {
 				.body("{\"error\":{\"message\":\"Resource has been exhausted\"}}"));
 
 		assertError(ErrorCode.AI_UPSTREAM_ERROR);
+	}
+
+	@Test
+	void 과부하_503은_따로_구분하고_오류_코드는_공급자_오류다() {
+		server.expect(requestTo(ENDPOINT)).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE)
+				.body("{\"error\":{\"status\":\"UNAVAILABLE\"}}"));
+
+		assertThatThrownBy(() -> adapter.generate(request()))
+				.isInstanceOfSatisfying(MealPlanAiBusyException.class,
+						e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.AI_UPSTREAM_ERROR));
+		server.verify();
 	}
 
 	@Test

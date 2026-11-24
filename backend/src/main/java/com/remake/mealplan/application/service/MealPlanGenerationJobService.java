@@ -2,6 +2,7 @@ package com.remake.mealplan.application.service;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Arrays;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.convert.DurationStyle;
 import org.springframework.stereotype.Service;
 
 import com.remake.global.error.BusinessException;
@@ -23,6 +25,7 @@ import com.remake.mealplan.application.port.in.RunMealPlanGenerationUseCase;
 import com.remake.mealplan.application.port.out.GenerateMealPlanAiPort;
 import com.remake.mealplan.application.port.out.GeneratedMealSlot;
 import com.remake.mealplan.application.port.out.LoadMealPlanPort;
+import com.remake.mealplan.application.port.out.MealPlanAiBusyException;
 import com.remake.mealplan.application.port.out.LoadMealPlanSlotPort;
 import com.remake.mealplan.application.port.out.MealPlanAiRequest;
 import com.remake.mealplan.domain.AllocatedSlot;
@@ -52,6 +55,9 @@ import lombok.extern.slf4j.Slf4j;
  * <p>어떤 실패든 FAILED + 실패 알림으로 끝내고 예외를 밖으로 던지지 않는다. 실패하면 기존 식단과 횟수는 그대로다.
  * <p>AI 응답은 GeneratedMealPlanValidator로 검사하고, AI 오류(연결·시간 초과·응답 이상)면 한 번 더 부른다
  * (domain-rules "AI retries once automatically", 레시피 생성과 같은 기준).
+ * 공급자 과부하(MealPlanAiBusyException, Gemini 503)만은 쉬는 시간을 3초부터 30초까지 늘려 가며 9번 더 부른다(총 10번, 약 3분).
+ * 짧은 간격으로 계속 부르면 무료 분당 한도(레시피 생성과 같은 키)를 빨리 쓰므로 간격을 늘린다.
+ * 서버 작업이라 사용자가 기다리지 않고, 11-24 실측에서 503이 잦았지만 잠시 뒤 성공했기 때문이다(문서 규칙과 다른 제안).
  */
 @Slf4j
 @Service
@@ -59,8 +65,6 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 
 	static final String NO_INGREDIENTS_CODE = "MEAL_PLAN_NO_INGREDIENTS";
 	static final String UNEXPECTED_CODE = "INTERNAL_ERROR";
-	/** 첫 호출 + 재시도 1회 */
-	static final int MAX_AI_ATTEMPTS = 2;
 	private static final Set<ErrorCode> RETRYABLE = Set.of(ErrorCode.AI_UPSTREAM_ERROR, ErrorCode.AI_TIMEOUT,
 			ErrorCode.AI_INVALID_RESPONSE);
 
@@ -73,12 +77,14 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 	private final MealPlanResultWriter resultWriter;
 	private final Clock clock;
 	private final Duration retryDelay;
+	private final List<Duration> busyRetryDelays;
 
 	public MealPlanGenerationJobService(LoadMealPlanPort loadMealPlanPort, LoadMealPlanSlotPort loadMealPlanSlotPort,
 			GetFridgeUseCase getFridgeUseCase, GetRecipeIngredientsUseCase getRecipeIngredientsUseCase,
 			GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase,
 			GenerateMealPlanAiPort generateMealPlanAiPort, MealPlanResultWriter resultWriter, Clock clock,
-			@Value("${remake.meal-plan.ai-retry-delay:1500ms}") Duration retryDelay) {
+			@Value("${remake.meal-plan.ai-retry-delay:1500ms}") Duration retryDelay,
+			@Value("${remake.meal-plan.ai-busy-retry-delays:3s,5s,10s,15s,20s,30s,30s,30s,30s}") String busyRetryDelays) {
 		this.loadMealPlanPort = loadMealPlanPort;
 		this.loadMealPlanSlotPort = loadMealPlanSlotPort;
 		this.getFridgeUseCase = getFridgeUseCase;
@@ -88,6 +94,9 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 		this.resultWriter = resultWriter;
 		this.clock = clock;
 		this.retryDelay = retryDelay;
+		this.busyRetryDelays = Arrays.stream(busyRetryDelays.split(","))
+				.map(value -> DurationStyle.detectAndParse(value.strip()))
+				.toList();
 	}
 
 	@Override
@@ -172,33 +181,40 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 				trim.shortages().size(), replacedSlotIds);
 	}
 
-	/** AI를 부르고 검사한다. AI 오류면 쉬었다가 한 번 더 부르고, 두 번 다 실패하면 마지막 오류를 던진다. */
+	/**
+	 * AI를 부르고 검사한다. 과부하면 busyRetryDelays만큼 쉬며 다시 부르고, 다른 AI 오류는 retryDelay 뒤 한 번만 다시 부른다.
+	 * 더 시도할 수 없으면 마지막 오류를 던진다.
+	 */
 	private List<GeneratedMealSlot> generateWithRetry(Long mealPlanId, MealSchedule schedule,
 			MealPlanAiRequest request) {
-		BusinessException last = null;
-		for (int attempt = 1; attempt <= MAX_AI_ATTEMPTS; attempt++) {
+		int busyRetries = 0;
+		boolean retriedOnce = false;
+		for (int attempt = 1;; attempt++) {
 			try {
 				return GeneratedMealPlanValidator.validate(schedule, generateMealPlanAiPort.generate(request));
-			} catch (BusinessException e) {
-				if (!RETRYABLE.contains(e.getErrorCode())) {
+			} catch (MealPlanAiBusyException e) {
+				log.info("식단표 AI 과부하({}회차) mealPlanId={}", attempt, mealPlanId);
+				if (busyRetries >= busyRetryDelays.size()) {
 					throw e;
 				}
-				last = e;
-				log.info("식단표 AI 실패({}회차) mealPlanId={} code={}", attempt, mealPlanId, e.getErrorCode());
-				if (attempt < MAX_AI_ATTEMPTS) {
-					pause();
+				pause(busyRetryDelays.get(busyRetries++));
+			} catch (BusinessException e) {
+				if (!RETRYABLE.contains(e.getErrorCode()) || retriedOnce) {
+					throw e;
 				}
+				log.info("식단표 AI 실패({}회차) mealPlanId={} code={}", attempt, mealPlanId, e.getErrorCode());
+				retriedOnce = true;
+				pause(retryDelay);
 			}
 		}
-		throw last;
 	}
 
-	private void pause() {
-		if (retryDelay.isZero()) {
+	private static void pause(Duration delay) {
+		if (delay.isZero()) {
 			return;
 		}
 		try {
-			Thread.sleep(retryDelay.toMillis());
+			Thread.sleep(delay.toMillis());
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			throw new BusinessException(ErrorCode.AI_UPSTREAM_ERROR);
