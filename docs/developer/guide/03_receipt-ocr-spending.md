@@ -55,6 +55,9 @@
 | 소비 패턴 범위 | 영수증 품목 + 영수증 없이 추가했고 가격이 있는 재료(등록일 기준). 가격이 없으면 냉장고에만 넣은 것으로 보고 뺌. 버린 재료도 이미 산 것이라 그대로 포함 | 확정 |
 | 카테고리 비율 | 12개 카테고리별 지출 비율을 막대 하나와 범례로, 지출 0인 카테고리는 빠짐 | 확정(피그마) / 0 제외는 제안 |
 | 날짜 선택 | 기본은 오늘(이번 달이 아니면 그 달 마지막 구매일). 소비가 없으면 "해당 날짜에는 소비가 없습니다" | 확정(피그마) / 기본 날짜는 제안 |
+| 주 넘기기 | 월~일 날짜 줄을 좌우로 밀어(캐러셀) 고른 달의 앞·뒤 주로 넘김. 고른 달 밖의 날과 오늘 뒤의 날은 고를 수 없음 | 확정(11/25) / 고를 수 없는 날은 제안 |
+| 평균 차이 표기 | "평균보다 N만원 더(덜) 지출": 1만원 이상은 만원 단위로 반올림, 그 밑은 원 단위. 차이가 0이면 "평균과 같게 지출" | 확정(11/25) / 0일 때 문구는 제안 |
+| 버린 식비 | 나의 소비 위쪽 "N월 버린 식비 N원"을 누르면 버린 식재료(p3.4.1): "N월에 버린 식재료" 금액(가격 있는 재료만), "가격을 넣은 재료만 금액에 더해져요", 버린 재료 행(카테고리 이미지·이름·"M월 D일 버림"·금액 또는 "가격 없음"), 최근에 버린 것부터 | 확정(11/25) / API는 제안(#248) |
 | 자주 산 품목·구매 주기 | 없음 | 확정 |
 
 ## API
@@ -63,13 +66,14 @@
 
 | 번호 | 메서드 | 경로 | 설명 | 요청 | 응답 | 관련 테이블 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 20 | POST | `/user/receipts/scan` | OCR 분석만 하고 저장하지 않음(11/20 결정). 동기 처리. 식재료만 돌려줌. 식재료가 하나도 없거나 구매일이 6개월 지난 영수증은 실패로 돌려주고 OCR 실패 화면(추가될 페이지 4번)에서 보여줌(에러 정의서 답 4). 이미 등록한 영수증(판매처(지점명)·영수증 번호·구매 시각이 모두 같은 영수증(번호를 못 읽었으면 판매처·구매일·식재료 이름 목록, 시각을 못 읽었으면 구매일로 비교))도 같은 화면에서 실패로 보여줌(정책 답 8·10) | `multipart image(jpg·png·heic, 10MB)` | `200 { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount, unit, price, expirationDate }] }` | receipts(중복 확인만) |
+| 20 | POST | `/user/receipts/scan` | OCR 분석만 하고 저장하지 않음(11/20 결정). 동기 처리. 식재료만 돌려줌. 식재료가 하나도 없거나 구매일이 6개월 지난 영수증은 실패로 돌려주고 OCR 실패 화면(추가될 페이지 4번)에서 보여줌(에러 정의서 답 4). 이미 등록한 영수증(판매처(지점명)·영수증 번호·구매 시각이 모두 같은 영수증(번호를 못 읽었으면 판매처·구매일·식재료 이름 목록, 시각을 못 읽었으면 구매일로 비교))도 같은 화면에서 실패로 보여줌(정책 답 8·10). 품목마다 `dDay`·`status`를 API 12와 같은 뜻으로 서버가 계산해 줌. 프론트는 보여 주기만 함(11/25, #249) | `multipart image(jpg·png·heic, 10MB)` | `200 { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount, unit, price, expirationDate, dDay, status }] }` | receipts(중복 확인만) |
 | 21 | POST | `/user/receipts` | 영수증·품목·냉장고 재료를 한 번에 저장. 단위는 서버가 재료명으로 정함(ERD 답 5). 선택한 장바구니 행만 실제 등록량 이내·동일 단위로 차감(#57). 건너뛰면 유지하며 0이 된 행만 삭제. 6개월 지난 영수증은 등록 불가(11/20 결정). 이미 등록한 영수증이면 한 번 더 막음(정책 답 8·10) | `multipart image + payload { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount, price, expirationDate, cartDeductions?: [{ cartItemId, amount }] }] }` | `201 { receiptId, ingredientCount, cartRemovedCount }` | receipts, receipt_items, ingredients, cart_items |
 | 22 | GET | `/user/receipts` | 그 달 영수증. 월 합계는 영수증 품목만, 평균은 최근 6개월 월 합계 평균 | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, weeks: [{ label, startDate, endDate, totalAmount, receipts: [{ id, storeCode, storeName, purchasedOn, itemCount, totalAmount }] }] }` | receipts, receipt_items |
 | 23 | GET | `/user/receipts/{id}` | 영수증 하나 | `-` | `200 { id, storeCode, storeName, purchasedOn, imageUrl, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }], totalAmount }` | receipts, receipt_items |
 | 24 | DELETE | `/user/receipts/{id}` | 영수증·품목·이미지 삭제. 식비·소비 패턴에서도 빠지고 냉장고 재료는 남음(ERD 답 1) | `-` | `204` | receipts, receipt_items, ingredients |
-| 25 | GET | `/user/expenses/patterns` | 그 달 소비. 영수증 품목 + 영수증 없이 가격을 넣은 재료(등록일 기준, ERD 답 3) | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | receipt_items, ingredients |
+| 25 | GET | `/user/expenses/patterns` | 그 달 소비. 영수증 품목 + 영수증 없이 가격을 넣은 재료(등록일 기준, ERD 답 3). `discardedAmount`는 그 달 버린 금액(`ingredient_logs.cost_amount` 합계, 11/25 제안, #248) | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, discardedAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | receipt_items, ingredients |
 | 26 | GET | `/user/expenses/daily-items` | 고른 날의 품목 | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | receipt_items, ingredients |
+| 61 | GET | `/user/expenses/discarded` | (11/25 제안, #248) p3.4.1 버린 식재료. 그 달 `DISCARDED` 기록 하나당 한 줄, 최근에 버린 것부터. `discardedOn`은 버린 날(KST), `amount`는 `cost_amount`(가격이 없으면 null), `totalAmount`는 null이 아닌 금액의 합으로 API 25 `discardedAmount`와 같음. 기록이 없는 달은 200 + 빈 목록 | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, items: [{ name, categoryCode, discardedOn, amount }] }` | ingredient_logs |
 
 등록한 영수증을 고치는 API는 없어요. 이전의 `GET /user/expenses/monthly`·`/monthly/analysis`는 API 22·25에 합쳤어요.
 
@@ -113,8 +117,8 @@
 | E31 | `receipt_scan_failed` | OCR이 실패했을 때(영수증 아님, OCR 오류·시간 초과, 식재료 없음, 6개월 지남, 이미 등록한 영수증) | error_code, duration_ms | BE | P0 | 20 영수증 스캔 |
 | E32 | `receipt_item_edited` | OCR 재료 수정 화면에서 품목을 고쳤을 때(항목마다 1건) | item_index, edit_field | FE | P0 | 56 POST /user/events(프론트 전송) |
 | E33 | `receipt_item_added_manually` | OCR 결과에서 빠진 품목을 직접 추가했을 때 | 공통 속성만 | FE | P1 | 56 POST /user/events(프론트 전송) |
-| E34 | `receipt_saved` | "식재료 N개 등록 하기"로 영수증이 저장됐을 때 | receipt_id, registered_count, ocr_item_count, edited_item_count, added_item_count, duration_sec, food_total_amount, cart_removed_count | BE | P0 | 21 영수증 등록 |
-| E76 | `receipt_result_abandoned` | OCR 결과 화면에서 등록하지 않고 나갔을 때(뒤로·닫기·앱 종료 직전). 등록 전 결과는 서버에 저장하지 않아 OCR 정확도를 이것으로 잼 | ocr_item_count, edited_item_count, added_item_count | FE | P0 | 56 POST /user/events(프론트 전송) |
+| E34 | `receipt_saved` | "식재료 N개 등록 하기"로 영수증이 저장됐을 때 | receipt_id, registered_count, ocr_item_count, edited_item_count, deleted_item_count, added_item_count, duration_sec, food_total_amount, cart_removed_count | BE | P0 | 21 영수증 등록 |
+| E76 | `receipt_result_abandoned` | OCR 결과 화면에서 등록하지 않고 나갔을 때(뒤로·닫기·앱 종료 직전). 등록 전 결과는 서버에 저장하지 않아 OCR 정확도를 이것으로 잼 | ocr_item_count, edited_item_count, deleted_item_count, added_item_count | FE | P0 | 56 POST /user/events(프론트 전송) |
 | E35 | `receipt_list_viewed` | 영수증 화면이 열리거나 달을 바꿨을 때 | month_offset, has_comparison | FE | P1 | 56 POST /user/events(프론트 전송) |
 | E36 | `receipt_detail_viewed` | 영수증 상세가 열릴 때 | 공통 속성만 | FE | P2 | 56 POST /user/events(프론트 전송) |
 | E37 | `receipt_deleted` | 영수증 삭제 모달에서 삭제했을 때 | 공통 속성만 | FE | P1 | 56 POST /user/events(프론트 전송) |

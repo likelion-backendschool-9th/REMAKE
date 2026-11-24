@@ -1,6 +1,14 @@
 // p3(영수증) 화면 상태 목록. /dev/p3이 이 순서로 목록을 보이고, /dev/p3/[state]가 하나를 그린다.
 // 상태를 더하면 여기에 한 줄 추가한다(blueprint §3.1 7번). 실제 라우트는 컨테이너 기본값(불러오는 중)을 쓰고, 마크업 확인용 값은 여기서만 넘긴다.
 
+import { PatternsContainer } from "../../../user/receipt/patterns/_components/PatternsContainer/PatternsContainer";
+import {
+  SAMPLE_DAILY_ITEMS,
+  SAMPLE_DISCARDED,
+  SAMPLE_EMPTY_DAY,
+  SAMPLE_PATTERN,
+} from "../../../user/receipt/patterns/_lib/patterns";
+import { DiscardedContainer } from "../../../user/receipt/patterns/discarded/_components/DiscardedContainer/DiscardedContainer";
 import { ReceiptsContainer } from "../../../user/receipt/receipts/_components/ReceiptsContainer/ReceiptsContainer";
 import {
   SAMPLE_RECEIPT_DETAIL,
@@ -18,6 +26,8 @@ const DETAIL_ROUTE = "/user/receipt/receipts/[id]";
 const RESULT_ROUTE = "/user/receipt/scan/result";
 const ITEM_EDIT_ROUTE = "/user/receipt/scan/items/[index]/edit";
 const ITEM_ADD_ROUTE = "/user/receipt/scan/items/new";
+const PATTERNS_ROUTE = "/user/receipt/patterns";
+const DISCARDED_ROUTE = "/user/receipt/patterns/discarded";
 /** 피그마 p3.3.1처럼 재료명을 우둔살로 바꾼 상태 */
 const EDITED_DRAFT = { ...SAMPLE_SCAN_EDIT_ITEM, name: "우둔살" };
 
@@ -159,4 +169,38 @@ export const P3_STATES: PreviewState[] = [
     route: ITEM_ADD_ROUTE,
     render: () => <ReceiptItemAddContainer initialSheet={sheet} />,
   })),
+  {
+    slug: "patterns",
+    label: "p3.4-소비 패턴",
+    route: PATTERNS_ROUTE,
+    render: () => (
+      <PatternsContainer pattern={SAMPLE_PATTERN} dayItems={SAMPLE_DAILY_ITEMS} today={TODAY} />
+    ),
+  },
+  {
+    slug: "patterns-empty",
+    label: "p3.4-소비 패턴-빈 리스트",
+    route: PATTERNS_ROUTE,
+    render: () => (
+      <PatternsContainer pattern={SAMPLE_PATTERN} dayItems={SAMPLE_EMPTY_DAY} today={TODAY} />
+    ),
+  },
+  {
+    slug: "patterns-skeleton",
+    label: "p3.4-소비 패턴-스켈레톤 (실제 라우트 처음 상태)",
+    route: PATTERNS_ROUTE,
+    render: () => <PatternsContainer today={TODAY} />,
+  },
+  {
+    slug: "discarded",
+    label: "p3.4.1-이번 달 버린 식재료",
+    route: DISCARDED_ROUTE,
+    render: () => <DiscardedContainer discarded={SAMPLE_DISCARDED} />,
+  },
+  {
+    slug: "discarded-skeleton",
+    label: "p3.4.1-이번 달 버린 식재료-불러오는 중 (피그마 없음)",
+    route: DISCARDED_ROUTE,
+    render: () => <DiscardedContainer />,
+  },
 ];
