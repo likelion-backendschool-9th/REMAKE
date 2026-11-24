@@ -1,6 +1,7 @@
 package com.remake.mealplan.application.service;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,9 +10,11 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.remake.global.error.BusinessException;
+import com.remake.global.error.ErrorCode;
 import com.remake.ingredient.application.port.in.GetFridgeUseCase;
 import com.remake.ingredient.domain.FridgeIngredient;
 import com.remake.ingredient.domain.Ingredient;
@@ -40,7 +43,6 @@ import com.remake.recipe.application.port.in.RecipeIngredientLine;
 import com.remake.user.application.port.in.GetUserGenerationPreferencesUseCase;
 import com.remake.user.domain.AllergenCode;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -48,14 +50,19 @@ import lombok.extern.slf4j.Slf4j;
  * (AI를 기다리는 동안 DB 연결을 잡고 있지 않게).
  *
  * <p>어떤 실패든 FAILED + 실패 알림으로 끝내고 예외를 밖으로 던지지 않는다. 실패하면 기존 식단과 횟수는 그대로다.
+ * <p>AI 응답은 GeneratedMealPlanValidator로 검사하고, AI 오류(연결·시간 초과·응답 이상)면 한 번 더 부른다
+ * (domain-rules "AI retries once automatically", 레시피 생성과 같은 기준).
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCase {
 
 	static final String NO_INGREDIENTS_CODE = "MEAL_PLAN_NO_INGREDIENTS";
 	static final String UNEXPECTED_CODE = "INTERNAL_ERROR";
+	/** 첫 호출 + 재시도 1회 */
+	static final int MAX_AI_ATTEMPTS = 2;
+	private static final Set<ErrorCode> RETRYABLE = Set.of(ErrorCode.AI_UPSTREAM_ERROR, ErrorCode.AI_TIMEOUT,
+			ErrorCode.AI_INVALID_RESPONSE);
 
 	private final LoadMealPlanPort loadMealPlanPort;
 	private final LoadMealPlanSlotPort loadMealPlanSlotPort;
@@ -65,6 +72,23 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 	private final GenerateMealPlanAiPort generateMealPlanAiPort;
 	private final MealPlanResultWriter resultWriter;
 	private final Clock clock;
+	private final Duration retryDelay;
+
+	public MealPlanGenerationJobService(LoadMealPlanPort loadMealPlanPort, LoadMealPlanSlotPort loadMealPlanSlotPort,
+			GetFridgeUseCase getFridgeUseCase, GetRecipeIngredientsUseCase getRecipeIngredientsUseCase,
+			GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase,
+			GenerateMealPlanAiPort generateMealPlanAiPort, MealPlanResultWriter resultWriter, Clock clock,
+			@Value("${remake.meal-plan.ai-retry-delay:1500ms}") Duration retryDelay) {
+		this.loadMealPlanPort = loadMealPlanPort;
+		this.loadMealPlanSlotPort = loadMealPlanSlotPort;
+		this.getFridgeUseCase = getFridgeUseCase;
+		this.getRecipeIngredientsUseCase = getRecipeIngredientsUseCase;
+		this.getUserGenerationPreferencesUseCase = getUserGenerationPreferencesUseCase;
+		this.generateMealPlanAiPort = generateMealPlanAiPort;
+		this.resultWriter = resultWriter;
+		this.clock = clock;
+		this.retryDelay = retryDelay;
+	}
 
 	@Override
 	public void run(MealPlanGenerationJob job) {
@@ -73,7 +97,7 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 		} catch (NoIngredientsException e) {
 			fail(job, MealPlanFailReason.NO_INGREDIENTS, NO_INGREDIENTS_CODE);
 		} catch (BusinessException e) {
-			// AI 포트가 던지는 AI_UPSTREAM_ERROR·AI_TIMEOUT·AI_INVALID_RESPONSE
+			// AI 포트·검사기가 던지는 AI_UPSTREAM_ERROR·AI_TIMEOUT·AI_INVALID_RESPONSE(재시도까지 실패)
 			log.warn("식단표 생성 실패 mealPlanId={} code={}", job.mealPlanId(), e.getErrorCode());
 			fail(job, MealPlanFailReason.GENERIC, e.getErrorCode().name());
 		} catch (RuntimeException e) {
@@ -122,7 +146,10 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 				.filter(slot -> !replaced.contains(slot.id()))
 				.toList();
 		StockLedger ledger = StockLedger.of(fridge, allocatedSlots(plan.userId(), remainingSlots), today);
-		List<FridgeStock> available = ledger.available();
+		// 시작일 전에 소비기한이 끝나는 재료는 식단표 어느 날에도 쓸 수 없어 보내지 않는다(usableUntilDay가 1 미만)
+		List<FridgeStock> available = ledger.available().stream()
+				.filter(stock -> !stock.expirationDate().isBefore(plan.startDate()))
+				.toList();
 		if (available.isEmpty()) {
 			throw new NoIngredientsException();
 		}
@@ -130,10 +157,9 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 		// 설정의 제외 재료(알레르기)는 항상 AI에 "쓰지 말 재료"로 보낸다(domain-rules 공통 규칙, #201과 같은 기준)
 		List<AllergenCode> excludedAllergens = getUserGenerationPreferencesUseCase.getPreferences(plan.userId())
 				.excludedAllergenCodes();
-		List<GeneratedMealSlot> generated = generateMealPlanAiPort
-				.generate(new MealPlanAiRequest(plan.purpose(), plan.servings(), schedule, available,
-						excludedAllergens))
-				.stream()
+		MealPlanAiRequest aiRequest = new MealPlanAiRequest(plan.purpose(), plan.servings(), schedule, available,
+				excludedAllergens);
+		List<GeneratedMealSlot> generated = generateWithRetry(plan.id(), schedule, aiRequest).stream()
 				.map(slot -> keepOwnFridgeIds(slot, fridge))
 				.toList();
 		TrimResult trim = MealPlanTrimmer.trim(schedule,
@@ -144,6 +170,39 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 
 		resultWriter.complete(job, slotsToSave(schedule, trim.generatedDays(), generated), trim.generatedDays(),
 				trim.shortages().size(), replacedSlotIds);
+	}
+
+	/** AI를 부르고 검사한다. AI 오류면 쉬었다가 한 번 더 부르고, 두 번 다 실패하면 마지막 오류를 던진다. */
+	private List<GeneratedMealSlot> generateWithRetry(Long mealPlanId, MealSchedule schedule,
+			MealPlanAiRequest request) {
+		BusinessException last = null;
+		for (int attempt = 1; attempt <= MAX_AI_ATTEMPTS; attempt++) {
+			try {
+				return GeneratedMealPlanValidator.validate(schedule, generateMealPlanAiPort.generate(request));
+			} catch (BusinessException e) {
+				if (!RETRYABLE.contains(e.getErrorCode())) {
+					throw e;
+				}
+				last = e;
+				log.info("식단표 AI 실패({}회차) mealPlanId={} code={}", attempt, mealPlanId, e.getErrorCode());
+				if (attempt < MAX_AI_ATTEMPTS) {
+					pause();
+				}
+			}
+		}
+		throw last;
+	}
+
+	private void pause() {
+		if (retryDelay.isZero()) {
+			return;
+		}
+		try {
+			Thread.sleep(retryDelay.toMillis());
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new BusinessException(ErrorCode.AI_UPSTREAM_ERROR);
+		}
 	}
 
 	/** 남긴 날들에서 새로 채울 칸(날짜·끼니 순). 자르기를 통과했으므로 모두 있다. */

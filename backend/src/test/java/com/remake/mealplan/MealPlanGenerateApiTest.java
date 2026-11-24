@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -19,6 +20,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.stubbing.Answer;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -57,13 +59,17 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 
 	/** 냉장고 재료(채소, 그램 단위, 기한 넉넉함). */
 	private Long fridgeGrams(Long userId, String name, int grams) {
+		return fridgeGrams(userId, name, grams, TODAY.plusDays(30));
+	}
+
+	private Long fridgeGrams(Long userId, String name, int grams, LocalDate expirationDate) {
 		LocalDateTime now = LocalDateTime.now(clock);
 		return jdbcTemplate.queryForObject("""
 				INSERT INTO ingredients (user_id, category_id, name, storage, expiration_date, amount, initial_amount,
 				                         unit, price, created_at, updated_at)
 				VALUES (?, ?, ?, 'FRIDGE', ?, ?, ?, 'G', NULL, ?, ?)
 				RETURNING id
-				""", Long.class, userId, categoryId("VEGETABLE"), name, TODAY.plusDays(30), grams, grams, now, now);
+				""", Long.class, userId, categoryId("VEGETABLE"), name, expirationDate, grams, grams, now, now);
 	}
 
 	/** 이미 완성된 식단표 하나(칸은 따로 넣는다). */
@@ -95,7 +101,11 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 
 	/** AI 가짜: 요청한 칸마다 냉장고 재료 gramsEach와 냉장고에 없는 간장 1큰술을 쓰는 레시피. */
 	private void aiUses(Long fridgeId, int gramsEach) {
-		given(mealPlanAiAdapter.generate(any())).willAnswer(invocation -> {
+		given(mealPlanAiAdapter.generate(any())).willAnswer(everySlotUses(fridgeId, gramsEach));
+	}
+
+	private static Answer<List<GeneratedMealSlot>> everySlotUses(Long fridgeId, int gramsEach) {
+		return invocation -> {
 			MealPlanAiRequest request = invocation.getArgument(0);
 			List<GeneratedMealSlot> slots = new ArrayList<>();
 			for (LocalDate date : request.schedule().dates()) {
@@ -107,7 +117,7 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 				}
 			}
 			return slots;
-		});
+		};
 	}
 
 	private Map<String, Object> mealPlan(Long id) {
@@ -372,16 +382,68 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void AI가_하루도_못_채우면_재료_부족으로_실패한다() throws Exception {
+	void AI가_첫날부터_냉장고_재료를_넘게_쓰면_다시_부르지_않고_재료_부족으로_실패한다() throws Exception {
 		Long userId = createUser();
-		fridgeGrams(userId, "대파", 1000);
-		// AI 가짜를 stub하지 않으면 빈 목록을 돌려준다
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		aiUses(fridgeId, 2000);
 
 		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
 		awaitMealPlanJobs();
 
+		verify(mealPlanAiAdapter, times(1)).generate(any());
 		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "FAILED");
 		assertThat(eventProperty("meal_plan_generate_failed", "error_code")).isEqualTo("MEAL_PLAN_NO_INGREDIENTS");
+	}
+
+	@Test
+	void AI가_칸을_빠뜨리면_한_번_더_불러_두_번째_응답으로_만든다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		given(mealPlanAiAdapter.generate(any())).willReturn(List.of()).willAnswer(everySlotUses(fridgeId, 100));
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(2)).generate(any());
+		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "COMPLETED").containsEntry("generated_days", 5);
+	}
+
+	@Test
+	void AI가_두_번_다_칸이_망가지면_AI_INVALID_RESPONSE로_실패하고_횟수는_그대로다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		// 칸은 다 있지만 첫날 레시피의 단계가 비어 있다(칸 하나만 망가져도 응답 전체가 실패)
+		given(mealPlanAiAdapter.generate(any())).willAnswer(invocation -> {
+			List<GeneratedMealSlot> slots = new ArrayList<>(everySlotUses(fridgeId, 100).answer(invocation));
+			GeneratedMealSlot first = slots.getFirst();
+			slots.set(0, new GeneratedMealSlot(first.date(), first.mealType(), first.title(), first.cookMinutes(),
+					first.tips(), first.ingredients(), List.of()));
+			return slots;
+		});
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(2)).generate(any());
+		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "FAILED");
+		assertThat(count("SELECT COUNT(*) FROM recipes WHERE user_id = ?", userId)).isZero();
+		assertThat(count("SELECT COUNT(*) FROM usage_logs WHERE user_id = ?", userId)).isZero();
+		assertThat(eventProperty("meal_plan_generate_failed", "error_code")).isEqualTo("AI_INVALID_RESPONSE");
+	}
+
+	@Test
+	void 시작일_전에_소비기한이_끝나는_재료는_AI에_보내지_않는다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		fridgeGrams(userId, "버섯", 200, TODAY.plusDays(1));
+		aiUses(fridgeId, 100);
+
+		generate(userId, body(TODAY.plusDays(2), "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		ArgumentCaptor<MealPlanAiRequest> request = ArgumentCaptor.forClass(MealPlanAiRequest.class);
+		verify(mealPlanAiAdapter).generate(request.capture());
+		assertThat(request.getValue().ingredients()).extracting(FridgeStock::name).containsExactly("대파");
 	}
 
 	@Test
@@ -442,6 +504,7 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		generate(userId, body(TODAY, "[\"DINNER\"]", true)).andExpect(status().isAccepted());
 		awaitMealPlanJobs();
 
+		verify(mealPlanAiAdapter, times(2)).generate(any());
 		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "FAILED");
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", oldSlot)).isEqualTo(1);
 		assertThat(count("SELECT COUNT(*) FROM usage_logs WHERE user_id = ?", userId)).isZero();
