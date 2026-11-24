@@ -45,11 +45,20 @@ export function getNotificationHref(item: NotificationItem): string | null {
   return null;
 }
 
-/** 마크업 확인용 값(피그마 p6-알람과 같은 문구 + 식단표 알림 2개). 미리보기(app/dev)에서만 쓴다 */
+/** 마크업 확인용 값(피그마 p6-알람과 같은 문구 + 식단표 알림 3개, 그중 하나는 긴 완성 알림). 미리보기(app/dev)에서만 쓴다 */
 export function createSampleNotifications(now: Date): NotificationItem[] {
   const at = (daysAgo: number, hour: number) =>
     dayjs(now).subtract(daysAgo, "day").hour(hour).minute(0).second(0).toISOString();
   return [
+    {
+      // 재료가 부족해 일부 일수만 만든 완성 알림: 세 문장이 이어지는 긴 알림(domain-rules 5, 문구는 제안). 줄바꿈 확인용
+      id: 8,
+      type: "MEAL_PLAN_COMPLETED",
+      message:
+        "11월 24일부터 3일치 식단표가 완성됐어요. 재료가 부족해 3일치만 만들었어요. 부족한 재료 4개를 장바구니에 담았어요",
+      mealPlanId: 13,
+      createdAt: at(0, 10),
+    },
     {
       id: 7,
       type: "MEAL_PLAN_COMPLETED",
