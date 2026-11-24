@@ -107,4 +107,30 @@ class NotificationApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.content.length()").value(0))
 				.andExpect(jsonPath("$.totalElements").value(0));
 	}
+
+	@Test
+	void 목록은_페이징하고_다음_페이지가_있으면_hasNext다() throws Exception {
+		// EXPIRED는 회원·하루 1건 유니크라, 페이징용으로 서로 다른 날짜·타입을 쓴다.
+		LocalDateTime day0 = LocalDateTime.now(clock).minusDays(2);
+		LocalDateTime day1 = LocalDateTime.now(clock).minusDays(1);
+		LocalDateTime day2 = LocalDateTime.now(clock);
+		insertNotification(ME, "EXPIRED", "첫번째", day0, null);
+		insertNotification(ME, "EXPIRED", "두번째", day1, null);
+		insertNotification(ME, "MEAL_PLAN_FAILED", "세번째", day2, null);
+
+		mockMvc.perform(as(ME, get(BASE).param("page", "0").param("size", "2")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content.length()").value(2))
+				.andExpect(jsonPath("$.content[0].message").value("세번째"))
+				.andExpect(jsonPath("$.page").value(0))
+				.andExpect(jsonPath("$.size").value(2))
+				.andExpect(jsonPath("$.totalElements").value(3))
+				.andExpect(jsonPath("$.hasNext").value(true));
+
+		mockMvc.perform(as(ME, get(BASE).param("page", "1").param("size", "2")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.content.length()").value(1))
+				.andExpect(jsonPath("$.content[0].message").value("첫번째"))
+				.andExpect(jsonPath("$.hasNext").value(false));
+	}
 }
