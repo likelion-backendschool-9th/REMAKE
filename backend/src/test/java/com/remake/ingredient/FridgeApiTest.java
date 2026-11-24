@@ -19,14 +19,15 @@ import com.remake.support.IntegrationTestSupport;
 class FridgeApiTest extends IntegrationTestSupport {
 
 	private static final String URL = "/api/v1/user/ingredients";
-	private static final Long ME = 101L;
-	private static final Long OTHER = 102L;
 	private static final LocalDate TODAY = LocalDate.of(2026, 3, 4);
+
+	private Long me;
+	private Long other;
 
 	@BeforeEach
 	void setUpUsers() {
-		ensureUser(ME);
-		ensureUser(OTHER);
+		me = createUser();
+		other = createUser();
 	}
 
 	private MockHttpServletRequestBuilder as(Long userId, MockHttpServletRequestBuilder builder) {
@@ -45,10 +46,10 @@ class FridgeApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 재료가_없으면_빈_목록과_0_요약을_돌려준다() throws Exception {
-		mockMvc.perform(as(ME, get(URL)))
+		mockMvc.perform(as(me, get(URL)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.items.length()").value(0));
-		mockMvc.perform(as(ME, get(URL + "/summary")))
+		mockMvc.perform(as(me, get(URL + "/summary")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.total").value(0))
 				.andExpect(jsonPath("$.danger").value(0))
@@ -58,14 +59,14 @@ class FridgeApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 소비기한이_빠른_순으로_dDay와_상태를_붙여_돌려준다() throws Exception {
-		add(ME, "VEGETABLE", "여유", 10);
-		add(ME, "MEAT", "지남", -2);
-		add(ME, "DAIRY_EGG", "당일", 0);
-		add(ME, "FRUIT", "내일", 1);
-		add(ME, "FRUIT", "사흘뒤", 3);
-		add(ME, "FRUIT", "나흘뒤", 4);
+		add(me, "VEGETABLE", "여유", 10);
+		add(me, "MEAT", "지남", -2);
+		add(me, "DAIRY_EGG", "당일", 0);
+		add(me, "FRUIT", "내일", 1);
+		add(me, "FRUIT", "사흘뒤", 3);
+		add(me, "FRUIT", "나흘뒤", 4);
 
-		mockMvc.perform(as(ME, get(URL)))
+		mockMvc.perform(as(me, get(URL)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.items.length()").value(6))
 				.andExpect(jsonPath("$.items[0].name").value("지남"))
@@ -90,92 +91,92 @@ class FridgeApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 요약은_본인_재료만_세고_목록_상태와_같다() throws Exception {
-		add(ME, "MEAT", "지남", -1);
-		add(ME, "DAIRY_EGG", "당일", 0);
-		add(ME, "FRUIT", "내일", 1);
-		add(ME, "FRUIT", "사흘뒤", 3);
-		add(ME, "FRUIT", "나흘뒤", 4);
-		add(OTHER, "FRUIT", "남의것", 0);
+		add(me, "MEAT", "지남", -1);
+		add(me, "DAIRY_EGG", "당일", 0);
+		add(me, "FRUIT", "내일", 1);
+		add(me, "FRUIT", "사흘뒤", 3);
+		add(me, "FRUIT", "나흘뒤", 4);
+		add(other, "FRUIT", "남의것", 0);
 
-		mockMvc.perform(as(ME, get(URL + "/summary")))
+		mockMvc.perform(as(me, get(URL + "/summary")))
 				.andExpect(jsonPath("$.total").value(5))
 				.andExpect(jsonPath("$.danger").value(2))
 				.andExpect(jsonPath("$.soon").value(2))
 				.andExpect(jsonPath("$.ok").value(1));
-		mockMvc.perform(as(ME, get(URL)))
+		mockMvc.perform(as(me, get(URL)))
 				.andExpect(jsonPath("$.items.length()").value(5))
 				.andExpect(jsonPath("$.items[?(@.status=='DANGER')]", hasSize(2)));
 	}
 
 	@Test
 	void 다른_사용자의_재료는_목록에_나오지_않는다() throws Exception {
-		add(ME, "FRUIT", "사과", 5);
-		add(OTHER, "FRUIT", "남의것", 5);
+		add(me, "FRUIT", "사과", 5);
+		add(other, "FRUIT", "남의것", 5);
 
-		mockMvc.perform(as(ME, get(URL)))
+		mockMvc.perform(as(me, get(URL)))
 				.andExpect(jsonPath("$.items.length()").value(1))
 				.andExpect(jsonPath("$.items[0].name").value("사과"));
 	}
 
 	@Test
 	void 보관_위치와_카테고리로_거른다() throws Exception {
-		Long frozen = add(ME, "MEAT", "닭가슴살", 5);
+		Long frozen = add(me, "MEAT", "닭가슴살", 5);
 		jdbcTemplate.update("UPDATE ingredients SET storage = 'FREEZER' WHERE id = ?", frozen);
-		add(ME, "MEAT", "돼지고기", 6);
+		add(me, "MEAT", "돼지고기", 6);
 
-		mockMvc.perform(as(ME, get(URL).param("storage", "FREEZER")))
+		mockMvc.perform(as(me, get(URL).param("storage", "FREEZER")))
 				.andExpect(jsonPath("$.items.length()").value(1))
 				.andExpect(jsonPath("$.items[0].name").value("닭가슴살"));
-		mockMvc.perform(as(ME, get(URL).param("categoryCode", "MEAT")))
+		mockMvc.perform(as(me, get(URL).param("categoryCode", "MEAT")))
 				.andExpect(jsonPath("$.items.length()").value(2));
-		mockMvc.perform(as(ME, get(URL).param("categoryCode", "MEAT").param("storage", "FREEZER")))
+		mockMvc.perform(as(me, get(URL).param("categoryCode", "MEAT").param("storage", "FREEZER")))
 				.andExpect(jsonPath("$.items.length()").value(1));
 	}
 
 	@Test
 	void 상태_카드로_거르고_다른_필터와_함께_쓸_수_있다() throws Exception {
-		add(ME, "MEAT", "지남", -2);
-		add(ME, "FRUIT", "당일", 0);
-		add(ME, "FRUIT", "사흘뒤", 3);
-		add(ME, "VEGETABLE", "여유", 10);
+		add(me, "MEAT", "지남", -2);
+		add(me, "FRUIT", "당일", 0);
+		add(me, "FRUIT", "사흘뒤", 3);
+		add(me, "VEGETABLE", "여유", 10);
 
-		mockMvc.perform(as(ME, get(URL).param("status", "DANGER")))
+		mockMvc.perform(as(me, get(URL).param("status", "DANGER")))
 				.andExpect(jsonPath("$.items.length()").value(2))
 				.andExpect(jsonPath("$.items[0].name").value("지남"))
 				.andExpect(jsonPath("$.items[1].name").value("당일"));
-		mockMvc.perform(as(ME, get(URL).param("status", "SOON")))
+		mockMvc.perform(as(me, get(URL).param("status", "SOON")))
 				.andExpect(jsonPath("$.items.length()").value(1))
 				.andExpect(jsonPath("$.items[0].name").value("사흘뒤"));
-		mockMvc.perform(as(ME, get(URL).param("status", "OK")))
+		mockMvc.perform(as(me, get(URL).param("status", "OK")))
 				.andExpect(jsonPath("$.items.length()").value(1));
-		mockMvc.perform(as(ME, get(URL).param("status", "DANGER").param("categoryCode", "FRUIT")))
+		mockMvc.perform(as(me, get(URL).param("status", "DANGER").param("categoryCode", "FRUIT")))
 				.andExpect(jsonPath("$.items.length()").value(1))
 				.andExpect(jsonPath("$.items[0].name").value("당일"));
 	}
 
 	@Test
 	void 잘못된_필터_값은_INVALID_INPUT이다() throws Exception {
-		mockMvc.perform(as(ME, get(URL).param("storage", "ATTIC")))
+		mockMvc.perform(as(me, get(URL).param("storage", "ATTIC")))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
-		mockMvc.perform(as(ME, get(URL).param("status", "EXPIRED")))
+		mockMvc.perform(as(me, get(URL).param("status", "EXPIRED")))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
-		mockMvc.perform(as(ME, get(URL).param("categoryCode", "NOPE")))
+		mockMvc.perform(as(me, get(URL).param("categoryCode", "NOPE")))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
 	}
 
 	@Test
 	void 날짜가_지나면_같은_재료의_상태가_바뀐다() throws Exception {
-		add(ME, "FRUIT", "사과", 4);
-		mockMvc.perform(as(ME, get(URL))).andExpect(jsonPath("$.items[0].status").value("OK"));
+		add(me, "FRUIT", "사과", 4);
+		mockMvc.perform(as(me, get(URL))).andExpect(jsonPath("$.items[0].status").value("OK"));
 
 		clock.advance(Duration.ofDays(1));
 
-		mockMvc.perform(as(ME, get(URL)))
+		mockMvc.perform(as(me, get(URL)))
 				.andExpect(jsonPath("$.items[0].dDay").value(3))
 				.andExpect(jsonPath("$.items[0].status").value("SOON"));
-		mockMvc.perform(as(ME, get(URL + "/summary"))).andExpect(jsonPath("$.soon").value(1));
+		mockMvc.perform(as(me, get(URL + "/summary"))).andExpect(jsonPath("$.soon").value(1));
 	}
 }

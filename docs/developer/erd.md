@@ -37,7 +37,7 @@
 | 16 | `usage_logs` | 생성 횟수 사용 | 레시피·식단표 생성에 성공할 때만 한 줄. 남은 횟수 계산 원본 | 4 AI 레시피 | 김종수 | 5 |
 | 17 | `meal_plans` | 식단표 | 식단표 생성 요청 한 번과 그 결과(진행 중·완료·실패) | 5 주간 식단표 | 한윤수 | 9 |
 | 18 | `meal_plan_slots` | 식단 칸 | 날짜·끼니별 레시피 한 칸 | 5 주간 식단표 | 한윤수 | 8 |
-| 19 | `cart_items` | 장바구니 | 부족 재료 목록(공유 레시피 저장, 재료 보충으로 부족 재료가 들어간 내 레시피 저장, 식단표 생성 때 자동으로 담김) | 7 공유 공간·장바구니 | 최유리 | 9 |
+| 19 | `cart_items` | 장바구니 | 부족 재료 목록(공유 레시피 저장, 재료 보충으로 부족 재료가 들어간 내 레시피 저장, 식단표 생성 때 자동으로 담김) | 7 공유 공간·장바구니 | 최유리 | 10 |
 | 20 | `shared_recipes` | 공유 레시피 | 공유 공간에 올린 글(완전 익명) | 7 공유 공간·장바구니 | 최유리 | 7 |
 | 21 | `shared_recipe_reports` | 공유 레시피 신고 | 신고 한 건 | 7 공유 공간·장바구니 | 최유리 | 6 |
 | 22 | `shared_recipe_weekly_ranks` | 주간 순위 기록 | 지난주 최종 순위(순위 변동 ↑↓ 계산용) | 7 공유 공간·장바구니 | 최유리 | 6 |
@@ -80,6 +80,7 @@ erDiagram
   recipes ||--o{ meal_plan_slots : "recipe_id"
   users ||--o{ cart_items : "user_id"
   recipes |o--o{ cart_items : "recipe_id"
+  meal_plan_slots |o--o{ cart_items : "meal_plan_slot_id"
   ingredient_categories ||--o{ cart_items : "category_id"
   recipes ||--o{ shared_recipes : "recipe_id"
   shared_recipes ||--o{ shared_recipe_reports : "shared_recipe_id"
@@ -281,6 +282,7 @@ erDiagram
     bigint id PK
     bigint user_id FK
     bigint recipe_id FK
+    bigint meal_plan_slot_id FK
     bigint category_id FK
     varchar name
     numeric amount
@@ -647,6 +649,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `id` | bigint | PK |  | 아니오 |  | 고유 번호 |
 | `user_id` | bigint | FK | users | 아니오 |  | 회원 |
 | `recipe_id` | bigint | FK | recipes | 예 |  | 출처 레시피 |
+| `meal_plan_slot_id` | bigint | FK | meal_plan_slots | 예 |  | 최초 담기 식단 칸(#57). 배정 삭제 시 SET NULL로 연결만 비우고 레시피·장바구니 수량은 유지. 기존 장바구니 행을 재사용해도 출처를 바꾸지 않음 |
 | `category_id` | bigint | FK | ingredient_categories | 아니오 |  | 담을 때 추정한 카테고리(냉장고로 넘길 때 사용) |
 | `name` | varchar |  |  | 아니오 |  | 재료명 |
 | `amount` | numeric(10,3) |  |  | 아니오 |  | 수량 |
@@ -791,6 +794,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `recipes` | `meal_plan_slots` | recipe_id | 1:N | 아니오 | RESTRICT(레시피는 지우지 않음) |
 | `users` | `cart_items` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `recipes` | `cart_items` | recipe_id | 1:N | 예 | SET NULL |
+| `meal_plan_slots` | `cart_items` | meal_plan_slot_id | 1:N | 예 | SET NULL |
 | `ingredient_categories` | `cart_items` | category_id | 1:N | 아니오 | RESTRICT |
 | `recipes` | `shared_recipes` | recipe_id | 1:N | 아니오 | RESTRICT(레시피는 지우지 않음) |
 | `shared_recipes` | `shared_recipe_reports` | shared_recipe_id | 1:N | 아니오 | CASCADE |
@@ -836,7 +840,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | 영수증 등록 | OCR 결과는 등록 전에는 저장하지 않음. "식재료 N개 등록 하기" 때 receipts·receipt_items·ingredients를 한 번에 만듦 |
 | 중복 영수증 | 내 영수증 중 판매처(지점명)·영수증 번호·구매 시각이 모두 같은 영수증(번호를 못 읽었으면 판매처·구매일·식재료 이름 목록, 시각을 못 읽었으면 구매일로 비교)이 있으면 등록을 막음. 스캔 때 확인하고 등록 때 한 번 더 확인 |
 | 장바구니 → 냉장고 | 카테고리의 default_storage·default_shelf_life_days로 보관 위치·소비기한을 채우고 가격은 비움. 카테고리는 장바구니에 담을 때 이미 정해짐. 냉장고로 넘긴 항목은 cart_items에서 지움 |
-| 장바구니 자동 빼기 | 영수증 등록("식재료 N개 등록 하기") 때 등록한 재료와 이름이 같은 장바구니 항목을 지움 |
+| 영수증 장바구니 차감(#57) | 명시적으로 선택한 행만 최종 등록 재료명·동일 단위로 차감. 대상별 차감량을 합산하고 잔량 초과 시 거절하며, 0이 된 행만 삭제. 건너뛰면 유지. 영수증·냉장고 트랜잭션에 참여해 실패하면 모두 롤백 |
 | 식단 삭제·교체 | 삭제는 meal_plan_slots 행 삭제, 교체는 새 레시피를 만들어 recipe_id를 바꾸고 하루 레시피 생성 횟수 1회 차감(usage_logs RECIPE 한 줄). 오늘부터의 칸만, 지난 날짜 칸은 안 됨 |
 | 식단표 생성 | API 38이 시작일·횟수·겹침을 확인하고 `meal_plans`를 `GENERATING`으로 만든 뒤 202로 응답. 서버 작업이 칸과 장바구니를 채우고 `COMPLETED`로 바꾼 뒤 `usage_logs` 한 줄 차감, `MEAL_PLAN_COMPLETED` 알림을 만듦. 재료 부족·AI 오류·시간 초과면 `FAILED`, 차감 없음, `MEAL_PLAN_FAILED` 알림. 식단표 알림은 `notification_enabled`와 관계없이 만듦. 생성 중(`GENERATING`)에 다시 요청하면 `MEAL_PLAN_IN_PROGRESS`(409). `MEAL_PLAN_COMPLETED`는 `notifications.meal_plan_id`에 식단표를 연결(누르면 p5에서 시작일), `MEAL_PLAN_FAILED`는 생성 설정 화면으로. 실패 사유 칸은 두지 않음. 덮어쓸 때 겹치는 기존 칸은 작업이 완성될 때 지움(실패하면 기존 식단 유지). 보류(#144): 생성 중·실패 식단표를 달력(39)·겹침 검사에 넣을지 |
 | 식단표 덮어쓰기 | 시작일은 오늘부터만 고를 수 있어서 지난 날 식단은 바뀌지 않음. 새 식단표 기간과 겹치는 날짜의 기존 칸은 지움. 단 오늘 칸 중 이미 요리한 끼니(cooked_at 있음)는 그 레시피로 남기고 새 식단표가 채우지 않음. 지우는 시점은 접수가 아니라 생성 작업이 완성될 때 |
@@ -886,7 +890,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `meal_plans` | 유지 | - | - | 같은 구조 |
 | `meal_plan_slots` | 변경 | cooked_at | user_id, menu_name, source | user_id·menu_name·source 뺌. 칸은 항상 식단표 안에 있고 레시피 전체를 바로 만듦(직접 추가 칸 없음, ERD 답 8). meal_plan_id·recipe_id 필수. cooked_at 추가(요리한 칸은 덮어써도 남김, ERD 답 8) |
 | `meal_plan_slot_ingredients` | 삭제 | - | (테이블 전체) | 칸별 예정 재료 화면 없음 |
-| `cart_items` | 변경 | category_id | meal_plan_id, meal_plan_slot_id, group_name | meal_plan_id·meal_plan_slot_id·group_name 뺌(p7 행에는 출처 레시피명만). category_id 추가(11/21 답 31) |
+| `cart_items` | 변경 | category_id | meal_plan_id, group_name | v4에서 슬롯 키를 뺐으나 #57에서 nullable meal_plan_slot_id·SET NULL로 복원. p7에는 출처 레시피명 표시, category_id는 냉장고 이동에 사용 |
 | `shared_recipes` | 변경 | image_key | save_count | recipe_id UK 해제(주마다 다시 공유 가능, 11/21 답 17). save_count 뺌(저장 수는 계산). 사진 1장이라 image_key를 여기로 |
 | `shared_recipe_photos` | 삭제 | - | (테이블 전체) | 공유 사진이 1장(p4.1.1.1) → shared_recipes.image_key |
 | `shared_recipe_reports` | 변경 | - | reason_detail, result, handled_by, handled_at | reason_detail 뺌(기타 입력칸 없음, 11/21 답 21). result·handled_by·handled_at 뺌(어드민 화면 없음). UK(reporter_id+shared_recipe_id)는 유지(에러 정의서 답 3) |

@@ -17,7 +17,7 @@ Source: PRD v4 and policy doc v4 (Figma-based, 2026-11-22; Korean, kept in Notio
 - Timeouts: general 10 s, OCR 30 s, AI recipe 60 s (recipes only; meal-plan generation replies 202 and runs as a server job, see section 5). AI retries once automatically; OCR does not retry.
 - Receipt files: <= 10 MB, jpg/png/heic. Shared cooking photos: one required, <= 5 MiB, JPEG/PNG/WebP ([#64 storage agreement](https://github.com/likelion-backendschool-9th/REMAKE/issues/64#issuecomment-7089190543)). The frontend checks first; the server checks last (413, 415).
 - Double clicks: buttons such as register and deduct are disabled until the request ends. No server `Idempotency-Key`.
-- Concurrent edits of the same ingredient: last request wins. Deduction checks the remaining amount first.
+- Concurrent requests on the same ingredient (use, discard, edit, delete): the server locks the ingredient row and handles them one by one; a later request sees the amount left by the earlier one. Deduction checks the remaining amount first. If two requests race for the last stock, the later one gets `INGREDIENT_NOT_FOUND` (404) because the row is already deleted.
 - Errors: `{ code, message, status, traceId, fieldErrors?, details? }` with the 59 codes in [`errors.md`](errors.md). Input errors show as red text under the field (#DC2626). Errors without a screen show the shared toast. Errors with a screen use the OCR failure screen, the generation failure screen, the meal-plan overlap modal, or the quota-used-up screen.
 - Empty data is not an error: return 200 with an empty value. Empty-list screens (8 places) are (screen pending).
 - Loading: lists use skeletons. AI recipe generation uses a loading screen (up to 60 s, screen pending). Meal-plan generation has no loading screen (section 5).
@@ -155,7 +155,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Purchase date and store name: empty if OCR cannot read them; both are required at registration.
 - Receipts older than 6 months cannot be registered (rejected at scan as an OCR failure).
 - **Duplicate receipts are blocked.** Same store + receipt number + purchase time = duplicate (without a number: store + purchase date + food items; without a time: purchase date). Checked right after the scan (OCR failure screen "이미 등록한 영수증이에요", `RECEIPT_DUPLICATE` 409) and again at registration.
-- Cart auto-remove: cart items with the same name as a registered ingredient are removed, with the toast "장바구니에서 N개를 뺐어요" (screen pending).
+- Receipt cart deduction (#57): select a cart row in the bottom sheet immediately before final registration, or skip. Each receipt item can select at most one cart row. Deduct only in the identical unit, within the actual registered amount; sum requests for the same target and validate the cart balance. Delete only rows reaching zero; `cartRemovedCount` counts these deleted rows. Receipt, fridge and cart changes share one transaction. The screen is a separate FE task.
 - List: month picker "2026년 11월 ∨" (last 6 months), monthly total, "내 평균보다 N원 더 썼어요", groups by week (week, range, total), receipt rows (store icon, store, date, "식재료 N개", amount).
 - Monthly total: food item amounts of that month's receipts (by purchase date).
 - Average: difference from my past average (monthly average of the last 6 months). Excluding this month, using only months with records, and hiding when there is no history are (proposal).
@@ -247,7 +247,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Rows: checkbox, image, source recipe name, ingredient + amount, "수량 변경". The same ingredient from different recipes stays separate.
 - Actions: amount sheet, select all (N), "선택 삭제" → delete mode (red checks, "삭제 해제" to undo) → "N개의 재료 삭제".
 - "N개의 재료 냉장고에 추가": moves to the fridge without input. Storage and expiry from category defaults, no price. Moved items leave the cart, toast "냉장고에 N개 넣었어요" (screen pending).
-- Registering a receipt with the same ingredient name removes it automatically.
+- Receipt registration deducts only selected rows under #57, matching the final ingredient name and identical server-decided unit. No selection leaves the cart unchanged; no automatic name-based removal.
 - Empty: "장바구니가 비어있습니다", buttons disabled.
 - No external shop or checkout. If the schedule slips, cart and sharing (P1) move to release 2.
 
@@ -261,7 +261,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Popular count: saves received this week (from Monday); ties go to the earlier share (proposal).
 - Search over shared recipes; 0 results empty state (screen pending).
 - Only recipes I generated with Remake can be shared, not recipes saved from others. Fully anonymous: no nickname or author info.
-- Write: detail ⋮ "공유 하기" → 1 photo (required, "탭해서 이미지 수정"), title (required), recipe content (read only) → "레시피 공유 하기". Enabled only with title and photo. No confirm modal.
+- Write: detail ⋮ "공유 하기" → 1 photo (required, "탭해서 이미지 수정"), title (required, maximum 100 UTF-16 code units before trimming, matching Java `@Size` and HTML `maxlength`), recipe content (read only) → "레시피 공유 하기". Enabled only with title and photo. No confirm modal.
 - The same recipe can be shared once per week (again next week).
 - Shared detail: photo, title, flag (report), "재료 준비 · servings · time", ingredients (missing ones with a red border), steps with read-aloud, Tips!, heart + save count, "레시피 저장", "레시피 저장 시 부족한 재료는 장바구니로 들어가요".
 - Save: the heart and "레시피 저장" are the same action. Puts the original recipe in my saved list (no copy). Save count +1; tapping again cancels (-1). Missing ingredients go to the cart. Removing it from my list leaves the shared post.

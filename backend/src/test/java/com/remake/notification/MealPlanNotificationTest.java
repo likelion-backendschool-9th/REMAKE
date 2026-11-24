@@ -20,16 +20,17 @@ import com.remake.support.IntegrationTestSupport;
 
 class MealPlanNotificationTest extends IntegrationTestSupport {
 
-	private static final Long USER = 401L;
 	private static final LocalDate START = LocalDate.of(2026, 11, 24);
+
+	private Long me;
 
 	@Autowired
 	CreateMealPlanNotificationUseCase createMealPlanNotificationUseCase;
 
 	@BeforeEach
 	void setUp() {
-		ensureUser(USER);
-		jdbcTemplate.update("UPDATE users SET notification_enabled = false WHERE id = ?", USER);
+		me = createUser();
+		jdbcTemplate.update("UPDATE users SET notification_enabled = false WHERE id = ?", me);
 	}
 
 	private MockHttpServletRequestBuilder as(Long userId, MockHttpServletRequestBuilder builder) {
@@ -43,17 +44,17 @@ class MealPlanNotificationTest extends IntegrationTestSupport {
 				                        created_at, updated_at)
 				VALUES (?, ?, 'BALANCED', 'DINNER', 1, 5, 'COMPLETED', ?, ?)
 				RETURNING id
-				""", Long.class, USER, START, now, now);
+				""", Long.class, me, START, now, now);
 	}
 
 	@Test
 	void 알림을_꺼도_식단표_완성_알림을_만들고_목록에_mealPlanId가_나온다() throws Exception {
 		Long mealPlanId = insertMealPlan();
 
-		createMealPlanNotificationUseCase.notifyMealPlanCompleted(USER, mealPlanId, START, 5);
+		createMealPlanNotificationUseCase.notifyMealPlanCompleted(me, mealPlanId, START, 5);
 		awaitEventWrites();
 
-		mockMvc.perform(as(USER, get("/api/v1/user/notifications")))
+		mockMvc.perform(as(me, get("/api/v1/user/notifications")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content.length()").value(1))
 				.andExpect(jsonPath("$.content[0].type").value("MEAL_PLAN_COMPLETED"))
@@ -62,16 +63,16 @@ class MealPlanNotificationTest extends IntegrationTestSupport {
 
 		Integer sent = jdbcTemplate.queryForObject(
 				"SELECT COUNT(*) FROM events WHERE event_name = 'notification_sent' AND user_id = ?",
-				Integer.class, USER);
+				Integer.class, me);
 		assertThat(sent).isEqualTo(1);
 	}
 
 	@Test
 	void 식단표_실패_알림은_mealPlanId가_없고_사유_문구를_쓴다() throws Exception {
-		createMealPlanNotificationUseCase.notifyMealPlanFailed(USER, MealPlanFailReason.NO_INGREDIENTS);
+		createMealPlanNotificationUseCase.notifyMealPlanFailed(me, MealPlanFailReason.NO_INGREDIENTS);
 		awaitEventWrites();
 
-		mockMvc.perform(as(USER, get("/api/v1/user/notifications")))
+		mockMvc.perform(as(me, get("/api/v1/user/notifications")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content.length()").value(1))
 				.andExpect(jsonPath("$.content[0].type").value("MEAL_PLAN_FAILED"))
@@ -81,7 +82,7 @@ class MealPlanNotificationTest extends IntegrationTestSupport {
 
 		Integer sent = jdbcTemplate.queryForObject(
 				"SELECT COUNT(*) FROM events WHERE event_name = 'notification_sent' AND user_id = ?",
-				Integer.class, USER);
+				Integer.class, me);
 		assertThat(sent).isEqualTo(1);
 	}
 }

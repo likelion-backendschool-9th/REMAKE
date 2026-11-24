@@ -43,7 +43,7 @@ final class EventPropertyValues {
 			Map.entry("ranking_view", Set.of("WEEKLY", "ALL")),
 			Map.entry("view_from", Set.of("RANKING", "SHARE_LINK", "SAVED")),
 			Map.entry("rank_bucket", Set.of("TOP10", "TOP30", "OTHER")),
-			Map.entry("report_reason", Set.of("PHOTO", "OFFENSIVE", "DANGEROUS", "OTHER")));
+			Map.entry("report_reason", Set.of("offensive_image", "ad_title", "dangerous_recipe", "other")));
 
 	private static final Set<String> CODE_PROPERTIES = Set.of("error_code", "category_code");
 	private static final Set<String> SCREEN_PROPERTIES = Set.of("screen_name", "previous_screen");

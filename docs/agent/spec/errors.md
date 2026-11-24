@@ -84,7 +84,7 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 | 24 | login/settings (이준호) | `PAYMENT_FAILED` | 402 | 59 | Toss declined the first payment (balance/limit, suspended card). `details.reason` = Toss reason (only user-safe text) | 결제에 실패했어요. 다른 카드로 다시 시도해 주세요 | Back to the before-subscribe screen with the common toast | No subscription; one FAILED `subscription_payments` row |
 | 25 | login/settings (이준호) | `PAYMENT_UPSTREAM_ERROR` | 502 | 59 | Toss server error or no response (timeout included) | 결제 서비스에 문제가 있어요. 잠시 후 다시 시도해 주세요 | Common toast. Never auto-retry the payment (no double charge). If the result is unknown, the server checks the payment with Toss by order id before deciding | No subscription until the result is confirmed |
 | 26 | fridge (김재연) | `INGREDIENT_NOT_FOUND` | 404 | 13, 16, 17, 18, 28 (custom `ingredientIds`) | Missing or not owned, including ingredients deleted at 0 | 재료를 찾을 수 없어요 | Back to the fridge list (p2) and reload | - |
-| 27 | fridge (김재연) | `INSUFFICIENT_QUANTITY` | 400 | 18, 32 | Taking out more than owned (use, discard, cook). `details.remaining` | 가지고 있는 양보다 많아요 | Show the remaining amount. The steppers stop at the remaining amount (proposal) | No change |
+| 27 | fridge (김재연) | `INSUFFICIENT_QUANTITY` | 400 | 18, 21, 32 | Taking out more than owned (use, discard, cook, receipt-selected cart deduction; #57). `details.remaining` | 가지고 있는 양보다 많아요 | Show the remaining amount. The steppers stop at the remaining amount (proposal) | No change |
 | 28 | fridge (김재연) | `INGREDIENT_CATEGORY_NOT_FOUND` | 404 | 15, 16, 21 | `categoryCode` not one of the 12 (including "all") | 선택할 수 없는 카테고리예요 | Does not happen in the normal flow; reload API 19 | Not saved |
 | 29 | receipts (이동준) | `RECEIPT_NOT_RECOGNIZED` | 422 | 20 | Not a receipt, or items unreadable | 영수증을 인식하지 못했어요. 다시 찍어 주세요 | OCR failure screen, retake | No limit (scans are unlimited) |
 | 30 | receipts (이동준) | `OCR_UPSTREAM_ERROR` | 502 | 20 | OCR service error | 영수증을 분석하지 못했어요. 잠시 후 다시 시도해 주세요 | OCR failure screen | No limit |
@@ -109,7 +109,7 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 | 49 | meal plan (한윤수) | `MEAL_PLAN_OVERLAP` | 409 | 38 | Without `overwrite`, the period overlaps an existing plan. `details.overlappingDates` | 이미 식단이 있는 날짜가 있어요. 덮어쓸까요? | Warning modal; on "overwrite" resend with `overwrite: true` | Not saved or charged |
 | 50 | meal plan (한윤수) | `PAST_DATE_NOT_ALLOWED` | 400 | 38, 41, 42 | Start date before today, or deleting/replacing a past slot | 지난 날짜는 바꿀 수 없어요 | The start-date sheet blocks past dates. Past meals keep the ⋮ menu; delete/replace shows this text. Common toast | No change |
 | 51 | meal plan (한윤수) | `SLOT_NOT_FOUND` | 404 | 41, 42 | Missing or not owned slot (including slots removed by overwrite) | 식단을 찾을 수 없어요 | Reload the calendar (p5) | - |
-| 52 | sharing/cart (최유리) | `CART_ITEM_NOT_FOUND` | 404 | 46, 47, 48 | Missing or not owned cart item. If any of several ids is missing, process none | 이미 삭제된 항목이에요 | Reload the cart (p7) | No change |
+| 52 | sharing/cart (최유리) | `CART_ITEM_NOT_FOUND` | 404 | 21, 46, 47, 48 | Missing or not owned cart item. If any of several ids is missing, process none | 이미 삭제된 항목이에요 | Reload the cart (p7) | No change |
 | 53 | sharing/cart (최유리) | `RECIPE_NOT_SHAREABLE` | 400 | 51 | Not my generated recipe (including others' recipes saved from the shared space) | 공유할 수 없는 레시피예요 | Does not happen in the normal flow | - |
 | 54 | sharing/cart (최유리) | `ALREADY_SHARED` | 409 | 51 | Same recipe already shared this week (week starts Monday) | 이번 주에 이미 공유한 레시피예요 | "Share" is disabled first; if it happens close the share screen | - |
 | 55 | sharing/cart (최유리) | `PHOTO_REQUIRED` | 400 | 51 | Share without a cooking photo | 실제로 요리한 사진을 올려 주세요 | Rare (button enabled only with title and photo) | - |
@@ -144,7 +144,7 @@ Every `user` API can also return the common codes (`UNAUTHORIZED`, `TOKEN_EXPIRE
 | 18 | `POST /user/ingredients/{id}/consume` | INVALID_INPUT, INGREDIENT_NOT_FOUND, INSUFFICIENT_QUANTITY |
 | 19 | `GET /user/ingredient-categories` | common only |
 | 20 | `POST /user/receipts/scan` | INVALID_INPUT, RECEIPT_NOT_RECOGNIZED, OCR_UPSTREAM_ERROR, OCR_TIMEOUT, RECEIPT_NO_FOOD_ITEMS, RECEIPT_TOO_OLD, RECEIPT_DUPLICATE, FILE_TOO_LARGE, UNSUPPORTED_FILE_TYPE |
-| 21 | `POST /user/receipts` | INVALID_INPUT, INGREDIENT_CATEGORY_NOT_FOUND, RECEIPT_TOO_OLD, RECEIPT_DUPLICATE, FILE_TOO_LARGE, UNSUPPORTED_FILE_TYPE |
+| 21 | `POST /user/receipts` | INVALID_INPUT, CART_ITEM_NOT_FOUND, INSUFFICIENT_QUANTITY, INGREDIENT_CATEGORY_NOT_FOUND, RECEIPT_TOO_OLD, RECEIPT_DUPLICATE, FILE_TOO_LARGE, UNSUPPORTED_FILE_TYPE |
 | 22 | `GET /user/receipts` | INVALID_INPUT |
 | 23 | `GET /user/receipts/{id}` | RECEIPT_NOT_FOUND |
 | 24 | `DELETE /user/receipts/{id}` | RECEIPT_NOT_FOUND |
@@ -244,8 +244,8 @@ No data returns 200 with empty values; the screen draws its empty state.
 | Case | Handling |
 | --- | --- |
 | Receipt registration pressed twice | Disable the button until the request ends (frontend). No server duplicate-request key |
-| Cook deduction pressed twice | Same. The server checks the remaining amount before subtracting; `INSUFFICIENT_QUANTITY` if short |
-| Same ingredient edited on two devices | Last write wins (no `version`). Deduction as above |
+| Cook deduction pressed twice | Same. The server locks the ingredient row and checks the remaining amount before subtracting; `INSUFFICIENT_QUANTITY` if short. If the first request used the last stock, the row is gone and the second gets `INGREDIENT_NOT_FOUND` (404) |
+| Same ingredient edited on two devices | Requests are handled one by one (row lock, no `version`), so the last request wins. Use/discard as above |
 | Same recipe saved twice | PUT, same result (not an error). `saved_recipes` UK(user_id + recipe_id) |
 | Same recipe shared twice in a week | `ALREADY_SHARED` |
 | Same post reported twice | `REPORT_ALREADY_EXISTS` |
@@ -262,7 +262,7 @@ Removed (do not use in new code; remove from `ErrorCode` when the related code i
 
 | Code | Why |
 | --- | --- |
-| `CONCURRENT_UPDATE` | `ingredients.version` removed. Deduction checks the remaining amount (`INSUFFICIENT_QUANTITY`) |
+| `CONCURRENT_UPDATE` | `ingredients.version` removed. Concurrent requests are serialized by a row lock; deduction checks the remaining amount (`INSUFFICIENT_QUANTITY`), and a request that comes after the last stock was used gets `INGREDIENT_NOT_FOUND` |
 | `CATALOG_ITEM_NOT_FOUND` | No dictionary id in requests. Unknown allergen codes are `INVALID_INPUT` |
 | `INVALID_UNIT` | Clients do not send units; the server picks them |
 | `INGREDIENT_ALREADY_FINISHED` | Rows are deleted at 0 -> `INGREDIENT_NOT_FOUND` |

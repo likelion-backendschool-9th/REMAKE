@@ -25,7 +25,7 @@ import com.remake.support.IntegrationTestSupport;
 // 재료 등록을 DB까지 확인한다. 기본 시각은 2026-03-04 10:00(서울)이라 오늘은 3월 4일이다.
 class IngredientRegistrationTest extends IntegrationTestSupport {
 
-	private static final Long USER = 101L;
+	private Long userId;
 
 	@Autowired
 	private RegisterIngredientUseCase registerUseCase;
@@ -35,18 +35,18 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 
 	@BeforeEach
 	void setUpUser() {
-		ensureUser(USER);
+		userId = createUser();
 	}
 
 	private RegisterIngredientCommand command(String name, IngredientCategoryCode category, LocalDate expirationDate,
 			LocalDate baseDate, BigDecimal amount, Long receiptItemId) {
-		return new RegisterIngredientCommand(USER, name, category, StorageLocation.FRIDGE, expirationDate, baseDate,
+		return new RegisterIngredientCommand(userId, name, category, StorageLocation.FRIDGE, expirationDate, baseDate,
 				amount, IngredientUnit.EA, 3000L, receiptItemId);
 	}
 
 	// 단위를 null로 넘기면 서버가 정한다(직접 추가·장바구니). 넣으면 그대로 쓴다(영수증 PACK 예외).
 	private RegisterIngredientCommand commandWithUnit(String name, IngredientCategoryCode category, IngredientUnit unit) {
-		return new RegisterIngredientCommand(USER, name, category, StorageLocation.FRIDGE, LocalDate.of(2026, 3, 12), null,
+		return new RegisterIngredientCommand(userId, name, category, StorageLocation.FRIDGE, LocalDate.of(2026, 3, 12), null,
 				BigDecimal.ONE, unit, null, null);
 	}
 
@@ -69,7 +69,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		awaitEventWrites();
 
 		assertThat(jdbcTemplate.queryForObject("SELECT event_name FROM events", String.class)).isEqualTo("ingredient_added");
-		assertThat(jdbcTemplate.queryForObject("SELECT user_id FROM events", Long.class)).isEqualTo(USER);
+		assertThat(jdbcTemplate.queryForObject("SELECT user_id FROM events", Long.class)).isEqualTo(userId);
 		String props = jdbcTemplate.queryForObject("SELECT properties::text FROM events", String.class);
 		assertThat(props).contains("MANUAL").contains("DAIRY_EGG").contains("FRIDGE").doesNotContain("우유");
 	}
@@ -108,7 +108,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		Long id = registerUseCase.registerIngredient(command("우유", IngredientCategoryCode.DAIRY_EGG,
 				LocalDate.of(2026, 3, 12), null, new BigDecimal("2"), null));
 
-		Ingredient saved = getUseCase.getIngredient(USER, id).ingredient();
+		Ingredient saved = getUseCase.getIngredient(userId, id).ingredient();
 		assertThat(saved.name()).isEqualTo("우유");
 		assertThat(saved.categoryId()).isEqualTo(categoryId("DAIRY_EGG"));
 		assertThat(saved.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 12));
@@ -123,7 +123,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		Long id = registerUseCase.registerIngredient(command("양파", IngredientCategoryCode.VEGETABLE, null,
 				LocalDate.of(2026, 3, 1), BigDecimal.ONE, null));
 
-		Ingredient saved = getUseCase.getIngredient(USER, id).ingredient();
+		Ingredient saved = getUseCase.getIngredient(userId, id).ingredient();
 		assertThat(saved.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 8));
 	}
 
@@ -131,7 +131,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 	void 기준일이_없으면_오늘을_기준으로_추정한다() {
 		Long id = registerUseCase.registerIngredient(command("양파", IngredientCategoryCode.VEGETABLE, null, null, BigDecimal.ONE, null));
 
-		assertThat(getUseCase.getIngredient(USER, id).ingredient().expirationDate()).isEqualTo(LocalDate.of(2026, 3, 11));
+		assertThat(getUseCase.getIngredient(userId, id).ingredient().expirationDate()).isEqualTo(LocalDate.of(2026, 3, 11));
 	}
 
 	@Test
@@ -139,7 +139,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		Long id = registerUseCase.registerIngredient(command("양파", IngredientCategoryCode.VEGETABLE,
 				LocalDate.of(2026, 3, 9), LocalDate.of(2026, 3, 1), BigDecimal.ONE, 55L));
 
-		Ingredient saved = getUseCase.getIngredient(USER, id).ingredient();
+		Ingredient saved = getUseCase.getIngredient(userId, id).ingredient();
 		assertThat(saved.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 9));
 	}
 
@@ -151,8 +151,8 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 						new BigDecimal("0.6"), 12L)));
 
 		assertThat(ids).hasSize(2);
-		Ingredient milk = getUseCase.getIngredient(USER, ids.get(0)).ingredient();
-		Ingredient pork = getUseCase.getIngredient(USER, ids.get(1)).ingredient();
+		Ingredient milk = getUseCase.getIngredient(userId, ids.get(0)).ingredient();
+		Ingredient pork = getUseCase.getIngredient(userId, ids.get(1)).ingredient();
 		assertThat(milk.name()).isEqualTo("우유");
 		assertThat(milk.receiptItemId()).isEqualTo(11L);
 		// 달걀·유제품의 기본 보관 일수 10일
@@ -205,9 +205,9 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		Long contained = registerUseCase.registerIngredient(commandWithUnit("유기농 우유", IngredientCategoryCode.DAIRY_EGG, null));
 		Long unknown = registerUseCase.registerIngredient(commandWithUnit("알수없는재료", IngredientCategoryCode.ETC, null));
 
-		assertThat(getUseCase.getIngredient(USER, exact).ingredient().unit()).isEqualTo(IngredientUnit.BUNCH);
-		assertThat(getUseCase.getIngredient(USER, contained).ingredient().unit()).isEqualTo(IngredientUnit.PACK);
-		assertThat(getUseCase.getIngredient(USER, unknown).ingredient().unit()).isEqualTo(IngredientUnit.EA);
+		assertThat(getUseCase.getIngredient(userId, exact).ingredient().unit()).isEqualTo(IngredientUnit.BUNCH);
+		assertThat(getUseCase.getIngredient(userId, contained).ingredient().unit()).isEqualTo(IngredientUnit.PACK);
+		assertThat(getUseCase.getIngredient(userId, unknown).ingredient().unit()).isEqualTo(IngredientUnit.EA);
 	}
 
 	@Test
@@ -216,7 +216,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		Long id = registerUseCase.registerIngredient(commandWithUnit("한돈 앞다리 돼지고기", IngredientCategoryCode.MEAT,
 				IngredientUnit.PACK));
 
-		assertThat(getUseCase.getIngredient(USER, id).ingredient().unit()).isEqualTo(IngredientUnit.PACK);
+		assertThat(getUseCase.getIngredient(userId, id).ingredient().unit()).isEqualTo(IngredientUnit.PACK);
 	}
 
 	@Test
