@@ -7,7 +7,7 @@ import com.remake.ingredient.domain.ExpiredIngredient;
 import com.remake.ingredient.domain.ExpiredIngredientCount;
 import com.remake.ingredient.domain.ExpiringIngredient;
 
-/** 알림용 재료 읽기. ACTIVE 재료만 돌려준다. ingredient 기능의 Service만 쓴다. */
+/** 알림용 재료 읽기. ingredient 기능의 Service만 쓴다. */
 public interface LoadExpiryAlertIngredientPort {
 
 	/** 소비기한이 from 이상 to 이하인 재료 */

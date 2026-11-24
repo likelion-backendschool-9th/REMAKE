@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import com.remake.global.web.LoginUserIdArgumentResolver;
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.support.IntegrationTestSupport;
 
 // 냉장고 목록·요약. 오늘은 시험용 시계의 2026-03-04이다.
@@ -35,7 +34,7 @@ class FridgeApiTest extends IntegrationTestSupport {
 	}
 
 	private Long add(Long userId, String category, String name, int daysLeft) {
-		return createIngredient(userId, category, name, TODAY.plusDays(daysLeft), IngredientStatus.ACTIVE);
+		return createIngredient(userId, category, name, TODAY.plusDays(daysLeft));
 	}
 
 	@Test
@@ -90,13 +89,12 @@ class FridgeApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 요약은_진행_중인_본인_재료만_세고_목록_상태와_같다() throws Exception {
+	void 요약은_본인_재료만_세고_목록_상태와_같다() throws Exception {
 		add(ME, "MEAT", "지남", -1);
 		add(ME, "DAIRY_EGG", "당일", 0);
 		add(ME, "FRUIT", "내일", 1);
 		add(ME, "FRUIT", "사흘뒤", 3);
 		add(ME, "FRUIT", "나흘뒤", 4);
-		createIngredient(ME, "FRUIT", "완료", TODAY.minusDays(5), IngredientStatus.FINISHED);
 		add(OTHER, "FRUIT", "남의것", 0);
 
 		mockMvc.perform(as(ME, get(URL + "/summary")))
@@ -110,9 +108,8 @@ class FridgeApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 완료된_재료와_다른_사용자의_재료는_목록에_나오지_않는다() throws Exception {
+	void 다른_사용자의_재료는_목록에_나오지_않는다() throws Exception {
 		add(ME, "FRUIT", "사과", 5);
-		createIngredient(ME, "FRUIT", "완료", TODAY.plusDays(1), IngredientStatus.FINISHED);
 		add(OTHER, "FRUIT", "남의것", 5);
 
 		mockMvc.perform(as(ME, get(URL)))

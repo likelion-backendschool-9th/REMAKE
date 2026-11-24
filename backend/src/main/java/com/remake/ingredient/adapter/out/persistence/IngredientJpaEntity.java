@@ -5,7 +5,6 @@ import java.time.LocalDate;
 
 import com.remake.global.common.BaseTimeEntity;
 import com.remake.ingredient.domain.Ingredient;
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.ingredient.domain.StorageLocation;
 
@@ -17,7 +16,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -56,10 +54,6 @@ class IngredientJpaEntity extends BaseTimeEntity {
 	@Column(nullable = false)
 	private LocalDate expirationDate;
 
-	// 소비기한을 추정한 값인지. 사용자가 직접 고치면 false
-	@Column(name = "is_expiration_estimated", nullable = false)
-	private boolean expirationEstimated;
-
 	@Column(nullable = false, precision = 10, scale = 3)
 	private BigDecimal amount;
 
@@ -72,14 +66,6 @@ class IngredientJpaEntity extends BaseTimeEntity {
 
 	// 구매 금액(원). 직접 추가했고 입력하지 않았으면 null
 	private Long price;
-
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 10)
-	private IngredientStatus status;
-
-	// 동시 수정 방지(낙관적 락)
-	@Version
-	private Long version;
 
 	/** 새 재료를 저장하려고 도메인 객체에서 엔티티를 만든다. */
 	static IngredientJpaEntity from(Ingredient ingredient) {
@@ -97,15 +83,13 @@ class IngredientJpaEntity extends BaseTimeEntity {
 		this.name = ingredient.name();
 		this.storage = ingredient.storage();
 		this.expirationDate = ingredient.expirationDate();
-		this.expirationEstimated = ingredient.expirationEstimated();
 		this.amount = ingredient.amount();
 		this.initialAmount = ingredient.initialAmount();
 		this.price = ingredient.price();
-		this.status = ingredient.status();
 	}
 
 	Ingredient toDomain() {
 		return Ingredient.restore(id, userId, categoryId, receiptItemId, name, storage, expirationDate,
-				expirationEstimated, amount, initialAmount, unit, price, status);
+				amount, initialAmount, unit, price);
 	}
 }

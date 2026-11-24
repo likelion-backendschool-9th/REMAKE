@@ -8,7 +8,7 @@ import com.remake.ingredient.domain.ExpiringIngredient;
 
 /**
  * 소비기한 알림 배치가 쓰는 재료 조회. 알림 설정(ON/OFF)과 중복 확인은 알림 쪽에서 하고, 여기서는 재료만 판정한다.
- * 기준일은 주입받은 Clock의 오늘이고, FINISHED 재료는 모두 제외한다. 기준은 {@link com.remake.ingredient.domain.ExpiryPolicy}.
+ * 기준일은 주입받은 Clock의 오늘이다. 기준은 {@link com.remake.ingredient.domain.ExpiryPolicy}.
  */
 public interface GetExpiryAlertIngredientsUseCase {
 
