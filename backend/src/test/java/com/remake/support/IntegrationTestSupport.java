@@ -31,7 +31,6 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import com.remake.auth.adapter.out.oauth.SocialOAuthAdapter;
 import com.remake.global.config.AsyncConfig;
 import com.remake.global.config.UploadProperties;
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.recipe.adapter.out.ai.GeminiRecipeAdapter;
 import com.remake.user.domain.AuthProvider;
 
