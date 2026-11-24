@@ -12,6 +12,8 @@ import { IngredientRow } from "@/components/IngredientRow/IngredientRow";
 import { MainHeader } from "@/components/MainHeader/MainHeader";
 import { SelectSheet } from "@/components/SelectSheet/SelectSheet";
 import { Skeleton } from "@/components/Skeleton/Skeleton";
+import { Toast } from "@/components/Toast/Toast";
+import { useTimedToast } from "@/hooks/useTimedToast";
 import {
   CATEGORIES,
   type CategoryCode,
@@ -32,7 +34,7 @@ import {
   STATUS_ORDER,
 } from "../../_lib/fridge";
 import { FridgeHero } from "../FridgeHero/FridgeHero";
-import { UseIngredientSheet } from "../UseIngredientSheet/UseIngredientSheet";
+import { UseIngredientSheet, type UseKind } from "../UseIngredientSheet/UseIngredientSheet";
 
 import styles from "./FridgeContainer.module.css";
 
@@ -46,6 +48,15 @@ type PlaceFilter =
 
 type FridgeSheet = "location" | "category";
 
+/** 사용·폐기 결과 토스트(피그마 p2-냉장고-재료 사용 여부 완료) */
+type UseToast = { variant: "success" | "error"; message: string };
+
+const USE_FAILED_MESSAGE = "재료 처리에 실패했습니다. 다시 시도해주세요";
+
+function getUseSuccessMessage(name: string, kind: UseKind): string {
+  return kind === "USED" ? `${name}을(를) 사용하셨습니다` : `${name}을(를) 버리셨습니다`;
+}
+
 type FridgeContainerProps = {
   /** 재료 목록. 기본은 마크업 확인용 값(목록 API를 붙이기 전) */
   ingredients?: FridgeIngredient[];
@@ -55,20 +66,27 @@ type FridgeContainerProps = {
   initialSheet?: FridgeSheet | null;
   /** 처음부터 사용 시트를 열 재료 id. 미리보기용(p2-냉장고-재료 사용 여부) */
   initialUseId?: number;
+  /** 사용·폐기 확인을 실패로 처리한다. 미리보기용(API를 붙이기 전 실패 토스트 확인) */
+  simulateUseFailure?: boolean;
 };
 
 /**
  * p2 냉장고(메인). 메인 헤더, 재료 개수·요약 카드, 상태·위치·종류로 거른 재료 목록.
  * 행을 누르면 사용·폐기 시트, 오른쪽 >는 재료 수정, +는 재료 추가(domain-rules 2).
  * 요약 카드·위치·종류 칩은 다시 누르면 거르기가 풀린다(토글).
- * 상태: 기본 / 불러오는 중 / 재료 사용 시트 / 재료 위치 시트 / 재료 종류 시트 / 빈 냉장고 / 거른 결과 없음.
+ * 사용·폐기를 확인하면 시트를 닫고 결과 토스트("목살을(를) 사용하셨습니다" / 실패 문구)를 띄운다.
+ * 상태: 기본 / 불러오는 중 / 재료 사용 시트 / 사용·폐기 성공·실패 토스트 / 재료 위치 시트 / 재료 종류 시트 / 빈 냉장고 / 거른 결과 없음.
  */
 export function FridgeContainer({
-  ingredients = SAMPLE_INGREDIENTS,
+  ingredients: initialIngredients = SAMPLE_INGREDIENTS,
   isLoading = false,
   initialSheet = null,
   initialUseId,
+  simulateUseFailure = false,
 }: FridgeContainerProps) {
+  // TODO: 목록 API를 붙이면 서버 값(쿼리)을 쓰고, 사용·폐기 뒤에는 목록·요약 쿼리를 무효화한다
+  const [ingredients, setIngredients] = useState(initialIngredients);
+  const toast = useTimedToast<UseToast>();
   const [statusFilter, setStatusFilter] = useState<ExpiryStatus | null>(null);
   const [placeFilter, setPlaceFilter] = useState<PlaceFilter | null>(null);
   const [sheet, setSheet] = useState<FridgeSheet | null>(initialSheet);
@@ -94,6 +112,27 @@ export function FridgeContainer({
   const titleStatus = statusFilter ?? "DANGER";
   const titleCount = statusFilter ? visible.length : counts.DANGER;
   const usingIngredient = ingredients.find((item) => item.id === usingId) ?? null;
+
+  const handleUse = (kind: UseKind, amount: number) => {
+    const target = usingIngredient;
+    // 다른 화면 요소(토스트)를 띄우기 전에 시트를 먼저 닫는다
+    setUsingId(null);
+    if (!target) return;
+    // TODO: API 18(POST /user/ingredients/{id}/consume { type, amount }). 실패(INSUFFICIENT_QUANTITY 등)면 실패 토스트
+    if (simulateUseFailure) {
+      toast.show({ variant: "error", message: USE_FAILED_MESSAGE });
+      return;
+    }
+    // 지금은 화면 값에서 빼고, 0이 되면 지운다(서버도 0이면 재료를 지움)
+    setIngredients((prev) =>
+      prev.flatMap((item) => {
+        if (item.id !== target.id) return [item];
+        const remaining = Math.round((item.amount - amount) * 1000) / 1000;
+        return remaining > 0 ? [{ ...item, amount: remaining }] : [];
+      }),
+    );
+    toast.show({ variant: "success", message: getUseSuccessMessage(target.name, kind) });
+  };
 
   const storageLabel =
     placeFilter?.kind === "storage" ? getStorage(placeFilter.value).label : "재료 위치";
@@ -193,7 +232,11 @@ export function FridgeContainer({
         </section>
       </main>
 
-      <UseIngredientSheet ingredient={usingIngredient} onClose={() => setUsingId(null)} />
+      <UseIngredientSheet
+        ingredient={usingIngredient}
+        onClose={() => setUsingId(null)}
+        onConfirm={handleUse}
+      />
       <SelectSheet
         isOpen={sheet === "location"}
         onClose={() => setSheet(null)}
@@ -217,6 +260,15 @@ export function FridgeContainer({
           setSheet(null);
         }}
       />
+
+      {/* 문구를 바꿔 끼우면 읽히도록 항상 그려 두는 영역(blueprint §6.3) */}
+      <div className={styles.toastArea} role="status" aria-live="polite">
+        {toast.value && (
+          <Toast variant={toast.value.variant} isLeaving={toast.isLeaving} onLeft={toast.remove}>
+            {toast.value.message}
+          </Toast>
+        )}
+      </div>
     </>
   );
 }

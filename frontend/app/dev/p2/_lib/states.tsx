@@ -30,6 +30,12 @@ export const P2_STATES: PreviewState[] = [
     render: () => <FridgeContainer initialUseId={3} />,
   },
   {
+    slug: "fridge-use-fail",
+    label: "p2-냉장고-재료 사용 여부 실패(확인을 누르면 실패 토스트)",
+    route: "/user/fridge/ingredients",
+    render: () => <FridgeContainer initialUseId={3} simulateUseFailure />,
+  },
+  {
     slug: "fridge-location",
     label: "p2-냉장고-재료 위치",
     route: "/user/fridge/ingredients",
