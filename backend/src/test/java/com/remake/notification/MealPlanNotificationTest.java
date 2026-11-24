@@ -78,5 +78,10 @@ class MealPlanNotificationTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.content[0].message")
 						.value("냉장고 재료가 부족해 식단표를 만들지 못했어요. 생성 횟수는 차감되지 않았어요"))
 				.andExpect(jsonPath("$.content[0].mealPlanId").doesNotExist());
+
+		Integer sent = jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM events WHERE event_name = 'notification_sent' AND user_id = ?",
+				Integer.class, USER);
+		assertThat(sent).isEqualTo(1);
 	}
 }
