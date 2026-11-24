@@ -11,6 +11,13 @@ This script compares the PR with the base branch as it is now (not when the PR w
 
 Every file on dev is treated as applied on the server, because each merge into dev is deployed.
 Re-running the check right before merging compares with the latest dev again without a new push.
+(.github/workflows/migration-recheck.yml re-runs it on open PRs whenever a migration lands on dev.)
+
+One exception: if a file reached the base branch after a file with the same or a larger number (a PR passed the check
+before the other PR merged), the later file was normally never applied: with the same number the app cannot start, and
+a smaller number is rejected by the server. A PR may delete or rename that later file (revert, or move it to a new
+number). The earlier file stays protected. For a smaller number the script also asks for a check of the server's
+history, because it is applied after all if the larger number's deployment had failed (see late_files).
 
 It also warns, without failing, when a new migration contains a statement that breaks the previous version
 still running during a deployment or that cannot be undone (see RISKY below).
@@ -106,6 +113,46 @@ def version(path: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def first_parent_position(base: str, path: str) -> int | None:
+    """How far along the base branch's first-parent history the commit that added path is (larger = later)."""
+    commits = git("log", "--first-parent", "--diff-filter=A", "--format=%H", base, "--", path).split()
+    if not commits:
+        return None
+    return int(git("rev-list", "--first-parent", "--count", commits[-1]).strip())
+
+
+DUPLICATE, OUT_OF_ORDER = "duplicate", "out-of-order"
+
+
+def late_files(base: str, base_files: set[str]) -> dict[str, tuple[str, set[str]]]:
+    """Files on base that arrived after a file with the same or a larger number: {path: (kind, earlier files)}.
+
+    - Same number (DUPLICATE): from that merge on, the app cannot start anywhere (Flyway rejects two files with
+      one version), so Backend CD stops at its tests and the file was never applied on the server.
+    - Smaller number (OUT_OF_ORDER): the tests pass on an empty DB, but the server, which already applied the larger
+      number, rejects it and the new slot never starts. Exception: if the larger number's deployment had failed
+      before this file merged, the next deployment applies both in order and this file IS applied. The script cannot
+      see the server, so main() asks for a check of the server's history instead of deciding.
+
+    A file whose order cannot be told (history missing, or added by the same commit as the other file) is not late,
+    so it stays protected.
+    """
+    versions = {path: version(path) for path in base_files}
+    versions = {path: v for path, v in versions.items() if v is not None}
+    positions = {path: first_parent_position(base, path) for path in versions}
+    late = {}
+    for path, v in versions.items():
+        position = positions[path]
+        others = [other for other, ov in versions.items() if other != path and ov >= v]
+        if position is None or any(positions[other] is None for other in others):
+            continue
+        earlier = {other for other in others if positions[other] < position}
+        if earlier:
+            kind = DUPLICATE if any(versions[other] == v for other in earlier) else OUT_OF_ORDER
+            late[path] = (kind, earlier)
+    return late
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print(__doc__.strip().splitlines()[-1], file=sys.stderr)
@@ -120,14 +167,30 @@ def main() -> int:
     base_files = set(sql_files(base))
     branch_point_files = set(sql_files(merge_base))
 
+    late = late_files(base, base_files)
+
     errors = []
     added = []
     for status, path in changes:
         if not path.endswith(".sql"):
             continue
+        if status == "D" and path in late:
+            kind, earlier = late[path]
+            if kind == DUPLICATE:
+                print(f"::notice::{path}: {base}에 같은 번호 파일이 먼저 들어와 있어 이 파일은 서버에 적용되지 않았습니다. "
+                      "지우거나 새 번호로 옮기는 것을 허용합니다.")
+            else:
+                print(f"::warning::{path}: {base}에 더 큰 번호({', '.join(sorted(earlier))})가 먼저 들어와 있어 "
+                      "지우거나 새 번호로 옮기는 것을 허용합니다. 보통 서버가 이 파일을 거부해서 적용되지 않았지만, "
+                      f"더 큰 번호의 배포가 실패한 채 이 파일이 머지됐다면 적용됐을 수 있습니다. 머지 전에 배포 담당이 서버에서 "
+                      f"SELECT version FROM flyway_schema_history WHERE version = '{version(path)}'; 결과가 없는지 확인하세요.")
+            continue
         if path in branch_point_files or path in base_files:
+            blocked_late = sorted(p for p, (_, earlier) in late.items() if path in earlier)
+            hint = (f" 번호 겹침·역전을 고치려면 나중에 들어온 {', '.join(blocked_late)}를 지우거나 새 번호로 옮기세요."
+                    if blocked_late and status == "D" else "")
             errors.append(f"{path}: dev에 이미 있는(서버에 적용된) 파일은 고치거나 지우거나 이름을 바꿀 수 없습니다. "
-                          "바꿀 내용은 새 번호 파일로 추가하세요.")
+                          f"바꿀 내용은 새 번호 파일로 추가하세요.{hint}")
         elif status == "A":
             added.append(path)
 
