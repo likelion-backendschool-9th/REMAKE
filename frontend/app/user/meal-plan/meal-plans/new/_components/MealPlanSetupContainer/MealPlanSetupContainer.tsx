@@ -215,7 +215,8 @@ function range(from: number, to: number, label: (n: number) => string): WheelOpt
 
 /**
  * 피그마 식단표-식단 레시피 설정-시작일: "시작일" 입력 시트, 연(2자리)·월·일 휠 3열, "수정".
- * 오늘보다 앞선 날을 고르면 오늘로 맞춘다(시작일은 오늘부터, domain-rules 5).
+ * 오늘 이전 날짜는 휠에 아예 보이지 않는다(시작일은 오늘부터, domain-rules 5):
+ * 올해면 이번 달부터, 이번 달이면 오늘부터. 범위를 벗어난 값은 WheelPicker가 가장 가까운 값으로 맞춘다.
  */
 function StartDateSheet({
   today,
@@ -232,13 +233,19 @@ function StartDateSheet({
   const [year, setYear] = useState(String(start.year()));
   const [month, setMonth] = useState(String(start.month() + 1));
   const [day, setDay] = useState(String(start.date()));
-  const thisYear = dayjs(today).year();
+  const todayValue = dayjs(today);
+  const thisYear = todayValue.year();
+  const isThisYear = Number(year) === thisYear;
+  const isThisMonth = isThisYear && Number(month) === todayValue.month() + 1;
+  const firstMonth = isThisYear ? todayValue.month() + 1 : 1;
+  const firstDay = isThisMonth ? todayValue.date() : 1;
   const daysInMonth = dayjs(`${year}-${month.padStart(2, "0")}-01`).daysInMonth();
 
   const handleConfirm = () => {
     const picked = dayjs(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`).format(
       "YYYY-MM-DD",
     );
+    // 휠이 오늘 이전을 보여 주지 않지만, 값이 맞춰지기 전에 누른 경우를 위해 한 번 더 막는다
     onConfirm(picked < today ? today : picked);
   };
 
@@ -261,8 +268,13 @@ function StartDateSheet({
             value: year,
             onChange: setYear,
           },
-          { label: "월", options: range(1, 12, String), value: month, onChange: setMonth },
-          { label: "일", options: range(1, daysInMonth, String), value: day, onChange: setDay },
+          { label: "월", options: range(firstMonth, 12, String), value: month, onChange: setMonth },
+          {
+            label: "일",
+            options: range(firstDay, daysInMonth, String),
+            value: day,
+            onChange: setDay,
+          },
         ]}
       />
     </InputSheet>
