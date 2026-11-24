@@ -18,13 +18,13 @@ import com.remake.support.IntegrationTestSupport;
 class NotificationApiTest extends IntegrationTestSupport {
 
 	private static final String BASE = "/api/v1/user/notifications";
-	private static final Long ME = 201L;
-	private static final Long OTHER = 202L;
+	private Long me;
+	private Long other;
 
 	@BeforeEach
 	void setUpUsers() {
-		ensureUser(ME);
-		ensureUser(OTHER);
+		me = createUser();
+		other = createUser();
 	}
 
 	private MockHttpServletRequestBuilder as(Long userId, MockHttpServletRequestBuilder builder) {
@@ -47,7 +47,7 @@ class NotificationApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 알림이_없으면_요약은_빈_값이다() throws Exception {
-		mockMvc.perform(as(ME, get(BASE + "/summary")))
+		mockMvc.perform(as(me, get(BASE + "/summary")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.latestMessage").doesNotExist())
 				.andExpect(jsonPath("$.unreadCount").value(0));
@@ -56,13 +56,13 @@ class NotificationApiTest extends IntegrationTestSupport {
 	@Test
 	void 요약은_최근_문구와_안_읽은_수를_돌려준다() throws Exception {
 		LocalDateTime t0 = LocalDateTime.now(clock);
-		insertNotification(ME, "EXPIRED", "오래된", t0, t0);
+		insertNotification(me, "EXPIRED", "오래된", t0, t0);
 		clock.advance(Duration.ofMinutes(1));
 		LocalDateTime t1 = LocalDateTime.now(clock);
-		insertNotification(ME, "EXPIRY_SOON", "최신 임박", t1, null);
-		insertNotification(OTHER, "EXPIRED", "남의것", t1, null);
+		insertNotification(me, "EXPIRY_SOON", "최신 임박", t1, null);
+		insertNotification(other, "EXPIRED", "남의것", t1, null);
 
-		mockMvc.perform(as(ME, get(BASE + "/summary")))
+		mockMvc.perform(as(me, get(BASE + "/summary")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.latestMessage").value("최신 임박"))
 				.andExpect(jsonPath("$.unreadCount").value(1));
@@ -71,12 +71,12 @@ class NotificationApiTest extends IntegrationTestSupport {
 	@Test
 	void 목록은_최근순이고_조회하면_모두_읽음이_된다() throws Exception {
 		LocalDateTime t0 = LocalDateTime.now(clock);
-		insertNotification(ME, "EXPIRED", "첫번째", t0, null);
+		insertNotification(me, "EXPIRED", "첫번째", t0, null);
 		clock.advance(Duration.ofMinutes(1));
 		LocalDateTime t1 = LocalDateTime.now(clock);
-		insertNotification(ME, "EXPIRY_SOON", "두번째", t1, null);
+		insertNotification(me, "EXPIRY_SOON", "두번째", t1, null);
 
-		mockMvc.perform(as(ME, get(BASE)))
+		mockMvc.perform(as(me, get(BASE)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content.length()").value(2))
 				.andExpect(jsonPath("$.content[0].message").value("두번째"))
@@ -90,19 +90,19 @@ class NotificationApiTest extends IntegrationTestSupport {
 
 		Integer unread = jdbcTemplate.queryForObject(
 				"SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL",
-				Integer.class, ME);
+				Integer.class, me);
 		assertThat(unread).isZero();
 
-		mockMvc.perform(as(ME, get(BASE + "/summary")))
+		mockMvc.perform(as(me, get(BASE + "/summary")))
 				.andExpect(jsonPath("$.unreadCount").value(0))
 				.andExpect(jsonPath("$.latestMessage").value("두번째"));
 	}
 
 	@Test
 	void 남의_알림은_목록에_나오지_않는다() throws Exception {
-		insertNotification(OTHER, "EXPIRED", "남의것", LocalDateTime.now(clock), null);
+		insertNotification(other, "EXPIRED", "남의것", LocalDateTime.now(clock), null);
 
-		mockMvc.perform(as(ME, get(BASE)))
+		mockMvc.perform(as(me, get(BASE)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content.length()").value(0))
 				.andExpect(jsonPath("$.totalElements").value(0));
@@ -114,11 +114,11 @@ class NotificationApiTest extends IntegrationTestSupport {
 		LocalDateTime day0 = LocalDateTime.now(clock).minusDays(2);
 		LocalDateTime day1 = LocalDateTime.now(clock).minusDays(1);
 		LocalDateTime day2 = LocalDateTime.now(clock);
-		insertNotification(ME, "EXPIRED", "첫번째", day0, null);
-		insertNotification(ME, "EXPIRED", "두번째", day1, null);
-		insertNotification(ME, "MEAL_PLAN_FAILED", "세번째", day2, null);
+		insertNotification(me, "EXPIRED", "첫번째", day0, null);
+		insertNotification(me, "EXPIRED", "두번째", day1, null);
+		insertNotification(me, "MEAL_PLAN_FAILED", "세번째", day2, null);
 
-		mockMvc.perform(as(ME, get(BASE).param("page", "0").param("size", "2")))
+		mockMvc.perform(as(me, get(BASE).param("page", "0").param("size", "2")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content.length()").value(2))
 				.andExpect(jsonPath("$.content[0].message").value("세번째"))
@@ -127,7 +127,7 @@ class NotificationApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.totalElements").value(3))
 				.andExpect(jsonPath("$.hasNext").value(true));
 
-		mockMvc.perform(as(ME, get(BASE).param("page", "1").param("size", "2")))
+		mockMvc.perform(as(me, get(BASE).param("page", "1").param("size", "2")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.content.length()").value(1))
 				.andExpect(jsonPath("$.content[0].message").value("첫번째"))

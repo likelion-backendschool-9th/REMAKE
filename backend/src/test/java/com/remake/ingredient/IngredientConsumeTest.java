@@ -38,9 +38,10 @@ import com.remake.support.IntegrationTestSupport;
 // 재료 사용·폐기(consume): API와 요리 후 차감이 쓰는 UseCase를 DB·이벤트까지 확인한다. 오늘은 시험용 시계의 2026-03-04이다.
 class IngredientConsumeTest extends IntegrationTestSupport {
 
-	private static final Long ME = 101L;
-	private static final Long OTHER = 102L;
 	private static final LocalDate TODAY = LocalDate.of(2026, 3, 4);
+
+	private Long me;
+	private Long other;
 
 	@Autowired
 	private ConsumeIngredientUseCase consumeUseCase;
@@ -53,8 +54,8 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@BeforeEach
 	void setUpUsers() {
-		ensureUser(ME);
-		ensureUser(OTHER);
+		me = createUser();
+		other = createUser();
 	}
 
 	/** 우유 4팩(4000원). 소비기한은 daysLeft일 뒤 */
@@ -80,9 +81,9 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 일부를_사용하면_남은_양이_줄고_사용_기록이_남는다() throws Exception {
-		Long id = milk(ME, 5, 4000L);
+		Long id = milk(me, 5, 4000L);
 
-		mockMvc.perform(consume(ME, id, body("USED", "1.5")))
+		mockMvc.perform(consume(me, id, body("USED", "1.5")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.remainingAmount").value(2.5))
 				.andExpect(jsonPath("$.deleted").value(false))
@@ -93,7 +94,7 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 		assertThat((BigDecimal) log.get("amount")).isEqualByComparingTo("1.5");
 		assertThat(log.get("unit")).isEqualTo("PACK");
 		assertThat(log.get("name")).isEqualTo("우유");
-		assertThat(log.get("user_id")).isEqualTo(ME);
+		assertThat(log.get("user_id")).isEqualTo(me);
 		assertThat(log.get("cost_amount")).isNull();
 		assertThat(log.get("ingredient_id")).isEqualTo(id);
 		assertThat(jdbcTemplate.queryForObject("SELECT initial_amount FROM ingredients WHERE id = ?", BigDecimal.class,
@@ -102,9 +103,9 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 남은_양을_모두_사용하면_재료가_지워지고_기록은_이름과_함께_남는다() throws Exception {
-		Long id = milk(ME, 5, null);
+		Long id = milk(me, 5, null);
 
-		mockMvc.perform(consume(ME, id, body("USED", "4")))
+		mockMvc.perform(consume(me, id, body("USED", "4")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.remainingAmount").value(0))
 				.andExpect(jsonPath("$.deleted").value(true));
@@ -116,18 +117,18 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 		assertThat(log.get("name")).isEqualTo("우유");
 		assertThat(log.get("unit")).isEqualTo("PACK");
 		assertThat((BigDecimal) log.get("amount")).isEqualByComparingTo("4");
-		mockMvc.perform(consume(ME, id, body("USED", "1")))
+		mockMvc.perform(consume(me, id, body("USED", "1")))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("INGREDIENT_NOT_FOUND"));
-		mockMvc.perform(get("/api/v1/user/ingredients").requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, ME))
+		mockMvc.perform(get("/api/v1/user/ingredients").requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, me))
 				.andExpect(jsonPath("$.items.length()").value(0));
 	}
 
 	@Test
 	void 버리면_가격에_비례한_금액이_기록에_남는다() throws Exception {
-		Long id = milk(ME, 5, 4000L);
+		Long id = milk(me, 5, 4000L);
 
-		mockMvc.perform(consume(ME, id, body("DISCARDED", "1")))
+		mockMvc.perform(consume(me, id, body("DISCARDED", "1")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.remainingAmount").value(3))
 				.andExpect(jsonPath("$.deleted").value(false))
@@ -140,9 +141,9 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 가격이_없는_재료를_버리면_금액은_null로_남는다() throws Exception {
-		Long id = milk(ME, 5, null);
+		Long id = milk(me, 5, null);
 
-		mockMvc.perform(consume(ME, id, body("DISCARDED", "1")))
+		mockMvc.perform(consume(me, id, body("DISCARDED", "1")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.costAmount").doesNotExist());
 
@@ -151,12 +152,12 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 여러_번_나눠_버려도_금액은_처음_양_기준이다() throws Exception {
-		Long id = createIngredient(ME, "DAIRY_EGG", "우유", TODAY.plusDays(5), 1000L);
+		Long id = createIngredient(me, "DAIRY_EGG", "우유", TODAY.plusDays(5), 1000L);
 		jdbcTemplate.update("UPDATE ingredients SET amount = 3, initial_amount = 3, unit = 'PACK' WHERE id = ?", id);
 
-		mockMvc.perform(consume(ME, id, body("DISCARDED", "1"))).andExpect(status().isOk());
-		mockMvc.perform(consume(ME, id, body("DISCARDED", "1"))).andExpect(status().isOk());
-		mockMvc.perform(consume(ME, id, body("DISCARDED", "1"))).andExpect(status().isOk());
+		mockMvc.perform(consume(me, id, body("DISCARDED", "1"))).andExpect(status().isOk());
+		mockMvc.perform(consume(me, id, body("DISCARDED", "1"))).andExpect(status().isOk());
+		mockMvc.perform(consume(me, id, body("DISCARDED", "1"))).andExpect(status().isOk());
 
 		assertThat(jdbcTemplate.queryForList("SELECT cost_amount FROM ingredient_logs ORDER BY id", Long.class))
 				.containsExactly(333L, 333L, 333L);
@@ -164,9 +165,9 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 남은_양보다_많이_빼면_INSUFFICIENT_QUANTITY이고_아무것도_바뀌지_않는다() throws Exception {
-		Long id = milk(ME, 5, 4000L);
+		Long id = milk(me, 5, 4000L);
 
-		mockMvc.perform(consume(ME, id, body("USED", "4.001")))
+		mockMvc.perform(consume(me, id, body("USED", "4.001")))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INSUFFICIENT_QUANTITY"))
 				.andExpect(jsonPath("$.details.remaining").value(4));
@@ -178,23 +179,23 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 수량_형식이_틀리면_INVALID_INPUT이고_필드_오류를_준다() throws Exception {
-		Long id = milk(ME, 5, 4000L);
+		Long id = milk(me, 5, 4000L);
 
-		mockMvc.perform(consume(ME, id, body("USED", "0")))
+		mockMvc.perform(consume(me, id, body("USED", "0")))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
-		mockMvc.perform(consume(ME, id, body("USED", "-1")))
+		mockMvc.perform(consume(me, id, body("USED", "-1")))
 				.andExpect(status().isBadRequest());
-		mockMvc.perform(consume(ME, id, body("USED", "0.0001")))
+		mockMvc.perform(consume(me, id, body("USED", "0.0001")))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.fieldErrors[0].field").value("amount"));
-		mockMvc.perform(consume(ME, id, "{ \"type\": \"USED\" }"))
+		mockMvc.perform(consume(me, id, "{ \"type\": \"USED\" }"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.fieldErrors[0].field").value("amount"));
-		mockMvc.perform(consume(ME, id, "{ \"amount\": 1 }"))
+		mockMvc.perform(consume(me, id, "{ \"amount\": 1 }"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.fieldErrors[0].field").value("type"));
-		mockMvc.perform(consume(ME, id, body("EATEN", "1")))
+		mockMvc.perform(consume(me, id, body("EATEN", "1")))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredient_logs", Long.class)).isZero();
@@ -202,12 +203,12 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 다른_사용자의_재료나_없는_재료는_404이다() throws Exception {
-		Long id = milk(OTHER, 5, 4000L);
+		Long id = milk(other, 5, 4000L);
 
-		mockMvc.perform(consume(ME, id, body("USED", "1")))
+		mockMvc.perform(consume(me, id, body("USED", "1")))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("INGREDIENT_NOT_FOUND"));
-		mockMvc.perform(consume(ME, 999999L, body("USED", "1")))
+		mockMvc.perform(consume(me, 999999L, body("USED", "1")))
 				.andExpect(status().isNotFound());
 	}
 
@@ -220,11 +221,11 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 기록이_있는_재료도_삭제되고_기록은_이름과_함께_남는다() throws Exception {
-		Long used = milk(ME, 5, 4000L);
-		mockMvc.perform(consume(ME, used, body("DISCARDED", "1"))).andExpect(status().isOk());
+		Long used = milk(me, 5, 4000L);
+		mockMvc.perform(consume(me, used, body("DISCARDED", "1"))).andExpect(status().isOk());
 
 		mockMvc.perform(delete("/api/v1/user/ingredients/" + used)
-						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, ME))
+						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, me))
 				.andExpect(status().isNoContent());
 
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredients WHERE id = ?", Long.class, used)).isZero();
@@ -236,11 +237,11 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 다른_사용자의_재료는_기록이_있어도_삭제할_수_없다() throws Exception {
-		Long id = milk(OTHER, 5, 4000L);
-		mockMvc.perform(consume(OTHER, id, body("USED", "1"))).andExpect(status().isOk());
+		Long id = milk(other, 5, 4000L);
+		mockMvc.perform(consume(other, id, body("USED", "1"))).andExpect(status().isOk());
 
 		mockMvc.perform(delete("/api/v1/user/ingredients/" + id)
-						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, ME))
+						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, me))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("INGREDIENT_NOT_FOUND"));
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredients WHERE id = ?", Long.class, id)).isEqualTo(1);
@@ -251,13 +252,13 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 사용하면_ingredient_used_이벤트를_코드_값으로만_보낸다() throws Exception {
-		Long id = milk(ME, 2, 4000L);
+		Long id = milk(me, 2, 4000L);
 
-		mockMvc.perform(consume(ME, id, body("USED", "1"))).andExpect(status().isOk());
+		mockMvc.perform(consume(me, id, body("USED", "1"))).andExpect(status().isOk());
 
 		awaitEventWrites();
 		assertThat(jdbcTemplate.queryForObject("SELECT event_name FROM events", String.class)).isEqualTo("ingredient_used");
-		assertThat(jdbcTemplate.queryForObject("SELECT user_id FROM events", Long.class)).isEqualTo(ME);
+		assertThat(jdbcTemplate.queryForObject("SELECT user_id FROM events", Long.class)).isEqualTo(me);
 		String props = jdbcTemplate.queryForObject("SELECT properties::text FROM events", String.class);
 		assertThat(props).contains("\"use_via\": \"manual\"", "\"category_code\": \"DAIRY_EGG\"",
 				"\"expiry_status\": \"soon\"", "\"used_ratio\": 0.25").doesNotContain("우유");
@@ -265,9 +266,9 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 버리면_ingredient_discarded_이벤트에_금액과_가격_여부를_넣는다() throws Exception {
-		Long id = milk(ME, -1, 4000L);
+		Long id = milk(me, -1, 4000L);
 
-		mockMvc.perform(consume(ME, id, body("DISCARDED", "2"))).andExpect(status().isOk());
+		mockMvc.perform(consume(me, id, body("DISCARDED", "2"))).andExpect(status().isOk());
 
 		awaitEventWrites();
 		assertThat(jdbcTemplate.queryForObject("SELECT event_name FROM events", String.class))
@@ -279,9 +280,9 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 가격이_없는_재료를_버리면_이벤트에_cost_amount가_없다() throws Exception {
-		Long id = milk(ME, 20, null);
+		Long id = milk(me, 20, null);
 
-		mockMvc.perform(consume(ME, id, body("DISCARDED", "1"))).andExpect(status().isOk());
+		mockMvc.perform(consume(me, id, body("DISCARDED", "1"))).andExpect(status().isOk());
 
 		awaitEventWrites();
 		String props = jdbcTemplate.queryForObject("SELECT properties::text FROM events", String.class);
@@ -290,9 +291,9 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 거절된_요청은_이벤트를_보내지_않는다() throws Exception {
-		Long id = milk(ME, 5, 4000L);
+		Long id = milk(me, 5, 4000L);
 
-		mockMvc.perform(consume(ME, id, body("USED", "5"))).andExpect(status().isBadRequest());
+		mockMvc.perform(consume(me, id, body("USED", "5"))).andExpect(status().isBadRequest());
 
 		awaitEventWrites();
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM events", Long.class)).isZero();
@@ -302,10 +303,10 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 요리_후_차감은_COOK으로_기록하고_이벤트의_use_via는_cook이다() {
-		Long id = milk(ME, 5, 4000L);
+		Long id = milk(me, 5, 4000L);
 
 		consumeUseCase.consumeIngredient(
-				new ConsumeIngredientCommand(ME, id, IngredientLogType.USED, new BigDecimal("2"), ConsumeVia.COOK));
+				new ConsumeIngredientCommand(me, id, IngredientLogType.USED, new BigDecimal("2"), ConsumeVia.COOK));
 
 		assertThat(onlyLog().get("type")).isEqualTo("USED");
 		awaitEventWrites();
@@ -316,21 +317,21 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Test
 	void 요리_후_차감은_폐기_기록을_남길_수_없다() {
-		Long id = milk(ME, 5, 4000L);
+		Long id = milk(me, 5, 4000L);
 
 		assertThatThrownBy(() -> consumeUseCase.consumeIngredient(
-				new ConsumeIngredientCommand(ME, id, IngredientLogType.DISCARDED, BigDecimal.ONE, ConsumeVia.COOK)))
+				new ConsumeIngredientCommand(me, id, IngredientLogType.DISCARDED, BigDecimal.ONE, ConsumeVia.COOK)))
 				.isInstanceOf(BusinessException.class)
 				.extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT);
 	}
 
 	@Test
 	void 호출한_쪽이_롤백되면_차감과_기록과_이벤트가_모두_취소된다() {
-		Long id = milk(ME, 5, 4000L);
+		Long id = milk(me, 5, 4000L);
 
 		assertThatThrownBy(() -> transactionTemplate.executeWithoutResult(txStatus -> {
 			consumeUseCase.consumeIngredient(
-					new ConsumeIngredientCommand(ME, id, IngredientLogType.USED, new BigDecimal("2"), ConsumeVia.COOK));
+					new ConsumeIngredientCommand(me, id, IngredientLogType.USED, new BigDecimal("2"), ConsumeVia.COOK));
 			throw new IllegalStateException("요리 기록 저장 실패");
 		})).isInstanceOf(IllegalStateException.class);
 
@@ -351,7 +352,7 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 				futures.add(pool.submit(() -> {
 					start.await();
 					try {
-						consumeUseCase.consumeIngredient(new ConsumeIngredientCommand(ME, id, IngredientLogType.USED,
+						consumeUseCase.consumeIngredient(new ConsumeIngredientCommand(me, id, IngredientLogType.USED,
 								new BigDecimal(amount), ConsumeVia.CONSUME));
 						return null;
 					} catch (Throwable e) {
@@ -373,7 +374,7 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 	void 남은_양_안에서_동시에_사용하면_둘_다_반영된다() throws Exception {
 		for (int round = 0; round < 10; round++) {
 			jdbcTemplate.update("DELETE FROM ingredient_logs");
-			Long id = createIngredient(ME, "DAIRY_EGG", "우유", TODAY.plusDays(5));
+			Long id = createIngredient(me, "DAIRY_EGG", "우유", TODAY.plusDays(5));
 			jdbcTemplate.update("UPDATE ingredients SET amount = 2, initial_amount = 2 WHERE id = ?", id);
 
 			List<Throwable> results = consumeConcurrently(id, 2, "1");
@@ -389,7 +390,7 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 	void 마지막_재고를_동시에_사용하면_한쪽만_성공하고_다른쪽은_업무_오류다() throws Exception {
 		for (int round = 0; round < 10; round++) {
 			jdbcTemplate.update("DELETE FROM ingredient_logs");
-			Long id = createIngredient(ME, "DAIRY_EGG", "우유", TODAY.plusDays(5));
+			Long id = createIngredient(me, "DAIRY_EGG", "우유", TODAY.plusDays(5));
 
 			List<Throwable> results = consumeConcurrently(id, 2, "1");
 
@@ -406,7 +407,7 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 	void 사용과_삭제를_동시에_보내도_기록과_재료가_어긋나지_않는다() throws Exception {
 		for (int round = 0; round < 10; round++) {
 			jdbcTemplate.update("DELETE FROM ingredient_logs");
-			Long id = createIngredient(ME, "DAIRY_EGG", "우유", TODAY.plusDays(5));
+			Long id = createIngredient(me, "DAIRY_EGG", "우유", TODAY.plusDays(5));
 			jdbcTemplate.update("UPDATE ingredients SET amount = 2, initial_amount = 2 WHERE id = ?", id);
 			ExecutorService pool = Executors.newFixedThreadPool(2);
 			CyclicBarrier start = new CyclicBarrier(2);
@@ -414,7 +415,7 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 				Future<Throwable> consumed = pool.submit(() -> {
 					start.await();
 					try {
-						consumeUseCase.consumeIngredient(new ConsumeIngredientCommand(ME, id, IngredientLogType.USED,
+						consumeUseCase.consumeIngredient(new ConsumeIngredientCommand(me, id, IngredientLogType.USED,
 								BigDecimal.ONE, ConsumeVia.CONSUME));
 						return null;
 					} catch (Throwable e) {
@@ -424,7 +425,7 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 				Future<Throwable> deleted = pool.submit(() -> {
 					start.await();
 					try {
-						deleteUseCase.deleteIngredient(ME, id);
+						deleteUseCase.deleteIngredient(me, id);
 						return null;
 					} catch (Throwable e) {
 						return e;

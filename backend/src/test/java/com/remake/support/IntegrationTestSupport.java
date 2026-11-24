@@ -121,24 +121,6 @@ public abstract class IntegrationTestSupport {
 				""", Long.class, provider.name(), providerUserId, now, now);
 	}
 
-	/**
-	 * 고정 id로 회원이 없으면 넣는다. 예전 테스트가 쓰던 101L 같은 번호를 ingredients FK에 맞출 때 쓴다.
-	 */
-	protected void ensureUser(Long id) {
-		Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE id = ?", Integer.class, id);
-		if (count != null && count > 0) {
-			return;
-		}
-		LocalDateTime now = LocalDateTime.now(clock);
-		jdbcTemplate.update("""
-				INSERT INTO users (id, provider, provider_user_id, email, role, status, plan, onboarding_completed,
-				                   recipe_supplement_enabled, notification_enabled, created_at, updated_at)
-				OVERRIDING SYSTEM VALUE
-				VALUES (?, 'KAKAO', ?, NULL, 'USER', 'ACTIVE', 'BASIC', false, false, true, ?, ?)
-				""", id, "fixed-" + id, now, now);
-		jdbcTemplate.execute("SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT COALESCE(MAX(id), 1) FROM users))");
-	}
-
 	/** 서버 EventTracker(@Async) 적재가 끝날 때까지 기다린다. */
 	protected void awaitEventWrites() {
 		Awaitility.await().atMost(Duration.ofSeconds(3)).until(this::eventExecutorIdle);
@@ -154,14 +136,16 @@ public abstract class IntegrationTestSupport {
 		return jdbcTemplate.queryForObject("SELECT id FROM ingredient_categories WHERE code = ?", Long.class, code);
 	}
 
-	/** 냉장고 재료 한 건을 넣고 id를 돌려준다. 단위·양은 기본값(EA, 1)이고 생성·수정 시각은 시험용 시계를 따른다. */
+	/**
+	 * 냉장고 재료 한 건을 넣고 id를 돌려준다. 단위·양은 기본값(EA, 1)이고 생성·수정 시각은 시험용 시계를 따른다.
+	 * 사용자는 createUser()로 먼저 만든다. 없는 사용자 번호면 외래 키 오류로 실패한다.
+	 */
 	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate) {
 		return createIngredient(userId, categoryCode, name, expirationDate, null);
 	}
 
 	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate,
 			Long price) {
-		ensureUser(userId);
 		LocalDateTime now = LocalDateTime.now(clock);
 		return jdbcTemplate.queryForObject("""
 				INSERT INTO ingredients (user_id, category_id, name, storage, expiration_date, amount, initial_amount,
@@ -174,9 +158,9 @@ public abstract class IntegrationTestSupport {
 	/**
 	 * 레시피 한 건(빠른 생성, 1인분, 10분)을 넣고 id를 돌려준다. 재료·단계는 넣지 않는다.
 	 * 식단 칸·장바구니·저장 목록처럼 레시피 id만 필요한 테스트가 쓴다(레시피 FK가 있어 없는 번호는 넣을 수 없다).
+	 * 사용자는 createUser()로 먼저 만든다.
 	 */
 	protected Long createRecipe(Long userId) {
-		ensureUser(userId);
 		return jdbcTemplate.queryForObject("""
 				INSERT INTO recipes (user_id, source, title, servings, cook_minutes, created_at)
 				VALUES (?, 'QUICK', '테스트 레시피', 1, 10, ?)
