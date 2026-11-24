@@ -17,6 +17,8 @@ final class EventPropertyValues {
 	private static final Map<String, Set<String>> ENUM_VALUES = Map.ofEntries(
 			Map.entry("entry_source", Set.of("icon", "splash", "push", "browser", "share", "deep_link", "notification")),
 			Map.entry("provider", Set.of("kakao", "naver", "google")),
+			Map.entry("deletion_method", Set.of("email_code", "reauth")),
+			Map.entry("end_reason", Set.of("canceled", "account_deleted")),
 			Map.entry("permission_result", Set.of("granted", "denied", "dismissed")),
 			Map.entry("limit_feature", Set.of("RECIPE", "MEAL_PLAN")),
 			Map.entry("onboarding_step", Set.of("household", "allergy")),

@@ -33,6 +33,7 @@ import com.remake.global.config.AsyncConfig;
 import com.remake.global.config.UploadProperties;
 import com.remake.mealplan.adapter.out.ai.GeminiMealPlanAdapter;
 import com.remake.recipe.adapter.out.ai.GeminiRecipeAdapter;
+import com.remake.user.adapter.out.mail.LoggingDeletionCodeMailAdapter;
 import com.remake.user.domain.AuthProvider;
 
 /**
@@ -115,6 +116,10 @@ public abstract class IntegrationTestSupport {
 	// 식단표 AI. 실제 Gemini를 부르지 않는다. 테스트마다 만들 칸·예외를 stub한다. stub하지 않으면 빈 목록(칸 빠짐 = AI_INVALID_RESPONSE)이다.
 	@MockitoBean
 	protected GeminiMealPlanAdapter mealPlanAiAdapter;
+
+	// 계정 삭제 인증번호 메일. 실제 SMTP를 쓰지 않고 테스트가 평문 번호를 가로챈다.
+	@MockitoBean
+	protected LoggingDeletionCodeMailAdapter deletionCodeMailAdapter;
 
 	/** 테스트용 회원 한 명을 넣고 id를 돌려준다. provider_user_id는 호출마다 다르게 만든다. */
 	protected Long createUser() {

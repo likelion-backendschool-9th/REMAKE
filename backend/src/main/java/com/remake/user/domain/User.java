@@ -3,7 +3,7 @@ package com.remake.user.domain;
 import java.time.LocalDateTime;
 
 /**
- * 소셜 로그인 회원. 탈퇴 시 soft-delete(deleted_at)와 provider_user_id·email 비식별화는 #68에서 한다.
+ * 소셜 로그인 회원. 탈퇴 시 soft-delete(deleted_at)와 provider_user_id·email을 비운다(#68).
  */
 public record User(
 		Long id,
@@ -18,14 +18,15 @@ public record User(
 		boolean recipeSupplementEnabled,
 		boolean notificationEnabled,
 		String lastMealPurpose,
-		LocalDateTime deletedAt) {
+		LocalDateTime deletedAt,
+		LocalDateTime createdAt) {
 
 	/** 가구원 수 상한(1~50). 온보딩·설정 PATCH 공통. */
 	public static final int MAX_HOUSEHOLD_SIZE = 50;
 
 	public static User signUp(AuthProvider provider, String providerUserId, String email) {
 		return new User(null, provider, providerUserId, email, UserRole.USER, UserStatus.ACTIVE, UserPlan.BASIC,
-				null, false, false, true, null, null);
+				null, false, false, true, null, null, null);
 	}
 
 	public boolean isActive() {
@@ -38,7 +39,7 @@ public record User(
 
 	public User withId(Long id) {
 		return new User(id, provider, providerUserId, email, role, status, plan, householdSize, onboardingCompleted,
-				recipeSupplementEnabled, notificationEnabled, lastMealPurpose, deletedAt);
+				recipeSupplementEnabled, notificationEnabled, lastMealPurpose, deletedAt, createdAt);
 	}
 
 	/**
@@ -50,7 +51,7 @@ public record User(
 		}
 		validateHouseholdSize(householdSize);
 		return new User(id, provider, providerUserId, email, role, status, plan, householdSize, true,
-				recipeSupplementEnabled, notificationEnabled, lastMealPurpose, deletedAt);
+				recipeSupplementEnabled, notificationEnabled, lastMealPurpose, deletedAt, createdAt);
 	}
 
 	/**
@@ -65,7 +66,21 @@ public record User(
 		return new User(id, provider, providerUserId, email, role, status, plan, nextHousehold, onboardingCompleted,
 				recipeSupplementEnabled != null ? recipeSupplementEnabled : this.recipeSupplementEnabled,
 				notificationEnabled != null ? notificationEnabled : this.notificationEnabled,
-				lastMealPurpose, deletedAt);
+				lastMealPurpose, deletedAt, createdAt);
+	}
+
+	/**
+	 * 탈퇴. provider_user_id·email을 비우고 deleted_at을 남긴다. 행은 유지한다.
+	 */
+	public User withdraw(LocalDateTime deletedAt) {
+		if (deletedAt == null) {
+			throw new IllegalArgumentException("탈퇴 시각이 필요합니다.");
+		}
+		if (this.deletedAt != null) {
+			throw new IllegalStateException("이미 탈퇴한 회원입니다.");
+		}
+		return new User(id, provider, null, null, role, status, plan, householdSize, onboardingCompleted,
+				recipeSupplementEnabled, notificationEnabled, lastMealPurpose, deletedAt, createdAt);
 	}
 
 	/** 식단표 생성에서 고른 식단 목적을 다음 기본값으로 기억한다. */

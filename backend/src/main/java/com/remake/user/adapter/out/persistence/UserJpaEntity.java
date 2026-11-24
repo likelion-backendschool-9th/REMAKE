@@ -95,6 +95,6 @@ class UserJpaEntity extends BaseTimeEntity {
 
 	User toDomain() {
 		return new User(id, provider, providerUserId, email, role, status, plan, householdSize, onboardingCompleted,
-				recipeSupplementEnabled, notificationEnabled, lastMealPurpose, deletedAt);
+				recipeSupplementEnabled, notificationEnabled, lastMealPurpose, deletedAt, getCreatedAt());
 	}
 }

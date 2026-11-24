@@ -35,8 +35,9 @@ public enum EventName {
 	SETTING_CHANGED("setting_changed", EventSource.CLIENT, Set.of("setting_key", "new_value_bool")), // E14
 	EXCLUDED_INGREDIENTS_UPDATED("excluded_ingredients_updated", EventSource.CLIENT, Set.of("excluded_count")), // E15
 	LOGOUT_CONFIRMED("logout_confirmed", EventSource.CLIENT, Set.of()), // E16
-	ACCOUNT_DELETION_REQUESTED("account_deletion_requested", EventSource.SERVER, Set.of("is_resend")), // E17
-	ACCOUNT_DELETED("account_deleted", EventSource.SERVER, Set.of("tenure_days")), // E18
+	ACCOUNT_DELETION_REQUESTED("account_deletion_requested", EventSource.SERVER, Set.of("provider", "deletion_method")), // E17
+	ACCOUNT_DELETED("account_deleted", EventSource.SERVER, Set.of("tenure_days", "deletion_method")), // E18
+	SUBSCRIPTION_ENDED("subscription_ended", EventSource.SERVER, Set.of("end_reason", "subscribed_days")), // E88
 	FRIDGE_LIST_VIEWED("fridge_list_viewed", EventSource.CLIENT, Set.of("total_count", "danger_count", "soon_count", "ok_count")), // E19
 	FRIDGE_FILTER_APPLIED("fridge_filter_applied", EventSource.CLIENT, Set.of("filter_type", "filter_value")), // E20
 	INGREDIENT_ADD_STARTED("ingredient_add_started", EventSource.CLIENT, Set.of("add_source")), // E21
