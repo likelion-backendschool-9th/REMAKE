@@ -19,7 +19,7 @@ public record SharedRecipePhotoPolicy(int maxFileBytes) {
 			throw new BusinessException(ErrorCode.PHOTO_REQUIRED);
 		}
 		if (size > maxFileBytes) {
-			throw new BusinessException(ErrorCode.FILE_TOO_LARGE);
+			throw new BusinessException(ErrorCode.FILE_TOO_LARGE, "파일이 너무 커요 (최대 5MiB)");
 		}
 	}
 }

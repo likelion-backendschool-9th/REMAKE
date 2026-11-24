@@ -67,7 +67,8 @@ class SharedRecipePublishingApiTest extends IntegrationTestSupport {
 		Long user = createUser(); Long recipe = createRecipe(user);
 		for (byte[] photo : new byte[][] {null, new byte[0]}) {
 			mockMvc.perform(request(recipe, "제목", photo).requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, user))
-					.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PHOTO_REQUIRED"));
+					.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PHOTO_REQUIRED"))
+					.andExpect(jsonPath("$.message").value("실제로 요리한 사진을 올려 주세요"));
 		}
 		assertThat(fileCount()).isZero();
 	}
@@ -178,9 +179,11 @@ class SharedRecipePublishingApiTest extends IntegrationTestSupport {
 	void 사진용량과_위조헤더를_API에서도_검증한다() throws Exception {
 		Long user = createUser(); Long recipe = createRecipe(user);
 		mockMvc.perform(request(recipe, "제목", new byte[5 * 1024 * 1024 + 1]).requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, user))
-				.andExpect(status().isContentTooLarge()).andExpect(jsonPath("$.code").value("FILE_TOO_LARGE"));
+				.andExpect(status().isContentTooLarge()).andExpect(jsonPath("$.code").value("FILE_TOO_LARGE"))
+				.andExpect(jsonPath("$.message").value("파일이 너무 커요 (최대 5MiB)"));
 		mockMvc.perform(request(recipe, "제목", new byte[]{1, 2, 3}).requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, user))
-				.andExpect(status().isUnsupportedMediaType()).andExpect(jsonPath("$.code").value("UNSUPPORTED_FILE_TYPE"));
+				.andExpect(status().isUnsupportedMediaType()).andExpect(jsonPath("$.code").value("UNSUPPORTED_FILE_TYPE"))
+				.andExpect(jsonPath("$.message").value("지원하지 않는 파일 형식이에요"));
 		assertThat(fileCount()).isZero();
 	}
 }

@@ -54,8 +54,9 @@ class SharedRecipeReportApiTest extends IntegrationTestSupport {
 		assertThat(row.get("reason")).isEqualTo(reason.name());
 		assertThat(row.get("status")).isEqualTo("PENDING");
 		awaitEventWrites();
-		var event = jdbcTemplate.queryForMap("SELECT user_id, properties::text AS props FROM events WHERE event_name = 'shared_recipe_reported'");
+		var event = jdbcTemplate.queryForMap("SELECT user_id, screen, properties::text AS props FROM events WHERE event_name = 'shared_recipe_reported'");
 		assertThat(event.get("user_id")).isEqualTo(user);
+		assertThat(event.get("screen")).isEqualTo("shared_report");
 		assertThat(event.get("props").toString()).contains("shared_recipe_id", reason.eventValue())
 				.doesNotContain("공유 제목", "email", "reasonDetail");
 		assertThat(jdbcTemplate.queryForObject("SELECT properties ->> 'report_reason' FROM events WHERE event_name = 'shared_recipe_reported'", String.class))

@@ -35,7 +35,7 @@ class SharedRecipeReportingService implements ReportSharedRecipeUseCase {
 		sharedRecipes.findById(sharedRecipeId).filter(p -> p.status() == SharedRecipe.Status.VISIBLE)
 				.orElseThrow(() -> new BusinessException(ErrorCode.SHARED_RECIPE_NOT_FOUND));
 		reports.save(userId, sharedRecipeId, reason);
-		events.track(EventName.SHARED_RECIPE_REPORTED, Screen.SHARED_RECIPE,
+		events.track(EventName.SHARED_RECIPE_REPORTED, Screen.SHARED_REPORT,
 				Map.of("shared_recipe_id", sharedRecipeId, "report_reason", reason.eventValue()),
 				EventTrackCommand.ofUser(userId));
 	}

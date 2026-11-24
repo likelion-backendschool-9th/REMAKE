@@ -35,8 +35,8 @@ public enum ErrorCode {
 	SHARED_RECIPE_NOT_FOUND(HttpStatus.NOT_FOUND, "삭제되었거나 볼 수 없는 레시피예요"),
 	REPORT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 신고한 레시피예요"),
 	// 공유 사진
-	PHOTO_REQUIRED(HttpStatus.BAD_REQUEST, "조리 사진 1장을 첨부해 주세요."),
-	UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 파일 형식입니다."),
+	PHOTO_REQUIRED(HttpStatus.BAD_REQUEST, "실제로 요리한 사진을 올려 주세요"),
+	UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 파일 형식이에요"),
 	// 인증
 	OAUTH_FAILED(HttpStatus.UNAUTHORIZED, "소셜 로그인에 실패했습니다."),
 	OAUTH_PROVIDER_UNSUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 로그인 방식입니다."),

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import com.remake.event.domain.EventName;
 import com.remake.event.domain.EventPropertyFilter;
+import com.remake.event.domain.Screen;
 import com.remake.share.domain.SharedRecipeReportReason;
 
 class SharedRecipeReportEventTest {
@@ -21,6 +22,7 @@ class SharedRecipeReportEventTest {
 			assertThat(EventPropertyFilter.filter(EventName.SHARED_RECIPE_REPORTED,
 					Map.of("shared_recipe_id", 1L, "report_reason", invalid))).isEmpty();
 		}
+		assertThat(Screen.fromCode("shared_report")).isEqualTo(Screen.SHARED_REPORT);
 		assertThat(EventName.SHARED_RECIPE_PUBLISHED.getAllowedProperties()).containsExactly("shared_recipe_id");
 	}
 }
