@@ -244,8 +244,8 @@ No data returns 200 with empty values; the screen draws its empty state.
 | Case | Handling |
 | --- | --- |
 | Receipt registration pressed twice | Disable the button until the request ends (frontend). No server duplicate-request key |
-| Cook deduction pressed twice | Same. The server checks the remaining amount before subtracting; `INSUFFICIENT_QUANTITY` if short |
-| Same ingredient edited on two devices | Last write wins (no `version`). Deduction as above |
+| Cook deduction pressed twice | Same. The server locks the ingredient row and checks the remaining amount before subtracting; `INSUFFICIENT_QUANTITY` if short. If the first request used the last stock, the row is gone and the second gets `INGREDIENT_NOT_FOUND` (404) |
+| Same ingredient edited on two devices | Requests are handled one by one (row lock, no `version`), so the last request wins. Use/discard as above |
 | Same recipe saved twice | PUT, same result (not an error). `saved_recipes` UK(user_id + recipe_id) |
 | Same recipe shared twice in a week | `ALREADY_SHARED` |
 | Same post reported twice | `REPORT_ALREADY_EXISTS` |

@@ -29,6 +29,11 @@ class IngredientPersistenceAdapter implements LoadIngredientPort, SaveIngredient
 	}
 
 	@Override
+	public Optional<Ingredient> loadByIdAndUserIdForUpdate(Long ingredientId, Long userId) {
+		return repository.findByIdAndUserIdForUpdate(ingredientId, userId).map(IngredientJpaEntity::toDomain);
+	}
+
+	@Override
 	public List<Ingredient> loadByUserId(Long userId, StorageLocation storage, Long categoryId) {
 		return repository.search(userId, storage, categoryId).stream()
 				.map(IngredientJpaEntity::toDomain)

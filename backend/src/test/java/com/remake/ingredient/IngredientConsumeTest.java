@@ -10,7 +10,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +30,7 @@ import com.remake.global.error.ErrorCode;
 import com.remake.global.web.LoginUserIdArgumentResolver;
 import com.remake.ingredient.application.port.in.ConsumeIngredientCommand;
 import com.remake.ingredient.application.port.in.ConsumeIngredientUseCase;
+import com.remake.ingredient.application.port.in.DeleteIngredientUseCase;
 import com.remake.ingredient.domain.ConsumeVia;
 import com.remake.ingredient.domain.IngredientLogType;
 import com.remake.support.IntegrationTestSupport;
@@ -37,6 +44,9 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 
 	@Autowired
 	private ConsumeIngredientUseCase consumeUseCase;
+
+	@Autowired
+	private DeleteIngredientUseCase deleteUseCase;
 
 	@Autowired
 	private TransactionTemplate transactionTemplate;
@@ -329,5 +339,115 @@ class IngredientConsumeTest extends IntegrationTestSupport {
 				.isEqualByComparingTo("4");
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredient_logs", Long.class)).isZero();
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM events", Long.class)).isZero();
+	}
+
+	// 두 요청을 장벽에 모았다가 동시에 출발시켜 각 결과(성공이면 null, 실패면 예외)를 돌려준다.
+	private List<Throwable> consumeConcurrently(Long id, int requests, String amount) throws Exception {
+		ExecutorService pool = Executors.newFixedThreadPool(requests);
+		CyclicBarrier start = new CyclicBarrier(requests);
+		try {
+			List<Future<Throwable>> futures = new ArrayList<>();
+			for (int i = 0; i < requests; i++) {
+				futures.add(pool.submit(() -> {
+					start.await();
+					try {
+						consumeUseCase.consumeIngredient(new ConsumeIngredientCommand(ME, id, IngredientLogType.USED,
+								new BigDecimal(amount), ConsumeVia.CONSUME));
+						return null;
+					} catch (Throwable e) {
+						return e;
+					}
+				}));
+			}
+			List<Throwable> results = new ArrayList<>();
+			for (Future<Throwable> future : futures) {
+				results.add(future.get());
+			}
+			return results;
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	@Test
+	void 남은_양_안에서_동시에_사용하면_둘_다_반영된다() throws Exception {
+		for (int round = 0; round < 10; round++) {
+			jdbcTemplate.update("DELETE FROM ingredient_logs");
+			Long id = createIngredient(ME, "DAIRY_EGG", "우유", TODAY.plusDays(5));
+			jdbcTemplate.update("UPDATE ingredients SET amount = 2, initial_amount = 2 WHERE id = ?", id);
+
+			List<Throwable> results = consumeConcurrently(id, 2, "1");
+
+			assertThat(results).containsOnly((Throwable) null);
+			assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ingredients WHERE id = ?", Integer.class, id))
+					.isZero();
+			assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ingredient_logs", Integer.class)).isEqualTo(2);
+		}
+	}
+
+	@Test
+	void 마지막_재고를_동시에_사용하면_한쪽만_성공하고_다른쪽은_업무_오류다() throws Exception {
+		for (int round = 0; round < 10; round++) {
+			jdbcTemplate.update("DELETE FROM ingredient_logs");
+			Long id = createIngredient(ME, "DAIRY_EGG", "우유", TODAY.plusDays(5));
+
+			List<Throwable> results = consumeConcurrently(id, 2, "1");
+
+			List<Throwable> failures = results.stream().filter(e -> e != null).toList();
+			assertThat(failures).hasSize(1);
+			// 늦은 요청은 지워진 재료를 못 찾는다(404). 500으로 새는 예외가 아니다.
+			assertThat(failures.get(0)).isInstanceOfSatisfying(BusinessException.class,
+					e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INGREDIENT_NOT_FOUND));
+			assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ingredient_logs", Integer.class)).isEqualTo(1);
+		}
+	}
+
+	@Test
+	void 사용과_삭제를_동시에_보내도_기록과_재료가_어긋나지_않는다() throws Exception {
+		for (int round = 0; round < 10; round++) {
+			jdbcTemplate.update("DELETE FROM ingredient_logs");
+			Long id = createIngredient(ME, "DAIRY_EGG", "우유", TODAY.plusDays(5));
+			jdbcTemplate.update("UPDATE ingredients SET amount = 2, initial_amount = 2 WHERE id = ?", id);
+			ExecutorService pool = Executors.newFixedThreadPool(2);
+			CyclicBarrier start = new CyclicBarrier(2);
+			try {
+				Future<Throwable> consumed = pool.submit(() -> {
+					start.await();
+					try {
+						consumeUseCase.consumeIngredient(new ConsumeIngredientCommand(ME, id, IngredientLogType.USED,
+								BigDecimal.ONE, ConsumeVia.CONSUME));
+						return null;
+					} catch (Throwable e) {
+						return e;
+					}
+				});
+				Future<Throwable> deleted = pool.submit(() -> {
+					start.await();
+					try {
+						deleteUseCase.deleteIngredient(ME, id);
+						return null;
+					} catch (Throwable e) {
+						return e;
+					}
+				});
+				Throwable consumeResult = consumed.get();
+				Throwable deleteResult = deleted.get();
+
+				// 삭제는 항상 성공하고, 사용은 삭제보다 먼저면 성공(기록 1건), 나중이면 404(기록 0건)이다.
+				assertThat(deleteResult).isNull();
+				assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ingredients WHERE id = ?", Integer.class, id))
+						.isZero();
+				int logs = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ingredient_logs", Integer.class);
+				if (consumeResult == null) {
+					assertThat(logs).isEqualTo(1);
+				} else {
+					assertThat(consumeResult).isInstanceOfSatisfying(BusinessException.class,
+							e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INGREDIENT_NOT_FOUND));
+					assertThat(logs).isZero();
+				}
+			} finally {
+				pool.shutdownNow();
+			}
+		}
 	}
 }
