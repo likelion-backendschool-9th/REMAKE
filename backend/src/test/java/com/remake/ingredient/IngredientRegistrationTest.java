@@ -44,6 +44,12 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 				amount, IngredientUnit.EA, 3000L, receiptItemId);
 	}
 
+	// 단위를 null로 넘기면 서버가 정한다(직접 추가·장바구니). 넣으면 그대로 쓴다(영수증 PACK 예외).
+	private RegisterIngredientCommand commandWithUnit(String name, IngredientCategoryCode category, IngredientUnit unit) {
+		return new RegisterIngredientCommand(USER, name, category, StorageLocation.FRIDGE, LocalDate.of(2026, 3, 12), null,
+				BigDecimal.ONE, unit, null, null);
+	}
+
 	private void assertErrorCode(Runnable call, ErrorCode expected) {
 		assertThatThrownBy(call::run)
 				.isInstanceOf(BusinessException.class)
@@ -191,5 +197,31 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 	void 등록할_재료_목록이_없으면_INVALID_INPUT이고_빈_목록은_빈_결과이다() {
 		assertErrorCode(() -> registerUseCase.registerIngredients(null), ErrorCode.INVALID_INPUT);
 		assertThat(registerUseCase.registerIngredients(List.of())).isEmpty();
+	}
+
+	@Test
+	void 단위를_넘기지_않으면_서버가_재료명으로_정한다() {
+		Long exact = registerUseCase.registerIngredient(commandWithUnit("대파", IngredientCategoryCode.VEGETABLE, null));
+		Long contained = registerUseCase.registerIngredient(commandWithUnit("유기농 우유", IngredientCategoryCode.DAIRY_EGG, null));
+		Long unknown = registerUseCase.registerIngredient(commandWithUnit("알수없는재료", IngredientCategoryCode.ETC, null));
+
+		assertThat(getUseCase.getIngredient(USER, exact).ingredient().unit()).isEqualTo(IngredientUnit.BUNCH);
+		assertThat(getUseCase.getIngredient(USER, contained).ingredient().unit()).isEqualTo(IngredientUnit.PACK);
+		assertThat(getUseCase.getIngredient(USER, unknown).ingredient().unit()).isEqualTo(IngredientUnit.EA);
+	}
+
+	@Test
+	void 호출한_기능이_단위를_넘기면_그대로_쓴다() {
+		// 영수증에서 무게를 읽지 못한 품목의 PACK 예외(#145)처럼 호출한 쪽이 정한 단위다
+		Long id = registerUseCase.registerIngredient(commandWithUnit("한돈 앞다리 돼지고기", IngredientCategoryCode.MEAT,
+				IngredientUnit.PACK));
+
+		assertThat(getUseCase.getIngredient(USER, id).ingredient().unit()).isEqualTo(IngredientUnit.PACK);
+	}
+
+	@Test
+	void 재료명이_비어_있으면_단위를_정하지_못해_INVALID_INPUT이다() {
+		assertErrorCode(() -> registerUseCase.registerIngredient(commandWithUnit("  ", IngredientCategoryCode.ETC, null)),
+				ErrorCode.INVALID_INPUT);
 	}
 }

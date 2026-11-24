@@ -36,7 +36,6 @@ public enum ErrorCode {
 	// 재료
 	INGREDIENT_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "재료 카테고리를 찾을 수 없습니다."),
 	INGREDIENT_NOT_FOUND(HttpStatus.NOT_FOUND, "재료를 찾을 수 없습니다."),
-	INVALID_UNIT(HttpStatus.BAD_REQUEST, "사용할 수 없는 단위입니다."),
 	INSUFFICIENT_QUANTITY(HttpStatus.BAD_REQUEST, "가진 양보다 많이 뺄 수 없습니다."),
 	// AI 레시피 (문구는 에러 정의서 v2. 모두 횟수 차감 없음)
 	AI_UPSTREAM_ERROR(HttpStatus.BAD_GATEWAY, "레시피를 만들지 못했어요. 횟수는 차감되지 않았어요"),

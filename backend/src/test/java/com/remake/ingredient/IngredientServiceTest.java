@@ -19,6 +19,7 @@ import com.remake.ingredient.domain.ExpiryStatus;
 import com.remake.ingredient.domain.FridgeIngredient;
 import com.remake.ingredient.domain.Ingredient;
 import com.remake.ingredient.domain.IngredientCategoryCode;
+import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.ingredient.domain.StorageLocation;
 import com.remake.support.IntegrationTestSupport;
 
@@ -207,5 +208,60 @@ class IngredientServiceTest extends IntegrationTestSupport {
 
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredients WHERE id = ?", Long.class, id))
 				.isEqualTo(1L);
+	}
+
+	@Test
+	void 이름을_바꾸면_단위만_다시_정하고_수량_숫자는_그대로다() {
+		Long id = createMilk(OWNER, null);
+		jdbcTemplate.update("UPDATE ingredients SET amount = 3, initial_amount = 3 WHERE id = ?", id);
+
+		FridgeIngredient updated = updateUseCase.updateIngredient(
+				new UpdateIngredientCommand(OWNER, id, "대파", null, null, null, null));
+
+		// 우유(EA로 넣은 시험 데이터) → 대파: 사전에 있는 이름이라 BUNCH
+		assertThat(updated.ingredient().unit()).isEqualTo(IngredientUnit.BUNCH);
+		assertThat(updated.ingredient().amount()).isEqualByComparingTo("3");
+		assertThat(updated.ingredient().initialAmount()).isEqualByComparingTo("3");
+	}
+
+	@Test
+	void 사용_기록이_있어도_이름을_바꾸면_단위를_다시_정하고_기록은_그대로다() {
+		Long id = createMilk(OWNER, null);
+		jdbcTemplate.update("""
+				INSERT INTO ingredient_logs (user_id, ingredient_id, type, name, amount, unit, created_at)
+				VALUES (?, ?, 'USED', '우유', 1, 'EA', ?)
+				""", OWNER, id, java.time.LocalDateTime.now(clock));
+
+		FridgeIngredient updated = updateUseCase.updateIngredient(
+				new UpdateIngredientCommand(OWNER, id, "대파", null, null, null, null));
+
+		assertThat(updated.ingredient().unit()).isEqualTo(IngredientUnit.BUNCH);
+		assertThat(jdbcTemplate.queryForMap("SELECT name, unit FROM ingredient_logs WHERE ingredient_id = ?", id))
+				.containsEntry("name", "우유").containsEntry("unit", "EA");
+	}
+
+	@Test
+	void 카테고리만_바꿔도_저장될_단위가_미리보기와_같도록_다시_정한다() {
+		// 같은 카테고리의 사전 이름("우유")이 들어 있는 이름은 그 카테고리일 때만 PACK이다
+		Long id = createIngredient(OWNER, "VEGETABLE", "유기농 우유", EXPIRATION, null);
+
+		FridgeIngredient updated = updateUseCase.updateIngredient(
+				new UpdateIngredientCommand(OWNER, id, null, IngredientCategoryCode.DAIRY_EGG, null, null, null));
+
+		assertThat(updated.ingredient().unit()).isEqualTo(IngredientUnit.PACK);
+	}
+
+	@Test
+	void 이름과_카테고리를_바꾸지_않으면_단위를_건드리지_않는다() {
+		Long id = createMilk(OWNER, null);
+
+		// 같은 이름·같은 카테고리를 그대로 보내도, 다른 값만 고쳐도 단위는 그대로(시험 데이터는 EA)
+		FridgeIngredient same = updateUseCase.updateIngredient(
+				new UpdateIngredientCommand(OWNER, id, "우유", IngredientCategoryCode.DAIRY_EGG, null, null, null));
+		FridgeIngredient other = updateUseCase.updateIngredient(
+				new UpdateIngredientCommand(OWNER, id, null, null, null, StorageLocation.FREEZER, null));
+
+		assertThat(same.ingredient().unit()).isEqualTo(IngredientUnit.EA);
+		assertThat(other.ingredient().unit()).isEqualTo(IngredientUnit.EA);
 	}
 }

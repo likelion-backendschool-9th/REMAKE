@@ -16,10 +16,12 @@ import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.ingredient.application.port.in.RegisterIngredientCommand;
 import com.remake.ingredient.application.port.in.RegisterIngredientUseCase;
+import com.remake.ingredient.application.port.in.ResolveIngredientUnitUseCase;
 import com.remake.ingredient.application.port.out.LoadIngredientCategoryPort;
 import com.remake.ingredient.application.port.out.SaveIngredientPort;
 import com.remake.ingredient.domain.Ingredient;
 import com.remake.ingredient.domain.IngredientCategory;
+import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.ingredient.domain.ExpiryPolicy;
 
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase 
 
 	private final LoadIngredientCategoryPort loadIngredientCategoryPort;
 	private final SaveIngredientPort saveIngredientPort;
+	private final ResolveIngredientUnitUseCase resolveIngredientUnitUseCase;
 	private final EventTracker eventTracker;
 	private final Clock clock;
 
@@ -70,9 +73,13 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase 
 			expirationDate = ExpiryPolicy.estimateExpirationDate(baseDate, category.defaultShelfLifeDays());
 		}
 
+		// 단위는 서버가 정한다. 호출한 기능이 정해서 넘긴 단위(영수증 PACK 예외 등)가 있으면 그대로 쓴다.
+		IngredientUnit unit = command.unit() != null ? command.unit()
+				: resolveIngredientUnitUseCase.resolveUnit(command.name(), command.categoryCode());
+
 		try {
 			Ingredient ingredient = Ingredient.register(command.userId(), category.id(), command.receiptItemId(),
-					command.name(), command.storage(), expirationDate, command.amount(), command.unit(),
+					command.name(), command.storage(), expirationDate, command.amount(), unit,
 					command.price());
 			Ingredient saved = saveIngredientPort.save(ingredient);
 			trackAdded(saved, category, command.receiptItemId() != null);

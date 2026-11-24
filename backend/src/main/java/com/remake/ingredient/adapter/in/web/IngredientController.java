@@ -63,7 +63,7 @@ public class IngredientController {
 		return FridgeSummaryResponse.from(getFridgeUseCase.getFridgeSummary(userId));
 	}
 
-	@Operation(summary = "재료 직접 추가", description = "냉장고 단위 9개 코드만 허용합니다(아니면 INVALID_UNIT).")
+	@Operation(summary = "재료 직접 추가", description = "단위는 받지 않습니다. 서버가 재료명과 카테고리로 정해 응답의 unit에 줍니다.")
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
 	public IngredientResponse register(@LoginUserId Long userId, @Valid @RequestBody IngredientCreateRequest request) {

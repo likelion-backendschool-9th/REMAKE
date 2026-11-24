@@ -72,7 +72,6 @@ class IngredientJpaEntity extends BaseTimeEntity {
 		IngredientJpaEntity entity = new IngredientJpaEntity();
 		entity.userId = ingredient.userId();
 		entity.receiptItemId = ingredient.receiptItemId();
-		entity.unit = ingredient.unit();
 		entity.apply(ingredient);
 		return entity;
 	}
@@ -81,6 +80,7 @@ class IngredientJpaEntity extends BaseTimeEntity {
 	void apply(Ingredient ingredient) {
 		this.categoryId = ingredient.categoryId();
 		this.name = ingredient.name();
+		this.unit = ingredient.unit();
 		this.storage = ingredient.storage();
 		this.expirationDate = ingredient.expirationDate();
 		this.amount = ingredient.amount();

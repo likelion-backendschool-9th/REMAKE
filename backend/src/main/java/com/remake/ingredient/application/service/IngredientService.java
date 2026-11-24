@@ -10,6 +10,7 @@ import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.ingredient.application.port.in.DeleteIngredientUseCase;
 import com.remake.ingredient.application.port.in.GetIngredientUseCase;
+import com.remake.ingredient.application.port.in.ResolveIngredientUnitUseCase;
 import com.remake.ingredient.application.port.in.UpdateIngredientCommand;
 import com.remake.ingredient.application.port.in.UpdateIngredientUseCase;
 import com.remake.ingredient.application.port.out.DeleteIngredientPort;
@@ -20,6 +21,7 @@ import com.remake.ingredient.application.port.out.SaveIngredientPort;
 import com.remake.ingredient.domain.FridgeIngredient;
 import com.remake.ingredient.domain.Ingredient;
 import com.remake.ingredient.domain.IngredientCategory;
+import com.remake.ingredient.domain.IngredientCategoryCode;
 
 import lombok.RequiredArgsConstructor;
 
@@ -36,6 +38,7 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 	private final SaveIngredientPort saveIngredientPort;
 	private final DeleteIngredientPort deleteIngredientPort;
 	private final LoadIngredientLogPort loadIngredientLogPort;
+	private final ResolveIngredientUnitUseCase resolveIngredientUnitUseCase;
 	private final Clock clock;
 
 	@Override
@@ -53,12 +56,23 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 			throw new BusinessException(ErrorCode.INVALID_INPUT, "사용하거나 폐기한 기록이 있는 재료는 수량을 고칠 수 없습니다.");
 		}
 		try {
+			boolean nameOrCategoryChanged = false;
 			if (command.name() != null) {
+				String before = ingredient.name();
 				ingredient.changeName(command.name());
+				nameOrCategoryChanged |= !before.equals(ingredient.name());
 			}
 			if (command.categoryCode() != null) {
+				Long before = ingredient.categoryId();
 				ingredient.changeCategory(loadIngredientCategoryPort.loadByCode(command.categoryCode())
 						.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND)).id());
+				nameOrCategoryChanged |= !before.equals(ingredient.categoryId());
+			}
+			if (nameOrCategoryChanged) {
+				// 이름이나 카테고리가 바뀌면 단위만 다시 정한다. 수량 숫자는 그대로다(대파 1단 → 양파 1개).
+				// 기록이 있어도 같고, 기록은 당시 이름·단위를 따로 갖고 있어 지난 기록은 바뀌지 않는다.
+				ingredient.changeUnit(
+						resolveIngredientUnitUseCase.resolveUnit(ingredient.name(), categoryCodeOf(ingredient)));
 			}
 			if (command.amount() != null) {
 				ingredient.changeAmount(command.amount());
@@ -91,6 +105,11 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 		IngredientCategory category = loadIngredientCategoryPort.loadById(ingredient.categoryId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND));
 		return FridgeIngredient.of(ingredient, category, LocalDate.now(clock));
+	}
+
+	private IngredientCategoryCode categoryCodeOf(Ingredient ingredient) {
+		return loadIngredientCategoryPort.loadById(ingredient.categoryId())
+				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND)).code();
 	}
 
 	private Ingredient loadOwned(Long userId, Long ingredientId) {
