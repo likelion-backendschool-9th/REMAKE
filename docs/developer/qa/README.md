@@ -16,7 +16,7 @@
 | [04_ai-recipe.md](04_ai-recipe.md) | AI 레시피(AI) | 김종수 | 60 |
 | [05_meal-plan.md](05_meal-plan.md) | 식단표(MEAL) | 한윤수 | 55 |
 | [06_notification.md](06_notification.md) | 알림(NOTI) | 이상호 | 31 |
-| [07_shared-cart.md](07_shared-cart.md) | 장바구니(CART), 공유 공간(SHARE) | 최유리 | 34 + 57 |
+| [07_shared-cart.md](07_shared-cart.md) | 장바구니(CART), 공유 공간(SHARE) | 최유리 | 35 + 58 |
 | [08_common.md](08_common.md) | 공통·비기능(COM), 동시성 점검표, 핵심 흐름 회귀 세트, 담당자 결정·확인 요청 표 | 전원 | 65 |
 
 ## 읽는 법
