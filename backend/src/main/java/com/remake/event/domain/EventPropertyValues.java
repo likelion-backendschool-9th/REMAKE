@@ -22,7 +22,7 @@ final class EventPropertyValues {
 			Map.entry("onboarding_step", Set.of("household", "allergy")),
 			Map.entry("setting_key", Set.of("household_size", "recipe_supplement", "notification")),
 			Map.entry("filter_type", Set.of("storage", "category", "status", "q")),
-			Map.entry("add_source", Set.of("MANUAL", "RECEIPT", "CATALOG")),
+			Map.entry("add_source", Set.of("MANUAL", "RECEIPT", "CATALOG", "cart")),
 			Map.entry("storage", Set.of("FRIDGE", "FREEZER", "PANTRY")),
 			Map.entry("edit_field", Set.of(
 					"name", "category", "storage", "expiration_date", "amount", "unit", "price", "item_name")),
@@ -37,7 +37,7 @@ final class EventPropertyValues {
 			Map.entry("meal_type", Set.of("BREAKFAST", "LUNCH", "DINNER")),
 			Map.entry("date_relation", Set.of("TODAY", "PAST", "FUTURE")),
 			Map.entry("slot_source", Set.of("AI", "MANUAL")),
-			Map.entry("cart_source", Set.of("MEAL_PLAN", "RECIPE_SAVE", "SHARED_RECIPE_SAVE")),
+			Map.entry("cart_source", Set.of("meal_plan", "own_recipe", "shared_recipe")),
 			Map.entry("notification_type", Set.of(
 					"expiry_soon", "expired", "meal_plan_completed", "meal_plan_failed")),
 			Map.entry("ranking_view", Set.of("WEEKLY", "ALL")),

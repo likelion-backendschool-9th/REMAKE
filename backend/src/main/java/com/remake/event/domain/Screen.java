@@ -37,6 +37,7 @@ public enum Screen {
 	MEAL_DAY("meal_day"),
 	MEAL_SLOT("meal_slot"),
 	CART("cart"),
+	CART_LIST("cart_list"),
 	RANKING("ranking"),
 	SHARED_RECIPE("shared_recipe"),
 	SHARED_REPORT("shared_report"),

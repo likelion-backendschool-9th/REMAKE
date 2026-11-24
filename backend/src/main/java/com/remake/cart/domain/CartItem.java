@@ -10,7 +10,7 @@ public record CartItem(Long id, Long userId, Long recipeId, Long mealPlanSlotId,
 
 	public static void validateAmount(BigDecimal value) {
 		if (value == null || value.signum() <= 0) {
-			throw new IllegalArgumentException("차감 수량은 0보다 커야 합니다.");
+			throw new IllegalArgumentException("수량은 0보다 커야 합니다.");
 		}
 		BigDecimal stripped = value.stripTrailingZeros();
 		if (stripped.scale() > 3 || stripped.precision() - stripped.scale() > 7) {
