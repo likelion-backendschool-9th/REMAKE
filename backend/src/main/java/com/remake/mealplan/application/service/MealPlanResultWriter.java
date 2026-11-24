@@ -2,6 +2,8 @@ package com.remake.mealplan.application.service;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -61,7 +63,7 @@ class MealPlanResultWriter {
 	@Transactional
 	public void complete(MealPlanGenerationJob job, List<GeneratedMealSlot> slots, int generatedDays,
 			int shortageCount, Collection<Long> replacedSlotIds) {
-		MealPlan plan = loadGenerating(job).orElseThrow(
+		MealPlan plan = loadGenerating(job.mealPlanId()).orElseThrow(
 				() -> new IllegalStateException("생성 중인 식단표가 아닙니다: " + job.mealPlanId()));
 		plan.complete(generatedDays);
 
@@ -89,7 +91,7 @@ class MealPlanResultWriter {
 				"cart_added_count", 0,
 				// 기존 식단표의 칸을 지우고 바꿨는지(겹침 모달에서 덮어쓰기를 골랐어도 지운 칸이 없으면 false)
 				"was_overwritten", !replacedSlotIds.isEmpty(),
-				"duration_ms", durationMillis(job),
+				"duration_ms", durationMillis(job.acceptedAt()),
 				"remaining_quota", remaining),
 				EventTrackCommand.ofUser(plan.userId()));
 	}
@@ -101,10 +103,27 @@ class MealPlanResultWriter {
 	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public void fail(MealPlanGenerationJob job, MealPlanFailReason reason, String errorCode) {
-		Optional<MealPlan> generating = loadGenerating(job);
+		failGenerating(job.mealPlanId(), job.acceptedAt(), reason, errorCode);
+	}
+
+	/**
+	 * 끊긴 작업 정리: 아직 GENERATING이면 실패로 끝낸다. 실패 알림·E54는 일반 실패와 같다.
+	 * 처리했으면 true, 그 사이 다른 쪽(작업·다른 컨테이너의 정리)이 끝냈으면 false.
+	 *
+	 * @param acceptedAt 접수 시각(meal_plans.created_at, Clock 시간대). E54 duration_ms를 여기서부터 센다
+	 */
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public boolean failAbandoned(Long mealPlanId, LocalDateTime acceptedAt, String errorCode) {
+		return failGenerating(mealPlanId, acceptedAt.atZone(clock.getZone()).toInstant(),
+				MealPlanFailReason.GENERIC, errorCode);
+	}
+
+	private boolean failGenerating(Long mealPlanId, Instant acceptedAt, MealPlanFailReason reason,
+			String errorCode) {
+		Optional<MealPlan> generating = loadGenerating(mealPlanId);
 		if (generating.isEmpty()) {
-			log.warn("생성 중인 식단표가 아니라 실패 처리를 건너뜀 mealPlanId={}", job.mealPlanId());
-			return;
+			log.warn("생성 중인 식단표가 아니라 실패 처리를 건너뜀 mealPlanId={}", mealPlanId);
+			return false;
 		}
 		MealPlan plan = generating.get();
 		plan.fail();
@@ -112,17 +131,22 @@ class MealPlanResultWriter {
 		createMealPlanNotificationUseCase.notifyMealPlanFailed(plan.userId(), reason);
 		eventTracker.track(EventName.MEAL_PLAN_GENERATE_FAILED, Screen.UNKNOWN, Map.of(
 				"error_code", errorCode,
-				"duration_ms", durationMillis(job)),
+				"duration_ms", durationMillis(acceptedAt)),
 				EventTrackCommand.ofUser(plan.userId()));
+		return true;
 	}
 
-	private Optional<MealPlan> loadGenerating(MealPlanGenerationJob job) {
-		return loadMealPlanPort.loadById(job.mealPlanId())
+	/**
+	 * 잠그고 읽어서 GENERATING인지 확인한다. 완성·실패·끊긴 작업 정리가 모두 이걸 거치므로
+	 * 같은 식단표를 두 쪽이 동시에 끝내지 않는다(먼저 잠근 쪽만 처리하고, 뒤에 온 쪽은 GENERATING이 아니라 건너뜀).
+	 */
+	private Optional<MealPlan> loadGenerating(Long mealPlanId) {
+		return loadMealPlanPort.loadByIdForUpdate(mealPlanId)
 				.filter(plan -> plan.status() == MealPlanStatus.GENERATING);
 	}
 
-	private long durationMillis(MealPlanGenerationJob job) {
-		return Math.max(Duration.between(job.acceptedAt(), clock.instant()).toMillis(), 0);
+	private long durationMillis(Instant acceptedAt) {
+		return Math.max(Duration.between(acceptedAt, clock.instant()).toMillis(), 0);
 	}
 
 	private static MealPlanRecipeCommand toRecipeCommand(GeneratedMealSlot slot, int servings) {
