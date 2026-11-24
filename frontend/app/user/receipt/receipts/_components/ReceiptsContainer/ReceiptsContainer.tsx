@@ -10,14 +10,13 @@ import { EmptyState } from "@/components/EmptyState/EmptyState";
 import { MainHeader } from "@/components/MainHeader/MainHeader";
 import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { dayjs } from "@/lib/dayjs";
+import { formatDateRange, formatNumber, formatWon, formatYearMonth } from "@/lib/format";
 import { MAIN_TABS, NOTIFICATIONS_HREF, SETTINGS_HREF } from "@/lib/navigation";
 
 import { StoreBadge } from "../../../_components/StoreBadge/StoreBadge";
 import {
   formatAverageDiff,
-  formatMonthLabel,
   formatPurchaseDay,
-  formatWeekRange,
   type ReceiptMonth,
   recentMonths,
 } from "../../_lib/receipts";
@@ -162,13 +161,13 @@ function ReceiptMonthView({
           aria-haspopup="dialog"
           onClick={() => setIsMonthSheetOpen(true)}
         >
-          {formatMonthLabel(month)}
+          {formatYearMonth(`${month}-01`)}
           <AltArrowDownIcon className={styles.monthArrow} aria-hidden="true" />
         </button>
         {!isEmpty && data && (
           <>
             <p className={styles.total}>
-              {data.totalAmount.toLocaleString("ko-KR")}
+              {formatNumber(data.totalAmount)}
               <span className={styles.totalUnit}>원</span>
             </p>
             {data.averageDiffAmount !== null && (
@@ -191,10 +190,10 @@ function ReceiptMonthView({
                 <p className={styles.weekLabel}>
                   {week.label}
                   <span className={styles.weekRange}>
-                    {formatWeekRange(week.startDate, week.endDate)}
+                    {formatDateRange(week.startDate, week.endDate)}
                   </span>
                 </p>
-                <p className={styles.weekTotal}>{week.totalAmount.toLocaleString("ko-KR")}원</p>
+                <p className={styles.weekTotal}>{formatWon(week.totalAmount)}</p>
               </div>
               <ul className={styles.receipts}>
                 {week.receipts.map((receipt) => (
@@ -207,9 +206,7 @@ function ReceiptMonthView({
                           {formatPurchaseDay(receipt.purchasedOn)} 식재료 {receipt.itemCount}개
                         </span>
                       </span>
-                      <span className={styles.receiptAmount}>
-                        {receipt.totalAmount.toLocaleString("ko-KR")}원
-                      </span>
+                      <span className={styles.receiptAmount}>{formatWon(receipt.totalAmount)}</span>
                     </Link>
                   </li>
                 ))}
