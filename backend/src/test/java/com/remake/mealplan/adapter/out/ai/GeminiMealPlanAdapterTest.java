@@ -129,6 +129,20 @@ class GeminiMealPlanAdapterTest {
 	}
 
 	@Test
+	void 못_만듦으로_보낸_칸은_레시피_없이_skipped로_읽는다() {
+		List<GeneratedMealSlot> slots = adapter.parse("""
+				{"slots": [{"day": 2, "mealType": "BREAKFAST", "skipped": true, "title": "", "cookMinutes": 0,
+				            "ingredients": [], "steps": []}]}
+				""", START);
+
+		assertThat(slots).singleElement().satisfies(slot -> {
+			assertThat(slot.skipped()).isTrue();
+			assertThat(slot.key()).isEqualTo(new MealSlotKey(START.plusDays(1), MealType.BREAKFAST));
+			assertThat(slot.ingredients()).isEmpty();
+		});
+	}
+
+	@Test
 	void 보내는_데이터는_채울_칸과_며칠째까지_쓸_수_있는지와_제외_재료_코드다() {
 		Map<String, Object> data = GeminiMealPlanAdapter.promptData(request());
 
@@ -176,7 +190,7 @@ class GeminiMealPlanAdapterTest {
 			Arrays.stream(MealPurpose.values()).filter(other -> other != purpose).forEach(other -> assertThat(instruction)
 					.doesNotContain(MealPlanPrompt.purposeBlock(other).lines().findFirst().orElseThrow()));
 			assertThat(instruction).contains("excludedAllergenCodes", "TO_TASTE", "조리 15분 안", "steps는 3~6개",
-					"unit과 같은 단위", "menuPlan → fridgePlan → slots", "mainIngredient", "\"쌀\"");
+					"unit과 같은 단위", "menuPlan → fridgePlan → slots", "mainIngredient", "fridgeIngredientIds", "1일째 칸부터", "비현실적으로 줄이지 않는다", "\"쌀\"");
 		}
 	}
 

@@ -55,8 +55,8 @@ import lombok.extern.slf4j.Slf4j;
  * <p>어떤 실패든 FAILED + 실패 알림으로 끝내고 예외를 밖으로 던지지 않는다. 실패하면 기존 식단과 횟수는 그대로다.
  * <p>AI 응답은 GeneratedMealPlanValidator로 검사하고, AI 오류(연결·시간 초과·응답 이상)면 한 번 더 부른다
  * (domain-rules "AI retries once automatically", 레시피 생성과 같은 기준).
- * 공급자 과부하(MealPlanAiBusyException, Gemini 503)만은 쉬는 시간을 3초부터 30초까지 늘려 가며 9번 더 부른다(총 10번, 약 3분).
- * 짧은 간격으로 계속 부르면 무료 분당 한도(레시피 생성과 같은 키)를 빨리 쓰므로 간격을 늘린다.
+ * 공급자 과부하(MealPlanAiBusyException, Gemini 503)만은 쉬는 시간을 3·5·7·9초로 늘리다가 10초씩 쉬며 9번 더 부른다(총 10번, 쉬는 시간 합 74초).
+ * 거절도 무료 한도에 요청으로 세므로(11-24 AI Studio 사용량 확인) 짧은 간격으로 몰아 부르지 않는다. 최대 간격 10초는 11-24 사용자 결정.
  * 서버 작업이라 사용자가 기다리지 않고, 11-24 실측에서 503이 잦았지만 잠시 뒤 성공했기 때문이다(문서 규칙과 다른 제안).
  */
 @Slf4j
@@ -84,7 +84,7 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 			GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase,
 			GenerateMealPlanAiPort generateMealPlanAiPort, MealPlanResultWriter resultWriter, Clock clock,
 			@Value("${remake.meal-plan.ai-retry-delay:1500ms}") Duration retryDelay,
-			@Value("${remake.meal-plan.ai-busy-retry-delays:3s,5s,10s,15s,20s,30s,30s,30s,30s}") String busyRetryDelays) {
+			@Value("${remake.meal-plan.ai-busy-retry-delays:3s,5s,7s,9s,10s,10s,10s,10s,10s}") String busyRetryDelays) {
 		this.loadMealPlanPort = loadMealPlanPort;
 		this.loadMealPlanSlotPort = loadMealPlanSlotPort;
 		this.getFridgeUseCase = getFridgeUseCase;
@@ -172,7 +172,9 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 				.map(slot -> keepOwnFridgeIds(slot, fridge))
 				.toList();
 		TrimResult trim = MealPlanTrimmer.trim(schedule,
-				generated.stream().map(GeneratedMealSlot::toPlannedSlot).toList(), ledger);
+				// "못 만듦" 칸은 빠진 칸으로 넘겨 그날에서 자르기가 멈추게 한다
+				generated.stream().filter(slot -> !slot.skipped()).map(GeneratedMealSlot::toPlannedSlot).toList(),
+				ledger);
 		if (trim.hasNoDays()) {
 			throw new NoIngredientsException();
 		}
@@ -275,7 +277,7 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 						: ingredient)
 				.toList();
 		return new GeneratedMealSlot(slot.date(), slot.mealType(), slot.title(), slot.cookMinutes(), slot.tips(),
-				ingredients, slot.steps());
+				ingredients, slot.steps(), slot.skipped());
 	}
 
 	private void fail(MealPlanGenerationJob job, MealPlanFailReason reason, String errorCode) {

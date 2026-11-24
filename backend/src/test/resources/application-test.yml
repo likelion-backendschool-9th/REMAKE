@@ -47,7 +47,7 @@ remake:
   meal-plan:
     # 식단표 AI 실패 뒤 다시 시도하기 전 쉬는 시간. 테스트는 기다리지 않는다(운영 기본 1500ms)
     ai-retry-delay: 0ms
-    # 공급자 과부하(503) 때 쉬는 시간 9개(운영 기본 3s,5s,10s,15s,20s,30s,30s,30s,30s)
+    # 공급자 과부하(503) 때 쉬는 시간 9개(운영 기본 3s,5s,7s,9s,10s,10s,10s,10s,10s)
     ai-busy-retry-delays: 0ms,0ms,0ms,0ms,0ms,0ms,0ms,0ms,0ms
   gemini:
     # 통합 테스트는 GeminiRecipeAdapter·GeminiMealPlanAdapter를 @MockitoBean으로 바꾸므로 실제 HTTP는 나가지 않는다.

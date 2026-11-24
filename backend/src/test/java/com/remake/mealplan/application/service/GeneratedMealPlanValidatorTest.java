@@ -103,6 +103,15 @@ class GeneratedMealPlanValidatorTest {
 	}
 
 	@Test
+	void 못_만듦_칸은_있는_칸으로_세고_레시피는_검사하지_않는다() {
+		List<GeneratedMealSlot> slots = validSlots();
+		slots.set(1, GeneratedMealSlot.skipped(START.plusDays(1), MealType.BREAKFAST));
+		slots.set(2, GeneratedMealSlot.skipped(START.plusDays(1), MealType.DINNER));
+
+		assertThat(GeneratedMealPlanValidator.validate(SCHEDULE, slots)).hasSize(3);
+	}
+
+	@Test
 	void 한도_끝값은_통과한다() {
 		List<GeneratedMealSlot> slots = withSecond(s -> copy(s, "가".repeat(100), 1, "가".repeat(1000),
 				List.of(new SlotIngredient(null, "가".repeat(100), new BigDecimal("1234567.123"), RecipeUnit.G)),

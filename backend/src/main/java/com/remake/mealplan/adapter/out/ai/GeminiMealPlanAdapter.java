@@ -121,7 +121,7 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 	/** candidates[0].content.parts[].text를 이어 붙인다. 막히거나(안전 필터) 비거나 길이 제한으로 끊기면 실패로 본다. */
 	private String extractText(JsonNode response) {
 		if (response == null) {
-			throw invalid();
+			throw invalid("응답 없음");
 		}
 		if (response.path("promptFeedback").hasNonNull("blockReason")) {
 			log.warn("Gemini가 식단표 요청을 거절함: blockReason={}",
@@ -141,7 +141,7 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 			text.append(part.path("text").asString(""));
 		}
 		if (text.isEmpty()) {
-			throw invalid();
+			throw invalid("빈 응답");
 		}
 		return text.toString();
 	}
@@ -155,10 +155,10 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 		try {
 			root = jsonMapper.readTree(json);
 		} catch (JacksonException e) {
-			throw invalid();
+			throw invalid("JSON이 아님");
 		}
 		if (root == null || !root.path("slots").isArray()) {
-			throw invalid();
+			throw invalid("slots 없음");
 		}
 		List<GeneratedMealSlot> slots = new ArrayList<>();
 		for (JsonNode node : root.path("slots")) {
@@ -168,15 +168,21 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 	}
 
 	private GeneratedMealSlot parseSlot(JsonNode node, LocalDate startDate) {
-		if (!node.path("day").isIntegralNumber() || !node.path("cookMinutes").isIntegralNumber()
-				|| !node.path("ingredients").isArray()) {
-			throw invalid();
+		if (!node.path("day").isIntegralNumber()) {
+			throw invalid("day가 정수가 아님");
 		}
 		MealType mealType = parseEnum(MealType.class, textOrNull(node.path("mealType")));
 		if (mealType == null) {
-			throw invalid();
+			throw invalid("mealType이 끼니 코드가 아님");
 		}
 		LocalDate date = startDate.plusDays(node.path("day").asLong() - 1);
+		if (node.path("skipped").asBoolean(false)) {
+			// 냉장고 재료가 떨어져 못 만든 칸. 레시피 칸은 읽지 않는다
+			return GeneratedMealSlot.skipped(date, mealType);
+		}
+		if (!node.path("cookMinutes").isIntegralNumber() || !node.path("ingredients").isArray()) {
+			throw invalid("cookMinutes 또는 ingredients 모양이 틀림");
+		}
 		List<SlotIngredient> ingredients = new ArrayList<>();
 		for (JsonNode item : node.path("ingredients")) {
 			SlotIngredient ingredient = parseIngredient(item);
@@ -207,7 +213,7 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 		try {
 			return new SlotIngredient(fridgeIngredientId, textOrNull(item.path("name")), amount, unit);
 		} catch (IllegalArgumentException e) {
-			throw invalid();
+			throw invalid("재료 이름이 비었거나 양이 0 이하");
 		}
 	}
 
@@ -322,7 +328,8 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 
 	/**
 	 * 메뉴 목록. 칸마다 이름·주재료·조리법만 먼저 쓰게 해 같은 요리 반복을 줄인다
-	 * (11-24 실측: 같은 이름 2번, 아침이 매일 계란+김치). 서버는 읽지 않는다(다양성은 검사하지 않음).
+	 * (11-24 실측: 같은 이름 2번, 아침이 매일 계란+김치). 칸마다 쓸 냉장고 재료도 먼저 적게 해 냉장고 재료 없는 칸이
+	 * 앞쪽 날에 끼어 일수가 0일로 잘리는 것을 줄인다(11-24 냉장고 B·C 실측). 서버는 읽지 않는다.
 	 */
 	private static final Map<String, Object> MENU_PLAN_SCHEMA = Map.of(
 			"type", "ARRAY",
@@ -333,9 +340,11 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 							"mealType", Map.of("type", "STRING", "enum", MEAL_TYPES),
 							"title", Map.of("type", "STRING"),
 							"mainIngredient", Map.of("type", "STRING"),
+							"fridgeIngredientIds", Map.of("type", "ARRAY", "items", Map.of("type", "INTEGER"), "description",
+									"이 칸에 쓸 냉장고 재료 id. 냉장고 재료가 남아 있는 동안은 1개 이상"),
 							"method", Map.of("type", "STRING", "description", "볶음·국·찌개·구이·무침·조림·찜·죽 같은 조리법")),
-					"propertyOrdering", List.of("day", "mealType", "title", "mainIngredient", "method"),
-					"required", List.of("day", "mealType", "title", "mainIngredient", "method")));
+					"propertyOrdering", List.of("day", "mealType", "title", "mainIngredient", "fridgeIngredientIds", "method"),
+					"required", List.of("day", "mealType", "title", "mainIngredient", "fridgeIngredientIds", "method")));
 
 	/**
 	 * Gemini 응답 스키마(OpenAPI 부분집합). 메뉴 목록(menuPlan) → 배분표(fridgePlan) → 칸(slots) 순서로 쓰게 한다.
@@ -354,6 +363,8 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 									"properties", Map.of(
 											"day", Map.of("type", "INTEGER"),
 											"mealType", Map.of("type", "STRING", "enum", MEAL_TYPES),
+											"skipped", Map.of("type", "BOOLEAN", "description",
+													"냉장고 재료가 떨어져 만들 수 없는 칸이면 true(레시피는 비운다)"),
 											"title", Map.of("type", "STRING"),
 											"cookMinutes", Map.of("type", "INTEGER"),
 											"tips", Map.of("type", "STRING", "nullable", true),
@@ -372,11 +383,15 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 																					.map(Enum::name).toList())),
 															"required", List.of("name", "unit"))),
 											"steps", Map.of("type", "ARRAY", "items", Map.of("type", "STRING"))),
-									"required", List.of("day", "mealType", "title", "cookMinutes", "ingredients",
-											"steps")))),
+									"propertyOrdering", List.of("day", "mealType", "skipped", "title", "cookMinutes",
+											"tips", "ingredients", "steps"),
+									"required", List.of("day", "mealType", "skipped", "title", "cookMinutes",
+											"ingredients", "steps")))),
 			"required", List.of("menuPlan", "fridgePlan", "slots"));
 
-	private static BusinessException invalid() {
+	/** 형식 오류. 어느 검사에서 실패했는지만 남기고 응답 내용(재료 이름 등)은 남기지 않는다. */
+	private static BusinessException invalid(String reason) {
+		log.warn("Gemini 식단표 응답 형식 오류: {}", reason);
 		return new BusinessException(ErrorCode.AI_INVALID_RESPONSE);
 	}
 }

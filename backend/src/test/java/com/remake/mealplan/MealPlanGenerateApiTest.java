@@ -433,6 +433,27 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void AI가_재료가_떨어진_칸을_못_만듦으로_보내면_다시_부르지_않고_그_앞날까지_만든다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		given(mealPlanAiAdapter.generate(any())).willAnswer(invocation -> {
+			List<GeneratedMealSlot> slots = new ArrayList<>(everySlotUses(fridgeId, 100).answer(invocation));
+			for (int i = 2; i < slots.size(); i++) {
+				slots.set(i, GeneratedMealSlot.skipped(slots.get(i).date(), slots.get(i).mealType()));
+			}
+			return slots;
+		});
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(1)).generate(any());
+		Long planId = newestPlanId(userId);
+		assertThat(mealPlan(planId)).containsEntry("status", "COMPLETED").containsEntry("generated_days", 2);
+		assertThat(slotDates(planId)).containsExactly(TODAY, TODAY.plusDays(1));
+	}
+
+	@Test
 	void AI가_과부하로_거절하면_더_불러_만든다() throws Exception {
 		Long userId = createUser();
 		Long fridgeId = fridgeGrams(userId, "대파", 1000);
