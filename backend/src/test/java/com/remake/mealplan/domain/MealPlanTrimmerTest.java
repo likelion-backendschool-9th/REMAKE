@@ -242,6 +242,21 @@ class MealPlanTrimmerTest {
 	}
 
 	@Test
+	void 물은_냉장고에_없어도_장바구니에_담지_않고_양념은_담는다() {
+		// 레시피 생성(#201)과 같은 기준: 물만 예외, 소금 같은 양념은 양이 있으면 부족 재료다(#158)
+		SlotIngredient salt = missing("소금", "1", RecipeUnit.TSP);
+		List<PlannedSlot> slots = List.of(slot(1, MealType.DINNER, fridge(PORK, "200", RecipeUnit.G),
+				missing("물", "500", RecipeUnit.ML), missing(" 물 ", "100", RecipeUnit.ML), salt));
+
+		TrimResult result = MealPlanTrimmer.trim(schedule(1, EnumSet.of(MealType.DINNER)), slots,
+				ledger(List.of(stock(PORK, "300", IngredientUnit.G))));
+
+		assertThat(result.generatedDays()).isEqualTo(1);
+		assertThat(result.shortages()).containsExactly(
+				new TrimResult.Shortage(new MealSlotKey(TODAY, MealType.DINNER), salt));
+	}
+
+	@Test
 	void 남기는_칸은_채우지_않고_남기는_칸만_있는_날도_만든_날로_센다() {
 		// 오늘 아침·점심은 이미 요리해서 남긴다. 오늘은 저녁만, 내일은 모든 끼니를 채운다.
 		Set<MealType> meals = EnumSet.of(MealType.BREAKFAST, MealType.LUNCH, MealType.DINNER);

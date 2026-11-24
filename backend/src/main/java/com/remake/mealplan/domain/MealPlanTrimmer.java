@@ -60,9 +60,10 @@ public final class MealPlanTrimmer {
 		return Optional.of(slots);
 	}
 
+	/** 남긴 날의 냉장고에 없는 재료(장바구니 대상). 양이 없는 줄(약간·꼬집)과 물은 뺀다. */
 	private static void addShortages(PlannedSlot slot, List<Shortage> shortages) {
 		for (SlotIngredient ingredient : slot.ingredients()) {
-			if (!ingredient.usesFridge() && ingredient.isMeasured()) {
+			if (!ingredient.usesFridge() && ingredient.isMeasured() && !ingredient.isWater()) {
 				shortages.add(new Shortage(slot.key(), ingredient));
 			}
 		}
