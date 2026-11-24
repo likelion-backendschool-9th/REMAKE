@@ -10,6 +10,14 @@ import {
   type StorageCode,
 } from "@/lib/ingredients";
 
+/** 입력 상한: 백엔드 요청 검증(IngredientCreateRequest·IngredientUpdateRequest)과 맞춘다 */
+/** 재료명 최대 글자 수(@Size(max = 50)) */
+export const INGREDIENT_NAME_MAX = 50;
+/** 가격 최대 자릿수. 서버는 Long이지만, JS 숫자로 바꿔도 값이 바뀌지 않는 범위(15자리)로 막는다 */
+export const PRICE_MAX_DIGITS = 15;
+/** 수량 최대값: 정수 7자리·소수 3자리(1천만 미만) */
+export const AMOUNT_MAX = 9_999_999;
+
 export type IngredientDraft = {
   name: string;
   categoryCode: CategoryCode | null;

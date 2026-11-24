@@ -125,13 +125,13 @@ function EditIngredientBody({
         </Button>
       </BottomBar>
 
-      {/* 삭제 확인 모달은 피그마에 아직 없다(domain-rules 2 "screen pending"). 문구는 임시 */}
+      {/* 삭제 확인 모달은 피그마에 아직 없다(domain-rules 2 "screen pending"). 문구는 다른 확인 모달처럼 설명 뒤 질문(#206 리뷰) */}
       <ConfirmModal
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}
         onConfirm={handleDelete}
         title="재료 삭제"
-        message={`${ingredient.name}을(를) 냉장고에서 삭제하시겠습니까? 삭제한 재료는 되돌릴 수 없습니다.`}
+        message={`삭제한 재료는 되돌릴 수 없습니다. ${ingredient.name}을(를) 냉장고에서 삭제하시겠습니까?`}
         confirmLabel="삭제"
         tone="danger"
       />

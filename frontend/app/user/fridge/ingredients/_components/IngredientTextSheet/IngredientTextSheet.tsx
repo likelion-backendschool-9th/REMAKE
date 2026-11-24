@@ -10,13 +10,26 @@ import { Button } from "@/components/Button/Button";
 import { InputSheet } from "@/components/InputSheet/InputSheet";
 import { TextField } from "@/components/TextField/TextField";
 
+import { INGREDIENT_NAME_MAX, PRICE_MAX_DIGITS } from "../../_lib/ingredient-form";
+
 import styles from "./IngredientTextSheet.module.css";
 
 type TextSheetKind = "name" | "price";
 
-const nameSchema = z.object({ value: z.string().trim().min(1, "재료명을 작성해 주세요") });
+const nameSchema = z.object({
+  value: z
+    .string()
+    .trim()
+    .min(1, "재료명을 작성해 주세요")
+    .max(INGREDIENT_NAME_MAX, `재료명은 ${INGREDIENT_NAME_MAX}자까지 작성할 수 있어요`),
+});
 // 가격은 선택 항목: 비우면 가격 없음
-const priceSchema = z.object({ value: z.string().regex(/^\d*$/, "숫자만 작성해 주세요") });
+const priceSchema = z.object({
+  value: z
+    .string()
+    .regex(/^\d*$/, "숫자만 작성해 주세요")
+    .max(PRICE_MAX_DIGITS, `가격은 ${PRICE_MAX_DIGITS}자리까지 작성할 수 있어요`),
+});
 
 const CONFIG = {
   name: {
@@ -25,6 +38,7 @@ const CONFIG = {
     placeholder: "예: 만두",
     helperText: "제품명 대신 재료 이름으로 작성해 주세요",
     inputMode: "text",
+    maxLength: INGREDIENT_NAME_MAX,
     unit: undefined,
   },
   price: {
@@ -33,6 +47,8 @@ const CONFIG = {
     placeholder: "숫자만 작성 가능합니다.",
     helperText: "가격을 정확히 작성할수록 소비 패턴 분석률이 올라가요",
     inputMode: "numeric",
+    // 숫자 외 글자를 쳤을 때 오류를 보여 주려고 한 칸 여유를 둔다(자릿수는 스키마가 막음)
+    maxLength: PRICE_MAX_DIGITS + 1,
     unit: "원",
   },
 } as const;
@@ -88,6 +104,7 @@ export function IngredientTextSheet({
           aria-label={config.title}
           placeholder={config.placeholder}
           inputMode={config.inputMode}
+          maxLength={config.maxLength}
           unit={config.unit}
           helperText={config.helperText}
           errorMessage={shownError}

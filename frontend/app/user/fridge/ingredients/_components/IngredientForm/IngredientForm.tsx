@@ -16,6 +16,7 @@ import {
 } from "@/lib/ingredients";
 
 import {
+  AMOUNT_MAX,
   firstAmount,
   formatExpiry,
   formatPrice,
@@ -105,6 +106,7 @@ export function IngredientForm({ draft, onChange, initialSheet = null }: Ingredi
               value={draft.amount}
               step={unit ? FRIDGE_UNITS[unit].step : 1}
               min={unit ? FRIDGE_UNITS[unit].step : 0}
+              max={AMOUNT_MAX}
               disabled={!unit}
               formatValue={(value) => (unit ? formatAmount(value, unit) : "-")}
               onChange={(amount) => onChange({ ...draft, amount })}
