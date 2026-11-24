@@ -216,6 +216,10 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
     - GmarketSans(로고 글자 전용): `app/fonts/fonts.ts`에서 `next/font/local`로 불러오고 `app/layout.tsx`의 `<html>`에 붙입니다. 굵기 300/500/700, `preload: false`. `font-family: var(--font-family-logo)`(`globals.css`에 정의)로 씁니다. 다른 글자에는 쓰지 않습니다.
 - 화면 전체 높이는 `100dvh`, 하단 고정 요소는 `env(safe-area-inset-bottom)`을 더합니다.
 - 대부분 플랫하게 만들고, 글래스 효과는 피그마에서 글래스가 걸린 요소에만 씁니다.
+- 두 줄 이상으로 줄바꿈되는 글은 줄 간격을 150%로 줍니다(`font` 토큰 뒤에 `line-height: 1.5`). 피그마 텍스트 스타일이 140%여도 마찬가지입니다. 한 줄짜리 글은 토큰의 줄 간격을 그대로 씁니다.
+- 상호작용을 나타내는 색(파란색 `--color-text-primary`·`--color-brand-primary`와 링크 스타일)은 버튼과 링크에만 씁니다. 일반 글자·숫자·꾸밈에는 쓰지 않아서, 파란색이 늘 "누를 수 있다"는 뜻이 되게 합니다.
+- 플레이스홀더를 레이블 대신 쓰지 않습니다. 모든 입력칸에는 보이는 레이블(또는 스크린 리더가 읽는 `<label>`)을 두고, 플레이스홀더는 예시 값만 보여 줍니다.
+- 선택지 묶음(라디오, 세그먼트 컨트롤, 칩, 선택 시트, 휠)에는 기본 옵션을 지정합니다. 아무것도 고르지 않은 상태로 시작하지 않고, 가장 많이 쓰거나 가장 안전한 옵션을 미리 골라 둡니다.
 - 스타일 파일은 컴포넌트와 같은 폴더에 같은 이름으로 둡니다. 예: `IngredientCard.tsx` + `IngredientCard.module.css`
 
 ### 6.1 시맨틱 HTML
