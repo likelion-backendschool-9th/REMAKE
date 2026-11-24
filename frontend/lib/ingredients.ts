@@ -59,3 +59,21 @@ export type FridgeUnit = keyof typeof FRIDGE_UNITS;
 export function formatAmount(amount: number, unit: FridgeUnit): string {
   return `${amount}${FRIDGE_UNITS[unit].label}`;
 }
+
+/** 레시피·장바구니 단위 14개 이름(domain-rules "Units"). 냉장고 단위 9개 + 계량 단위 5개 */
+export const UNIT_LABELS = {
+  ...Object.fromEntries(Object.entries(FRIDGE_UNITS).map(([code, { label }]) => [code, label])),
+  TBSP: "큰술",
+  TSP: "작은술",
+  CUP: "컵",
+  PINCH: "꼬집",
+  TO_TASTE: "약간",
+} as Record<FridgeUnit | "TBSP" | "TSP" | "CUP" | "PINCH" | "TO_TASTE", string>;
+
+export type RecipeUnit = keyof typeof UNIT_LABELS;
+
+/** 2, "TBSP" → "2큰술" / 양이 없거나 TO_TASTE면 "약간"(domain-rules 표기) */
+export function formatUnitAmount(amount: number | null, unit: RecipeUnit): string {
+  if (amount === null || unit === "TO_TASTE") return UNIT_LABELS.TO_TASTE;
+  return `${amount}${UNIT_LABELS[unit]}`;
+}
