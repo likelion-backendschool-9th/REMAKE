@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | [01_auth-sub.md](01_auth-sub.md) | 로그인·설정(AUTH), 구독(SUB) | 이준호 | 62 + 23 |
 | [02_fridge.md](02_fridge.md) | 냉장고(ING) | 김재연 | 51 |
-| [03_receipt-exp.md](03_receipt-exp.md) | 영수증(RCP), 월 식비·소비 패턴(EXP) | 이동준 | 67 + 22 |
+| [03_receipt-exp.md](03_receipt-exp.md) | 영수증(RCP), 월 식비·소비 패턴(EXP) | 이동준 | 71 + 22 |
 | [04_ai-recipe.md](04_ai-recipe.md) | AI 레시피(AI) | 김종수 | 60 |
 | [05_meal-plan.md](05_meal-plan.md) | 식단표(MEAL) | 한윤수 | 55 |
 | [06_notification.md](06_notification.md) | 알림(NOTI) | 이상호 | 31 |
