@@ -1,0 +1,22 @@
+/* 피그마 p2.1: 서브 헤더 아래 17에 재료 행(위아래 8), 행 아래 22에 카드, 옆 여백 16.
+   아래 고정 버튼(BottomBar)에 가리지 않게 아래 여백 */
+.main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 1.0625rem var(--layout-gutter) calc(7.5rem + env(safe-area-inset-bottom));
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1.375rem;
+}
+
+/* 불러오는 중: 재료 행 자리(위아래 8, 그림-글 10) */
+.loadingRow {
+  display: flex;
+  gap: var(--space-10);
+  align-items: center;
+  padding: var(--space-8) 0;
+}

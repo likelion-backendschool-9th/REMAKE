@@ -38,7 +38,7 @@ import lombok.RequiredArgsConstructor;
 /**
  * 재료 사용·폐기. 재료의 남은 양을 줄이고 기록을 남기는 일을 한 트랜잭션에서 한다. 남은 양이 0이 되면 재료 행을 지운다.
  * 호출한 쪽의 트랜잭션에 합류하므로(기본 전파 방식) 요리 후 차감(#77)에서 부르면 요리 차감과 함께 성공하거나 롤백된다.
- * 동시 요청은 남은 양을 확인하고 빼는 방식이라 따로 락을 두지 않는다(낙관적 락 version은 v2에서 없어졌다).
+ * 같은 재료의 동시 요청은 재료 행 잠금(로드 시 FOR UPDATE)으로 차례로 처리한다. 늦은 요청은 앞 요청이 뺀 뒤의 양을 보고, 이미 지워졌으면 INGREDIENT_NOT_FOUND이다.
  * ingredient_used·ingredient_discarded 이벤트는 EventTracker로 커밋 뒤에 보낸다(롤백되면 나가지 않고, 실패해도 이 일은 깨지지 않는다).
  */
 @Service
@@ -62,7 +62,7 @@ public class IngredientConsumeService implements ConsumeIngredientUseCase {
 		if (command.via() == ConsumeVia.COOK && command.type() != IngredientLogType.USED) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT, "요리 후 차감은 사용 기록만 남길 수 있습니다.");
 		}
-		Ingredient ingredient = loadIngredientPort.loadByIdAndUserId(command.ingredientId(), command.userId())
+		Ingredient ingredient = loadIngredientPort.loadByIdAndUserIdForUpdate(command.ingredientId(), command.userId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_NOT_FOUND));
 		// 이벤트의 소비기한 상태와 금액은 차감하기 전 값으로 계산한다.
 		long dDay = ExpiryPolicy.dDay(ingredient.expirationDate(), LocalDate.now(clock));

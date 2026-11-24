@@ -34,6 +34,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return respond(ErrorResponse.of(e.getErrorCode(), e.getMessage(), e.getDetails()));
 	}
 
+	@ExceptionHandler(InvalidFieldException.class)
+	public ResponseEntity<ErrorResponse> handleInvalidField(InvalidFieldException e) {
+		return respond(ErrorResponse.of(e.getErrorCode(), List.of(new ErrorResponse.FieldError(e.getField(), e.getMessage()))));
+	}
+
 	// 예상하지 못한 오류: 서버 로그에는 전체 내용을 남기고, 사용자에게는 내부 내용을 숨긴다.
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleUnexpected(Exception e) {

@@ -4,6 +4,7 @@ import { useId, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 
 import { Drawer } from "@/components/Drawer/Drawer";
+import { LegalDocument } from "@/components/LegalDocument/LegalDocument";
 import { SocialLoginButton } from "@/components/SocialLoginButton/SocialLoginButton";
 
 import {
@@ -77,7 +78,7 @@ export function LoginContainer({ recentProvider, initialOpenTerms = null }: Logi
         onClose={() => setOpenTerms(null)}
         title={openTerms ? TERMS[openTerms].title : ""}
       >
-        {openTerms && TERMS[openTerms].body}
+        {openTerms && <LegalDocument document={TERMS[openTerms]} />}
       </Drawer>
     </main>
   );

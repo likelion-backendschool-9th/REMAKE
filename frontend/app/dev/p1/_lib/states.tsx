@@ -1,8 +1,6 @@
 // p1(로그인·온보딩·설정) 화면 상태 목록. /dev/p1이 이 순서로 목록을 보이고, /dev/p1/[state]가 하나를 그린다.
 // 상태를 더하면 여기에 한 줄 추가한다(blueprint §3.1 7번). 실제 라우트는 컨테이너 기본값(빈 값·불러오는 중)을 쓰고, 마크업 확인용 값은 여기서만 넘긴다.
 
-import type { ReactNode } from "react";
-
 import { LoginContainer } from "../../../public/auth/login/_components/LoginContainer/LoginContainer";
 import { AllergiesContainer } from "../../../user/onboarding/allergies/_components/AllergiesContainer/AllergiesContainer";
 import { HouseholdContainer } from "../../../user/onboarding/household/_components/HouseholdContainer/HouseholdContainer";
@@ -13,16 +11,7 @@ import { SettingContainer } from "../../../user/setting/profile/_components/Sett
 import { SAMPLE_PROFILE } from "../../../user/setting/profile/_lib/profile";
 import { SubscriptionContainer } from "../../../user/setting/subscription/_components/SubscriptionContainer/SubscriptionContainer";
 import { SAMPLE_SUBSCRIPTION } from "../../../user/setting/subscription/_lib/subscription";
-
-export type PreviewState = {
-  /** 주소 /dev/p1/<slug> */
-  slug: string;
-  /** 목록에 보일 이름. 피그마 프레임 이름과 맞춘다 */
-  label: string;
-  /** 실제 라우트 */
-  route: string;
-  render: () => ReactNode;
-};
+import type { PreviewState } from "../../_lib/preview";
 
 export const P1_STATES: PreviewState[] = [
   {

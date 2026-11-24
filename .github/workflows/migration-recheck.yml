@@ -1,0 +1,78 @@
+# dev 에 마이그레이션이 들어오면, 마이그레이션을 추가한 열린 PR의 Backend migration check 를 다시 돌린다.
+# PR 검사는 PR을 열거나 푸시할 때만 돌기 때문에, 검사를 통과한 뒤 같은 번호의 다른 PR이 먼저 머지되면 초록색으로 남아
+# 그대로 머지될 수 있었다(같은 번호 두 개 → 앱이 뜨지 않아 Backend CD 가 멈춤). 다시 돌리면 그 PR의 필수 검사
+# (Backend CI required)가 빨간색이 되어 머지 버튼이 막힌다. 다시 돌리기는 푸시가 아니라 승인은 풀리지 않는다.
+# 작업 하나만 다시 돌리면 GitHub 가 그 작업에 의존하는 작업(Backend CI required)도 같이 다시 돌린다.
+name: Migration recheck
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'backend/src/main/resources/db/migration/**'
+  workflow_dispatch:
+
+concurrency:
+  group: migration-recheck
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
+
+jobs:
+  recheck:
+    name: Re-run migration check on open PRs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      MIGRATION_DIR: backend/src/main/resources/db/migration/
+      JOB_NAME: Backend migration check
+    steps:
+      - name: Re-run migration check
+        run: |
+          set -euo pipefail
+          prs="$(gh pr list --base dev --state open --limit 100 --json number,headRefOid,files \
+            --jq '.[] | select(any(.files[]; .path | startswith(env.MIGRATION_DIR))) | "\(.number) \(.headRefOid)"')"
+          {
+            echo '### 열린 PR 마이그레이션 검사 다시 돌리기'
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$prs" ]; then
+            echo '마이그레이션을 추가한 열린 PR이 없습니다.' | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo '| PR | 결과 |' >> "$GITHUB_STEP_SUMMARY"
+          echo '| --- | --- |' >> "$GITHUB_STEP_SUMMARY"
+
+          failed=0
+          while read -r number sha; do
+            run_id="$(gh run list --workflow backend-ci.yml --event pull_request --commit "$sha" --limit 1 \
+              --json databaseId --jq '.[0].databaseId // empty')"
+            if [ -z "$run_id" ]; then
+              # 아직 CI가 시작되지 않은 PR은 곧 시작될 검사가 최신 dev 와 비교한다.
+              echo "| #$number | 이 커밋의 Backend CI 가 아직 없음, 건너뜀 |" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            # 돌고 있는 실행은 다시 돌릴 수 없고, 검사가 이번 머지 전의 dev 를 받았을 수 있어 끝난 뒤 다시 돌린다.
+            gh run watch "$run_id" --interval 15 > /dev/null || true
+            job_id="$(gh run view "$run_id" --json jobs --jq ".jobs[] | select(.name == env.JOB_NAME) | .databaseId")"
+            if [ -z "$job_id" ]; then
+              echo "::warning::#$number: Backend CI 실행 $run_id 에 '$JOB_NAME' 작업이 없습니다."
+              echo "| #$number | '$JOB_NAME' 작업 없음 |" >> "$GITHUB_STEP_SUMMARY"
+              failed=1
+              continue
+            fi
+            if gh run rerun --job "$job_id"; then
+              echo "#$number: 실행 $run_id 의 마이그레이션 검사를 다시 돌립니다."
+              echo "| #$number | 다시 돌림 ([실행](https://github.com/$GH_REPO/actions/runs/$run_id)) |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::error::#$number: 실행 $run_id 를 다시 돌리지 못했습니다. PR의 Checks 탭에서 Backend CI 를 직접 Re-run 하세요."
+              echo "| #$number | 다시 돌리기 실패 |" >> "$GITHUB_STEP_SUMMARY"
+              failed=1
+            fi
+          done <<< "$prs"
+          exit "$failed"

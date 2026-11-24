@@ -43,10 +43,12 @@ jobs:
             exit 0
           fi
           # 마크다운(backend/ 아래 README.md 등)만 바뀐 PR은 빌드에 영향이 없어 검사하지 않는다. (push 는 on.paths 에서 같은 기준)
+          # compose.prod.yml 과 deploy/prod.env.example 은 아래 운영 설정 기동 확인이 쓰는 파일이다. 백엔드에 넘기는 환경 변수를
+          # 바꾸는 PR이 바로 그 확인이 필요한 경우라서, 이 파일만 바뀐 PR도 검사한다.
           # git diff 가 실패하면 여기서 작업이 실패한다(검사를 조용히 건너뛰지 않게). grep 은 남는 파일이 없을 때만 1 이라 무시한다.
           diff_files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           changed_files="$(grep -Ev '^backend/.*\.md$' <<<"$diff_files" || true)"
-          if grep -Eq '^(backend/|\.github/workflows/backend-ci\.yml$|scripts/(backend_test_summary|check_migrations)\.py$)' <<<"$changed_files"; then
+          if grep -Eq '^(backend/|compose\.prod\.yml$|deploy/prod\.env\.example$|\.github/workflows/backend-ci\.yml$|scripts/(backend_test_summary|check_migrations)\.py$)' <<<"$changed_files"; then
             echo 'changed=true' >> "$GITHUB_OUTPUT"
           else
             echo 'changed=false' >> "$GITHUB_OUTPUT"
@@ -125,7 +127,7 @@ jobs:
           python3 scripts/check_migrations.py "origin/$BASE_REF" "$HEAD_SHA"
 
   docker-build:
-    name: Backend Docker build
+    name: Backend Docker build and start
     needs: changes
     if: needs.changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
@@ -169,11 +171,39 @@ jobs:
         with:
           context: ./backend
           push: false
+          # PR에서는 아래 기동 확인에 쓰도록 러너의 Docker에 이미지를 남긴다. 이름은 compose.prod.yml 의 슬롯 이미지와 같다.
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: remake-backend-blue
           cache-from: type=gha,scope=backend
           cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=max,scope=backend' || '' }}
           # 새 캐시를 저장하는 dev 실행에서는 build 단계를 층 캐시 없이 다시 돌려 Gradle이 실제로 받게 한다.
           # (층 캐시로 bootJar 줄을 건너뛰면 보관 폴더가 빈 채로 저장된다)
           no-cache-filters: ${{ github.event_name == 'push' && steps.gradle-cache.outputs.cache-hit != 'true' && 'build' || '' }}
+
+      # 방금 만든 이미지를 서버의 deploy/deploy.sh 가 새 슬롯을 띄울 때와 같은 방법(compose.prod.yml, prod 프로필,
+      # 같은 헬스체크)으로 띄워 본다. 테스트는 외부 연동을 가짜로 바꾸고 테스트 설정으로 돌기 때문에, 운영 설정에서만
+      # 앱이 뜨지 않는 문제(예: #132 의 RestClient 의존성 누락)는 머지 뒤 서버에서야 드러나고 고칠 때까지 배포가 막혔다.
+      # 러너 안에서만 띄우고, 서버나 외부 서비스에는 접속하지 않는다. dev 에서는 CD 가 서버에서 실제로 띄우므로 PR에서만 한다.
+      - name: Start backend with production settings
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          # 서버 .env 대신 예시 파일의 빈 값을 임시 값으로 채운다(Deploy CI 의 compose 검사와 같은 방식).
+          # JWT_SECRET 은 32바이트 이상이어야 앱이 뜬다(HMAC-SHA 키). APP_PORT 는 띄우지 않는 프록시용이지만 compose 해석에 필요하다.
+          # 형식이 정해진 필수 값(숫자, 주소 등)이 새로 생기면 여기서 그 형식에 맞는 임시 값을 넣는다.
+          env_file="$RUNNER_TEMP/ci.env"
+          sed -E 's/^([A-Za-z_][A-Za-z0-9_]*)=$/\1=ci-only-value/' deploy/prod.env.example > "$env_file"
+          sed -i -E 's/^APP_PORT=.*/APP_PORT=18080/; s/^JWT_SECRET=.*/JWT_SECRET=ci-only-jwt-secret-at-least-32-bytes/' "$env_file"
+          compose=(docker compose --env-file "$env_file" -f compose.prod.yml)
+          "${compose[@]}" up -d --wait postgres
+          # deploy.sh 의 start_slot 과 같은 명령. 이미지는 위 단계에서 만든 것을 쓴다(--no-build). 대기 시간도 서버와 같다(180초).
+          if ! "${compose[@]}" up -d --no-deps --no-build --wait --wait-timeout 180 backend-blue; then
+            echo '::error title=운영 설정으로 백엔드가 뜨지 않음::서버에서도 같은 이유로 새 버전이 뜨지 않습니다. 아래 앱 로그(APPLICATION FAILED TO START 부분)에서 원인을 확인하세요.'
+            "${compose[@]}" ps -a
+            "${compose[@]}" logs --no-color --tail 200 backend-blue || true
+            exit 1
+          fi
+          echo '운영 설정으로 백엔드가 떴고 서버와 같은 헬스체크(/actuator/health/readiness)를 통과했습니다.'
 
   required:
     name: Backend CI required
@@ -204,7 +234,7 @@ jobs:
               exit 1
             fi
             if [ "$DOCKER_RESULT" != success ]; then
-              echo '::error::Backend Docker build did not pass'
+              echo '::error::Backend Docker build or production start check did not pass'
               exit 1
             fi
           fi

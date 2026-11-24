@@ -11,6 +11,7 @@ import java.util.stream.IntStream;
 import org.springframework.stereotype.Component;
 
 import com.remake.recipe.application.port.out.LoadRecipePort;
+import com.remake.recipe.application.port.out.RecipeHeader;
 import com.remake.recipe.application.port.out.SaveRecipePort;
 import com.remake.recipe.domain.Recipe;
 import com.remake.recipe.domain.RecipeIngredient;
@@ -63,6 +64,33 @@ class RecipePersistenceAdapter implements SaveRecipePort, LoadRecipePort {
 		return ingredientRepository.findAllOfUserRecipes(recipeIds, userId).stream()
 				.collect(Collectors.groupingBy(RecipeIngredientJpaEntity::getRecipeId, LinkedHashMap::new,
 						Collectors.mapping(RecipeIngredientJpaEntity::toDomain, Collectors.toList())));
+	}
+
+	@Override
+	public Optional<Recipe> loadById(Long recipeId) {
+		return recipeRepository.findById(recipeId)
+				.map(entity -> toDomain(entity, ingredientRepository.findByRecipeIdOrderBySortOrderAsc(recipeId),
+						stepRepository.findByRecipeIdOrderByStepNoAsc(recipeId)));
+	}
+
+	@Override
+	public boolean existsByIdAndUserId(Long recipeId, Long userId) {
+		return recipeRepository.existsByIdAndUserId(recipeId, userId);
+	}
+
+	@Override
+	public Map<Long, RecipeHeader> loadHeaders(Collection<Long> recipeIds) {
+		if (recipeIds.isEmpty()) {
+			return Map.of();
+		}
+		Map<Long, List<String>> names = ingredientRepository.findByRecipeIdInOrderByRecipeIdAscSortOrderAsc(recipeIds)
+				.stream()
+				.collect(Collectors.groupingBy(RecipeIngredientJpaEntity::getRecipeId,
+						Collectors.mapping(RecipeIngredientJpaEntity::getName, Collectors.toList())));
+		Map<Long, RecipeHeader> headers = new LinkedHashMap<>();
+		recipeRepository.findAllById(recipeIds).forEach(r -> headers.put(r.getId(),
+				new RecipeHeader(r.getId(), r.getUserId(), r.getTitle(), names.getOrDefault(r.getId(), List.of()))));
+		return headers;
 	}
 
 	private static Recipe toDomain(RecipeJpaEntity entity, List<RecipeIngredientJpaEntity> ingredients,

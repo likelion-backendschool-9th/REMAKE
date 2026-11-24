@@ -54,8 +54,8 @@ x-backend: &backend
   # 공유 서버라 다른 팀 앱에 영향을 주지 않도록 메모리 상한을 둔다. 앱 크기에 비해 넉넉하게 잡았다.
   # 상한이 없으면 JVM 이 서버 전체 메모리의 1/4 까지 힙을 키울 수 있다. 바꾸면 다음 배포부터 적용된다.
   mem_limit: 2g
-  # 앱의 graceful shutdown 대기(30초)보다 길어야 도커가 먼저 강제 종료하지 않는다.
-  stop_grace_period: 40s
+  # 앱의 graceful shutdown 대기(60초, application-prod.yml)보다 길어야 도커가 먼저 강제 종료하지 않는다.
+  stop_grace_period: 70s
   healthcheck:
     test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health/readiness >/dev/null || exit 1"]
     interval: 10s

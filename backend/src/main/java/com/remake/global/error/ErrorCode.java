@@ -29,9 +29,16 @@ public enum ErrorCode {
 	SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지금은 요청을 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."),
 
 	// 기능별 (기능을 만드는 PR에서 추가. 마지막 줄만 ;로 끝낸다)
+	// 장바구니
+	CART_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "이미 삭제된 항목이에요"),
+	// 공유
+	RECIPE_NOT_SHAREABLE(HttpStatus.BAD_REQUEST, "공유할 수 없는 레시피예요"),
+	ALREADY_SHARED(HttpStatus.CONFLICT, "이번 주에 이미 공유한 레시피예요"),
+	SHARED_RECIPE_NOT_FOUND(HttpStatus.NOT_FOUND, "삭제되었거나 볼 수 없는 레시피예요"),
+	REPORT_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 신고한 레시피예요"),
 	// 공유 사진
-	PHOTO_REQUIRED(HttpStatus.BAD_REQUEST, "조리 사진 1장을 첨부해 주세요."),
-	UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 파일 형식입니다."),
+	PHOTO_REQUIRED(HttpStatus.BAD_REQUEST, "실제로 요리한 사진을 올려 주세요"),
+	UNSUPPORTED_FILE_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 파일 형식이에요"),
 	// 인증
 	OAUTH_FAILED(HttpStatus.UNAUTHORIZED, "소셜 로그인에 실패했습니다."),
 	OAUTH_PROVIDER_UNSUPPORTED(HttpStatus.BAD_REQUEST, "지원하지 않는 로그인 방식입니다."),
@@ -47,13 +54,18 @@ public enum ErrorCode {
 	AI_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "생성이 오래 걸리고 있어요. 횟수는 차감되지 않았어요"),
 	AI_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "레시피를 만들지 못했어요. 횟수는 차감되지 않았어요"),
 	RECIPE_NOT_FOUND(HttpStatus.NOT_FOUND, "레시피를 찾을 수 없어요"),
+	SAVED_RECIPE_NOT_FOUND(HttpStatus.NOT_FOUND, "저장된 레시피가 아니에요"),
+	COOK_ITEM_INVALID(HttpStatus.BAD_REQUEST, "차감할 재료를 확인해 주세요"),
 	// 식단표 (문구는 에러 정의서 v2. 생성 작업의 실패 사유 MEAL_PLAN_NO_INGREDIENTS는 응답이 아니라 알림이라 여기 없음)
 	MEAL_PLAN_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "이번 달 식단표 생성 횟수를 모두 사용했어요"),
 	MEAL_PLAN_OVERLAP(HttpStatus.CONFLICT, "이미 식단이 있는 날짜가 있어요. 덮어쓸까요?"),
 	MEAL_PLAN_IN_PROGRESS(HttpStatus.CONFLICT, "식단표를 만들고 있어요. 완성되면 알림을 보내드려요"),
 	PAST_DATE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "지난 날짜는 바꿀 수 없어요"),
 	// 이벤트
-	EVENT_BATCH_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE, "이벤트는 한 번에 50개까지 보낼 수 있습니다.");
+	EVENT_BATCH_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE, "이벤트는 한 번에 50개까지 보낼 수 있습니다."),
+	// 영수증
+	RECEIPT_DUPLICATE(HttpStatus.CONFLICT, "이미 등록한 영수증이에요"),
+	RECEIPT_TOO_OLD(HttpStatus.UNPROCESSABLE_CONTENT, "6개월이 지난 영수증은 등록할 수 없어요");
 
 	private final HttpStatus status;
 	private final String message;

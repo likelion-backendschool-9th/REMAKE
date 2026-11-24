@@ -18,10 +18,12 @@ type StepperProps = {
   formatValue?: (value: number) => ReactNode;
   /** 스크린 리더용 이름. 예: "수량" */
   label: string;
+  /** 두 버튼을 모두 막는다. 재료 추가에서 재료명을 쓰기 전(단위를 아직 모름) */
+  disabled?: boolean;
   className?: string;
 };
 
-/** 피그마 디자인 시스템 > 3. 입력 > 스테퍼. 최소값이면 빼기가 비활성. */
+/** 피그마 디자인 시스템 > 3. 입력 > 스테퍼. 최소값이면 빼기가, 최대값이면 더하기가 비활성. */
 export function Stepper({
   value,
   onChange,
@@ -30,12 +32,13 @@ export function Stepper({
   max = Number.POSITIVE_INFINITY,
   formatValue = (v) => v,
   label,
+  disabled = false,
   className,
 }: StepperProps) {
   // 0.5 단위 등 소수 계산 오차를 없앤다
   const round = (n: number) => Math.round(n * 1000) / 1000;
-  const canDecrease = value > min;
-  const canIncrease = value < max;
+  const canDecrease = !disabled && value > min;
+  const canIncrease = !disabled && value < max;
 
   return (
     <div className={cx(styles.stepper, className)} role="group" aria-label={label}>

@@ -8,7 +8,7 @@
 
 | 워크플로 | 검사하는 PR | 하는 일 | 필수 검사 |
 | --- | --- | --- | --- |
-| Backend CI | `backend/`(`README.md` 같은 마크다운 파일만 바뀐 경우는 제외), `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, `scripts/check_migrations.py`가 바뀐 PR | `./gradlew build`(컴파일, 테스트, jar. 테스트가 PostgreSQL 컨테이너를 직접 띄움), 테스트 요약, Flyway 마이그레이션 파일 검사, 백엔드 Docker 이미지 빌드 | `Backend CI required` |
+| Backend CI | `backend/`(`README.md` 같은 마크다운 파일만 바뀐 경우는 제외), `compose.prod.yml`, `deploy/prod.env.example`, `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, `scripts/check_migrations.py`가 바뀐 PR | `./gradlew build`(컴파일, 테스트, jar. 테스트가 PostgreSQL 컨테이너를 직접 띄움), 테스트 요약, Flyway 마이그레이션 파일 검사, 백엔드 Docker 이미지 빌드와 운영 설정으로 띄워 보기 | `Backend CI required` |
 | Frontend CI | `frontend/`(`AGENTS.md`, `blueprint.md` 같은 마크다운 파일만 바뀐 경우는 제외), `.github/workflows/frontend-ci.yml`이 바뀐 PR | `pnpm lint`, `pnpm typecheck`, `pnpm build`, 프론트 Docker 이미지 빌드 | `Frontend CI required` |
 | Deploy CI | 배포 파일(`compose.prod.yml`, `deploy/`) 또는 워크플로 파일(`.github/workflows/`)이 바뀐 PR | 배포 파일: 셸 스크립트, Compose, 프록시 Nginx 설정 검사. 워크플로 파일: actionlint | `Deploy CI required` |
 | PR Attribution Check | 모든 PR | 커밋과 PR 본문의 AI 자동 표기 검사 | — |
@@ -49,11 +49,55 @@ Spring은 설정이 같은 테스트 클래스끼리 한 번 띄운 앱을 재�
 | 새 파일 이름이 `V<번호>__<설명>.sql` 형식이 아님 (번호는 0으로 시작하지 않는 정수, 설명은 영문·숫자·밑줄) | Flyway가 파일을 무시하거나 `V01`과 `V1`을 같은 번호로 읽는다 | `파일 이름은 V<번호>__<설명>.sql 형식이어야 합니다` |
 | 새 파일 번호가 base 브랜치의 마지막 번호보다 크지 않음 | 같은 번호면 앱이 뜨지 않는다. 더 작은 번호는 테스트는 통과하지만, 서버 DB가 이미 더 큰 번호를 적용했기 때문에 거부된다 | `dev의 마지막 번호가 V<n>입니다. V<n+1> 이상으로 바꾸세요` |
 | PR 안의 새 파일끼리 번호가 같음 | 위와 같다 | `...와 번호(V<n>)가 같습니다` |
-| base 브랜치에 이미 있는 파일을 고치거나 지우거나 이름을 바꿈 | 서버 DB는 적용한 파일마다 체크섬을 저장해 두고, 바뀐 파일을 거부한다. 테스트는 통과한다 | `dev에 이미 있는(서버에 적용된) 파일은 고치거나 지우거나 이름을 바꿀 수 없습니다` |
+| base 브랜치에 이미 있는 파일을 고치거나 지우거나 이름을 바꿈 (예외: 아래 "그래도 번호 겹침·역전이 `dev`에 들어갔다면") | 서버 DB는 적용한 파일마다 체크섬을 저장해 두고, 바뀐 파일을 거부한다. 테스트는 통과한다 | `dev에 이미 있는(서버에 적용된) 파일은 고치거나 지우거나 이름을 바꿀 수 없습니다` |
 
 - 실패하면 메시지에 나온 번호로 내 새 파일의 이름을 바꾼다. 이미 적용된 파일에 바꿀 내용이 있으면 새 번호 파일로 추가한다.
-- 검사 결과는 그 순간의 기록이다. 내 검사가 통과한 뒤 마이그레이션이 있는 다른 PR이 먼저 머지돼도 내 검사는 초록불로 남는다. **마이그레이션을 추가하는 PR은 머지 직전에 Backend CI를 다시 실행한다**: PR의 **Checks** 탭에서 Backend CI를 열고 **Re-run all jobs**를 누른다. 다시 실행은 푸시가 아니라서 승인이 그대로 유지되고, 최신 `dev`와 다시 비교한다.
+- 검사 결과는 그 순간의 기록이다. 검사는 PR을 열거나 푸시할 때 돈다. 내 검사가 통과한 뒤 마이그레이션이 있는 다른 PR이 먼저 머지돼도, 검사가 다시 돌기 전까지 내 검사는 초록불로 남는다.
+- **자동 다시 실행**: `dev`에 마이그레이션이 들어오면 `Migration recheck` 워크플로(`.github/workflows/migration-recheck.yml`)가 `dev`로 가는 열린 PR 중 마이그레이션 파일을 추가한 PR마다 `Backend migration check`를 다시 돌린다. 이 작업에 기대는 `Backend CI required`도 GitHub가 같이 다시 돌린다. 번호가 이미 쓰인 PR은 빨간색이 되어 머지할 수 없다. 다시 실행은 푸시가 아니라서 승인은 그대로 유지된다. PR의 Backend CI가 아직 돌고 있으면 끝날 때까지 기다린 뒤 다시 돌린다. 다시 돌린 PR 목록은 실행 요약("열린 PR 마이그레이션 검사 다시 돌리기")에 나온다.
+- **직접 다시 실행**: 검사가 최신인지 확실하지 않으면(예: `Migration recheck` 실행이 실패함) 머지 직전에 직접 다시 실행한다. PR의 **Checks** 탭에서 Backend CI를 열고 **Re-run all jobs**를 누른다. 최신 `dev`와 다시 비교한다.
+- **그래도 번호 겹침·역전이 `dev`에 들어갔다면**: 검사는 나중에 들어온 파일을 지우거나(PR revert) 새 번호로 이름을 바꾸는 PR을 허용한다. 먼저 들어온 파일은 계속 막는다. 서버에 이미 적용됐을 수 있고, 바꾸면 서버에서 앱이 뜨지 않기 때문이다. 그 파일을 바꾸려 하면 오류 메시지가 대신 바꿀 나중 파일을 알려 준다.
+
+  | `dev`의 상황 | 일어나는 일 | 고치는 PR에 나오는 메시지 |
+  | --- | --- | --- |
+  | 같은 번호가 두 개 (예: `V17` 두 개) | 그 머지부터 앱이 뜨지 않으므로 Backend CD가 테스트에서 멈추고 서버는 이전 버전을 유지한다. 나중 파일은 서버에 적용된 적이 없다 | `::notice::...지우거나 새 번호로 옮기는 것을 허용합니다` |
+  | 큰 번호 뒤에 작은 번호 (예: `V18` 뒤에 `V17`) | 테스트는 빈 DB라 통과하지만, 서버는 이미 `V18`을 적용해서 Flyway가 `V17`을 거부한다. 새 슬롯이 뜨지 않고 이전 버전이 계속 서비스한다. 나중 파일은 보통 적용되지 않았다 | 서버 조회 문장이 들어간 `::warning::...더 큰 번호(...)가 먼저 들어와 있어...` |
+
+  역전인 경우에는 고치는 PR을 머지하기 전에 배포 담당이 서버에서 확인한다: `SELECT version FROM flyway_schema_history WHERE version = '<n>';` 결과가 없어야 한다. 작은 번호 파일이 머지되기 전에 큰 번호의 배포가 실패했다면, 다음 배포가 두 파일을 순서대로 적용해서 작은 번호 파일이 적용된 상태가 된다. 이때는 이름을 바꾸면 안 된다. 스크립트는 서버를 볼 수 없어서 이 판단은 하지 않는다.
 - 로컬에서는 저장소 루트에서 실행한다: `git fetch origin dev && python3 scripts/check_migrations.py origin/dev HEAD`.
+
+### 경고: 되돌리기 어려운 문장
+
+같은 작업이 새 마이그레이션 파일을 읽어서, 이전 버전을 깨거나 되돌릴 수 없는 문장이 있으면 그 줄에 노란 경고를 띄운다. 경고는 실행 요약("되돌리기 어려운 마이그레이션")에도 나온다. 머지는 막지 않는다.
+
+| 문장 | 배포 때 위험한 이유 |
+| --- | --- |
+| `DROP TABLE`, `DROP COLUMN`, `RENAME` | 새 슬롯이 마이그레이션을 적용한 뒤에도 이전 버전이 수십 초 동안 같은 DB로 서비스하는데, 지워지거나 이름이 바뀐 테이블·열을 쓰다가 오류가 난다. 이전 이미지가 바뀐 구조에서 뜨지 않아 백엔드 롤백도 실패한다 |
+| `ALTER COLUMN ... TYPE`, `SET NOT NULL` | 이전 버전이 바뀐 열이 더는 받지 않는 값을 쓸 수 있다 |
+| `DELETE FROM`, `TRUNCATE` | 지운 행은 백업 없이는 되돌릴 수 없다 |
+
+- `UPDATE`와 `DROP INDEX`는 경고하지 않는다. 자주 쓰이고 이전 버전을 깨지 않기 때문이다. 주석은 무시한다. 글자로 찾는 검사라 흔하지 않은 형태(`COLUMN` 없이 쓴 `DROP` 등)는 놓칠 수 있다.
+- 데이터가 있는 테이블에 경고가 뜨면 머지 전에 배포 담당과 순서를 정한다. 예: 먼저 그 열을 쓰지 않는 코드를 배포하고, 열은 다음 PR에서 지운다.
+- 서버는 새 마이그레이션을 적용하기 직전에 DB를 백업한다. [배포 문서](deployment.md#새-마이그레이션-전-db-백업)를 본다.
+
+## 운영 설정 기동 확인
+
+테스트는 외부 연동을 가짜로 바꾸고 테스트 설정으로 돌기 때문에, 운영 설정으로는 앱이 뜨지 않아도 통과한다. 예: #132는 CI를 통과했지만, 서버에서는 진짜 `SocialOAuthAdapter`가 필요로 하는 `RestClient.Builder`의 의존성이 빠져 있었다. 새 슬롯이 뜨지 않았고, #141이 머지될 때까지 배포가 막혔다.
+
+그래서 `Backend Docker build and start` 작업은 방금 만든 이미지를 서버의 `deploy/deploy.sh`가 새 슬롯을 띄우는 것과 같은 방법으로 띄워 본다.
+
+- `compose.prod.yml`과 `prod` 프로필: PostgreSQL을 먼저 띄우고, `backend-blue`를 `--no-deps --no-build --wait`로 띄운 뒤 같은 헬스체크(`/actuator/health/readiness`)가 통과할 때까지 최대 180초 기다린다.
+- 값은 `deploy/prod.env.example`의 빈 값을 임시 값으로 채워 쓴다. `JWT_SECRET`에는 앱이 요구하는 32바이트 이상의 임시 값을 넣는다.
+- CI 러너 안에서만 띄우고, 서버나 외부 서비스에는 접속하지 않는다. PR에서만 돈다. 머지 뒤에는 CD가 서버에서 앱을 띄운다.
+
+| 잡는 것 | 못 잡는 것 (대신 막는 곳) |
+| --- | --- |
+| 운영 설정에서만 만들어지는 Bean을 만들지 못함 (#132 사례) | 서버 `.env`에 값이 빠짐 (Deploy CI의 새 환경 변수 경고) |
+| `application-prod.yml`의 실수 (이름이나 형식 오류) | 서버에 이미 있는 데이터 때문에만 실패하는 마이그레이션. CI는 빈 DB에서 시작한다 (`deploy/deploy.sh`가 이전 버전을 유지) |
+| `application-prod.yml`이 기동할 때 필요로 하는 값을 `compose.prod.yml`이 넘기지 않음 | 앱이 뜬 뒤 특정 요청에서 나는 오류 (테스트) |
+| 기동할 때 드러나는 이미지 문제 | 외부 서비스 연결. 앱은 기동할 때 외부 서비스에 접속하지 않는다 |
+
+- 실패하면 작업 로그에 `운영 설정으로 백엔드가 뜨지 않음`과 그 아래 앱의 마지막 로그가 나온다. `APPLICATION FAILED TO START` 아래 부분을 읽고, 검사가 아니라 앱을 고친다(예: 빠진 의존성을 `build.gradle`에 추가).
+- 형식이 정해진 필수 값(숫자, 주소 등)이 새로 생기면, 같은 PR에서 `.github/workflows/backend-ci.yml`의 `Start backend with production settings` 단계에 그 형식에 맞는 임시 값을 넣는다.
 
 ## 배포 파일·워크플로 검사 (Deploy CI)
 
@@ -86,5 +130,5 @@ CI는 아래를 GitHub 캐시에 저장해 다음 실행에서 다시 쓴다. �
 
 ## `dev`에 머지된 뒤
 
-- Backend CI와 Frontend CI가 `dev`에서 한 번 더 돌아 캐시를 저장한다. Backend CI는 이때 Docker 이미지 빌드만 한다(빌드·테스트는 CD가 한다).
+- Backend CI와 Frontend CI가 `dev`에서 한 번 더 돌아 캐시를 저장한다. Backend CI는 이때 Docker 이미지 빌드만 하고(빌드·테스트는 CD가 한다) 운영 설정 기동 확인은 건너뛴다(CD가 서버에서 앱을 띄운다).
 - 서버 배포는 Backend CD, Frontend CD가 한다. CD도 배포 전에 다시 검사한다. 자세한 내용은 [배포 문서](deployment.md#지금-상태)를 본다.

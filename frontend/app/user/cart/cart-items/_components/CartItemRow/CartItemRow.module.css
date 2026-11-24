@@ -1,0 +1,54 @@
+/* 피그마 p7 장바구니 리스트: 위아래 5, 체크박스-그림 10, 그림-글 5, 글 줄 사이 2, 오른쪽 "수량 변경" */
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: 0.3125rem 0;
+}
+
+.select {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-10);
+  min-width: 0;
+  cursor: pointer;
+}
+
+.body {
+  display: flex;
+  align-items: center;
+  gap: 0.3125rem;
+  min-width: 0;
+}
+
+.image {
+  flex: none;
+  width: 2.75rem;
+  height: 1.8125rem;
+  object-fit: contain;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.recipe {
+  overflow: hidden;
+  color: var(--color-text-assist);
+  font: var(--font-assist);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name {
+  overflow: hidden;
+  color: var(--color-text-title);
+  font: var(--font-content);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

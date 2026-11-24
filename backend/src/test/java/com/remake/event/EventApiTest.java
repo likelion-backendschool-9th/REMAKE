@@ -53,6 +53,7 @@ class EventApiTest extends IntegrationTestSupport {
 		assertThat(props).contains("entry_source").doesNotContain("email");
 		assertThat(jdbcTemplate.queryForObject("SELECT platform FROM events", String.class)).isEqualTo("PWA");
 		assertThat(jdbcTemplate.queryForObject("SELECT source FROM events", String.class)).isEqualTo("CLIENT");
+		assertThat(jdbcTemplate.queryForObject("SELECT user_id FROM events", Long.class)).isEqualTo(1L);
 	}
 
 	@Test

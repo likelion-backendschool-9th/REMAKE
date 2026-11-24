@@ -22,10 +22,10 @@ final class EventPropertyValues {
 			Map.entry("onboarding_step", Set.of("household", "allergy")),
 			Map.entry("setting_key", Set.of("household_size", "recipe_supplement", "notification")),
 			Map.entry("filter_type", Set.of("storage", "category", "status", "q")),
-			Map.entry("add_source", Set.of("MANUAL", "RECEIPT", "CATALOG")),
+			Map.entry("add_source", Set.of("MANUAL", "RECEIPT", "CATALOG", "cart")),
 			Map.entry("storage", Set.of("FRIDGE", "FREEZER", "PANTRY")),
 			Map.entry("edit_field", Set.of(
-					"name", "category", "storage", "expiration_date", "amount", "unit", "price", "item_name")),
+					"name", "category", "storage", "expiration", "expiration_date", "amount", "unit", "price", "item_name")),
 			Map.entry("use_via", Set.of("manual", "cook")),
 			Map.entry("expiry_status", Set.of("danger", "soon", "ok")),
 			Map.entry("scan_method", Set.of("CAMERA", "GALLERY")),
@@ -37,13 +37,13 @@ final class EventPropertyValues {
 			Map.entry("meal_type", Set.of("BREAKFAST", "LUNCH", "DINNER")),
 			Map.entry("date_relation", Set.of("TODAY", "PAST", "FUTURE")),
 			Map.entry("slot_source", Set.of("AI", "MANUAL")),
-			Map.entry("cart_source", Set.of("MEAL_PLAN", "RECIPE_SAVE", "SHARED_RECIPE_SAVE")),
+			Map.entry("cart_source", Set.of("meal_plan", "own_recipe", "shared_recipe")),
 			Map.entry("notification_type", Set.of(
 					"expiry_soon", "expired", "meal_plan_completed", "meal_plan_failed")),
 			Map.entry("ranking_view", Set.of("WEEKLY", "ALL")),
 			Map.entry("view_from", Set.of("RANKING", "SHARE_LINK", "SAVED")),
 			Map.entry("rank_bucket", Set.of("TOP10", "TOP30", "OTHER")),
-			Map.entry("report_reason", Set.of("PHOTO", "OFFENSIVE", "DANGEROUS", "OTHER")));
+			Map.entry("report_reason", Set.of("offensive_image", "ad_title", "dangerous_recipe", "other")));
 
 	private static final Set<String> CODE_PROPERTIES = Set.of("error_code", "category_code");
 	private static final Set<String> SCREEN_PROPERTIES = Set.of("screen_name", "previous_screen");

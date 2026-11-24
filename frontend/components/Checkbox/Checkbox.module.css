@@ -22,6 +22,12 @@
   background: var(--color-bg-primary);
 }
 
+/* 피그마 p7-장바구니-항목 삭제: 삭제할 항목은 빨간 체크(bg/danger) */
+.box[data-tone="danger"] .input:checked {
+  border-color: var(--color-bg-danger);
+  background: var(--color-bg-danger);
+}
+
 .input:focus-visible {
   outline: 2px solid var(--color-brand-primary);
   outline-offset: 2px;
