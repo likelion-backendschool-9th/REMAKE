@@ -1,0 +1,30 @@
+/* 피그마 4. 선택 > 세그먼트: 바깥 bg/section·여백 4·radius/md, 항목 여백 10·radius/sm, 선택=bg/surface+shadow-control */
+.group {
+  display: flex;
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-section);
+}
+
+.option {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-10);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-assist);
+  font: var(--font-content);
+}
+
+.option[aria-checked="true"] {
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-control);
+  color: var(--color-text-primary);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -2px;
+}

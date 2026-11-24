@@ -64,7 +64,7 @@ Source: PRD v4 and policy doc v4 (Figma-based, 2026-11-22; Korean, kept in Notio
 | PINCH | 꼬집 | small | - | no | yes |
 | TO_TASTE | 약간 | small (no amount) | - | no | yes |
 
-- **The server picks the unit from the ingredient name** (the internal `ingredient_catalog` dictionary, see [`../erd.md`](../erd.md) table 26). The user never chooses a unit. The unit for a name not in the dictionary is (open).
+- **The server picks the unit from the ingredient name** (the internal `ingredient_catalog` dictionary, see [`../erd.md`](../erd.md) table 26). The user never chooses a unit. The unit is decided in this order (#145): the name equals a dictionary name exactly; otherwise the longest dictionary name (two characters or more, same category) contained in the name; otherwise `EA`. A unit printed on a receipt does not override it.
 - Packaging words (봉지, 캔, 병, 통) map to PACK; counting words (마리, 알, 모, 포기) map to EA.
 - Deduction converts automatically only within the same kind (weight↔weight, volume↔volume with measures in ml). Different kinds need the user to confirm the amount. PINCH and TO_TASTE are never deducted.
 - Fridge amounts are plain numbers, no fractions, up to 3 decimals. Stepper step (proposal): g/ml 50, kg/L 0.5, count units 1.
@@ -127,7 +127,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - First screen: "냉장고에 재료가 N개 있어요", "AI를 활용해 레시피 생성하기 →" (to recipe home), danger / soon / ok cards, ingredient list.
 - Ingredient fields: name, category, storage (refrigerated, frozen, room temperature), expiry date, price (optional), amount. Manual add and OCR item edit/add use the same fields. All but price are required; the button is disabled until they are filled.
 - Name is the ingredient, not the product ("비비고 냉동 만두" ✗ → "만두" ✓).
-- Unit: the server picks it from the name. The amount field is disabled until the name is set. Changing the name re-picks only the unit; the number stays. This applies on add and on edit, also when the ingredient already has use/discard logs (each log keeps the name and unit recorded at that time).
+- Unit: the server picks it from the name (and the category, API 14 with `categoryCode`). The amount field is disabled until the name is set; the frontend asks API 14 again when the name or category changes so the shown unit equals the saved one. Changing the name or the category re-picks only the unit (with the new name and category); the number stays. Sending the same values again keeps the unit. This applies on add and on edit, also when the ingredient already has use/discard logs (each log keeps the name and unit recorded at that time).
 - Amount edit: it fixes an input mistake, so it changes `amount` and `initial_amount` together (the discarded cost divides by `initial_amount`). Reject it with `INVALID_INPUT` once the ingredient has any use/discard log (#128).
 - Expiry status: danger = expired or today (D-DAY); soon = D-1 to D-3; ok = later. Shown as `D-N`, `D-DAY`, `폐기-N`.
 - Filter and sort: tapping a status card shows only that status; "재료 위치" and "재료 종류" sheets filter one at a time. Sorted by nearest expiry. List title "N개의 위험/임박/여유 재료". **No ingredient search.**
@@ -209,7 +209,10 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Not even one day: `MEAL_PLAN_NO_INGREDIENTS` → failure notification; the plan is `FAILED`, not charged.
 - Each meal slot gets a full recipe from the start (no "menu name first, details later").
 - Do not allocate the same ingredient amount to several meals (based on each slot's recipe ingredients; no per-slot planned-ingredient table; method is up to the developer).
-- Overlap: if the new period overlaps an existing plan, show the warning modal (cancel / overwrite). Overwrite deletes the overlapping days' slots and refills them when the generation job completes (a failed job keeps the existing plan). Meals already cooked today stay and are not refilled. Overlap is not charged (modal pending).
+- Missing vs short (#78): a fridge ingredient is used only within its remaining amount (fridge amount minus amounts already allocated to other plans). If it runs short, it does not go to the cart; generation stops from that day (fewer days). An ingredient not in the fridge stays in the recipe and goes to the cart.
+- Each meal uses at least 1 fridge ingredient (#78). Ingredients without an amount ("약간", "한 꼬집") do not count. Basic seasonings follow #158.
+- Trimming is per day (#78): if any meal of a day cannot be made, drop that whole day and stop there. Never skip a day to make later days.
+- Overlap: if the new period overlaps an existing plan, show the warning modal (cancel / overwrite). Overwrite deletes the overlapping days' slots and refills them when the generation job completes (a failed job keeps the existing plan). Days at the end that were not made for lack of ingredients keep the existing plan (only the made days change, #78). Meals already cooked today stay and are not refilled. Overlap is not charged (modal pending).
 - Slot ⋮: "식단 삭제" or "레시피 교체" + confirm. Delete removes that slot only. Replace generates a new recipe and charges 1 daily recipe ("레시피를 교체하게 될 경우 레시피 사용 횟수를 1회 차감 합니다"); not charged on failure.
 - Past days are view only. ⋮ stays; tapping it shows the `PAST_DATE_NOT_ALLOWED` toast.
 - Planning does not deduct fridge ingredients; only cook deduction does.

@@ -14,15 +14,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.remake.global.config.OpenApiConfig;
 import com.remake.global.web.LoginUserId;
+import com.remake.ingredient.application.port.in.ConsumeIngredientUseCase;
 import com.remake.ingredient.application.port.in.DeleteIngredientUseCase;
 import com.remake.ingredient.application.port.in.GetFridgeUseCase;
-import com.remake.ingredient.application.port.in.GetIngredientCategoriesUseCase;
 import com.remake.ingredient.application.port.in.GetIngredientUseCase;
 import com.remake.ingredient.application.port.in.RegisterIngredientUseCase;
 import com.remake.ingredient.application.port.in.UpdateIngredientUseCase;
 import com.remake.ingredient.domain.ExpiryStatus;
-import com.remake.ingredient.domain.Ingredient;
-import com.remake.ingredient.domain.IngredientCategory;
 import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.StorageLocation;
 
@@ -44,10 +42,10 @@ public class IngredientController {
 	private final GetIngredientUseCase getIngredientUseCase;
 	private final UpdateIngredientUseCase updateIngredientUseCase;
 	private final DeleteIngredientUseCase deleteIngredientUseCase;
-	private final GetIngredientCategoriesUseCase getIngredientCategoriesUseCase;
 	private final GetFridgeUseCase getFridgeUseCase;
+	private final ConsumeIngredientUseCase consumeIngredientUseCase;
 
-	@Operation(summary = "냉장고 목록", description = "진행 중인 재료만, 소비기한이 빠른 순입니다. status·storage·categoryCode는 모두 선택이고 없으면 전체입니다. 페이징은 없습니다.")
+	@Operation(summary = "냉장고 목록", description = "소비기한이 빠른 순입니다. status·storage·categoryCode는 모두 선택이고 없으면 전체입니다. 페이징은 없습니다.")
 	@GetMapping
 	public FridgeIngredientListResponse list(@LoginUserId Long userId,
 			@RequestParam(required = false) ExpiryStatus status,
@@ -59,31 +57,38 @@ public class IngredientController {
 				.toList());
 	}
 
-	@Operation(summary = "냉장고 요약", description = "진행 중인 재료의 total·danger·soon·ok. 완료된 재료는 제외합니다.")
+	@Operation(summary = "냉장고 요약", description = "재료 전체의 total·danger·soon·ok.")
 	@GetMapping("/summary")
 	public FridgeSummaryResponse summary(@LoginUserId Long userId) {
 		return FridgeSummaryResponse.from(getFridgeUseCase.getFridgeSummary(userId));
 	}
 
-	@Operation(summary = "재료 직접 추가", description = "냉장고 단위 9개 코드만 허용합니다(아니면 INVALID_UNIT).")
+	@Operation(summary = "재료 직접 추가", description = "단위는 받지 않습니다. 서버가 재료명과 카테고리로 정해 응답의 unit에 줍니다.")
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
 	public IngredientResponse register(@LoginUserId Long userId, @Valid @RequestBody IngredientCreateRequest request) {
 		Long id = registerIngredientUseCase.registerIngredient(request.toCommand(userId));
-		return toResponse(getIngredientUseCase.getIngredient(userId, id));
+		return IngredientResponse.from(getIngredientUseCase.getIngredient(userId, id));
 	}
 
 	@Operation(summary = "재료 상세")
 	@GetMapping("/{id}")
 	public IngredientResponse get(@LoginUserId Long userId, @PathVariable Long id) {
-		return toResponse(getIngredientUseCase.getIngredient(userId, id));
+		return IngredientResponse.from(getIngredientUseCase.getIngredient(userId, id));
 	}
 
-	@Operation(summary = "재료 수정", description = "이름·카테고리·보관 위치·소비기한·가격. 소비기한을 고치면 추정 표시가 꺼집니다. 가격은 null을 보내면 지웁니다.")
+	@Operation(summary = "재료 수정", description = "이름·카테고리·보관 위치·소비기한·가격. 가격은 null을 보내면 지웁니다.")
 	@PatchMapping("/{id}")
 	public IngredientResponse update(@LoginUserId Long userId, @PathVariable Long id,
 			@Valid @RequestBody IngredientUpdateRequest request) {
-		return toResponse(updateIngredientUseCase.updateIngredient(request.toCommand(userId, id)));
+		return IngredientResponse.from(updateIngredientUseCase.updateIngredient(request.toCommand(userId, id)));
+	}
+
+	@Operation(summary = "재료 사용·폐기", description = "USED(사용했어요)·DISCARDED(버렸어요)와 뺄 양. 남은 양이 0이 되면 재료가 지워지고(deleted=true) 기록은 이름·단위와 함께 남습니다. 버린 재료는 가격에 비례한 금액(costAmount)을 기록에 남깁니다.")
+	@PostMapping("/{id}/consume")
+	public IngredientConsumeResponse consume(@LoginUserId Long userId, @PathVariable Long id,
+			@Valid @RequestBody IngredientConsumeRequest request) {
+		return IngredientConsumeResponse.from(consumeIngredientUseCase.consumeIngredient(request.toCommand(userId, id)));
 	}
 
 	@Operation(summary = "재료 삭제")
@@ -91,15 +96,5 @@ public class IngredientController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void delete(@LoginUserId Long userId, @PathVariable Long id) {
 		deleteIngredientUseCase.deleteIngredient(userId, id);
-	}
-
-	// 응답에는 카테고리 id가 아니라 code를 준다. 카테고리는 12개라 목록에서 찾는다.
-	private IngredientResponse toResponse(Ingredient ingredient) {
-		IngredientCategoryCode code = getIngredientCategoriesUseCase.getIngredientCategories().stream()
-				.filter(category -> category.id().equals(ingredient.categoryId()))
-				.map(IngredientCategory::code)
-				.findFirst()
-				.orElseThrow();
-		return IngredientResponse.from(ingredient, code);
 	}
 }

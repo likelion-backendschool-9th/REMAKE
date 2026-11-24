@@ -1,0 +1,67 @@
+name: 결정 요청
+description: 구현 전에 정해야 하는 정책이나 문서 간 충돌을 정리합니다.
+title: "[decision] "
+labels: ["decision", "needs-decision"]
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 배경
+      description: 지금 무엇이 정해지지 않았거나 서로 다른지, 어떤 구현을 막고 있는지 적어 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: 요구사항
+      description: 이번 결정이 충족해야 하는 조건과 결정 후 명확해져야 할 결과를 적습니다. 선택지를 정답처럼 쓰지 않습니다.
+      placeholder: |
+        - …상황의 처리 기준이 문서·API·화면에서 같아야 한다.
+        - 결정 결과로 …의 구현을 시작할 수 있어야 한다.
+    validations:
+      required: true
+  - type: textarea
+    id: decisions
+    attributes:
+      label: 정한 것
+      description: 이미 확정된 전제와 근거를 적습니다. API는 번호 대신 기능명·HTTP 메서드·전체 경로를 적습니다. 결정 후에는 새로 확정한 결과·근거·결정자를 여기에 기록하고 needs-decision을 제거합니다.
+    validations:
+      required: false
+  - type: textarea
+    id: scope
+    attributes:
+      label: 작업 범위
+      description: 이번에 결정할 질문 하나와 다른 이슈에서 결정할 항목을 구분합니다. 독립적인 질문은 이슈를 나눕니다.
+      placeholder: |
+        - 포함: …상황의 …정책 결정
+        - 제외: …(#이슈번호), 실제 구현(#이슈번호)
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: 결정할 것
+      description: 질문과 선택지별 영향, 미확정 제안, 결정할 사람·필요한 시점을 적습니다. 결정 후 바꿔야 할 문서와 구현 이슈도 확인합니다.
+      placeholder: |
+        - 질문: …할 때 …로 처리할까요?
+        - A: … / 영향: …
+        - B: … / 영향: …
+        - 제안(미확정): …
+        - 결정할 사람·시점: …
+        - 반영할 문서·구현 이슈: …
+    validations:
+      required: true
+  - type: textarea
+    id: questions
+    attributes:
+      label: 확인할 것
+      description: 결정을 위해 더 필요한 근거·실측·선행 협의와 확인할 사람·필요한 시점을 적습니다. 없으면 생략합니다.
+    validations:
+      required: false
+  - type: textarea
+    id: references
+    attributes:
+      label: 참고
+      description: 충돌하는 문서의 절·원문, 관련 화면·피그마, 영향받는 이슈를 연결해 주세요. PR 후속이면 원인 PR과 follow-up 라벨을 연결합니다. 영역·파트·우선순위는 라벨로 표시합니다.
+    validations:
+      required: false

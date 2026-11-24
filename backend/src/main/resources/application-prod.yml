@@ -56,4 +56,8 @@ remake:
       client-secret: ${GOOGLE_CLIENT_SECRET:}
       token-uri: https://oauth2.googleapis.com/token
       user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+  gemini:
+    # AI 레시피·식단표 생성. 키는 배포 담당자가 서버 .env에 채운다. 비어 있으면 생성 요청만 AI_UPSTREAM_ERROR로 실패하고 앱은 정상 기동한다.
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
 

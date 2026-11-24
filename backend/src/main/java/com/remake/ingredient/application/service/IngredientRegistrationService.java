@@ -16,10 +16,12 @@ import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.ingredient.application.port.in.RegisterIngredientCommand;
 import com.remake.ingredient.application.port.in.RegisterIngredientUseCase;
+import com.remake.ingredient.application.port.in.ResolveIngredientUnitUseCase;
 import com.remake.ingredient.application.port.out.LoadIngredientCategoryPort;
 import com.remake.ingredient.application.port.out.SaveIngredientPort;
 import com.remake.ingredient.domain.Ingredient;
 import com.remake.ingredient.domain.IngredientCategory;
+import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.ingredient.domain.ExpiryPolicy;
 
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase 
 
 	private final LoadIngredientCategoryPort loadIngredientCategoryPort;
 	private final SaveIngredientPort saveIngredientPort;
+	private final ResolveIngredientUnitUseCase resolveIngredientUnitUseCase;
 	private final EventTracker eventTracker;
 	private final Clock clock;
 
@@ -64,17 +67,19 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase 
 				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND));
 
 		LocalDate expirationDate = command.expirationDate();
-		boolean estimated = command.expirationEstimated();
 		if (expirationDate == null) {
 			// 소비기한을 모르면 기준일(영수증은 구매일, 없으면 오늘)에 카테고리 기본 보관 일수를 더해 추정한다.
 			LocalDate baseDate = command.expirationBaseDate() != null ? command.expirationBaseDate() : today;
 			expirationDate = ExpiryPolicy.estimateExpirationDate(baseDate, category.defaultShelfLifeDays());
-			estimated = true;
 		}
+
+		// 단위는 서버가 정한다. 호출한 기능이 정해서 넘긴 단위(영수증 PACK 예외 등)가 있으면 그대로 쓴다.
+		IngredientUnit unit = command.unit() != null ? command.unit()
+				: resolveIngredientUnitUseCase.resolveUnit(command.name(), command.categoryCode());
 
 		try {
 			Ingredient ingredient = Ingredient.register(command.userId(), category.id(), command.receiptItemId(),
-					command.name(), command.storage(), expirationDate, estimated, command.amount(), command.unit(),
+					command.name(), command.storage(), expirationDate, command.amount(), unit,
 					command.price());
 			Ingredient saved = saveIngredientPort.save(ingredient);
 			trackAdded(saved, category, command.receiptItemId() != null);
@@ -95,8 +100,7 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase 
 				Map.of("add_source", fromReceipt ? "RECEIPT" : "MANUAL",
 						"category_code", category.code().name(),
 						"storage", ingredient.storage().name(),
-						"has_price", ingredient.price() != null,
-						"is_expiration_estimated", ingredient.expirationEstimated()),
+						"has_price", ingredient.price() != null),
 				EventTrackCommand.ofUser(ingredient.userId()));
 	}
 }

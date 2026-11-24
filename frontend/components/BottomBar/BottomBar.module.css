@@ -1,0 +1,28 @@
+/* 피그마 6. 겹쳐 뜨는 것 > 하단 고정 영역: bg/surface, 여백 위 12·옆 16·아래 24, 간격 space/8
+   위 안내=Remake/assist·text/body, 아래 안내=Remake/assist·text/assist */
+.bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: var(--z-fixed);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-16) calc(var(--space-24) + env(safe-area-inset-bottom));
+  background: var(--color-bg-surface);
+}
+
+.topNotice {
+  color: var(--color-text-body);
+  font: var(--font-assist);
+}
+
+.bottomNotice {
+  color: var(--color-text-assist);
+  font: var(--font-assist);
+}

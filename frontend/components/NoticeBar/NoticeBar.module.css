@@ -1,0 +1,26 @@
+/* 피그마 1. 앱 틀 > 알림 띠: 높이 38, 여백 0/12, 간격 space/8, radius/lg, bg/subtle, Remake/content·text/body */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  min-height: 2.375rem;
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-subtle);
+}
+
+.bar:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+.message {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-body);
+  font: var(--font-content);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

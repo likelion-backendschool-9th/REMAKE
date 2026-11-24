@@ -757,7 +757,7 @@ Internal reference data that maps an ingredient name to a unit, category and she
 | `shelf_life_days` | int |  |  | yes |  | Shelf life. Empty means the category default |
 | `is_common_exclusion` | boolean |  |  | no | false | Representative-allergen flag added in PR #140. Allergies are stored as `user_excluded_ingredients.allergen_code` (19 chips), so screens and APIs do not use it |
 
-- How to pick the unit for a name that is not in the dictionary is not decided yet. Do not invent a rule; ask the owner or the PO.
+- The server picks the unit for an ingredient name in this order (decided in #145): (1) the name equals a dictionary name exactly, so use its unit; (2) otherwise the dictionary names contained in the name, in the same category only, two characters or more, the longest one wins, so use its unit; (3) otherwise `EA`. A unit printed on a receipt (for example the `g` in "300g") does not override the dictionary unit.
 
 ## Relationships
 
@@ -852,14 +852,12 @@ These values appear on screens but have no column. They are computed from the so
 
 ## Differences from the current code
 
-Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged migrations; match this ERD with new numbered migrations.
+Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged migrations; match this ERD with new numbered migrations. `ingredient_categories` and `ingredients` already match (V11, #71).
 
 | Table | Current code | To match this ERD |
 | --- | --- | --- |
 | `users` | Has `status` (ACTIVE/SUSPENDED) | Drop `status` |
 | `refresh_tokens` | Has `revoked_at` (logout = mark revoked) | Drop `revoked_at`. Logout deletes the row |
-| `ingredient_categories` | Has `default_unit`, no `sort_order`, SEASONING named '양념·소스' | Drop `default_unit`, add `sort_order` (Appendix A order), rename SEASONING to '양념' |
-| `ingredients` | Has `is_expiration_estimated`, `status` (ACTIVE/FINISHED), `version` | Drop the three columns. Delete the row when the amount reaches 0 |
 | `ingredient_catalog` | PR #140 (V5): no `unit`, has autocomplete API `GET /user/ingredient-catalog` | Add `unit`, remove the autocomplete API |
 | `events` | Same | Nothing to change |
 

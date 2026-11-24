@@ -1,47 +1,102 @@
-/* Remake 디자인 토큰 v2.0.0 (2026-11-20)
- * 원칙: 피그마 디자인이 최우선. 토큰은 피그마에 정의된 변수·스타일만 이름 그대로 옮긴 것이다. 간격·반경·그림자·글래스 등 나머지 값은 억지로 정리하거나 맞추지 말고 피그마 프레임(Dev Mode)의 값을 그대로 읽어 쓴다. 프레임에 변수가 걸려 있으면 그 변수에 해당하는 토큰을 쓰고, 안 걸려 있으면 프레임 값을 그대로 쓴다.
- * 원천: design/tokens/build_tokens.py (생성 파일은 손으로 고치지 말고 이 스크립트로 다시 만듭니다)
+/* Remake 디자인 토큰 v3.1.0 (2026-11-23)
+ * 원칙: 피그마 디자인이 최우선. 토큰은 피그마 디자인 시스템(0. 기초)에 정의된 변수·스타일만 이름 그대로 옮긴 것이다. 프레임에 변수·스타일이 걸려 있으면 같은 이름의 토큰을 쓰고, 안 걸려 있으면 프레임 값을 그대로 쓴다.
+ * 원천: Figma etTm84sh4aA60z6BmOwM3i '디자인 시스템' 페이지 > '0. 기초' (node 5761:2324, Remake 디자인 시스템 v1 2026-11-22)
+ * 생성: design/tokens/build_tokens.py (생성 파일은 손으로 고치지 말고 이 스크립트로 다시 만듭니다)
  */
 :root {
   color-scheme: light;
 
-  /* ---------- 피그마 변수 (Collection 1) ---------- */
-  --text-header: #111827; /* figma: text/header */
-  --text-title: #374151; /* figma: text/title */
-  --text-content: #4B5563; /* figma: text/content */
-  --text-assist: #98A3B4; /* figma: text/assist */
-  --text-placeholder: #ABB7CA; /* figma: text/placeholder */
-  --text-disabled: #B0B8C1; /* figma: text/disabled */
-  --text-primary: #3182F6; /* figma: text/primary */
-  --text-error: #EF4444; /* figma: text/error */
-  --text-warring: #FF7119; /* figma: text/warring */
-  --text-safe: #179C00; /* figma: text/safe */
-  --text-white: #F8F9F6; /* figma: text/white */
-  --bg-white: #FFFFFF; /* figma: bg/white */
-  --bg-1depth: #F2F4F7; /* figma: bg/1depth */
-  --bg-1depth-bg: #EFF5FF; /* figma: bg/1depth-bg */
-  --bg-blue-btn-bg: #EBF3FF; /* figma: bg/blue-btn-bg */
-  --bg-input-bg: #F2F4F6; /* figma: bg/input-bg */
-  --bg-gray-1depth: #F5F5F5; /* figma: bg/gray-1depth */
-  --bg-gray-2depth: #EAEAEA; /* figma: bg/gray-2depth */
-  --bg-gray-3depth: #CFCFCF; /* figma: bg/gray-3depth */
-  --bg-gray-4depth: #B9B9B9; /* figma: bg/gray-4depth */
-  --bg-skeletn-bg: #E9ECEF; /* figma: bg/skeletn-bg */
-  --bg-skeleton-highlights: #F1F5F9; /* figma: bg/skeleton-highlights */
-  --bg-shadow: rgba(25, 31, 40, 0.32); /* figma: bg/shadow */
-  --stroke-1: #E2E8F0; /* figma: stroke-1 */
+  /* ---------- 색 text/ (Remake Color) ---------- */
+  --color-text-strong: #111827; /* figma: text/strong */
+  --color-text-title: #374151; /* figma: text/title */
+  --color-text-body: #4B5563; /* figma: text/body */
+  --color-text-sub: #9CA3AF; /* figma: text/sub */
+  --color-text-assist: #98A3B4; /* figma: text/assist */
+  --color-text-placeholder: #ABB7CA; /* figma: text/placeholder */
+  --color-text-disabled: #B0B8C1; /* figma: text/disabled */
+  --color-text-on-color: #F8F9F6; /* figma: text/on-color */
+  --color-text-primary: #3182F6; /* figma: text/primary */
+  --color-text-danger: #DC2626; /* figma: text/danger */
+  --color-text-warning: #FF7119; /* figma: text/warning */
+  --color-text-safe: #179C00; /* figma: text/safe */
 
-  /* ---------- 피그마 페인트 스타일 ---------- */
-  --style-primay: #3182F6; /* figma style: primay */
-  --style-complementary: #F56214; /* figma style: complementary */
+  /* ---------- 색 bg/ (Remake Color) ---------- */
+  --color-bg-surface: #FFFFFF; /* figma: bg/surface */
+  --color-bg-subtle: #F2F4F7; /* figma: bg/subtle */
+  --color-bg-section: #F3F4F6; /* figma: bg/section */
+  --color-bg-input: #F2F4F6; /* figma: bg/input */
+  --color-bg-primary-subtle: #EBF3FF; /* figma: bg/primary-subtle */
+  --color-bg-primary-tint: #EFF5FF; /* figma: bg/primary-tint */
+  --color-bg-skeleton: #E9ECEF; /* figma: bg/skeleton */
+  --color-bg-skeleton-highlight: #F1F5F9; /* figma: bg/skeleton-highlight */
+  --color-bg-primary: #3182F6; /* figma: bg/primary */
+  --color-bg-danger: #DC2626; /* figma: bg/danger */
+  --color-bg-badge-danger: #DC262626; /* figma: bg/badge-danger = #DC2626 15% */
+  --color-bg-badge-warning: #FF71191F; /* figma: bg/badge-warning = #FF7119 12% */
+  --color-bg-badge-safe: #179C001F; /* figma: bg/badge-safe = #179C00 12% */
+  --color-bg-dim: #191F2899; /* figma: bg/dim = #191F28 60% */
+  --color-bg-toast: #111827EB; /* figma: bg/toast = #111827 92% */
 
-  /* ---------- 피그마 텍스트 스타일 (모바일). 사용: font: var(--font-content-mobile); ---------- */
-  --font-header-mobile: 600 1.125rem/normal var(--font-family-base); /* figma: header - mobile = Pretendard SemiBold 18px, 행간 auto */
-  --font-title-mobile: 500 1rem/normal var(--font-family-base); /* figma: title - mobile = Pretendard Medium 16px, 행간 auto */
-  --font-content-mobile: 500 0.875rem/normal var(--font-family-base); /* figma: content - mobile = Pretendard Medium 14px, 행간 auto */
-  --font-assist-mobile: 500 0.75rem/normal var(--font-family-base); /* figma: assist - mobile = Pretendard Medium 12px, 행간 auto */
-  --font-placeholder-mobile: 500 0.75rem/normal var(--font-family-base); /* figma: placeholder - mobile = Pretendard Medium 12px, 행간 auto */
-  --font-error-mobile: 400 0.75rem/normal var(--font-family-base); /* figma: error - mobile = Pretendard Regular 12px, 행간 auto */
+  /* ---------- 색 border/ (Remake Color) ---------- */
+  --color-border-default: #E2E8F0; /* figma: border/default */
+  --color-border-subtle: #F5F5F5; /* figma: border/subtle */
+  --color-border-control: #CFCFCF; /* figma: border/control */
+  --color-border-chip: #EAEAEA; /* figma: border/chip */
+
+  /* ---------- 색 icon/ (Remake Color) ---------- */
+  --color-icon-default: #374151; /* figma: icon/default */
+  --color-icon-sub: #9CA3AF; /* figma: icon/sub */
+  --color-icon-disabled: #CFCFCF; /* figma: icon/disabled */
+  --color-icon-favorite: #FDD43E; /* figma: icon/favorite */
+
+  /* ---------- 색 brand/ (Remake Color) ---------- */
+  --color-brand-primary: #3182F6; /* figma: brand/primary */
+  --color-brand-complementary: #F56214; /* figma: brand/complementary */
+
+  /* ---------- 색 social/ (Remake Color) ---------- */
+  --color-social-kakao: #FEE500; /* figma: social/kakao */
+  --color-social-naver: #03C75A; /* figma: social/naver */
+  --color-social-google: #F2F2F2; /* figma: social/google */
+
+  /* ---------- 간격 space/ (Remake Size) ---------- */
+  --space-2: 0.125rem; /* 2px */
+  --space-4: 0.25rem; /* 4px */
+  --space-6: 0.375rem; /* 6px */
+  --space-8: 0.5rem; /* 8px */
+  --space-10: 0.625rem; /* 10px */
+  --space-12: 0.75rem; /* 12px */
+  --space-14: 0.875rem; /* 14px */
+  --space-16: 1rem; /* 16px */
+  --space-20: 1.25rem; /* 20px */
+  --space-24: 1.5rem; /* 24px */
+  --space-30: 1.875rem; /* 30px */
+
+  /* ---------- 모서리 radius/ (Remake Size) ---------- */
+  --radius-xs: 0.25rem; /* 4px */
+  --radius-sm: 0.5rem; /* 8px */
+  --radius-md: 0.625rem; /* 10px */
+  --radius-lg: 0.875rem; /* 14px */
+  --radius-xl: 1.25rem; /* 20px */
+  --radius-full: 6.25rem; /* 100px */
+
+  /* ---------- 텍스트 스타일 Remake/*. 사용: font: var(--font-content); ---------- */
+  --font-display: 700 1.375rem/1.4 var(--font-family-base); /* figma: Remake/display = Bold 22px, 행간 140% */
+  --font-header: 700 1.125rem/1.4 var(--font-family-base); /* figma: Remake/header = Bold 18px, 행간 140% */
+  --font-subheader: 700 1rem/1.4 var(--font-family-base); /* figma: Remake/subheader = Bold 16px, 행간 140% */
+  --font-title: 500 1rem/1.4 var(--font-family-base); /* figma: Remake/title = Medium 16px, 행간 140% */
+  --font-content: 500 0.875rem/1.4 var(--font-family-base); /* figma: Remake/content = Medium 14px, 행간 140% */
+  --font-content-regular: 400 0.875rem/1.4 var(--font-family-base); /* figma: Remake/content-regular = Regular 14px, 행간 140% */
+  --font-content-strong: 700 0.875rem/1.4 var(--font-family-base); /* figma: Remake/content-strong = Bold 14px, 행간 140% */
+  --font-assist: 500 0.75rem/1.4 var(--font-family-base); /* figma: Remake/assist = Medium 12px, 행간 140% */
+  --font-assist-strong: 700 0.75rem/1.4 var(--font-family-base); /* figma: Remake/assist-strong = Bold 12px, 행간 140% */
+  --font-error: 400 0.75rem/1.4 var(--font-family-base); /* figma: Remake/error = Regular 12px, 행간 140% */
+
+  /* ---------- 그림자 Remake/shadow-*. 사용: box-shadow: var(--shadow-card); ---------- */
+  --shadow-control: 0 0 4px 0 rgba(0, 0, 0, 0.12); /* figma: #0000001F, (0,0), blur 4 */
+  --shadow-card: 0 1px 4px 0 rgba(0, 0, 0, 0.08); /* figma: #00000014, (0,1), blur 4 */
+  --shadow-sheet: 0 -4px 10px 0 rgba(0, 0, 0, 0.1); /* figma: #0000001A, (0,-4), blur 10 */
+  --shadow-modal: 0 4px 16px 0 rgba(0, 0, 0, 0.16); /* figma: #00000029, (0,4), blur 16 */
+  --shadow-header: 0 4px 20px 0 rgba(49, 130, 246, 0.1); /* figma: #3182F61A, (0,4), blur 20 */
 
   /* ---------- 재료 카테고리 점 색 (피그마 화면 값) ---------- */
   --category-vegetable: #2E9E5D; /* 채소 */

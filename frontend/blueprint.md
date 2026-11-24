@@ -5,12 +5,12 @@ It is built as a mobile-first PWA and packaged as an Android app with PWABuilder
 
 Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../docs/developer/frontend-blueprint.md)
 
-> The screen list and routes are a draft. When planning and design are finalized, update this document first, then change the code.
+> The routes in §4 follow the WBS v2 frontend URL table (2026-11-22, Figma-based). When planning or design changes, update this document first, then change the code.
 
 ## 1. Responsibilities
 
 - **Frontend (Next.js)**: screens and user interaction only. No business logic or data storage.
-- **Backend (Spring Boot)**: authentication, data, OCR and AI processing, push delivery.
+- **Backend (Spring Boot)**: authentication, data, OCR and AI processing, in-app notifications.
 - The frontend calls only the Spring REST API. Do not reimplement backend features with Next Route Handlers or Server Actions.
   Exception: the service-worker serving route (`app/serwist/[path]`).
 - **`/api/` belongs to the backend.** In production the frontend and backend share one domain, and the proxy sends every path starting with `/api/` to Spring unchanged. Everything else goes to Next.js (see [`docs/agent/deployment.md`](../docs/agent/deployment.md)).
@@ -21,34 +21,36 @@ Korean translation for developers: [`docs/developer/frontend-blueprint.md`](../d
 
 ## 2. Tech stack
 
-| Area            | Technology                                   | Why                                                                                    |
-| --------------- | -------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Framework       | Next.js (App Router) + TypeScript            | Screens split per route; frontend handles screens only                                 |
-| Package manager | pnpm                                         | Fast installs; lockfile keeps dependency versions identical for all 7 members          |
-| Styling         | CSS Modules + CSS variables                  | Component-scoped styles without extra libraries; shared design tokens                  |
-| Server data     | TanStack Query                               | Caching and refetching server data                                                     |
-| Client state    | Zustand                                      | Only the minimum, such as login info                                                   |
-| URL state       | nuqs                                         | Filters, tabs, sort, and selected month live in the URL                                |
-| API integration | openapi-typescript + openapi-fetch           | Types generated from Spring OpenAPI; type-safe calls                                   |
-| Forms           | React Hook Form + Zod                        | Validation for onboarding, custom recipe input, ingredient edits                       |
-| Dates           | dayjs                                        | Date display; meal-plan calendar                                                       |
-| Icons           | @solar-icons/react (Solar)                   | Tree-shakable React components; work offline                                           |
-| Font            | Pretendard + GmarketSans (`next/font/local`) | Pretendard: Korean UI font. GmarketSans: logo text only. No layout shift while loading |
-| PWA & push      | Serwist + Web Push                           | Service worker, offline screen, expiry alerts                                          |
-| Store release   | PWABuilder (TWA)                             | Generates the Android app package                                                      |
-| Web deploy      | `output: "standalone"` + nginx               | Node server running behind nginx                                                       |
-| Code quality    | ESLint + Prettier, Husky + lint-staged       | Unified code style for 7 people; automatic checks before commit                        |
-| API mocking     | MSW                                          | Build screens against dummy responses before the backend is ready                      |
+| Area            | Technology                                                                          | Why                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Framework       | Next.js (App Router) + TypeScript                                                   | Screens split per route; frontend handles screens only                                                 |
+| Package manager | pnpm                                                                                | Fast installs; lockfile keeps dependency versions identical for all 7 members                          |
+| Styling         | CSS Modules + CSS variables                                                         | Component-scoped styles without extra libraries; shared design tokens                                  |
+| Server data     | TanStack Query                                                                      | Caching and refetching server data                                                                     |
+| Client state    | Zustand                                                                             | Only the minimum, such as login info                                                                   |
+| URL state       | nuqs                                                                                | Filters, tabs, sort, and selected month live in the URL                                                |
+| API integration | openapi-typescript + openapi-fetch                                                  | Types generated from Spring OpenAPI; type-safe calls                                                   |
+| Forms           | React Hook Form + Zod                                                               | Validation for onboarding, custom recipe input, ingredient edits                                       |
+| Dates           | dayjs                                                                               | Date display; meal-plan calendar                                                                       |
+| Icons           | @solar-icons/react (Solar)                                                          | Tree-shakable React components; work offline                                                           |
+| Font            | Pretendard (`pretendard` package, dynamic subset) + GmarketSans (`next/font/local`) | Pretendard: Korean UI font, downloads only the character groups on screen. GmarketSans: logo text only |
+| PWA             | Serwist                                                                             | Service worker, offline screen. Notifications are in-app only (no device push)                         |
+| Store release   | PWABuilder (TWA)                                                                    | Generates the Android app package                                                                      |
+| Web deploy      | `output: "standalone"` + nginx                                                      | Node server running behind nginx                                                                       |
+| Code quality    | ESLint + Prettier, Husky + lint-staged                                              | Unified code style for 7 people; automatic checks before commit                                        |
+| API mocking     | MSW                                                                                 | Build screens against dummy responses before the backend is ready                                      |
 
 ## 3. Folder structure
 
 ```
 frontend/
 ├─ app/                  # routes. Each route folder colocates the code only it uses (see §3.1)
-│  ├─ layout.tsx         # root layout, globals.css, home page.tsx
-│  ├─ fonts/             # font files (woff2) + fonts.ts (next/font/local)
-│  ├─ fridge/            # example route — see §3.1
-│  ├─ sw.ts              # service worker (caching, push handling)
+│  ├─ layout.tsx         # root layout, globals.css
+│  ├─ fonts/             # GmarketSans files (woff2) + fonts.ts (next/font/local) + pretendard.css (generated)
+│  ├─ page.tsx           # splash (/)
+│  ├─ public/            # /public/... routes (before login, §4)
+│  ├─ user/              # /user/... routes (after login, §4). Example: user/fridge/ingredients/ — see §3.1
+│  ├─ sw.ts              # service worker (caching)
 │  ├─ serwist/[path]/    # service-worker serving route
 │  ├─ ~offline/          # offline fallback screen
 │  └─ manifest.ts        # PWA manifest
@@ -72,7 +74,7 @@ frontend/
 Code lives next to the page or component that uses it. Only code reused by several routes moves to the shared folders (`components/`, `hooks/`, `lib/`).
 
 ```
-app/fridge/
+app/user/fridge/ingredients/
 ├─ page.tsx                     # thin: composes _components, calls _lib/queries
 ├─ page.module.css
 ├─ _components/                 # components used only by this route (and its child routes)
@@ -86,11 +88,12 @@ app/fridge/
 │  ├─ schema.ts                 # Zod schemas
 │  └─ utils.ts                  # pure functions (e.g. filter state → query params)
 └─ [id]/
-   └─ page.tsx
+   └─ edit/
+      └─ page.tsx
 ```
 
 1. **Private folders.** Folders starting with `_` are Next.js private folders and are never routed. Put all non-route code of a route in `_components/`, `_hooks/`, `_lib/`. Never put `page.tsx` or `route.ts` inside them.
-2. **Isolate by route.** A route may import colocated code from its own folder and from ancestor route folders (e.g. `app/fridge/[id]` may use `app/fridge/_components`). Never import from a sibling or unrelated route.
+2. **Isolate by route.** A route may import colocated code from its own folder and from ancestor route folders (e.g. `app/user/fridge/ingredients/[id]/edit` may use `app/user/fridge/ingredients/_components`). Never import from a sibling or unrelated route.
 3. **Isolate by component.** Each component has its own folder with its `.tsx`, `.module.css`, and any hook or util only it uses. Do not import another component's CSS module or internal files.
 4. **Promote when shared.** When two unrelated routes need the same code, move it up — UI component → `components/<Name>/`, React hook → `hooks/`, query keys and query hooks → `lib/queries/<domain>.ts`, other functions → `lib/`. Shared code must not know about a specific page.
 5. **Import paths.** Import colocated code with relative paths (`./_components/...`, `../_lib/...`). Import shared code with `@/` (`@/components/Button`). Never import from `@/app/...` (enforced by ESLint).
@@ -122,23 +125,52 @@ The folder structure above takes precedence: component folders and files are Pas
 | Event handlers                                     | `handle` + action; props `on` + action | `handleSubmit`, `onSubmit`          |
 | Booleans                                           | `is` / `has` / `can` prefix            | `isOpen`, `hasError`                |
 
-## 4. Screens / routes (draft)
+## 4. Screens / routes
 
-| Route            | Screen                   | Main features                                                  |
-| ---------------- | ------------------------ | -------------------------------------------------------------- |
-| `/`              | Home                     | Ingredients near expiry, recommended recipe summary            |
-| `/login`         | Login                    | Social login                                                   |
-| `/onboarding`    | Onboarding               | Household size, then allergies (each step can be skipped)      |
-| `/fridge`        | My fridge                | Ingredient list, sort by storage location / expiry date        |
-| `/fridge/[id]`   | Ingredient detail & edit | Edit name, category, storage, expiry, price, quantity          |
-| `/fridge/add`    | Add ingredient           | Choose manual entry or receipt photo                           |
-| `/receipt`       | Receipt OCR              | Scan → loading (one request) → review and edit items → confirm |
-| `/recipes`       | Recipe recommendations   | AI recommendations based on owned ingredients                  |
-| `/recipes/[id]`  | Recipe detail            | Ingredients, cooking steps, missing ingredients                |
-| `/recipes/new`   | Custom recipe            | Generate a recipe from selected options (no free text)         |
-| `/meal-plan`     | Meal plan                | Monthly calendar, AI meal-plan generation                      |
-| `/notifications` | Notifications            | Expiry alert list, push permission settings                    |
-| `/mypage`        | My page                  | Profile, settings                                              |
+Source: WBS v2 §3 "Frontend URL" (2026-11-22). Format `/{role}/{feature}/{resource}`. Roles: `public` (before login) and `user` (after login). The only exception is the splash at `/`.
+
+- Sheets, modals, drawers, loading, and failure states have no URL of their own; they are states inside their screen.
+- Not logged in: every `/user/...` route sends the user to `/public/auth/login`. Logged in: `/` and the login screen go to `/user/fridge/ingredients` (the index).
+- Onboarding comes right after the first login and is required: there is no skip button. Household size is required to continue; allergies may be 0.
+
+| Route                                        | Screen (Figma)                            | Notes                                                                        |
+| -------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------- |
+| `/`                                          | Splash                                    | Goes to login or the fridge depending on login state                         |
+| `/public/auth/login`                         | p1 Login                                  | Kakao, Naver, Google. "최근 로그인" bubble. Terms drawer inside this screen  |
+| `/public/auth/callback/[provider]`           | (no screen)                               | Social auth return URL; calls API 1 (login) or API 10 (Naver re-auth)        |
+| `/user/onboarding/household`                 | p1.1 Household size                       | 1–50, digits only. "다음" disabled until entered                             |
+| `/user/onboarding/allergies`                 | p1.2 Allergies                            | 19 chips, 0 allowed. Saves both onboarding values at once (API 4)            |
+| `/user/setting/profile`                      | p1.3 Settings                             | Logout modal and account-deletion modal inside                               |
+| `/user/setting/household`                    | p1.3.1 Household size                     |                                                                              |
+| `/user/setting/excluded-ingredients`         | p1.3.2 Excluded ingredients               | 0 allowed                                                                    |
+| `/user/setting/subscription`                 | p1.3.4 Subscription (before / subscribed) | Toss Payments card registration                                              |
+| `/user/setting/subscription/billing-success` | (no screen)                               | Toss return URL; starts the subscription (API 59), then back to subscription |
+| `/user/setting/subscription/billing-fail`    | (no screen)                               | Toss failure/cancel return URL; toast, then back to subscription             |
+| `/user/setting/account-deletion`             | p1.3.3 Email verification code            | Kakao and Google only; Naver re-authenticates instead                        |
+| `/user/fridge/ingredients`                   | p2 Fridge (index)                         | Status cards, location/category sheets, use/discard sheet                    |
+| `/user/fridge/ingredients/new`               | p2.2 Add ingredient                       |                                                                              |
+| `/user/fridge/ingredients/[id]/edit`         | p2.1 Edit ingredient                      | Value sheets, delete icon                                                    |
+| `/user/receipt/receipts`                     | p3 Receipts                               | Month picker, weekly groups                                                  |
+| `/user/receipt/receipts/[id]`                | p3.2 Receipt detail                       | Delete modal inside                                                          |
+| `/user/receipt/scan`                         | p3.1 Camera / image upload                |                                                                              |
+| `/user/receipt/scan/result`                  | p3.3 OCR result                           | Skeleton while waiting; OCR failure is a state of this URL                   |
+| `/user/receipt/scan/items/new`               | p3.3.2 Add OCR item                       |                                                                              |
+| `/user/receipt/scan/items/[index]/edit`      | p3.3.1 Edit OCR item                      | Edits stay in screen state until registration                                |
+| `/user/receipt/patterns`                     | p3.4 My spending                          |                                                                              |
+| `/user/recipe/saved-recipes`                 | p4.1 Recipes (main)                       | Weekly TOP 3, saved list, quick-generate modal inside                        |
+| `/user/recipe/custom`                        | p4.1.2 Custom recipe                      | Selections only, no free text                                                |
+| `/user/recipe/results/[id]`                  | p4.1.3 Generation result                  | Loading, failure, and quota-used-up are states of this URL                   |
+| `/user/recipe/recipes/[id]`                  | p4.1.1 Recipe detail                      |                                                                              |
+| `/user/recipe/recipes/[id]/cook`             | p4.1.1.2 Cook deduction                   |                                                                              |
+| `/user/recipe/shared-recipes`                | p4.1.4 Weekly popular recipes             | Ranking, search                                                              |
+| `/user/recipe/shared-recipes/new`            | p4.1.1.1 Share recipe                     |                                                                              |
+| `/user/recipe/shared-recipes/[id]`           | p4.1.4.1 Shared recipe detail             | Report sheet inside                                                          |
+| `/user/meal-plan/calendar`                   | p5 Meal plan                              | Empty state, month calendar, day sheet, ⋮ sheet (delete / replace)           |
+| `/user/meal-plan/meal-plans/new`             | p5 Meal-plan setup                        | Overlap modal and quota-used-up inside. Generation is async (§5)             |
+| `/user/notification/notifications`           | p6 Notifications                          |                                                                              |
+| `/user/cart/cart-items`                      | p7 Cart                                   | Amount sheet, delete mode                                                    |
+
+Not placed yet (screen pending): this month's discarded-food amount, "recommend this recipe?".
 
 ## 5. Data flow
 
@@ -159,7 +191,11 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 - **API client**: every call goes through `lib/api/client.ts`. Send cookies (`credentials: "include"`). Set timeouts with `AbortSignal.timeout`. During development use generous values: default 30 s, OCR 60 s, AI recipe generation 120 s. The frontend timeout must stay longer than the backend limit (above), so the screen receives the server's `OCR_TIMEOUT` / `AI_TIMEOUT` response instead of cutting the request first. Final values are decided near the end of development in #122.
 - **Retries**: retry GET once. Never retry POST, PUT, PATCH, or DELETE. TanStack Query retries 3 times by default, so set queries to 1 and mutations to 0.
 - **Caching**: data that rarely changes (categories, mart list, allergy list, recipes of the week) gets a long `staleTime` (minutes to 1 hour). Data that changes often (fridge ingredients, cart) gets a short `staleTime` and `invalidateQueries` after every change.
-- **Errors**: keep the mapping from backend error `code` to user-facing text in one table, `lib/error-messages.ts` (§10 Errors). On 401, go to the login screen.
+- **Errors**: keep the mapping from backend error `code` to user-facing text in one table, `lib/error-messages.ts` (§10 Errors).
+- **401 handling** (decide by `code`, not by status; [`errors.md`](../docs/agent/spec/errors.md)):
+  - `TOKEN_EXPIRED` (access cookie expired after 30 min): call `POST /api/v1/public/auth/refresh` (API 2) once, then resend the original request once. Show nothing to the user. If several requests expire together, refresh once and let the others wait for it.
+  - `REFRESH_TOKEN_INVALID` (the refresh call failed: refresh token expired after 14 days, removed, or forged) and `UNAUTHORIZED` (no or forged access cookie): clear the TanStack Query cache, go to `/public/auth/login`, and return to the original URL after login.
+  - Implement this once in `lib/api/client.ts`; screens never handle these codes.
 - **Zustand** holds only truly global state (logged-in user summary, UI settings) and state whose props would otherwise pass down more than 3 levels.
 - **URL state**: filters, tabs, sort, and selected month go in the URL with nuqs. Bottom sheets, modals, and drawers are local state, never URL state (back button: §7.1).
 - **Environment variables**: only values the browser may see get the `NEXT_PUBLIC_` prefix. Secrets stay on the server.
@@ -168,13 +204,13 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 
 - No Tailwind or CSS-in-JS libraries. Use only **CSS Modules (`*.module.css`) + CSS variables in `globals.css`**.
 - Import icons from the per-style paths of `@solar-icons/react`. Example: `import { HomeIcon } from "@solar-icons/react/linear"`. Default size, color, and stroke width come from the `--solar-*` variables in `globals.css`.
-- Design tokens follow [`docs/agent/design-tokens.md`](../docs/agent/design-tokens.md): Figma variables and styles copied with their Figma names. `design/tokens/build_tokens.py` generates them; the result is copied to `app/tokens.css`, which `globals.css` imports. Never edit `app/tokens.css` by hand. If a Figma value has a variable or style, use the token with the same name. If it has none (spacing, radius, shadow, glass, ...), use the Figma frame value as is.
+- Design tokens follow [`docs/agent/design-tokens.md`](../docs/agent/design-tokens.md): the variables and styles of the Figma design system (`0. 기초`) copied with their names; CSS variable names equal the Figma Dev Mode code names (`var(--color-text-strong)`, `var(--space-16)`, `font: var(--font-content)`). `design/tokens/build_tokens.py` generates them; the result is copied to `app/tokens.css`, which `globals.css` imports. Never edit `app/tokens.css` by hand. If a Figma value has a variable or style, use the token with the same name. If it has none, use the Figma frame value as is.
 - Mobile first. Design for a 360px width. The default max layout width is `--layout-max-width` (480px) and the side gutter is `--layout-gutter`. Wider screens show the 480px container centered.
 - Light theme only; no dark mode.
 - Units: rem (1rem = 16px; never change the root font size). Convert Figma px by dividing by 16 (10px → 0.625rem). Use px only for lines such as borders.
-- Font: both are loaded with `next/font/local` in `app/fonts/fonts.ts` and attached to `<html>` in `app/layout.tsx`. Use woff2 files only.
-  - Pretendard (body text): weights 500/600/700/800 only (the ones Figma uses). CSS variable `--font-pretendard`, used by `--font-family-base` in `tokens.css`.
-  - GmarketSans (logo text only): weights 300/500/700, `preload: false`. Use `font-family: var(--font-family-logo)` (defined in `globals.css`). Do not use it for other text.
+- Font: use woff2 files only.
+  - Pretendard (body text): use the dynamic subset files of the `pretendard` package (each weight is split into character groups with `unicode-range`, so the browser downloads only the groups that appear on screen; the full file is about 770 KB per weight). `app/fonts/pretendard.css` is generated by `pnpm gen:fonts` (`scripts/gen-pretendard-css.mjs`) and imported in `app/layout.tsx`. Never edit it by hand. Weights 400/500/700/800 only (the ones in use; 400 is the `Remake/content-regular` and `Remake/error` text styles, 800 is the store badge). To add a weight, edit `WEIGHTS` in the script and run it again. Font family name `Pretendard`, used by `--font-family-base` in `tokens.css`.
+  - GmarketSans (logo text only): loaded with `next/font/local` in `app/fonts/fonts.ts` and attached to `<html>` in `app/layout.tsx`. Weights 300/500/700, `preload: false`. Use `font-family: var(--font-family-logo)` (defined in `globals.css`). Do not use it for other text.
 - Full-screen height uses `100dvh`. Bottom-fixed elements add `env(safe-area-inset-bottom)`.
 - Mostly flat. Apply glass effects only to elements that have them in Figma.
 - Put a style file next to its component with the same name. Example: `IngredientCard.tsx` + `IngredientCard.module.css`
@@ -228,7 +264,7 @@ Follow the [W3C Disclosure pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dis
 
 Refer to the [Google SEO Starter Guide](https://developers.google.com/search/docs/fundamentals/seo-starter-guide) for titles and descriptions and the [W3C page structure guide](https://www.w3.org/WAI/tutorials/page-structure/) for heading hierarchy.
 
-## 7. PWA · push · TWA
+## 7. PWA · TWA
 
 - The service worker runs only with `pnpm build && pnpm start`. It is off in development mode and while MSW is in use (avoids a scope conflict).
 - The service worker (`/serwist/sw.js`) must be prerendered at build time (`●` in the `pnpm build` output). The standalone production server has no esbuild or `app/sw.ts`, so a request-time `ƒ` route returns 500.
@@ -237,15 +273,18 @@ Refer to the [Google SEO Starter Guide](https://developers.google.com/search/doc
   - That function calls `cacheLife("max")`. `sw.js` only changes per build; with the default profile (revalidate 15 minutes) the production server would retry bundling in the background, fail without esbuild, and log an error on every retry. The old `sw.js` keeps being served either way.
   - As a result `sw.js` is sent with `Cache-Control: s-maxage=2592000` (30 days). Browsers ignore `s-maxage`, but a shared cache (CDN or proxy cache) in front of the app would keep an old service worker after a deploy. Exclude `/serwist/` from any shared cache.
   - After changing the service worker or this route, check that `pnpm build` lists `/serwist/sw.js` as `●` and that `.next/server/app/serwist/sw.js.body` exists.
-- Push: the frontend creates a subscription with `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and stores it on the backend; the backend sends notifications. Receiving and click handling live in `app/sw.ts`.
+- No device push. Notifications are in-app only: the top banner on every tab screen (API 43) and the notification screen (API 44). The Web Push handlers in `app/sw.ts` and `NEXT_PUBLIC_VAPID_PUBLIC_KEY` are leftovers to remove.
 - Needed before the TWA release: 192/512 PNG icons, `public/.well-known/assetlinks.json` (app signing SHA-256), an HTTPS domain.
 
 ### 7.1 Back button closes sheets
 
-- Bottom sheets, modals, and drawers never add URL history (their open state is local). The back action (Android back button, iOS swipe back) closes only the open sheet, without navigating.
-- Handle this in one shared hook, `useBackToClose(isOpen, onClose)` in `hooks/`. Components never handle `popstate` themselves.
-- Chromium browsers (including the TWA): receive the close request with `CloseWatcher` and set the state to closed.
-- Browsers without `CloseWatcher` (Safari, Firefox): on open, push one temporary entry with `history.pushState` without changing the URL, and close on `popstate`. When the sheet is closed by a close button, remove that entry with `history.back()`.
+- Bottom sheets, modals, and drawers never touch history: no URL change and no `history.pushState` (their open state is local).
+- Handle closing in one shared hook, `useBackToClose(isOpen, onClose)` in `hooks/` (used by `useDialogLayer`). Components never handle `popstate` themselves.
+- Chromium browsers (including the TWA): receive the Android back button and Esc as a close request with `CloseWatcher`, and close only the open sheet without navigating. `CloseWatcher` does not use history.
+- Browsers without `CloseWatcher` (Safari, Firefox): Esc closes the sheet. The back action (iOS swipe back) navigates to the previous screen as usual.
+- When a screen with an open sheet is hidden (navigation from inside the sheet, or back), the sheet closes. With `cacheComponents` the previous screen keeps its state, so without this the sheet would still be open when the user comes back.
+- While a sheet or modal is open, the screen behind it does not scroll.
+- `onClose` only sets the closed state; it is also called when the screen is hidden. Do not put other actions (such as recording a cancel event) in it; put them in the cancel button's handler. To navigate after confirming, close the sheet first, then navigate.
 - When sheets are stacked, close only the topmost one.
 
 ## 8. Development flow
@@ -260,8 +299,8 @@ TypeScript runs in `strict` mode, and `any` is not allowed (enforced by ESLint).
 
 - [x] Authentication method and token refresh flow — **decided in [#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) option A**: access (30 min) and refresh (14 d) are both JWT in HttpOnly cookies (`Secure; SameSite=Lax`). Login/refresh responses do not include `accessToken`. Call `/api/...` with `credentials: 'include'`; do not use `Authorization: Bearer` or store tokens in JS-readable storage. Locally (different origin) the backend must allow CORS with credentials.
 - [ ] Shared component list (based on the design mockups)
-- [ ] Frontend CI (GitHub Actions: lint · typecheck · build)
-- [ ] Deployment environment (nginx + Node container setup)
+- [x] Frontend CI — `.github/workflows/frontend-ci.yml` runs `pnpm lint` · `pnpm typecheck` · `pnpm build` on PRs to `dev`/`main` ([`docs/agent/ci.md`](../docs/agent/ci.md)).
+- [x] Deployment environment — `frontend-blue`/`frontend-green` containers in `compose.prod.yml` behind nginx (`deploy/nginx/`), deployed by `.github/workflows/frontend-cd.yml` ([`docs/agent/deployment.md`](../docs/agent/deployment.md)).
 
 ## 10. UI rules from the product policy
 
@@ -269,14 +308,14 @@ Source: [`docs/agent/spec/domain-rules.md`](../docs/agent/spec/domain-rules.md).
 
 - **No free-text input for AI.** Recipe customization (ingredients, taste, time, tools, method, cuisine, excluded allergens) and meal-plan settings (start date, purpose, meals, servings) are selections only. Send IDs and enums.
 - **Expiry state**: show the `status` and `dDay` the server returns (DANGER = expired or D-DAY, SOON = D-1 to D-3, OK = later). Do not recompute them with the device clock.
-- **Labels**: show "AI가 생성한 레시피" on AI recipe details and shared recipe details. Show "참고용" wording on meal plans.
+- **Labels**: do not add an "AI가 생성한 레시피" label or a "참고용 식단" label (policy v4: neither is in Figma).
 - **Receipt flow**: scan → loading screen (synchronous wait) → result and confirm screen → save. Nothing is saved until the user confirms. Leaving the result screen discards the OCR result and sends `receipt_result_abandoned`. A confirmed receipt cannot be edited, only deleted; fix ingredient data later in the fridge.
 - **Quantity input**: stepper steps are g and ml 50, kg and L 0.5, EA/PACK/BUNCH/PIECE/SHEET 1. Typed input accepts numbers and decimals only, no fractions. The fridge uses 9 units (G, KG, ML, L, EA, PACK, BUNCH, PIECE, SHEET); recipes use all 14, and recipe amounts may be shown as 1/2, 1/3, or 1/4.
-- **Sharing**: a title and at least one cooking photo are required, with a confirm modal first. Never show author information.
-- **Meal plan**: monthly calendar; tapping a slot opens the recipe detail. Adding a meal puts a saved recipe into an empty slot. There is no delete and no slot regeneration. Show "남은 N회" from `GET /api/v1/user/usage-quotas`.
-- **Cart**: grouped by recipe. Items are added automatically (meal-plan generation, saving a recipe); users can only change amounts and delete selected items. No checkout or external links.
-- **Notifications**: only `EXPIRY_SOON` and `EXPIRED`. There is no "receipt analysis finished" notification.
-- **Premium**: the subscription screen in settings is UI only.
+- **Sharing**: exactly one photo (required) and a title (required); the share button is enabled only when both are present. No confirm modal. The same recipe can be shared once per week. Never show author information.
+- **Meal plan**: monthly calendar; tapping a meal row opens the recipe detail. No manual add to an empty slot ("+" opens the add sheet, which leads to setup). The slot ⋮ sheet offers "식단 삭제" (deletes that slot) and "레시피 교체" (new recipe, uses 1 daily recipe count); today or later only, past days show the `PAST_DATE_NOT_ALLOWED` toast. Show remaining counts from `GET /api/v1/user/usage-quotas`.
+- **Cart**: one row per item with its source recipe name (the same ingredient from different recipes stays separate). Items are added automatically only (meal-plan shortages, saving my recipe with supplemented ingredients, saving a shared recipe). Users can change amounts, delete selected items, and move selected items to the fridge. No checkout or external links.
+- **Notifications**: in-app only (no device push). Types `EXPIRY_SOON`, `EXPIRED`, `MEAL_PLAN_COMPLETED`, `MEAL_PLAN_FAILED`. The top banner on every tab screen shows the latest message and the unread count. Tapping an expiry item does nothing; `MEAL_PLAN_COMPLETED` opens the meal plan at the plan's start date; `MEAL_PLAN_FAILED` opens the meal-plan setup.
+- **Premium**: real subscription with Toss Payments card auto-billing (`/user/setting/subscription`, API 57–60). Never send or store the Toss secret key or the billing key on the frontend.
 - **Errors**: choose the message and behavior by `code` ([`docs/agent/spec/errors.md`](../docs/agent/spec/errors.md)), never by `message`. Unknown codes fall back to the `INTERNAL_ERROR` screen. Show `traceId` only in a "contact" detail, never as the main message.
 - **Display formats**: the API sends dates as `2026-11-19`, timestamps as ISO 8601 with `+09:00`, and money as an integer in won. Display dates and money only through the shared functions in `lib/format.ts` (built on `@/lib/dayjs`), in the formats the policy document defines. User-facing copy is Korean.
 

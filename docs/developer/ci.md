@@ -80,6 +80,7 @@ CI는 아래를 GitHub 캐시에 저장해 다음 실행에서 다시 쓴다. �
 | pnpm | 내려받은 패키지 | `frontend/pnpm-lock.yaml`이 바뀔 때 |
 | Next.js 빌드 | `.next/cache`(Turbopack 빌드 결과) | `frontend/pnpm-lock.yaml`이 바뀔 때. 그 외에는 가장 최근 것을 꺼내 쓴다 |
 | Docker 레이어 | 이미지 빌드 단계 | Docker 빌드가 관리 |
+| 백엔드 Docker 빌드의 Gradle | Dockerfile 캐시 마운트(`/root/.gradle`)의 Gradle 본체와 라이브러리. 없으면 Docker 빌드가 매번 Maven Central에서 다시 받다가 요청 제한(429)에 걸릴 수 있다 | `backend/build.gradle`, `backend/settings.gradle`, Gradle wrapper 버전이 바뀔 때. 이전 것을 꺼내 쓰고 새 라이브러리만 받는다. 그 `dev` 실행에서는 Gradle이 실제로 캐시를 채우도록 Dockerfile의 build 단계를 레이어 캐시 없이 다시 돌린다 |
 
 캐시 때문에 빌드가 이상하게 실패한다고 의심되면, 저장소의 **Actions** 탭 → 왼쪽 **Caches**에서 해당 캐시를 지우고 다시 실행한다. 캐시가 없으면 처음부터 빌드할 뿐 결과는 같다.
 

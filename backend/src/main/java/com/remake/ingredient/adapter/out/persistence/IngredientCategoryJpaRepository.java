@@ -9,7 +9,7 @@ import com.remake.ingredient.domain.IngredientCategoryCode;
 
 interface IngredientCategoryJpaRepository extends JpaRepository<IngredientCategoryJpaEntity, Long> {
 
-	List<IngredientCategoryJpaEntity> findAllByOrderByIdAsc();
+	List<IngredientCategoryJpaEntity> findAllByOrderBySortOrderAsc();
 
 	Optional<IngredientCategoryJpaEntity> findByCode(IngredientCategoryCode code);
 }

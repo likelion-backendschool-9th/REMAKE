@@ -1,0 +1,67 @@
+name: 버그
+description: 실제 문제와 재현 방법, 수정 요구사항·범위를 구분합니다.
+title: "[fix] "
+labels: ["fix"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 배경
+      description: 현재 문제·영향과 재현 순서를 적어 주세요. 코드·문서 문제라면 파일과 비교할 항목, 실행 문제라면 필요한 환경을 포함합니다.
+      placeholder: |
+        - 문제: 재료를 전부 사용해도 수량 0인 행이 목록에 남는다.
+        - 재현: 수량 1개인 재료 → 1개 사용 → 목록 재조회
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: 요구사항
+      description: 수정 후 어떤 결과가 나와야 하는지 적어 주세요. 같은 문제가 재발하지 않는지 판단할 조건을 포함합니다.
+      placeholder: |
+        - 전량 사용한 재료는 목록에서 사라진다.
+        - 부분 사용한 재료는 남은 수량으로 표시된다.
+    validations:
+      required: true
+  - type: textarea
+    id: decisions
+    attributes:
+      label: 정한 것
+      description: 기대 동작의 근거가 되는 확정 정책·API 계약과 결정 링크를 적어 주세요. API는 번호 대신 기능명·HTTP 메서드·전체 경로를 적습니다. 원인 추정이나 미확정 수정안은 확인할 것에 적습니다.
+    validations:
+      required: false
+  - type: textarea
+    id: scope
+    attributes:
+      label: 작업 범위
+      description: 이번 수정에 포함할 대상과 별도 이슈로 남길 작업을 구분합니다.
+      placeholder: |
+        - 포함: …
+        - 제외: …(#이슈번호)
+    validations:
+      required: true
+  - type: textarea
+    id: implementation
+    attributes:
+      label: 구현할 것
+      description: 수정할 대상과 재현·경계·회귀 확인을 체크리스트로 적어 주세요. 조사 전이면 원인 확인을 첫 작업으로 씁니다.
+      placeholder: |
+        - [ ] …의 원인을 확인한다.
+        - [ ] …을 수정한다.
+        - [ ] 재현 절차와 …경계에서 기대 결과를 확인한다.
+    validations:
+      required: true
+  - type: textarea
+    id: questions
+    attributes:
+      label: 확인할 것
+      description: 원인 미확인·문서 충돌·배포 조건 등 남은 질문과 확인할 사람·필요한 시점을 적습니다. 없으면 생략합니다.
+    validations:
+      required: false
+  - type: textarea
+    id: references
+    attributes:
+      label: 참고
+      description: 피그마·정의서, 스크린샷·로그, 에러 code·traceId, 관련 이슈·PR을 연결합니다. 개인정보·토큰·비밀키는 제거합니다. 후속이면 원인 PR과 follow-up 라벨을 연결하고 영역·파트·우선순위는 라벨로 표시합니다.
+    validations:
+      required: false

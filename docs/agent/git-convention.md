@@ -190,14 +190,23 @@ fix: 소비기한 D-day 계산 오류 수정
 
 ### Templates
 
-Create issues from the templates in `.github/ISSUE_TEMPLATE/`. Blank issues are turned off.
+Create issues from the YAML issue forms in `.github/ISSUE_TEMPLATE/`. Blank issues are turned off. Make the situation, requirements, confirmed decisions, scope, concrete work, and open questions distinguishable. Keep area, part, priority, and assignee in GitHub metadata rather than repeating them as body sections.
 
 | Template | Title | Use for |
 | --- | --- | --- |
-| 기능 개발 | `[feat] <Korean description>` | A screen or API feature. Fill in the area, part, Figma frame, API, tables, error codes, and events |
-| 버그 | `[fix] <Korean description>` | Something that does not work as the spec says. Include steps to reproduce, the error `code`, and the `traceId` |
-| 결정 요청 | `[decision] <Korean description>` | Policy items marked "proposal" or "open" in the spec, or questions a PR review raised. Write the options and who decides |
-| 설정·문서 작업 | `[chore] <Korean description>` or `[docs] <Korean description>` | Configuration, CI, and documentation work |
+| 기능 개발 | `[feat] <Korean description>` | Use 구현할 것 for the concrete API, server, screen, integration, and test changes |
+| 버그 | `[fix] <Korean description>` | Include the actual problem, impact, environment, and reproduction in 배경; expected results in 요구사항; investigation, changes, and regression checks in 구현할 것 |
+| 결정 요청 | `[decision] <Korean description>` | Use 결정할 것 for one question, options and effects, a proposal, decision owner, needed timing, and affected documents/issues. After deciding, record the result, rationale, and owner in 정한 것 |
+| 설정·문서 작업 | `[chore] <Korean description>` or `[docs] <Korean description>` | Use 할 일 for the concrete configuration, CI, deployment, or paired-document changes and checks |
+
+- Use the shared order **배경 → 요구사항 → 정한 것 → 작업 범위 → 구현할 것/결정할 것/할 일 → 확인할 것 → 참고**. Require 배경, 요구사항, 작업 범위, and the work field; other fields are optional.
+- In 배경, explain the current situation and why it needs changing. In 요구사항, list observable outcomes and failure/boundary conditions that determine completion. In 정한 것, record confirmed policy, API contracts, or technical choices with source sections or decision links; omit it if none are confirmed.
+- In 작업 범위, distinguish included work from exclusions assigned to other issues. In the work field, use a concrete checklist for implementation tasks, including relevant errors, events, and tests; use option analysis for a decision task. Do not copy the whole spec or repeat the title.
+- In 확인할 것, list unresolved questions, source conflicts, and prerequisites with the owner, needed timing, and blocked work. Keep these separate from confirmed decisions and from acceptance criteria. In 참고, link source sections, API definitions, Figma frame names/URLs, and relevant issues/PRs; include tables, `code`, `traceId`, or logs only when useful.
+- Name each API by its function, HTTP method, and full path, for example `남은 생성 횟수 조회 — GET /api/v1/user/usage-quotas`. Do not use specification ordinals such as `API 27` as the API name. State the exact behavior and responsibility; keep field names and error/event codes alongside their human-readable meaning when needed.
+- Use a system actor for server jobs. Split independent work into separate issues. Do not require unrelated empty fields or identical generic completion checklists.
+- Link unresolved policy to a decision issue. Do not turn a proposal or a source conflict into a confirmed requirement while rewriting an issue.
+- Template changes affect new issues only. Before migrating existing issues, prepare representative rewritten examples and a before/after snapshot; agree on the format first, then preserve comments, progress, assignees, and subsequent edits when applying it.
 
 - Use the type words of the commit convention (§6) in titles. The description is Korean, short and specific.
 - Write the Figma frame name exactly as it appears in Figma (for example `p2.1-재료 수정`). Frame numbers are being reorganized; when a frame is renamed, update open issues that use it.
@@ -209,7 +218,7 @@ A merged PR is closed and easy to forget. Work that must continue after a PR is 
 
 1. Before the PR is merged, its author opens an issue for each follow-up task. "Follow-up" is not a type: choose the template and type by what the task is (table below), and add the `follow-up` label.
 2. Assign the issue to the person who does the next task (usually the owner of that area) and mention them (`@login`) in the issue body.
-3. Write the PR number in the issue (for example `#38`): under 이어지는 PR in the 기능 개발, 버그, and 설정·문서 작업 templates, under 관련 이슈·PR in the 결정 요청 template.
+3. Write the originating PR number in the issue's 참고 field (for example `이어지는 PR: #38`). Do this for every template. Put the follow-up owner in Assignees and mention them in 참고; do not add a separate top-level 이어지는 PR section.
 4. In the PR body, write `후속: #<number>` under 관련 이슈. Do not use `Closes`: it would close the follow-up issue when this PR is merged.
 5. The PR that does the follow-up task closes the issue with `Closes #<number>`.
 

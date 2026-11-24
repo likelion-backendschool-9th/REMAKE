@@ -757,7 +757,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `shelf_life_days` | int |  |  | 예 |  | 보관 일수. 비면 카테고리 기본값 |
 | `is_common_exclusion` | boolean |  |  | 아니오 | false | PR #140에서 넣은 대표 알레르기 표시. 알레르기는 `user_excluded_ingredients.allergen_code`(칩 19개)로 저장하므로 화면·API에서는 쓰지 않음 |
 
-- 사전에 없는 재료명의 단위를 어떻게 정할지는 아직 정하지 않았어요(확인 필요). 정하기 전에는 임의로 규칙을 만들지 말고 담당자·PO에게 물어보세요.
+- 서버는 재료명으로 단위를 이 순서로 정해요(#145에서 결정). (1) 재료명이 사전 이름과 정확히 같으면 그 단위, (2) 아니면 재료명 안에 들어 있는 사전 이름 중 같은 카테고리의 두 글자 이상인 것, 여러 개면 가장 긴 이름의 단위, (3) 그래도 없으면 `EA`. 영수증에 찍힌 용량 단위(예: "300g"의 g)는 사전 단위보다 앞서지 않아요.
 
 ## 관계 목록
 
@@ -852,14 +852,12 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 
 ## 지금 코드와 다른 점
 
-레포 `dev`의 Flyway V1~V4와 열린 PR #140(V5)에 이미 있는 테이블이에요. 머지된 마이그레이션 파일은 고치지 않고, 새 번호의 마이그레이션으로 이 ERD에 맞춰요.
+레포 `dev`의 Flyway V1~V4와 열린 PR #140(V5)에 이미 있는 테이블이에요. 머지된 마이그레이션 파일은 고치지 않고, 새 번호의 마이그레이션으로 이 ERD에 맞춰요. `ingredient_categories`와 `ingredients`는 이미 맞췄어요(V11, #71).
 
 | 테이블 | 지금 코드 | 이 ERD에 맞추려면 |
 | --- | --- | --- |
 | `users` | `status`(ACTIVE/SUSPENDED) 있음 | `status` 삭제 |
 | `refresh_tokens` | `revoked_at` 있음(로그아웃 = 취소 표시) | `revoked_at` 삭제. 로그아웃하면 행 삭제 |
-| `ingredient_categories` | `default_unit` 있음, `sort_order` 없음, SEASONING 이름 '양념·소스' | `default_unit` 삭제, `sort_order` 추가(부록 A 순서), SEASONING 이름 '양념' |
-| `ingredients` | `is_expiration_estimated`, `status`(ACTIVE/FINISHED), `version` 있음 | 세 컬럼 삭제. 수량이 0이 되면 행 삭제 |
 | `ingredient_catalog` | PR #140(V5): `unit` 없음, 자동완성 API `GET /user/ingredient-catalog` 있음 | `unit` 추가, 자동완성 API는 빼기 |
 | `events` | 같음 | 바꿀 것 없음 |
 

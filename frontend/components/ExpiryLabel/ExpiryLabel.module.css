@@ -1,0 +1,29 @@
+/* 피그마 5. 칩·배지 > 소비기한: 글자=Remake/content, 배지=Remake/assist-strong·여백 2/6·radius/xs */
+.label {
+  --expiry-color: var(--color-text-safe);
+  --expiry-bg: var(--color-bg-badge-safe);
+
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--expiry-color);
+  font: var(--font-content);
+  white-space: nowrap;
+}
+
+.label[data-status="DANGER"] {
+  --expiry-color: var(--color-text-danger);
+  --expiry-bg: var(--color-bg-badge-danger);
+}
+
+.label[data-status="SOON"] {
+  --expiry-color: var(--color-text-warning);
+  --expiry-bg: var(--color-bg-badge-warning);
+}
+
+.label[data-variant="badge"] {
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-xs);
+  background: var(--expiry-bg);
+  font: var(--font-assist-strong);
+}

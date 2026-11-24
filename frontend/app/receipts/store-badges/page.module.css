@@ -7,8 +7,8 @@
 
 .title {
   margin-bottom: 1rem;
-  color: var(--text-header);
-  font: var(--font-header-mobile);
+  color: var(--color-text-strong);
+  font: var(--font-header);
 }
 
 .list {
@@ -32,11 +32,11 @@
 }
 
 .name {
-  color: var(--text-content);
-  font: var(--font-content-mobile);
+  color: var(--color-text-body);
+  font: var(--font-content);
 }
 
 .meta {
-  color: var(--text-assist);
+  color: var(--color-text-assist);
   font-size: 0.75rem;
 }

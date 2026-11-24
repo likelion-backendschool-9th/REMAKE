@@ -39,9 +39,15 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 	}
 
 	private RegisterIngredientCommand command(String name, IngredientCategoryCode category, LocalDate expirationDate,
-			LocalDate baseDate, boolean estimated, BigDecimal amount, Long receiptItemId) {
+			LocalDate baseDate, BigDecimal amount, Long receiptItemId) {
 		return new RegisterIngredientCommand(USER, name, category, StorageLocation.FRIDGE, expirationDate, baseDate,
-				estimated, amount, IngredientUnit.EA, 3000L, receiptItemId);
+				amount, IngredientUnit.EA, 3000L, receiptItemId);
+	}
+
+	// 단위를 null로 넘기면 서버가 정한다(직접 추가·장바구니). 넣으면 그대로 쓴다(영수증 PACK 예외).
+	private RegisterIngredientCommand commandWithUnit(String name, IngredientCategoryCode category, IngredientUnit unit) {
+		return new RegisterIngredientCommand(USER, name, category, StorageLocation.FRIDGE, LocalDate.of(2026, 3, 12), null,
+				BigDecimal.ONE, unit, null, null);
 	}
 
 	private void assertErrorCode(Runnable call, ErrorCode expected) {
@@ -58,7 +64,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 	@Test
 	void 직접_추가하면_ingredient_added_이벤트가_MANUAL로_남고_이름은_넣지_않는다() {
 		transactionTemplate.executeWithoutResult(status -> registerUseCase.registerIngredient(
-				command("우유", IngredientCategoryCode.DAIRY_EGG, LocalDate.of(2026, 3, 12), null, false,
+				command("우유", IngredientCategoryCode.DAIRY_EGG, LocalDate.of(2026, 3, 12), null,
 						new BigDecimal("2"), null)));
 		awaitEventWrites();
 
@@ -71,8 +77,8 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 	@Test
 	void 영수증_품목이면_RECEIPT로_남고_여러_건이면_건마다_하나씩_남는다() {
 		transactionTemplate.executeWithoutResult(status -> registerUseCase.registerIngredients(List.of(
-				command("우유", IngredientCategoryCode.DAIRY_EGG, null, LocalDate.of(2026, 3, 1), false, BigDecimal.ONE, 1L),
-				command("두부", IngredientCategoryCode.BEAN_TOFU, null, LocalDate.of(2026, 3, 1), false, BigDecimal.ONE, 2L))));
+				command("우유", IngredientCategoryCode.DAIRY_EGG, null, LocalDate.of(2026, 3, 1), BigDecimal.ONE, 1L),
+				command("두부", IngredientCategoryCode.BEAN_TOFU, null, LocalDate.of(2026, 3, 1), BigDecimal.ONE, 2L))));
 		awaitEventWrites();
 
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM events WHERE properties::text LIKE '%RECEIPT%'",
@@ -84,7 +90,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		try {
 			transactionTemplate.executeWithoutResult(status -> {
 				registerUseCase.registerIngredient(command("우유", IngredientCategoryCode.DAIRY_EGG,
-						LocalDate.of(2026, 3, 12), null, false, BigDecimal.ONE, null));
+						LocalDate.of(2026, 3, 12), null, BigDecimal.ONE, null));
 				status.setRollbackOnly();
 			});
 		}
@@ -98,60 +104,55 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 직접_추가하면_입력한_값이_그대로_저장되고_추정이_아니다() {
+	void 직접_추가하면_입력한_값이_그대로_저장된다() {
 		Long id = registerUseCase.registerIngredient(command("우유", IngredientCategoryCode.DAIRY_EGG,
-				LocalDate.of(2026, 3, 12), null, false, new BigDecimal("2"), null));
+				LocalDate.of(2026, 3, 12), null, new BigDecimal("2"), null));
 
-		Ingredient saved = getUseCase.getIngredient(USER, id);
+		Ingredient saved = getUseCase.getIngredient(USER, id).ingredient();
 		assertThat(saved.name()).isEqualTo("우유");
 		assertThat(saved.categoryId()).isEqualTo(categoryId("DAIRY_EGG"));
 		assertThat(saved.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 12));
-		assertThat(saved.expirationEstimated()).isFalse();
 		assertThat(saved.amount()).isEqualByComparingTo("2");
 		assertThat(saved.price()).isEqualTo(3000L);
 		assertThat(saved.receiptItemId()).isNull();
 	}
 
 	@Test
-	void 소비기한이_없으면_구매일에_기본_보관_일수를_더해_추정하고_추정_표시를_켠다() {
+	void 소비기한이_없으면_구매일에_기본_보관_일수를_더해_추정한다() {
 		// 채소의 기본 보관 일수는 7일이다.
 		Long id = registerUseCase.registerIngredient(command("양파", IngredientCategoryCode.VEGETABLE, null,
-				LocalDate.of(2026, 3, 1), false, BigDecimal.ONE, null));
+				LocalDate.of(2026, 3, 1), BigDecimal.ONE, null));
 
-		Ingredient saved = getUseCase.getIngredient(USER, id);
+		Ingredient saved = getUseCase.getIngredient(USER, id).ingredient();
 		assertThat(saved.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 8));
-		// 넘겨 준 추정 표시가 false여도 날짜를 재료 쪽에서 추정했으므로 true로 기록한다.
-		assertThat(saved.expirationEstimated()).isTrue();
 	}
 
 	@Test
 	void 기준일이_없으면_오늘을_기준으로_추정한다() {
-		Long id = registerUseCase.registerIngredient(command("양파", IngredientCategoryCode.VEGETABLE, null, null,
-				false, BigDecimal.ONE, null));
+		Long id = registerUseCase.registerIngredient(command("양파", IngredientCategoryCode.VEGETABLE, null, null, BigDecimal.ONE, null));
 
-		assertThat(getUseCase.getIngredient(USER, id).expirationDate()).isEqualTo(LocalDate.of(2026, 3, 11));
+		assertThat(getUseCase.getIngredient(USER, id).ingredient().expirationDate()).isEqualTo(LocalDate.of(2026, 3, 11));
 	}
 
 	@Test
-	void OCR이_추정한_날짜를_그대로_확정하면_추정_표시를_유지한다() {
+	void 넘긴_소비기한이_있으면_기준일과_상관없이_그대로_저장한다() {
 		Long id = registerUseCase.registerIngredient(command("양파", IngredientCategoryCode.VEGETABLE,
-				LocalDate.of(2026, 3, 9), LocalDate.of(2026, 3, 1), true, BigDecimal.ONE, 55L));
+				LocalDate.of(2026, 3, 9), LocalDate.of(2026, 3, 1), BigDecimal.ONE, 55L));
 
-		Ingredient saved = getUseCase.getIngredient(USER, id);
+		Ingredient saved = getUseCase.getIngredient(USER, id).ingredient();
 		assertThat(saved.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 9));
-		assertThat(saved.expirationEstimated()).isTrue();
 	}
 
 	@Test
 	void 영수증은_여러_건을_입력_순서대로_등록하고_품목을_연결한다() {
 		List<Long> ids = registerUseCase.registerIngredients(List.of(
-				command("우유", IngredientCategoryCode.DAIRY_EGG, null, LocalDate.of(2026, 3, 2), false, BigDecimal.ONE, 11L),
-				command("삼겹살", IngredientCategoryCode.MEAT, LocalDate.of(2026, 3, 6), null, false,
+				command("우유", IngredientCategoryCode.DAIRY_EGG, null, LocalDate.of(2026, 3, 2), BigDecimal.ONE, 11L),
+				command("삼겹살", IngredientCategoryCode.MEAT, LocalDate.of(2026, 3, 6), null,
 						new BigDecimal("0.6"), 12L)));
 
 		assertThat(ids).hasSize(2);
-		Ingredient milk = getUseCase.getIngredient(USER, ids.get(0));
-		Ingredient pork = getUseCase.getIngredient(USER, ids.get(1));
+		Ingredient milk = getUseCase.getIngredient(USER, ids.get(0)).ingredient();
+		Ingredient pork = getUseCase.getIngredient(USER, ids.get(1)).ingredient();
 		assertThat(milk.name()).isEqualTo("우유");
 		assertThat(milk.receiptItemId()).isEqualTo(11L);
 		// 달걀·유제품의 기본 보관 일수 10일
@@ -163,10 +164,10 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 	@Test
 	void 여러_건_중_하나가_실패하면_호출한_쪽의_트랜잭션이_롤백되어_하나도_남지_않는다() {
 		List<RegisterIngredientCommand> commands = List.of(
-				command("우유", IngredientCategoryCode.DAIRY_EGG, LocalDate.of(2026, 3, 12), null, false, BigDecimal.ONE,
+				command("우유", IngredientCategoryCode.DAIRY_EGG, LocalDate.of(2026, 3, 12), null, BigDecimal.ONE,
 						11L),
 				// 수량이 0이라 규칙을 어긴다
-				command("두부", IngredientCategoryCode.BEAN_TOFU, LocalDate.of(2026, 3, 8), null, false, BigDecimal.ZERO,
+				command("두부", IngredientCategoryCode.BEAN_TOFU, LocalDate.of(2026, 3, 8), null, BigDecimal.ZERO,
 						12L));
 
 		// 영수증 확정처럼 호출한 쪽이 연 트랜잭션 안에서 부른다.
@@ -179,23 +180,48 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 	@Test
 	void 규칙을_어기면_INVALID_INPUT이다() {
 		assertErrorCode(() -> registerUseCase.registerIngredient(command("우유", IngredientCategoryCode.DAIRY_EGG,
-				LocalDate.of(2026, 3, 12), null, false, new BigDecimal("-1"), null)), ErrorCode.INVALID_INPUT);
+				LocalDate.of(2026, 3, 12), null, new BigDecimal("-1"), null)), ErrorCode.INVALID_INPUT);
 		assertErrorCode(() -> registerUseCase.registerIngredient(command("  ", IngredientCategoryCode.DAIRY_EGG,
-				LocalDate.of(2026, 3, 12), null, false, BigDecimal.ONE, null)), ErrorCode.INVALID_INPUT);
+				LocalDate.of(2026, 3, 12), null, BigDecimal.ONE, null)), ErrorCode.INVALID_INPUT);
 		assertErrorCode(() -> registerUseCase.registerIngredient(command("우유", IngredientCategoryCode.DAIRY_EGG,
-				LocalDate.of(2026, 3, 12), null, false, new BigDecimal("0.0001"), null)), ErrorCode.INVALID_INPUT);
+				LocalDate.of(2026, 3, 12), null, new BigDecimal("0.0001"), null)), ErrorCode.INVALID_INPUT);
 		assertThat(countIngredients()).isZero();
 	}
 
 	@Test
 	void 카테고리가_없으면_INVALID_INPUT이다() {
-		assertErrorCode(() -> registerUseCase.registerIngredient(command("우유", null, LocalDate.of(2026, 3, 12), null,
-				false, BigDecimal.ONE, null)), ErrorCode.INVALID_INPUT);
+		assertErrorCode(() -> registerUseCase.registerIngredient(command("우유", null, LocalDate.of(2026, 3, 12), null, BigDecimal.ONE, null)), ErrorCode.INVALID_INPUT);
 	}
 
 	@Test
 	void 등록할_재료_목록이_없으면_INVALID_INPUT이고_빈_목록은_빈_결과이다() {
 		assertErrorCode(() -> registerUseCase.registerIngredients(null), ErrorCode.INVALID_INPUT);
 		assertThat(registerUseCase.registerIngredients(List.of())).isEmpty();
+	}
+
+	@Test
+	void 단위를_넘기지_않으면_서버가_재료명으로_정한다() {
+		Long exact = registerUseCase.registerIngredient(commandWithUnit("대파", IngredientCategoryCode.VEGETABLE, null));
+		Long contained = registerUseCase.registerIngredient(commandWithUnit("유기농 우유", IngredientCategoryCode.DAIRY_EGG, null));
+		Long unknown = registerUseCase.registerIngredient(commandWithUnit("알수없는재료", IngredientCategoryCode.ETC, null));
+
+		assertThat(getUseCase.getIngredient(USER, exact).ingredient().unit()).isEqualTo(IngredientUnit.BUNCH);
+		assertThat(getUseCase.getIngredient(USER, contained).ingredient().unit()).isEqualTo(IngredientUnit.PACK);
+		assertThat(getUseCase.getIngredient(USER, unknown).ingredient().unit()).isEqualTo(IngredientUnit.EA);
+	}
+
+	@Test
+	void 호출한_기능이_단위를_넘기면_그대로_쓴다() {
+		// 영수증에서 무게를 읽지 못한 품목의 PACK 예외(#145)처럼 호출한 쪽이 정한 단위다
+		Long id = registerUseCase.registerIngredient(commandWithUnit("한돈 앞다리 돼지고기", IngredientCategoryCode.MEAT,
+				IngredientUnit.PACK));
+
+		assertThat(getUseCase.getIngredient(USER, id).ingredient().unit()).isEqualTo(IngredientUnit.PACK);
+	}
+
+	@Test
+	void 재료명이_비어_있으면_단위를_정하지_못해_INVALID_INPUT이다() {
+		assertErrorCode(() -> registerUseCase.registerIngredient(commandWithUnit("  ", IngredientCategoryCode.ETC, null)),
+				ErrorCode.INVALID_INPUT);
 	}
 }

@@ -1,0 +1,47 @@
+/* 피그마 2. 버튼 > 텍스트 버튼: Remake/content, 아이콘 16, 간격 space/4 */
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-primary);
+  font: var(--font-content);
+  white-space: nowrap;
+}
+
+.button::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 2.75rem);
+  height: max(100%, 2.75rem);
+  transform: translate(-50%, -50%);
+}
+
+.button[data-tone="neutral"] {
+  color: var(--color-text-assist);
+}
+
+.button[data-tone="danger"] {
+  color: var(--color-text-danger);
+}
+
+.button:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+.arrow {
+  width: 1rem;
+  height: 1rem;
+}
