@@ -85,6 +85,10 @@ class MealPlanResultWriter {
 				"meal_type_count", plan.mealTypes().size(),
 				"generated_days", generatedDays,
 				"shortage_count", shortageCount,
+				// 부족 재료 장바구니 담기(#91)가 아직 없어 0. 연결하면 AddCartItemsUseCase가 넣은 행 수로 바꾼다
+				"cart_added_count", 0,
+				// 기존 식단표의 칸을 지우고 바꿨는지(겹침 모달에서 덮어쓰기를 골랐어도 지운 칸이 없으면 false)
+				"was_overwritten", !replacedSlotIds.isEmpty(),
 				"duration_ms", durationMillis(job),
 				"remaining_quota", remaining),
 				EventTrackCommand.ofUser(plan.userId()));

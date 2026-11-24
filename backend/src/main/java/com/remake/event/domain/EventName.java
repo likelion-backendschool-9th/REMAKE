@@ -72,7 +72,7 @@ public enum EventName {
 	COOK_FEEDBACK_ANSWERED("cook_feedback_answered", EventSource.CLIENT, Set.of("feedback_value")), // E50
 	MEAL_PLAN_SETUP_VIEWED("meal_plan_setup_viewed", EventSource.CLIENT, Set.of("remaining_quota")), // E51
 	MEAL_PLAN_GENERATE_STARTED("meal_plan_generate_started", EventSource.CLIENT, Set.of("meal_purpose", "meal_type_count", "servings", "start_offset_days")), // E52
-	MEAL_PLAN_GENERATED("meal_plan_generated", EventSource.SERVER, Set.of("meal_plan_id", "meal_purpose", "meal_type_count", "generated_days", "shortage_count", "duration_ms", "remaining_quota")), // E53
+	MEAL_PLAN_GENERATED("meal_plan_generated", EventSource.SERVER, Set.of("meal_plan_id", "meal_purpose", "meal_type_count", "generated_days", "shortage_count", "cart_added_count", "was_overwritten", "duration_ms", "remaining_quota")), // E53
 	MEAL_PLAN_GENERATE_FAILED("meal_plan_generate_failed", EventSource.SERVER, Set.of("error_code", "duration_ms")), // E54
 	MEAL_PLAN_SHORTAGE_SHOWN("meal_plan_shortage_shown", EventSource.CLIENT, Set.of("shortage_count", "generated_days")), // E55
 	MEAL_CALENDAR_VIEWED("meal_calendar_viewed", EventSource.CLIENT, Set.of("month_offset", "has_plan")), // E56

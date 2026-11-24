@@ -169,6 +169,21 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 식사_인원이_1부터_50_밖이면_INVALID_INPUT이다() throws Exception {
+		Long userId = createUser();
+
+		for (int servings : new int[] {0, 51}) {
+			generate(userId, """
+					{"startDate":"%s","purpose":"BALANCED","mealTypes":["DINNER"],"servings":%d}
+					""".formatted(TODAY, servings))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+					.andExpect(jsonPath("$.fieldErrors[0].field").value("servings"));
+		}
+		assertThat(count("SELECT COUNT(*) FROM meal_plans WHERE user_id = ?", userId)).isZero();
+	}
+
+	@Test
 	void 생성_중인_식단표가_있으면_MEAL_PLAN_IN_PROGRESS다() throws Exception {
 		Long userId = createUser();
 		LocalDateTime now = LocalDateTime.now(clock);
@@ -252,6 +267,8 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		assertThat(eventProperty("meal_plan_generated", "generated_days")).isEqualTo("5");
 		assertThat(eventProperty("meal_plan_generated", "shortage_count")).isEqualTo("5");
 		assertThat(eventProperty("meal_plan_generated", "remaining_quota")).isEqualTo("0");
+		assertThat(eventProperty("meal_plan_generated", "cart_added_count")).isEqualTo("0");
+		assertThat(eventProperty("meal_plan_generated", "was_overwritten")).isEqualTo("false");
 	}
 
 	@Test
@@ -358,6 +375,7 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", cookedToday)).isEqualTo(1);
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", tomorrow)).isZero();
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", outside)).isEqualTo(1);
+		assertThat(eventProperty("meal_plan_generated", "was_overwritten")).isEqualTo("true");
 	}
 
 	@Test
