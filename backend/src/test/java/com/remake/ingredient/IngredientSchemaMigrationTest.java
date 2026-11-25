@@ -65,7 +65,7 @@ class IngredientSchemaMigrationTest extends IntegrationTestSupport {
 				Long.class)).isNull();
 		assertThat(jdbc.queryForObject("SELECT name FROM " + SCHEMA + ".ingredient_logs WHERE ingredient_id IS NULL",
 				String.class)).isEqualTo("다쓴우유");
-		// V22: 재료가 남아 있는 기록은 그 재료의 카테고리, 이미 지워진 기록은 '기타'(ETC)로 채워진다
+		// V25: 재료가 남아 있는 기록은 그 재료의 카테고리, 이미 지워진 기록은 '기타'(ETC)로 채워진다
 		assertThat(jdbc.queryForObject("SELECT category_id FROM " + SCHEMA + ".ingredient_logs WHERE ingredient_id = ?",
 				Long.class, activeId)).isEqualTo(5L);
 		assertThat(jdbc.queryForObject("SELECT c.code FROM " + SCHEMA + ".ingredient_logs l JOIN " + SCHEMA
