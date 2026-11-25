@@ -45,8 +45,23 @@ class MealPlanPersistenceAdapter implements LoadMealPlanPort, SaveMealPlanPort, 
 	}
 
 	@Override
+	public boolean existsWithStatus(Long userId, MealPlanStatus status) {
+		return mealPlanRepository.existsByUserIdAndStatus(userId, status);
+	}
+
+	@Override
 	public Optional<MealPlan> loadById(Long mealPlanId) {
 		return mealPlanRepository.findById(mealPlanId).map(MealPlanJpaEntity::toDomain);
+	}
+
+	@Override
+	public List<MealPlan> loadByStatusStartingBetween(Long userId, MealPlanStatus status, LocalDate from,
+			LocalDate to) {
+		return mealPlanRepository
+				.findByUserIdAndStatusAndStartDateBetweenOrderByStartDateAscIdAsc(userId, status, from, to)
+				.stream()
+				.map(MealPlanJpaEntity::toDomain)
+				.toList();
 	}
 
 	@Override
@@ -95,6 +110,14 @@ class MealPlanPersistenceAdapter implements LoadMealPlanPort, SaveMealPlanPort, 
 	@Override
 	public List<MealPlanSlot> loadUserSlotsFrom(Long userId, LocalDate from) {
 		return toSortedDomain(slotRepository.findUserSlotsFrom(userId, from));
+	}
+
+	@Override
+	public List<MealPlanSlot> loadByIdsForUpdate(Collection<Long> slotIds) {
+		if (slotIds.isEmpty()) {
+			return List.of();
+		}
+		return slotRepository.findAllByIdForUpdate(slotIds).stream().map(MealPlanSlotJpaEntity::toDomain).toList();
 	}
 
 	@Override

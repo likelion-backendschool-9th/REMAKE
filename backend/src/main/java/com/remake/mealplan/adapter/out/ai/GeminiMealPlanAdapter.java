@@ -28,6 +28,7 @@ import com.remake.mealplan.application.port.out.GenerateMealPlanAiPort;
 import com.remake.mealplan.application.port.out.GeneratedMealSlot;
 import com.remake.mealplan.application.port.out.MealPlanAiBusyException;
 import com.remake.mealplan.application.port.out.MealPlanAiRequest;
+import com.remake.mealplan.application.port.out.ReplaceMealSlotAiPort;
 import com.remake.mealplan.domain.FridgeStock;
 import com.remake.mealplan.domain.MealSchedule;
 import com.remake.mealplan.domain.MealType;
@@ -49,39 +50,58 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>
  * 호출·에러 변환은 레시피 생성(recipe GeminiRecipeAdapter)과 같은 기준이다. 다른 기능의 어댑터는 쓸 수 없어 따로 둔다.
  * 통합 테스트는 이 클래스를 @MockitoBean으로 바꾼다.
+ * <p>
+ * 식단 칸 교체(API 42)도 같은 지시문·스키마로 칸 하나를 만든다. 사용자가 기다리므로 25초 클라이언트를 쓰고
+ * 지시문 끝에 교체 규칙(MealPlanPrompt.replaceInstruction)을 붙인다.
  */
 @Slf4j
 @Component
-public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
+public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort, ReplaceMealSlotAiPort {
 
 	private static final int AMOUNT_SCALE = 3;
 	private static final int SERVICE_UNAVAILABLE = 503;
 
 	private final RestClient restClient;
+	private final RestClient replaceRestClient;
 	private final GeminiProperties properties;
 	private final JsonMapper jsonMapper;
 
 	public GeminiMealPlanAdapter(
 			@Qualifier(GeminiMealPlanClientConfig.GEMINI_MEAL_PLAN_REST_CLIENT) RestClient restClient,
+			@Qualifier(GeminiMealPlanClientConfig.GEMINI_MEAL_SLOT_REPLACE_REST_CLIENT) RestClient replaceRestClient,
 			GeminiProperties properties, JsonMapper jsonMapper) {
 		this.restClient = restClient;
+		this.replaceRestClient = replaceRestClient;
 		this.properties = properties;
 		this.jsonMapper = jsonMapper;
 	}
 
 	@Override
 	public List<GeneratedMealSlot> generate(MealPlanAiRequest request) {
+		requireApiKey();
+		JsonNode response = call(restClient, requestBody(request, false), true);
+		return parse(extractText(response), request.schedule().startDate());
+	}
+
+	/** 칸 교체. 25초 클라이언트로 부르고, 과부하(503)는 쉬며 다시 부르지 않고 AI_UPSTREAM_ERROR로 던진다. */
+	@Override
+	public List<GeneratedMealSlot> replace(MealPlanAiRequest request) {
+		requireApiKey();
+		JsonNode response = call(replaceRestClient, requestBody(request, true), false);
+		return parse(extractText(response), request.schedule().startDate());
+	}
+
+	private void requireApiKey() {
 		if (!properties.hasApiKey()) {
 			log.warn("Gemini API 키가 없어 식단표를 생성하지 않습니다. backend/.env에 GEMINI_API_KEY를 넣으세요.");
 			throw new BusinessException(ErrorCode.AI_UPSTREAM_ERROR);
 		}
-		JsonNode response = call(requestBody(request));
-		return parse(extractText(response), request.schedule().startDate());
 	}
 
-	private JsonNode call(Map<String, Object> body) {
+	/** @param busyAsRetryable 503을 MealPlanAiBusyException으로 던질지(서버 작업만 쉬며 더 부른다) */
+	private JsonNode call(RestClient client, Map<String, Object> body, boolean busyAsRetryable) {
 		try {
-			return restClient.post()
+			return client.post()
 					.uri("/v1beta/models/{model}:generateContent", properties.model())
 					.header("x-goog-api-key", properties.apiKey())
 					.contentType(MediaType.APPLICATION_JSON)
@@ -91,14 +111,15 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 		} catch (RestClientResponseException e) {
 			// 공급자 응답 본문(에러 문구)은 남기지 않는다. 상태 코드만 남긴다.
 			log.warn("Gemini 식단표 호출 실패: status={}", e.getStatusCode().value());
-			if (e.getStatusCode().value() == SERVICE_UNAVAILABLE) {
+			if (busyAsRetryable && e.getStatusCode().value() == SERVICE_UNAVAILABLE) {
 				// 과부하로 잠시 거절. 서버 작업이 쉬었다가 더 시도한다
 				throw new MealPlanAiBusyException();
 			}
 			throw new BusinessException(ErrorCode.AI_UPSTREAM_ERROR);
 		} catch (ResourceAccessException e) {
 			if (isTimeout(e)) {
-				log.warn("Gemini 식단표 호출 시간 초과: {}", GeminiMealPlanClientConfig.READ_TIMEOUT);
+				log.warn("Gemini 식단표 호출 시간 초과: {}",
+						busyAsRetryable ? GeminiMealPlanClientConfig.READ_TIMEOUT : properties.requestTimeout());
 				throw new BusinessException(ErrorCode.AI_TIMEOUT);
 			}
 			log.warn("Gemini 식단표 연결 실패: {}", e.getClass().getSimpleName());
@@ -258,10 +279,11 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 		return node.isString() ? node.asString() : null;
 	}
 
-	Map<String, Object> requestBody(MealPlanAiRequest request) {
+	/** @param replace 칸 교체면 지시문 끝에 교체 규칙을 붙이고 데이터에 avoidTitles를 넣는다 */
+	Map<String, Object> requestBody(MealPlanAiRequest request, boolean replace) {
 		String userData;
 		try {
-			userData = jsonMapper.writeValueAsString(promptData(request));
+			userData = jsonMapper.writeValueAsString(promptData(request, replace));
 		} catch (JacksonException e) {
 			throw new IllegalStateException("프롬프트 데이터를 만들 수 없습니다.", e);
 		}
@@ -271,8 +293,10 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 		generationConfig.put("temperature", 0.8);
 
 		Map<String, Object> body = new LinkedHashMap<>();
-		body.put("systemInstruction",
-				Map.of("parts", List.of(Map.of("text", MealPlanPrompt.systemInstruction(request.purpose())))));
+		String instruction = replace
+				? MealPlanPrompt.replaceInstruction(request.purpose())
+				: MealPlanPrompt.systemInstruction(request.purpose());
+		body.put("systemInstruction", Map.of("parts", List.of(Map.of("text", instruction))));
 		body.put("contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text", userData)))));
 		body.put("generationConfig", generationConfig);
 		return body;
@@ -281,8 +305,9 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 	/**
 	 * 사용자 메시지에 넣을 데이터. 칸은 시작일 = 1일째로 번호를 붙이고, 냉장고 재료의 소비기한은 날짜 대신
 	 * "며칠째까지 쓸 수 있는지"(usableUntilDay)로 보낸다. 덮어쓰기에서 남기는 칸은 넣지 않는다.
+	 * 칸 교체는 그 칸 날짜가 1일째이고, 주재료로 쓰지 않을 냉장고 재료(avoidMainIngredientIds)와 피할 요리 이름(avoidTitles)을 더한다.
 	 */
-	static Map<String, Object> promptData(MealPlanAiRequest request) {
+	static Map<String, Object> promptData(MealPlanAiRequest request, boolean replace) {
 		MealSchedule schedule = request.schedule();
 		LocalDate startDate = schedule.startDate();
 		List<Map<String, Object>> slots = new ArrayList<>();
@@ -301,6 +326,10 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort {
 		data.put("slots", slots);
 		data.put("fridgeIngredients", request.ingredients().stream().map(stock -> fridgeItem(stock, startDate)).toList());
 		data.put("excludedAllergenCodes", request.excludedAllergenCodes().stream().map(Enum::name).toList());
+		if (replace) {
+			data.put("avoidMainIngredientIds", request.avoidMainIngredientIds());
+			data.put("avoidTitles", request.avoidTitles());
+		}
 		return data;
 	}
 

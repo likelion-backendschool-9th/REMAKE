@@ -29,7 +29,7 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 이 저장소에서 작업할 
 | --- | --- |
 | [`docs/agent/spec/domain-rules.md`](../agent/spec/domain-rules.md) | 비즈니스 규칙, 횟수 제한, 단위, 카테고리, 소비기한 상태 |
 | [`docs/agent/spec/api-summary.md`](../agent/spec/api-summary.md) | 도메인별 전체 API와 각 API가 발행하는 이벤트 |
-| [`docs/agent/erd.md`](../agent/erd.md) | 테이블 26개: 컬럼, 기본값, 관계, 구현 규칙(테이블 문서는 이것 하나) |
+| [`docs/agent/erd.md`](../agent/erd.md) | 테이블의 컬럼, 기본값, 관계, 구현 규칙(테이블 문서는 이것 하나) |
 | [`docs/agent/spec/errors.md`](../agent/spec/errors.md) | 에러 코드 |
 | [`docs/agent/spec/events.md`](../agent/spec/events.md) | 이벤트 트래킹 계약 |
 

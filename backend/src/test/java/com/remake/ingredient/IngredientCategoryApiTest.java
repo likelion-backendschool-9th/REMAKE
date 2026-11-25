@@ -34,7 +34,7 @@ class IngredientCategoryApiTest extends IntegrationTestSupport {
 				"SIDE_DISH", "SEASONING", "BEVERAGE", "ETC" };
 
 		mockMvc.perform(get("/api/v1/user/ingredient-categories")
-						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, 1L))
+						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, createUser()))
 				.andExpect(status().isOk())
 				// ApiResponse 같은 감싸기 없이 최상위가 배열이고, DB의 code 12개가 sort_order 순서로 나온다
 				.andExpect(jsonPath("$[*].code", contains(codes)))

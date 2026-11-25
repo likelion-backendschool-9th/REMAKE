@@ -19,12 +19,10 @@ import jakarta.servlet.http.Cookie;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import com.remake.auth.application.port.out.JwtTokenPort;
 import com.remake.receipt.application.port.in.ReceiptHistoryUseCase;
 import com.remake.receipt.application.port.in.RetryReceiptImageDeletionUseCase;
-import com.remake.receipt.application.port.out.ReceiptImageStoragePort;
 import com.remake.support.IntegrationTestSupport;
 import com.remake.user.domain.UserRole;
 
@@ -35,8 +33,6 @@ class ReceiptHistoryApiTest extends IntegrationTestSupport {
 			0, 16, 'J', 'F', 'I', 'F', 0};
 	@Autowired
 	private JwtTokenPort tokens;
-	@MockitoSpyBean
-	private ReceiptImageStoragePort images;
 	@Autowired
 	private RetryReceiptImageDeletionUseCase imageDeletion;
 	@Autowired

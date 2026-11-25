@@ -1,6 +1,7 @@
 package com.remake.quota;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDateTime;
@@ -101,18 +102,39 @@ class ConsumeRecipeQuotaTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 다른_회원끼리는_서로_기다리지_않는다() {
+	void 다른_회원끼리는_서로_기다리지_않는다() throws Exception {
 		Long me = createUser();
 		Long other = createUser();
+		// 내 차감 트랜잭션이 잠금을 쥔 채 끝나지 않은 동안 다른 회원이 별도 트랜잭션으로 차감한다.
+		CountDownLatch meConsumed = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
 
-		transactionTemplate.executeWithoutResult(status -> {
+		CompletableFuture<Void> mine = CompletableFuture.runAsync(() -> transactionTemplate.executeWithoutResult(status -> {
 			consumeRecipeQuotaUseCase.consumeRecipeQuota(me);
-			// 같은 트랜잭션 안에서 다른 회원 잠금은 바로 얻는다(막히면 테스트가 멈춘다)
-			consumeRecipeQuotaUseCase.consumeRecipeQuota(other);
-		});
+			meConsumed.countDown();
+			awaitQuietly(release);
+		}));
+		try {
+			assertThat(meConsumed.await(5, TimeUnit.SECONDS)).isTrue();
+			CompletableFuture<Void> others = CompletableFuture
+					.runAsync(() -> consumeRecipeQuotaUseCase.consumeRecipeQuota(other));
+			assertThatCode(() -> others.get(2, TimeUnit.SECONDS)).as("내 잠금이 풀리기 전에 끝난다")
+					.doesNotThrowAnyException();
+		} finally {
+			release.countDown();
+		}
+		mine.get(10, TimeUnit.SECONDS);
 
 		assertThat(usageRows(me)).isEqualTo(1);
 		assertThat(usageRows(other)).isEqualTo(1);
+	}
+
+	private static void awaitQuietly(CountDownLatch latch) {
+		try {
+			latch.await(10, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	private static void sleep(long millis) {

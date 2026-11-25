@@ -1,5 +1,6 @@
 package com.remake.mealplan.adapter.out.persistence;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +14,6 @@ import com.remake.mealplan.domain.MealPlanStatus;
 
 import jakarta.persistence.LockModeType;
 
-/** 달력 조회 메서드는 그 API를 만들 때 추가한다. */
 interface MealPlanJpaRepository extends JpaRepository<MealPlanJpaEntity, Long> {
 
 	boolean existsByUserIdAndStatus(Long userId, MealPlanStatus status);
@@ -24,6 +24,10 @@ interface MealPlanJpaRepository extends JpaRepository<MealPlanJpaEntity, Long> {
 
 	List<MealPlanJpaEntity> findByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(MealPlanStatus status,
 			LocalDateTime createdAt);
+
+	/** 달력(API 39). idx_meal_plans_user_start_date(user_id, start_date) 인덱스를 탄다. */
+	List<MealPlanJpaEntity> findByUserIdAndStatusAndStartDateBetweenOrderByStartDateAscIdAsc(Long userId,
+			MealPlanStatus status, LocalDate from, LocalDate to);
 
 	void deleteByUserId(Long userId);
 }

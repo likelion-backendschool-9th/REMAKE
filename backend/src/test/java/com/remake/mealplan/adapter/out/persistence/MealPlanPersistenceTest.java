@@ -188,27 +188,32 @@ class MealPlanPersistenceTest extends IntegrationTestSupport {
 	@Test
 	void DB도_잘못된_값을_막는다() {
 		Long userId = createUser();
+		// 올바른 값은 저장된다
+		insertCompletedPlan(userId, "BALANCED", "DINNER", 1, 1);
+
+		// 실패마다 막은 제약 이름까지 확인한다. 인자 누락 같은 다른 이유로 실패해도 통과하지 않게 한다
+		assertRejectedBy("ck_meal_plans_purpose", () -> insertCompletedPlan(userId, "KETO", "DINNER", 1, 1));
+		assertRejectedBy("ck_meal_plans_meal_types", () -> insertCompletedPlan(userId, "BALANCED", "DINNER,SNACK", 1, 1));
+		assertRejectedBy("ck_meal_plans_meal_types", () -> insertCompletedPlan(userId, "BALANCED", "", 1, 1));
+		assertRejectedBy("ck_meal_plans_servings", () -> insertCompletedPlan(userId, "BALANCED", "DINNER", 0, 1));
+		assertRejectedBy("ck_meal_plans_generated_days", () -> insertCompletedPlan(userId, "BALANCED", "DINNER", 1, 8));
+		// 회원이 없으면 저장되지 않는다
+		assertRejectedBy("fk_meal_plans_user", () -> insertCompletedPlan(userId + 1000, "BALANCED", "DINNER", 1, 1));
+	}
+
+	/** 완성된 식단표 한 행을 SQL로 넣는다. 시각 칸까지 모든 값을 넘겨 제약 말고는 실패할 이유가 없게 한다. */
+	private void insertCompletedPlan(Long userId, String purpose, String mealTypes, int servings, int generatedDays) {
 		LocalDateTime now = LocalDateTime.of(2026, 3, 4, 10, 0);
-		String insert = """
+		jdbcTemplate.update("""
 				INSERT INTO meal_plans (user_id, start_date, purpose, meal_types, servings, generated_days, status,
 				                        created_at, updated_at)
 				VALUES (?, ?, ?, ?, ?, ?, 'COMPLETED', ?, ?)
-				""";
-		// 올바른 값은 저장된다. 그래서 아래 실패는 updated_at 누락 같은 다른 이유가 아니다
-		jdbcTemplate.update(insert, userId, TODAY, "BALANCED", "DINNER", 1, 1, now, now);
+				""", userId, TODAY, purpose, mealTypes, servings, generatedDays, now, now);
+	}
 
-		assertThatThrownBy(() -> jdbcTemplate.update(insert, userId, TODAY, "KETO", "DINNER", 1, 1, now))
-				.isInstanceOf(DataIntegrityViolationException.class);
-		assertThatThrownBy(() -> jdbcTemplate.update(insert, userId, TODAY, "BALANCED", "DINNER,SNACK", 1, 1, now))
-				.isInstanceOf(DataIntegrityViolationException.class);
-		assertThatThrownBy(() -> jdbcTemplate.update(insert, userId, TODAY, "BALANCED", "", 1, 1, now))
-				.isInstanceOf(DataIntegrityViolationException.class);
-		assertThatThrownBy(() -> jdbcTemplate.update(insert, userId, TODAY, "BALANCED", "DINNER", 0, 1, now))
-				.isInstanceOf(DataIntegrityViolationException.class);
-		assertThatThrownBy(() -> jdbcTemplate.update(insert, userId, TODAY, "BALANCED", "DINNER", 1, 8, now))
-				.isInstanceOf(DataIntegrityViolationException.class);
-		// 회원이 없으면 저장되지 않는다
-		assertThatThrownBy(() -> jdbcTemplate.update(insert, userId + 1000, TODAY, "BALANCED", "DINNER", 1, 1, now))
-				.isInstanceOf(DataIntegrityViolationException.class);
+	private static void assertRejectedBy(String constraint, Runnable insert) {
+		assertThatThrownBy(insert::run)
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining(constraint);
 	}
 }

@@ -225,6 +225,50 @@ class MealPlanTrimmerTest {
 	}
 
 	@Test
+	void 칸_날짜_전에_소비기한이_끝나는_재료를_쓴_날부터_멈춘다() {
+		Set<MealType> meals = EnumSet.of(MealType.DINNER);
+		// 돼지고기는 2일째까지. 1·2일째는 쓰고, 3일째에 쓰면 그날부터 자른다(양은 넉넉하다).
+		FridgeStock pork = new FridgeStock(PORK, "돼지고기", new BigDecimal("1000"), IngredientUnit.G,
+				TODAY.plusDays(1));
+		FridgeStock onion = stock(ONION, "5", IngredientUnit.EA);
+		StockLedger ledger = ledger(List.of(pork, onion));
+
+		assertThat(MealPlanTrimmer.trim(schedule(4, meals), porkEveryMeal(4, meals, "100"), ledger).generatedDays())
+				.isEqualTo(2);
+		// 기한 지난 재료 없이 다른 냉장고 재료만 쓰면 3일째도 만든다
+		List<PlannedSlot> switched = List.of(
+				slot(1, MealType.DINNER, fridge(PORK, "100", RecipeUnit.G)),
+				slot(2, MealType.DINNER, fridge(PORK, "100", RecipeUnit.G)),
+				slot(3, MealType.DINNER, fridge(ONION, "1", RecipeUnit.EA)));
+		assertThat(MealPlanTrimmer.trim(schedule(3, meals), switched, ledger).generatedDays()).isEqualTo(3);
+	}
+
+	@Test
+	void 약간으로_곁들인_재료도_칸_날짜_전에_소비기한이_끝나면_그날부터_멈춘다() {
+		// 양 없는 줄은 양은 빼지 않지만 기한은 본다. 간장은 오늘까지라 1일째 칸은 되고 2일째 칸에서 멈춘다
+		FridgeStock soy = new FridgeStock(SOY, "간장", new BigDecimal("500"), IngredientUnit.ML, TODAY);
+		StockLedger ledger = ledger(List.of(soy, stock(PORK, "300", IngredientUnit.G)));
+		List<PlannedSlot> slots = List.of(
+				slot(1, MealType.DINNER, fridge(PORK, "100", RecipeUnit.G), fridge(SOY, null, RecipeUnit.TO_TASTE)),
+				slot(2, MealType.DINNER, fridge(PORK, "100", RecipeUnit.G), fridge(SOY, null, RecipeUnit.TO_TASTE)));
+
+		assertThat(MealPlanTrimmer.trim(schedule(2, EnumSet.of(MealType.DINNER)), slots, ledger).generatedDays())
+				.isEqualTo(1);
+	}
+
+	@Test
+	void 이미_소비기한이_지난_재료를_꼬집으로만_써도_배정하지_않는다() {
+		// 어제까지인 간장은 장부에 없다. 꼬집 줄이라도 그 재료를 가리키면 첫날부터 만들지 않는다
+		FridgeStock soy = new FridgeStock(SOY, "간장", new BigDecimal("500"), IngredientUnit.ML, TODAY.minusDays(1));
+		StockLedger ledger = ledger(List.of(soy, stock(PORK, "300", IngredientUnit.G)));
+		List<PlannedSlot> slots = List.of(
+				slot(1, MealType.DINNER, fridge(PORK, "100", RecipeUnit.G), fridge(SOY, "1", RecipeUnit.PINCH)));
+
+		assertThat(MealPlanTrimmer.trim(schedule(1, EnumSet.of(MealType.DINNER)), slots, ledger).generatedDays())
+				.isZero();
+	}
+
+	@Test
 	void 장바구니에는_남긴_날의_냉장고에_없는_재료만_담고_약간과_꼬집은_뺀다() {
 		Set<MealType> meals = EnumSet.of(MealType.DINNER);
 		SlotIngredient greenOnion = missing("대파", "1", RecipeUnit.BUNCH);

@@ -47,10 +47,14 @@ public class MealPlanSlot {
 		return slotDate.isBefore(today);
 	}
 
-	/** 레시피 교체: 새로 만든 레시피로 바꾼다. 지난 칸인지는 서비스가 먼저 확인한다. */
+	/**
+	 * 레시피 교체: 새로 만든 레시피로 바꾼다. 지난 칸인지는 서비스가 먼저 확인한다.
+	 * 요리 완료 표시는 지운다(요리한 것은 바꾸기 전 레시피라 새 레시피는 아직 요리 전이다, #176 11-25 결정).
+	 */
 	public void replaceRecipe(Long newRecipeId) {
 		requireNonNull(newRecipeId, "레시피");
 		this.recipeId = newRecipeId;
+		this.cookedAt = null;
 	}
 
 	/** 요리 완료 표시. 오늘 칸에서 연 레시피로 요리했을 때만 기록한다(다른 날 칸은 안 됨). */

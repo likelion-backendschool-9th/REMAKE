@@ -226,9 +226,9 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Completion: in-app notification "11월 24일부터 5일치 식단표가 완성됐어요" (start date and days made; wording is a proposal). Tapping it opens p5 at the plan's start date.
 - Failure: in-app notification, not charged, no failure screen. AI error or timeout: "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요". Not even one day (`MEAL_PLAN_NO_INGREDIENTS`): "냉장고 재료가 부족해 식단표를 만들지 못했어요. 생성 횟수는 차감되지 않았어요". Tapping it opens the meal-plan setup screen. Recipe generation failures keep the failure screen (screens to add no. 8).
 - Meal-plan notifications are created even for members who turned notifications off.
-- Target: generation within 30 s, tune after measuring (measured from acceptance to job completion; the completion notification is sent at that moment). The 60 s limit is for recipes only; the server job's time limit is (open, #144).
+- Target: generation within 30 s, tune after measuring (measured from acceptance to job completion; the completion notification is sent at that moment). The 60 s limit is for recipes only; the server job's time limit is (open, #122).
 - A new generate request while one of mine is `GENERATING` is rejected with `MEAL_PLAN_IN_PROGRESS` (409, error toast).
-- Overwrite deletes the old overlapping slots when the job completes, so a failed job keeps the existing plan. (deferred, #144): whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap.
+- Overwrite deletes the old overlapping slots when the job completes, so a failed job keeps the existing plan. Calendar and overlap by status (#144, decided 11/25): only `COMPLETED` plans show in the calendar (39) and count for `hasAnyMealPlan`; `GENERATING` and `FAILED` plans are left out. The overlap check works on existing slots, so the plan status does not matter (a `GENERATING` or `FAILED` plan has no slots; a new request while one is `GENERATING` gets `MEAL_PLAN_IN_PROGRESS`).
 
 ## 6. Notifications (이상호)
 
