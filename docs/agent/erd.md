@@ -4,7 +4,7 @@
 
 2026-11-22 · 이준호. Source: Notion "ERD v4" (Figma-based, with a screen-evidence column). This file carries the same content for development; see the source for the Figma node evidence.
 
-- 26 tables: the 25 Figma-based tables + the unit dictionary `ingredient_catalog` (11/22 decision; internal reference data with no screen).
+- 27 tables: 25 Figma-based tables, the internal unit dictionary `ingredient_catalog`, and the manual ingredient expense history added in #73.
 - Admin screens are not in Figma, so there are no admin-only columns or tables (only `users.role`, report `status`, and shared post `status`).
 - Notifications are in-app only (no device push).
 
@@ -45,6 +45,7 @@
 | 24 | `notifications` | Notifications | One notification for a member | 6 notifications | 이상호 | 8 |
 | 25 | `events` | Events | Raw behavior events (frontend and server). Names and properties in `spec/events.md` | common (events) | 이준호 | 12 |
 | 26 | `ingredient_catalog` | Ingredient unit dictionary | Ingredient name -> unit, category, shelf life. Used only inside the server to pick units (API 14, 15, 16, 21). Never exposed by screens or APIs | 2 fridge | 김재연 | 6 |
+| 27 | `manual_ingredient_expenses` | Manual ingredient expenses | Snapshot of a priced manual registration for expense history | 3 receipts | 이동준 | 9 |
 
 ## ERD diagram
 
@@ -763,6 +764,20 @@ Internal reference data that maps an ingredient name to a unit, category and she
 | `is_common_exclusion` | boolean |  |  | no | false | Representative-allergen flag added in PR #140. Allergies are stored as `user_excluded_ingredients.allergen_code` (19 chips), so screens and APIs do not use it |
 
 - The server picks the unit for an ingredient name in this order (decided in #145): (1) the name equals a dictionary name exactly, so use its unit; (2) otherwise the dictionary names contained in the name, in the same category only, two characters or more, the longest one wins, so use its unit; (3) otherwise `EA`. A unit printed on a receipt (for example the `g` in "300g") does not override the dictionary unit.
+
+### 27. `manual_ingredient_expenses` (Manual ingredient expenses)
+
+| Column | Type | Constraints / use |
+| --- | --- | --- |
+| `ingredient_id` | bigint | PK, original ingredient ID kept after deletion |
+| `user_id` | bigint | Required, FK to users |
+| `category_id` | bigint | Required, FK to ingredient_categories |
+| `name`, `storage`, `unit` | varchar | Required, registration values |
+| `amount` | numeric(10,3) | Required, quantity at registration |
+| `price` | bigint | Required, registration price in KRW |
+| `created_at` | timestamp | Required, ingredient registration time (KST) |
+
+Record a priced registration on insert when it has no receipt item. Keep the record after inventory edits, use, discard and deletion, and remove it on account withdrawal. An index on `(user_id, created_at)` supports period queries. Earlier rows without provable origin are not imported.
 
 ## Relationships
 

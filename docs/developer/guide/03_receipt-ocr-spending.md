@@ -76,6 +76,8 @@
 | 26 | GET | `/user/expenses/daily-items` | 고른 날의 품목 | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | receipt_items, ingredients |
 | 61 | GET | `/user/expenses/discarded` | (11/25 제안, #248) p3.4.1 버린 식재료. 그 달 `DISCARDED` 기록 하나당 한 줄, 최근에 버린 것부터. `discardedOn`은 버린 날(KST), `amount`는 `cost_amount`(가격이 없으면 null), `totalAmount`는 null이 아닌 금액의 합으로 API 25 `discardedAmount`와 같음. 기록이 없는 달은 200 + 빈 목록 | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, items: [{ name, categoryCode, discardedOn, amount }] }` | ingredient_logs |
 
+API 25의 월을 생략하면 한국 시간 기준 이번 달을 조회해요. API 25·26은 이번 달을 포함한 최근 6개 달을 조회하고, 기록 없는 날은 합계 0과 빈 품목 목록을 돌려줘요. 카테고리 비율은 0~1이에요. API 22와 같이 평균에서는 이번 달과 기록이 없는 달을 제외해요. 버린 식비 필드는 #248에서 제안한 내용이에요.
+
 API 20 응답의 `purchaseQuantity`와 `volume`은 #72에서 반영 예정이며, #101에서 프론트 연동을 확인해요.
 
 ### 영수증 수량 계약 (#173)

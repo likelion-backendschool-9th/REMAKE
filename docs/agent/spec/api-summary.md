@@ -70,6 +70,8 @@ Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo)
 | 26 | GET | `/user/expenses/daily-items` | Items of the chosen day | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | |
 | 61 | GET | `/user/expenses/discarded` | (proposal 11/25, #248) Discarded food of the month for p3.4.1: one row per `DISCARDED` log, newest first. `discardedOn` = discard date (KST). `amount` = `cost_amount`, null without a price; `totalAmount` sums the non-null amounts and equals API 25 `discardedAmount`. Empty month: 200 with an empty list | `?month=2026-11` (within the last 6 months) | `200 { month, totalAmount, items: [{ name, categoryCode, discardedOn, amount }] }` | |
 
+API 25 defaults to the current KST month. Use the same six calendar months for API 25 and 26. An empty day returns zero and no items. Category ratios use the 0–1 scale. The average excludes the current KST month and months without expense records, as in API 22. The discarded amount is proposed in #248.
+
 API 20 response fields `purchaseQuantity` and `volume` are planned in #72. Frontend integration will be verified in #101.
 
 ### Receipt quantity contract (#173)
