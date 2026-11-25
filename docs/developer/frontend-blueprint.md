@@ -21,24 +21,24 @@
 
 ## 2. 기술 스택
 
-| 영역            | 기술                                                                             | 쓰는 이유                                                                           |
-| --------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| 프레임워크      | Next.js (App Router) + TypeScript                                                | 라우트별 화면 분리, 화면만 담당                                                     |
-| 패키지 매니저   | pnpm                                                                             | 빠른 설치, lockfile로 7명 의존성 버전 통일                                          |
-| 스타일          | CSS Modules + CSS 변수                                                           | 별도 라이브러리 없이 컴포넌트 단위 스타일, 디자인 토큰 공유                         |
-| 서버 데이터     | TanStack Query                                                                   | 서버 데이터 캐싱·다시 불러오기                                                      |
-| 클라이언트 상태 | Zustand                                                                          | 로그인 정보 등 최소한만                                                             |
-| URL 상태        | nuqs                                                                             | 필터·탭·정렬·월 선택을 URL에 저장                                                   |
-| API 연동        | openapi-typescript + openapi-fetch                                               | Spring OpenAPI에서 타입 자동 생성, 타입 안전한 호출                                 |
-| 폼              | React Hook Form + Zod                                                            | 온보딩, 커스텀 레시피 입력, 재료 수정 검증                                          |
-| 날짜            | dayjs                                                                            | 날짜 표시, 식단표 달력                                                              |
-| 아이콘          | @solar-icons/react (Solar)                                                       | 트리 셰이킹되는 React 컴포넌트, 오프라인에서도 동작                                 |
-| 폰트            | Pretendard(`pretendard` 패키지, dynamic subset) + GmarketSans(`next/font/local`) | Pretendard: 한글 UI 폰트, 화면에 나온 글자 묶음만 받음. GmarketSans: 로고 글자 전용 |
-| PWA             | Serwist                                                                          | 서비스 워커, 오프라인 화면. 알림은 앱 안에서만(기기 푸시 없음)                      |
-| 스토어 배포     | PWABuilder (TWA)                                                                 | 안드로이드 앱 패키지 생성                                                           |
-| 웹 배포         | `output: "standalone"` + nginx                                                   | Node 서버를 nginx 뒤에서 실행                                                       |
-| 코드 품질       | ESLint + Prettier, Husky + lint-staged                                           | 7명 코드 스타일 통일, 커밋 전 자동 검사                                             |
-| API 목업        | MSW                                                                              | 백엔드 완성 전 더미 응답으로 화면 개발                                              |
+| 영역            | 기술                                                                             | 쓰는 이유                                                                                                                                     |
+| --------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 프레임워크      | Next.js (App Router) + TypeScript                                                | 라우트별 화면 분리, 화면만 담당                                                                                                               |
+| 패키지 매니저   | pnpm                                                                             | 빠른 설치, lockfile로 7명 의존성 버전 통일                                                                                                    |
+| 스타일          | CSS Modules + CSS 변수                                                           | 별도 라이브러리 없이 컴포넌트 단위 스타일, 디자인 토큰 공유                                                                                   |
+| 서버 데이터     | TanStack Query                                                                   | 서버 데이터 캐싱·다시 불러오기                                                                                                                |
+| 클라이언트 상태 | Zustand                                                                          | 로그인 정보 등 최소한만                                                                                                                       |
+| URL 상태        | nuqs                                                                             | 필터·탭·정렬·월 선택을 URL에 저장                                                                                                             |
+| API 연동        | openapi-typescript + openapi-fetch                                               | Spring OpenAPI에서 타입 자동 생성, 타입 안전한 호출                                                                                           |
+| 폼              | React Hook Form + Zod                                                            | 온보딩, 커스텀 레시피 입력, 재료 수정 검증                                                                                                    |
+| 날짜            | dayjs                                                                            | 날짜 표시, 식단표 달력                                                                                                                        |
+| 아이콘          | @solar-icons/react (Solar)                                                       | 트리 셰이킹되는 React 컴포넌트, 오프라인에서도 동작                                                                                           |
+| 폰트            | Pretendard(`pretendard` 패키지, dynamic subset) + GmarketSans(`next/font/local`) | Pretendard: 한글 UI 폰트, 화면에 나온 글자 묶음만 받음. 거의 모든 화면이 쓰는 묶음은 미리 받음. GmarketSans: 로고 글자 전용, 영문만 남긴 파일 |
+| PWA             | Serwist                                                                          | 서비스 워커, 오프라인 화면. 알림은 앱 안에서만(기기 푸시 없음)                                                                                |
+| 스토어 배포     | PWABuilder (TWA)                                                                 | 안드로이드 앱 패키지 생성                                                                                                                     |
+| 웹 배포         | `output: "standalone"` + nginx                                                   | Node 서버를 nginx 뒤에서 실행                                                                                                                 |
+| 코드 품질       | ESLint + Prettier, Husky + lint-staged                                           | 7명 코드 스타일 통일, 커밋 전 자동 검사                                                                                                       |
+| API 목업        | MSW                                                                              | 백엔드 완성 전 더미 응답으로 화면 개발                                                                                                        |
 
 ## 3. 폴더 구조
 
@@ -46,7 +46,7 @@
 frontend/
 ├─ app/                  # 라우트. 각 라우트 폴더에 그 라우트만 쓰는 코드를 함께 둔다 (3.1 참고)
 │  ├─ layout.tsx         # 루트 레이아웃, globals.css
-│  ├─ fonts/             # GmarketSans 파일(woff2) + fonts.ts (next/font/local) + pretendard.css(생성 파일)
+│  ├─ fonts/             # GmarketSans 파일(woff2) + fonts.ts (next/font/local) + pretendard.css·pretendard-preload.ts(생성 파일) + pretendard-fallback.css
 │  ├─ page.tsx           # 스플래시 (/)
 │  ├─ public/            # /public/... 라우트 (로그인 전, §4)
 │  ├─ user/              # /user/... 라우트 (로그인 후, §4). 예: user/fridge/ingredients/ — 3.1 참고
@@ -214,7 +214,9 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - 단위는 rem입니다(1rem = 16px, 루트 font-size는 바꾸지 않음). 피그마 px 값은 16으로 나눠 씁니다(10px → 0.625rem). 테두리 같은 선만 px로 씁니다.
 - 폰트: 파일은 woff2만 씁니다.
     - Pretendard(본문): `pretendard` 패키지의 dynamic subset 파일을 씁니다(굵기마다 글자 묶음별로 `unicode-range`로 나뉘어 있어 화면에 나온 글자가 든 묶음만 받습니다. 통파일은 굵기마다 약 770KB). `app/fonts/pretendard.css`는 `pnpm gen:fonts`(`scripts/gen-pretendard-css.mjs`)가 만들고 `app/layout.tsx`에서 불러옵니다. 손으로 고치지 않습니다. 굵기는 쓰는 것만 400/500/700/800입니다(400은 `Remake/content-regular`·`Remake/error` 텍스트 스타일, 800은 마트 배지). 굵기를 더하려면 스크립트의 `WEIGHTS`를 고치고 다시 실행합니다. 글꼴 이름은 `Pretendard`이고, `tokens.css`의 `--font-family-base`가 이 이름을 씁니다.
-    - GmarketSans(로고 글자 전용): `app/fonts/fonts.ts`에서 `next/font/local`로 불러오고 `app/layout.tsx`의 `<html>`에 붙입니다. 굵기 300/500/700, `preload: false`. `font-family: var(--font-family-logo)`(`globals.css`에 정의)로 씁니다. 다른 글자에는 쓰지 않습니다.
+    - 미리 받기: 거의 모든 화면이 쓰는 글자 묶음(스크립트의 `PRELOAD`: 91번은 400/500/700, 89·90번은 500/700, 약 98KB)은 `pretendard.css`에서 빼고 `app/fonts/pretendard-preload.ts`(생성 파일)에 `next/font/local` 호출로 만듭니다. `font-family`는 `Pretendard`, `unicode-range`는 그 묶음의 범위입니다. `app/layout.tsx`가 이 파일을 불러오므로 모든 화면에 `<link rel="preload">`가 붙어, 화면을 처음 그리기 전에 받기 시작합니다. 묶음은 화면들이 실제로 받는 묶음을 재서 고릅니다. 대부분의 화면이 쓰지 않는 묶음을 미리 받으면 데이터만 낭비합니다.
+    - 대체 글꼴 크기: `app/fonts/pretendard-fallback.css`에 `Pretendard Fallback Malgun`(Windows)과 `Pretendard Fallback Noto`(Android)를 `local()`로 정의하고, 글자 범위(한글, 띄어쓰기, 영문·기호, 숫자)별로 `size-adjust`·`ascent-override`·`descent-override`를 줍니다. `globals.css`의 `--font-pretendard`가 이 둘을 `--font-family-base`의 `Pretendard` 바로 뒤에 넣습니다. 그래서 Pretendard를 받는 동안에도 글자 폭이 거의 같고, Pretendard로 바뀔 때 줄바꿈이 달라지지 않습니다. 값은 Pretendard와 잰 폭 비율입니다(파일 머리말 참고). iOS·macOS 글꼴(Apple SD Gothic Neo)은 맞추지 않았습니다.
+    - GmarketSans(로고 글자 전용): `app/fonts/fonts.ts`에서 `next/font/local`로 불러오고 `app/layout.tsx`의 `<html>`에 붙입니다. 굵기 300/500/700, `preload: false`. `font-family: var(--font-family-logo)`(`globals.css`에 정의)로 씁니다. 다른 글자에는 쓰지 않습니다. 로고 글자는 영문뿐이라 파일에는 U+0020-007E만 남겼고(굵기마다 약 0.5MB → 약 17KB), `@font-face`에도 그 `unicode-range`를 줍니다. 원본은 SIL OFL 1.1이고 "Gmarket Sans Font"가 예약 글꼴 이름이라, 잘라낸 파일은 글꼴 안 이름을 "REMAKE Logo Latin"으로 바꾸고 저작권·라이선스 정보는 그대로 둡니다. 로고에 영문 외 글자를 넣으려면 원본을 fontTools(`pyftsubset`)로 다시 잘라야 합니다.
 - 화면 전체 높이는 `100dvh`, 하단 고정 요소는 `env(safe-area-inset-bottom)`을 더합니다.
 - 대부분 플랫하게 만들고, 글래스 효과는 피그마에서 글래스가 걸린 요소에만 씁니다.
 - 두 줄 이상으로 줄바꿈되는 글은 줄 간격을 150%로 줍니다(`font` 토큰 뒤에 `line-height: 1.5`). 피그마 텍스트 스타일이 140%여도 마찬가지입니다. 한 줄짜리 글은 토큰의 줄 간격을 그대로 씁니다.

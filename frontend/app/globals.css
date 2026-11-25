@@ -18,6 +18,10 @@
 
   /* font: 본문은 tokens.css의 --font-family-base(Pretendard), 로고 글자만 GmarketSans */
   --font-family-logo: var(--font-gmarket), var(--font-family-base);
+  /* --font-family-base 맨 앞에 들어가는 자리(tokens.css). Pretendard 바로 뒤에 크기를 맞춘 대체 글꼴을 둬서
+     Pretendard를 받는 동안에도 글자 폭이 같게 보이게 한다(app/fonts/pretendard-fallback.css) */
+  --font-pretendard:
+    "Pretendard Variable", Pretendard, "Pretendard Fallback Malgun", "Pretendard Fallback Noto";
 }
 
 *,

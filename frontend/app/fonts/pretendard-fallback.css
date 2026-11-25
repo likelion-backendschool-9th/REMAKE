@@ -1,0 +1,153 @@
+/* Pretendard를 받는 동안 대신 보이는 기기 글꼴의 크기를 Pretendard에 맞춘다(blueprint §6).
+   맞추지 않으면 기본 글꼴로 그렸다가 Pretendard로 바뀔 때 글자 폭이 달라 줄바꿈·칩 폭이 출렁인다.
+   (맑은 고딕으로 그린 한글 문구는 Pretendard보다 약 15% 넓음)
+
+   값 구하는 법(2026-11-26 측정):
+   - size-adjust: Pretendard와 대체 글꼴로 같은 글을 쟀을 때의 폭 비율. 한글, 띄어쓰기, 영문·기호,
+     숫자의 비율이 서로 달라(맑은 고딕 기준 약 86%, 70%, 100%, 106%) 글자 범위를 넷으로 나눠 따로 맞춘다
+   - ascent/descent-override: Pretendard의 hhea 값(1950/2048, 494/2048)을 size-adjust로 나눈 값.
+     기준선 위치를 Pretendard와 같게 해서 바뀔 때 글자가 위아래로 움직이지 않게 한다
+   iOS·macOS 기본 한글 글꼴(Apple SD Gothic Neo)은 파일이 없어 재지 못해 맞추지 않았다.
+
+   Pretendard가 가진 글자 범위(영문·숫자·기호, 한글)에만 쓴다. Pretendard에 없는 글자(한자·이모지 등)는
+   크기를 바꾸지 않은 원래 기기 글꼴로 그려진다. 글꼴 순서는 globals.css의 --font-pretendard. */
+
+/* Windows: 맑은 고딕. 500은 가까운 400을 쓴다(맑은 고딕에 500 없음) */
+@font-face {
+  font-family: "Pretendard Fallback Malgun";
+  font-weight: 400;
+  src: local("Malgun Gothic"), local("MalgunGothic");
+  size-adjust: 70%;
+  ascent-override: 136.02%;
+  descent-override: 34.46%;
+  line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0;
+}
+
+@font-face {
+  font-family: "Pretendard Fallback Malgun";
+  font-weight: 400;
+  src: local("Malgun Gothic"), local("MalgunGothic");
+  size-adjust: 100%;
+  ascent-override: 95.21%;
+  descent-override: 24.12%;
+  line-gap-override: 0%;
+  unicode-range: U+0021-002F, U+003A-007E, U+00A1-00FF;
+}
+
+@font-face {
+  font-family: "Pretendard Fallback Malgun";
+  font-weight: 400;
+  src: local("Malgun Gothic"), local("MalgunGothic");
+  size-adjust: 106.5%;
+  ascent-override: 89.4%;
+  descent-override: 22.65%;
+  line-gap-override: 0%;
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: "Pretendard Fallback Malgun";
+  font-weight: 400;
+  src: local("Malgun Gothic"), local("MalgunGothic");
+  size-adjust: 86.43%;
+  ascent-override: 110.16%;
+  descent-override: 27.91%;
+  line-gap-override: 0%;
+  unicode-range: U+3131-318E, U+AC00-D7A3;
+}
+
+@font-face {
+  font-family: "Pretendard Fallback Malgun";
+  font-weight: 700;
+  src: local("Malgun Gothic Bold"), local("MalgunGothicBold");
+  size-adjust: 66%;
+  ascent-override: 144.27%;
+  descent-override: 36.55%;
+  line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0;
+}
+
+@font-face {
+  font-family: "Pretendard Fallback Malgun";
+  font-weight: 700;
+  src: local("Malgun Gothic Bold"), local("MalgunGothicBold");
+  size-adjust: 100%;
+  ascent-override: 95.21%;
+  descent-override: 24.12%;
+  line-gap-override: 0%;
+  unicode-range: U+0021-002F, U+003A-007E, U+00A1-00FF;
+}
+
+@font-face {
+  font-family: "Pretendard Fallback Malgun";
+  font-weight: 700;
+  src: local("Malgun Gothic Bold"), local("MalgunGothicBold");
+  size-adjust: 106%;
+  ascent-override: 89.83%;
+  descent-override: 22.76%;
+  line-gap-override: 0%;
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: "Pretendard Fallback Malgun";
+  font-weight: 700;
+  src: local("Malgun Gothic Bold"), local("MalgunGothicBold");
+  size-adjust: 86.43%;
+  ascent-override: 110.16%;
+  descent-override: 27.91%;
+  line-gap-override: 0%;
+  unicode-range: U+3131-318E, U+AC00-D7A3;
+}
+
+/* Android: Noto Sans CJK KR(같은 글자 모양인 Noto Sans KR로 측정). 기기에 보통 Regular만 있어
+   굵은 글자는 브라우저가 굵게 만든다 */
+@font-face {
+  font-family: "Pretendard Fallback Noto";
+  font-weight: 400;
+  src:
+    local("Noto Sans CJK KR Regular"), local("NotoSansCJKkr-Regular"),
+    local("Noto Sans KR Regular"), local("NotoSansKR-Regular");
+  size-adjust: 88%;
+  ascent-override: 108.2%;
+  descent-override: 27.41%;
+  line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0;
+}
+
+@font-face {
+  font-family: "Pretendard Fallback Noto";
+  font-weight: 400;
+  src:
+    local("Noto Sans CJK KR Regular"), local("NotoSansCJKkr-Regular"),
+    local("Noto Sans KR Regular"), local("NotoSansKR-Regular");
+  size-adjust: 98%;
+  ascent-override: 97.16%;
+  descent-override: 24.61%;
+  line-gap-override: 0%;
+  unicode-range: U+0021-002F, U+003A-007E, U+00A1-00FF;
+}
+
+@font-face {
+  font-family: "Pretendard Fallback Noto";
+  font-weight: 400;
+  src:
+    local("Noto Sans CJK KR Regular"), local("NotoSansCJKkr-Regular"),
+    local("Noto Sans KR Regular"), local("NotoSansKR-Regular");
+  size-adjust: 106%;
+  ascent-override: 89.83%;
+  descent-override: 22.76%;
+  line-gap-override: 0%;
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: "Pretendard Fallback Noto";
+  font-weight: 400;
+  src:
+    local("Noto Sans CJK KR Regular"), local("NotoSansCJKkr-Regular"),
+    local("Noto Sans KR Regular"), local("NotoSansKR-Regular");
+  size-adjust: 93.94%;
+  ascent-override: 101.36%;
+  descent-override: 25.68%;
+  line-gap-override: 0%;
+  unicode-range: U+3131-318E, U+AC00-D7A3;
+}
