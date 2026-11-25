@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 /**
  * 월 달력(API 39). 기간은 완성된(COMPLETED) 식단표만 보여 준다.
  * 생성 중·실패 식단표는 끝 날짜가 없고 칸도 없어 넣지 않는다(#144 준호 님 제안 A, 결정되면 CALENDAR_STATUS만 바꾼다).
+ * hasAnyMealPlan(빈 화면 조건)도 같은 상태로 센다: 첫 식단표를 만드는 중이면 아직 false다.
  */
 @Service
 @RequiredArgsConstructor
@@ -49,6 +50,7 @@ public class MealPlanCalendarService implements GetMealPlanCalendarUseCase {
 				.distinct()
 				.sorted()
 				.toList();
-		return new MealPlanCalendar(month, periods, datesWithMeals);
+		boolean hasAnyMealPlan = !periods.isEmpty() || loadMealPlanPort.existsWithStatus(userId, CALENDAR_STATUS);
+		return new MealPlanCalendar(month, hasAnyMealPlan, periods, datesWithMeals);
 	}
 }

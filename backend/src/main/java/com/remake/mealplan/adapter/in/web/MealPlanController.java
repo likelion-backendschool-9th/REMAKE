@@ -40,6 +40,7 @@ public class MealPlanController {
 
 	@Operation(summary = "식단표 월 달력", description = """
 			그 달의 식단표 기간과 식단이 있는 날짜. 지난 달도 볼 수 있습니다. 식단이 없으면 빈 목록입니다.
+			hasAnyMealPlan은 완성된 식단표가 하나라도 있는지(달 상관없이)로, false면 화면이 달력 대신 빈 화면을 보입니다.
 			완성된 식단표만 기간에 들어갑니다(생성 중·실패는 #144 결정 전까지 넣지 않음). month 형식이 틀리면 INVALID_INPUT.""")
 	@GetMapping("/calendar")
 	public MealPlanCalendarResponse calendar(@LoginUserId Long userId,

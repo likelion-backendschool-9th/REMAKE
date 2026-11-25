@@ -44,6 +44,11 @@ class MealPlanPersistenceAdapter
 	}
 
 	@Override
+	public boolean existsWithStatus(Long userId, MealPlanStatus status) {
+		return mealPlanRepository.existsByUserIdAndStatus(userId, status);
+	}
+
+	@Override
 	public Optional<MealPlan> loadById(Long mealPlanId) {
 		return mealPlanRepository.findById(mealPlanId).map(MealPlanJpaEntity::toDomain);
 	}

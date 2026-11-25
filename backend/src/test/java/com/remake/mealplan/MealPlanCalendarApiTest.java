@@ -16,6 +16,7 @@ import com.remake.global.web.LoginUserIdArgumentResolver;
 import com.remake.support.IntegrationTestSupport;
 
 // API 39 식단표 월 달력. 기간은 완성된 식단표만(#144 제안 A), 날짜는 칸이 있는 날.
+// hasAnyMealPlan은 완성된 식단표가 하나라도 있는지(달 상관없이, 빈 화면 조건).
 class MealPlanCalendarApiTest extends IntegrationTestSupport {
 
 	private static final String URL = "/api/v1/user/meal-plans/calendar";
@@ -49,12 +50,13 @@ class MealPlanCalendarApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 식단이_없는_달은_빈_목록이다() throws Exception {
+	void 식단표를_만든_적이_없으면_빈_목록이고_hasAnyMealPlan이_false다() throws Exception {
 		Long userId = createUser();
 
 		calendar(userId, "2026-03")
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.month").value("2026-03"))
+				.andExpect(jsonPath("$.hasAnyMealPlan").value(false))
 				.andExpect(jsonPath("$.periods", empty()))
 				.andExpect(jsonPath("$.datesWithMeals", empty()));
 	}
@@ -79,12 +81,40 @@ class MealPlanCalendarApiTest extends IntegrationTestSupport {
 
 		calendar(userId, "2026-03")
 				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.hasAnyMealPlan").value(true))
 				.andExpect(jsonPath("$.periods[*].mealPlanId").value(contains(crossing.intValue(), march.intValue())))
 				.andExpect(jsonPath("$.periods[0].startDate").value("2026-02-26"))
 				.andExpect(jsonPath("$.periods[0].endDate").value("2026-03-02"))
 				.andExpect(jsonPath("$.periods[1].startDate").value("2026-03-10"))
 				.andExpect(jsonPath("$.periods[1].endDate").value("2026-03-12"))
 				.andExpect(jsonPath("$.datesWithMeals").value(contains("2026-03-02", "2026-03-10", "2026-03-12")));
+	}
+
+	@Test
+	void 다른_달에만_완성_식단표가_있으면_빈_달이어도_hasAnyMealPlan이_true다() throws Exception {
+		Long userId = createUser();
+		Long january = plan(userId, LocalDate.of(2026, 1, 10), 3, "COMPLETED");
+		slot(userId, january, LocalDate.of(2026, 1, 10));
+
+		calendar(userId, "2026-03")
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.hasAnyMealPlan").value(true))
+				.andExpect(jsonPath("$.periods", empty()))
+				.andExpect(jsonPath("$.datesWithMeals", empty()));
+	}
+
+	@Test
+	void 생성_중이거나_실패한_식단표만_있으면_hasAnyMealPlan이_false다() throws Exception {
+		Long userId = createUser();
+		plan(userId, LocalDate.of(2026, 3, 5), null, "FAILED");
+		plan(userId, LocalDate.of(2026, 3, 10), null, "GENERATING");
+		// 다른 회원의 완성 식단표는 세지 않는다
+		plan(createUser(), LocalDate.of(2026, 3, 1), 2, "COMPLETED");
+
+		calendar(userId, "2026-03")
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.hasAnyMealPlan").value(false))
+				.andExpect(jsonPath("$.periods", empty()));
 	}
 
 	@Test

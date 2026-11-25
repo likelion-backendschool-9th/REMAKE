@@ -13,6 +13,9 @@ public interface LoadMealPlanPort {
 	/** 회원의 식단표 중 GENERATING이 있는지. */
 	boolean existsGenerating(Long userId);
 
+	/** 회원의 식단표 중 그 상태가 하나라도 있는지(날짜 상관없이). */
+	boolean existsWithStatus(Long userId, MealPlanStatus status);
+
 	Optional<MealPlan> loadById(Long mealPlanId);
 
 	/** 회원의 식단표 중 그 상태이고 시작일이 from~to(둘 다 포함)인 것. 시작일·id 순. */
