@@ -124,6 +124,7 @@ export function ShareRecipeContainer({
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             required
+            clearLabel="레시피 제목 지우기"
           />
         </div>
 
