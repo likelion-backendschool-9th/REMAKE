@@ -48,6 +48,11 @@ class SavedRecipePersistenceAdapter implements SavedRecipePort {
 	}
 
 	@Override
+	public void deleteAllByUserId(Long userId) {
+		repository.deleteAllByUserId(userId);
+	}
+
+	@Override
 	public void updateFavorite(Long userId, Long recipeId, boolean favorite) {
 		repository.updateFavorite(userId, recipeId, favorite);
 	}

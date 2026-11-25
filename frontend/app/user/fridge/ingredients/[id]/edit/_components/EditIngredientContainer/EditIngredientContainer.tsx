@@ -9,15 +9,10 @@ import { BottomBar } from "@/components/BottomBar/BottomBar";
 import { Button } from "@/components/Button/Button";
 import { ConfirmModal } from "@/components/ConfirmModal/ConfirmModal";
 import { IconButton } from "@/components/IconButton/IconButton";
+import { IngredientForm, type IngredientSheet } from "@/components/IngredientForm/IngredientForm";
 import { IngredientRow } from "@/components/IngredientRow/IngredientRow";
 import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
-import { getCategoryImage } from "@/lib/ingredients";
-
-import {
-  IngredientForm,
-  type IngredientSheet,
-} from "../../../../_components/IngredientForm/IngredientForm";
 import {
   describeIngredient,
   type IngredientDetail,
@@ -25,7 +20,8 @@ import {
   isDraftChanged,
   isDraftComplete,
   toDraft,
-} from "../../../../_lib/ingredient-form";
+} from "@/lib/ingredient-form";
+import { getCategoryImage } from "@/lib/ingredients";
 
 import styles from "./EditIngredientContainer.module.css";
 

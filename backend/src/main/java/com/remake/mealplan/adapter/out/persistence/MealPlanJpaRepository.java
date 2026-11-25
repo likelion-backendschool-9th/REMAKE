@@ -28,4 +28,6 @@ interface MealPlanJpaRepository extends JpaRepository<MealPlanJpaEntity, Long> {
 	/** 달력(API 39). idx_meal_plans_user_start_date(user_id, start_date) 인덱스를 탄다. */
 	List<MealPlanJpaEntity> findByUserIdAndStatusAndStartDateBetweenOrderByStartDateAscIdAsc(Long userId,
 			MealPlanStatus status, LocalDate from, LocalDate to);
+
+	void deleteByUserId(Long userId);
 }

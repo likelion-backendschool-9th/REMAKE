@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.mealplan.application.port.out.DeleteMealPlansForUserPort;
 import com.remake.mealplan.application.port.out.LoadMealPlanPort;
 import com.remake.mealplan.application.port.out.LoadMealPlanSlotPort;
 import com.remake.mealplan.application.port.out.SaveMealPlanPort;
@@ -26,8 +27,8 @@ import lombok.RequiredArgsConstructor;
 /** 식단표·칸 읽기·저장 Port 구현. 엔티티는 이 패키지 밖으로 나가지 않는다. */
 @Component
 @RequiredArgsConstructor
-class MealPlanPersistenceAdapter
-		implements LoadMealPlanPort, SaveMealPlanPort, LoadMealPlanSlotPort, SaveMealPlanSlotPort {
+class MealPlanPersistenceAdapter implements LoadMealPlanPort, SaveMealPlanPort, LoadMealPlanSlotPort,
+		SaveMealPlanSlotPort, DeleteMealPlansForUserPort {
 
 	/** V6__create_meal_plans.sql의 "회원당 생성 중인 식단표는 하나" 인덱스 */
 	static final String GENERATING_UNIQUE_INDEX = "uk_meal_plans_user_generating";
@@ -121,6 +122,12 @@ class MealPlanPersistenceAdapter
 		if (!slotIds.isEmpty()) {
 			slotRepository.deleteAllByIdInBatch(slotIds);
 		}
+	}
+
+	@Override
+	public void deleteAllByUserId(Long userId) {
+		// meal_plan_slots는 meal_plans ON DELETE CASCADE
+		mealPlanRepository.deleteByUserId(userId);
 	}
 
 	private static List<MealPlanSlot> toSortedDomain(List<MealPlanSlotJpaEntity> entities) {

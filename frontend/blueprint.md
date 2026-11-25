@@ -155,11 +155,12 @@ Source: WBS v2 §3 "Frontend URL" (2026-11-22). Format `/{role}/{feature}/{resou
 | `/user/fridge/ingredients/[id]/edit`         | p2.1 Edit ingredient                      | Value sheets, delete icon                                                    |
 | `/user/receipt/receipts`                     | p3 Receipts                               | Month picker, weekly groups                                                  |
 | `/user/receipt/receipts/[id]`                | p3.2 Receipt detail                       | Delete modal inside                                                          |
-| `/user/receipt/scan`                         | p3.1 Camera / image upload                |                                                                              |
+| `/user/receipt/scan`                         | p3.1 Camera / image upload                | Device camera app via file input; no in-app camera (domain-rules 3)          |
 | `/user/receipt/scan/result`                  | p3.3 OCR result                           | Skeleton while waiting; OCR failure is a state of this URL                   |
 | `/user/receipt/scan/items/new`               | p3.3.2 Add OCR item                       |                                                                              |
 | `/user/receipt/scan/items/[index]/edit`      | p3.3.1 Edit OCR item                      | Edits stay in screen state until registration                                |
 | `/user/receipt/patterns`                     | p3.4 My spending                          |                                                                              |
+| `/user/receipt/patterns/discarded`           | p3.4.1 Discarded this month               | Opened from "N월 버린 식비" on p3.4; `?month=2026-11`                        |
 | `/user/recipe/saved-recipes`                 | p4.1 Recipes (main)                       | Weekly TOP 3, saved list, quick-generate modal inside                        |
 | `/user/recipe/custom`                        | p4.1.2 Custom recipe                      | Selections only, no free text                                                |
 | `/user/recipe/results/[id]`                  | p4.1.3 Generation result                  | Loading, failure, and quota-used-up are states of this URL                   |
@@ -216,6 +217,10 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
   - GmarketSans (logo text only): loaded with `next/font/local` in `app/fonts/fonts.ts` and attached to `<html>` in `app/layout.tsx`. Weights 300/500/700, `preload: false`. Use `font-family: var(--font-family-logo)` (defined in `globals.css`). Do not use it for other text.
 - Full-screen height uses `100dvh`. Bottom-fixed elements add `env(safe-area-inset-bottom)`.
 - Mostly flat. Apply glass effects only to elements that have them in Figma.
+- Text that wraps to two or more lines uses a line height of 150% (`line-height: 1.5` after the `font` token), even when the Figma text style says 140%. Single-line text keeps the token line height.
+- Use interaction colors (the primary blue `--color-text-primary` / `--color-brand-primary` and link styles) only on buttons and links. Do not use them for plain text, counts, or decoration, so that blue always means "this can be tapped".
+- Never use a placeholder in place of a label. Every input has a visible label (or a `<label>` the screen reader reads); a placeholder only shows an example value.
+- Give every choice group a default option (radio, segmented control, chips, select sheet, wheel). Preselect the most common or safest option instead of starting with nothing selected. Exception: leave a choice empty when a wrong preselection would be saved silently if the user skips it (e.g. ingredient category, which drives the unit lookup, the category image and filter, and event `category_code`). The save button stays disabled until the user picks one.
 - Put a style file next to its component with the same name. Example: `IngredientCard.tsx` + `IngredientCard.module.css`
 
 ### 6.1 Semantic HTML
@@ -310,7 +315,8 @@ TypeScript runs in `strict` mode, and `any` is not allowed (enforced by ESLint).
 Source: [`docs/agent/spec/domain-rules.md`](../docs/agent/spec/domain-rules.md). Screens follow Figma.
 
 - **No free-text input for AI.** Recipe customization (ingredients, taste, time, tools, method, cuisine, excluded allergens) and meal-plan settings (start date, purpose, meals, servings) are selections only. Send IDs and enums.
-- **Expiry state**: show the `status` and `dDay` the server returns (DANGER = expired or D-DAY, SOON = D-1 to D-3, OK = later). Do not recompute them with the device clock.
+- **Expiry state**: show the `status` and `dDay` the server returns (DANGER = expired or D-DAY, SOON = D-1 to D-3, OK = later). Do not recompute them with the device clock. Exception: the OCR result before registration (p3.3) has no server value because it is not stored and the user edits the expiry; compute it with the KST date (`getExpiry` in `app/user/receipt/scan/_lib/scan.ts`).
+- **Today**: when a screen needs today's date (month picker, blocking future dates, D-N), use `todayInKst()` from `lib/dayjs.ts`, not `dayjs()`. The server counts days in KST, so a device in another time zone would be off by a day near midnight.
 - **Labels**: do not add an "AI가 생성한 레시피" label or a "참고용 식단" label (policy v4: neither is in Figma). The AI-results disclaimer lives only in the terms of service, Article 5 (11/24 terms decision).
 - **Receipt flow**: scan → loading screen (synchronous wait) → result and confirm screen → save. Nothing is saved until the user confirms. Leaving the result screen discards the OCR result and sends `receipt_result_abandoned`. A confirmed receipt cannot be edited, only deleted; fix ingredient data later in the fridge.
 - **Quantity input**: stepper steps are g and ml 50, kg and L 0.5, EA/PACK/BUNCH/PIECE/SHEET 1. Typed input accepts numbers and decimals only, no fractions. The fridge uses 9 units (G, KG, ML, L, EA, PACK, BUNCH, PIECE, SHEET); recipes use all 14, and recipe amounts may be shown as 1/2, 1/3, or 1/4.

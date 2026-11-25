@@ -9,4 +9,6 @@ import com.remake.quota.domain.UsageType;
 interface UsageLogJpaRepository extends JpaRepository<UsageLogJpaEntity, Long> {
 
 	int countByUserIdAndTypeAndCreatedAtGreaterThanEqual(Long userId, UsageType type, LocalDateTime from);
+
+	void deleteByUserId(Long userId);
 }

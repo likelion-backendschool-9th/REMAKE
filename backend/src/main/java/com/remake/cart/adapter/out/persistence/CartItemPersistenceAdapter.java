@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import com.remake.cart.application.port.out.DeleteCartItemsForUserPort;
 import com.remake.cart.application.port.out.InsertCartItemPort;
 import com.remake.cart.application.port.out.LoadCartItemPort;
 import com.remake.cart.application.port.out.SaveCartItemPort;
@@ -16,7 +17,8 @@ import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
-public class CartItemPersistenceAdapter implements LoadCartItemPort, SaveCartItemPort, InsertCartItemPort {
+public class CartItemPersistenceAdapter
+		implements LoadCartItemPort, SaveCartItemPort, InsertCartItemPort, DeleteCartItemsForUserPort {
 	private final CartItemJpaRepository repository;
 	private final JdbcTemplate jdbcTemplate;
 
@@ -58,5 +60,10 @@ public class CartItemPersistenceAdapter implements LoadCartItemPort, SaveCartIte
 	@Override
 	public void delete(Long cartItemId) {
 		repository.deleteById(cartItemId);
+	}
+
+	@Override
+	public void deleteAllByUserId(Long userId) {
+		repository.deleteByUserId(userId);
 	}
 }

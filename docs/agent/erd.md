@@ -819,7 +819,7 @@ These values appear on screens but have no column. They are computed from the so
 | p3 receipts | Month total, week totals, per-receipt amount and "N food items" | Sum and count of `receipt_items.price` (by `receipts.purchased_on`) |
 | p3 receipts | "N won more than my average" | Compare with the average monthly total of the last 6 months |
 | p3.4 consumption pattern | This month's spending, vs average, category share, per-day amount and items | `receipt_items` + ingredients added without a receipt (`ingredients.receipt_item_id` empty and `price` set, by registration date). An empty price means fridge-only |
-| Discarded cost screen (to be added) | Discarded food cost this month | Sum of `ingredient_logs.cost_amount` |
+| Discarded food screen (p3.4.1, API proposed in #248) | Discarded food cost this month | Sum of `ingredient_logs.cost_amount` |
 | p1.3 settings | N allergies | Count of `user_excluded_ingredients` |
 | p4.1 recipes | N saved recipes, "ready now" filter | Count of `saved_recipes`; compare `recipe_ingredients.name` with my `ingredients.name` |
 | p4.1.4.1 shared detail | Heart (save) count, red-bordered ingredients (ones I do not have) | Count of `saved_recipes` by `shared_recipe_id`; name comparison |
