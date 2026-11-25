@@ -2,6 +2,7 @@ package com.remake.ingredient.application.service;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +25,7 @@ import com.remake.ingredient.domain.ExpiryPolicy;
 import com.remake.ingredient.domain.Ingredient;
 import com.remake.ingredient.domain.IngredientCategory;
 import com.remake.ingredient.domain.IngredientUnit;
+import com.remake.receipt.application.port.in.RecordManualIngredientExpenseUseCase;
 
 import lombok.RequiredArgsConstructor;
 
@@ -38,6 +40,7 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase,
 
 	private final LoadIngredientCategoryPort loadIngredientCategoryPort;
 	private final SaveIngredientPort saveIngredientPort;
+	private final RecordManualIngredientExpenseUseCase manualExpenses;
 	private final ResolveIngredientUnitUseCase resolveIngredientUnitUseCase;
 	private final EventTracker eventTracker;
 	private final Clock clock;
@@ -45,7 +48,7 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase,
 	@Override
 	@Transactional
 	public Long registerIngredient(RegisterIngredientCommand command) {
-		return register(command, LocalDate.now(clock)).id();
+		return register(command, LocalDateTime.now(clock), false).id();
 	}
 
 	@Override
@@ -54,9 +57,9 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase,
 		if (commands == null) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT, "등록할 재료가 없습니다.");
 		}
-		LocalDate today = LocalDate.now(clock);
+		LocalDateTime registeredAt = LocalDateTime.now(clock);
 		return commands.stream()
-				.map(command -> register(command, today).id())
+				.map(command -> register(command, registeredAt, false).id())
 				.toList();
 	}
 
@@ -67,15 +70,11 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase,
 				|| c.receiptItemId() != null || c.price() != null)) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT);
 		}
-		LocalDate today = LocalDate.now(clock);
-		return commands.stream().map(command -> register(command, today, true).id()).toList();
+		LocalDateTime registeredAt = LocalDateTime.now(clock);
+		return commands.stream().map(command -> register(command, registeredAt, true).id()).toList();
 	}
 
-	private Ingredient register(RegisterIngredientCommand command, LocalDate today) {
-		return register(command, today, false);
-	}
-
-	private Ingredient register(RegisterIngredientCommand command, LocalDate today, boolean fromCart) {
+	private Ingredient register(RegisterIngredientCommand command, LocalDateTime registeredAt, boolean fromCart) {
 		if (command == null || command.categoryCode() == null) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT, "카테고리는 필수입니다.");
 		}
@@ -85,7 +84,7 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase,
 		LocalDate expirationDate = command.expirationDate();
 		if (expirationDate == null) {
 			// 소비기한을 모르면 기준일(영수증은 구매일, 없으면 오늘)에 카테고리 기본 보관 일수를 더해 추정한다.
-			LocalDate baseDate = command.expirationBaseDate() != null ? command.expirationBaseDate() : today;
+			LocalDate baseDate = command.expirationBaseDate() != null ? command.expirationBaseDate() : registeredAt.toLocalDate();
 			expirationDate = ExpiryPolicy.estimateExpirationDate(baseDate, category.defaultShelfLifeDays());
 		}
 
@@ -98,6 +97,10 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase,
 					command.name(), command.storage(), expirationDate, command.amount(), unit,
 					command.price());
 			Ingredient saved = saveIngredientPort.save(ingredient);
+			// 영수증 재료는 영수증 삭제 후에도 직접 등록 지출로 취급하지 않는다.
+			if (command.receiptItemId() == null) {
+				manualExpenses.record(saved, registeredAt);
+			}
 			trackAdded(saved, category, command.receiptItemId() != null, fromCart);
 			return saved;
 		} catch (IllegalArgumentException e) {

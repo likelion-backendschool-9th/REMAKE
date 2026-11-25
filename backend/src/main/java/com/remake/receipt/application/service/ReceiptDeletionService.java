@@ -10,6 +10,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.receipt.application.port.out.ManualIngredientExpensePort;
 import com.remake.receipt.application.port.out.ReceiptHistoryPort;
 import com.remake.receipt.application.port.out.ReceiptHistoryPort.StoredReceipt;
 import com.remake.receipt.application.port.out.ReceiptImageDeletionPort;
@@ -27,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 class ReceiptDeletionService {
 
 	private final ReceiptHistoryPort receipts;
+	private final ManualIngredientExpensePort manualExpenses;
 	private final ReceiptImageDeletionPort pendingImages;
 	private final ReceiptImageDeletionService imageDeletion;
 
@@ -55,6 +57,7 @@ class ReceiptDeletionService {
 	/** 탈퇴 시 회원의 영수증을 모두 지우고 사진 삭제를 큐에 넣는다. */
 	@Transactional
 	public void deleteAllForUser(Long userId) {
+		manualExpenses.deleteAllForUser(userId);
 		List<String> imageKeys = receipts.deleteAllForUser(userId);
 		for (String imageKey : imageKeys) {
 			if (imageKey == null || imageKey.isBlank()) {
