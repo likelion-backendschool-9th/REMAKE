@@ -42,11 +42,11 @@
 | 항목 | 규칙 | 상태 |
 | --- | --- | --- |
 | 위치 | 레시피 탭 "금주의 레시피" TOP 3 카드 + 전체 보기 → "금주의 인기 레시피"(/user/recipe/shared-recipes). 내 레시피/공유 공간 전환 탭 없음 | 확정 |
-| TOP 3 카드 | 순위 번호·사진·제목·재료 요약 +N. 순위 변동은 보여주지 않음. 3개보다 적으면 빈 화면(추가 예정) | 확정(피그마) / 빈 화면은 화면 대기 |
+| TOP 3 카드 | 순위 번호·사진·제목·재료 요약 +N. 순위 변동은 보여주지 않음. 이번 주 유효 저장 1건 이상인 공개 글만 최대 3개 반환하고, 대상이 부족하면 0~2개만 반환. 저장 0건 글로 빈 순위를 채우지 않음 | 확정 / 빈 화면은 화면 대기 |
 | 인기 레시피 목록 | "11월 셋째 주", 인기순(기본)·최신순, 검색, 행(순위·사진·제목·재료 요약 +N·순위 변동). 인기순은 이번 주 저장 수 TOP 100 | 확정 |
 | 순위 변동 | 지난주 순위와 비교해 파란 ↑N·빨간 ↓N. 지난주 순위가 없으면 "—". 순위가 같을 때 표기는 제안("—") | 확정 / 같은 순위는 제안 |
-| 최신순 | 순위·변동 대신 "—", 오른쪽에 공유한 시간(1분 전~30일 전) | 확정(피그마) |
-| 인기순 집계 | 이번 주(월요일 시작)에 받은 저장 수, 동점이면 먼저 공유한 것이 앞 | 확정 / 동점은 제안 |
+| 최신순 | 저장 수와 관계없이 전체 공개 글을 공유 시각순으로 표시. 순위·변동 대신 "—", 오른쪽에 공유한 시간(1분 전~30일 전) | 확정 |
+| 인기순 집계 | KST 월요일 00시부터 현재까지 받은 저장 중 유지 중인 수. 공유 시점 제한 없이 집계하며, 유효 저장 0건 글은 순위 부여 전에 제외해 최대 100개 반환. 동점이면 먼저 공유한 것이 앞 | 확정(저장 0건 제외: 2026-11-25, #255 리뷰 3번 결정) / 동점은 제안 |
 | 검색 | 공유 레시피 검색, 결과 0건이면 빈 화면(추가 예정) | 확정(피그마) / 빈 화면은 화면 대기 |
 | 공유 대상 | 내가 Remake로 만든 레시피만. 다른 사람 레시피를 저장한 것은 공유 못 함 | 확정 |
 | 익명 | 닉네임·작성자 정보를 보여주지 않음 | 확정 |
@@ -65,7 +65,8 @@
 | 보상 대상 | 지난주 저장 수 1~3위 레시피를 올린 회원. 레시피 순위마다 줘서 한 사람이 여러 번 받을 수 있음 | 확정 |
 | 보상 횟수 | 1위 +10회, 2위 +6회, 3위 +3회(AI 레시피 생성 횟수), 받은 날부터 한 달 안에 사용 | 확정 |
 | 집계·지급 | 월요일 00:00~일요일 24:00(한국 시간)이 한 주. 매주 월요일 0시 작업이 지난주 TOP 100 순위를 기록하고 보상을 줌. 그때까지 남아 있는 저장만 셈. 같은 주 보상은 두 번 주지 않음 | 확정 |
-| 집계 예외 | 본인 저장은 세지 않음, 저장 수 0이면 보상 없음 | 제안 |
+| 집계 예외 | 본인 저장은 세지 않음 | 제안 |
+| 주간 확정 순위 대상 | 해당 주 유효 저장이 1건 이상인 공개 글만 최대 100개 기록. 0건 글은 확정 순위·보상에서도 제외하며 #92에 같은 기준을 적용 | 확정(2026-11-25) |
 | 보상 안내 | 보상 화면·알림 없음. 남은 생성 횟수에만 반영 | 확정 |
 
 ## API
@@ -78,8 +79,8 @@
 | 46 | PATCH | `/user/cart-items/{id}` | 수량 변경 | `{ amount }` | `200 { id, amount, unit }` | cart_items |
 | 47 | POST | `/user/cart-items/move-to-fridge` | 고른 항목을 입력 없이 냉장고에 넣음. 보관 위치·소비기한은 카테고리 기본값, 가격 없음(11/21 답 31). 넣은 항목은 장바구니에서 빠짐(API 답 3) | `{ ids: [] }` | `200 { addedCount }` | cart_items, ingredients, ingredient_categories |
 | 48 | POST | `/user/cart-items/delete` | 선택 삭제 | `{ ids: [] }` | `204` | cart_items |
-| 49 | GET | `/user/shared-recipes/weekly-top` | 이번 주 저장 수 TOP 3 | `-` | `200 { items: [{ rank, id, title, imageUrl, ingredientSummary, extraIngredientCount }] }` | shared_recipes, saved_recipes |
-| 50 | GET | `/user/shared-recipes/ranking` | 인기순 = 이번 주 저장 수 TOP 100, 순위 변동은 지난주 순위와 비교(11/20 결정). 최신순 = 공유 시각순, 순위 대신 "—" | `?sort=popular\|latest &q= &page=0&size=20` | `200 { weekLabel, content: [{ id, rank?, rankChange?, title, imageUrl, ingredientSummary, extraIngredientCount, sharedAt }], page, size, totalElements, hasNext }` | shared_recipes, saved_recipes, shared_recipe_weekly_ranks |
+| 49 | GET | `/user/shared-recipes/weekly-top` | 이번 주 유효 저장 1건 이상인 공개 글 중 최대 3개. 대상이 부족하면 0~2개만 반환 | `-` | `200 { items: [{ rank, id, title, imageUrl, ingredientSummary, extraIngredientCount }] }` | shared_recipes, saved_recipes |
+| 50 | GET | `/user/shared-recipes/ranking` | 인기순 = 이번 주 유효 저장 1건 이상인 공개 글 중 최대 100개, 순위 변동은 지난주 순위와 비교. 최신순 = 저장 수와 관계없이 전체 공개 글의 공유 시각순, 순위 대신 "—" | `?sort=popular\|latest &q= &page=0&size=20` | `200 { weekLabel, content: [{ id, rank?, rankChange?, title, imageUrl, ingredientSummary, extraIngredientCount, sharedAt }], page, size, totalElements, hasNext }` | shared_recipes, saved_recipes, shared_recipe_weekly_ranks |
 | 51 | POST | `/user/shared-recipes` | 공유. 제목·사진 1장 필수, 확인 모달 없음(11/21 답 19). 같은 레시피는 한 주에 한 번(11/21 답 17) | `multipart image + payload { recipeId, title }` | `201 { id }` | shared_recipes |
 | 52 | GET | `/user/shared-recipes/{id}` | 공유 상세. 완전 익명(작성자 정보 없음). 재료마다 내가 가졌는지(빨간 테두리, 11/21 답 20) | `-` | `200 { id, title, imageUrl, servings, cookMinutes, tips, ingredients: [{ name, amount, unit, have }], steps: [{ stepNo, content }], saveCount, saved }` | shared_recipes, recipes, recipe_ingredients, recipe_steps, saved_recipes, ingredients |
 | 53 | PUT | `/user/shared-recipes/{id}/save` | 저장(사본 없이 원본을 내 목록에). 부족한 재료는 장바구니로 | `본문 없음` | `200 { saveCount, saved: true, cartAddedCount }` | saved_recipes, cart_items |
@@ -114,9 +115,9 @@
 - 영수증 등록(03)은 #57 합의에 따라 선택한 행만 차감해요. 아래 영수증 연동 계약을 사용하며, 이름만으로 자동 삭제하지 않아요.
 - 공유는 내가 만든 레시피만, 같은 레시피는 한 주(월요일 시작)에 한 번. 사진 1장·제목 필수, 확인 모달 없음. 완전 익명이라 어떤 응답에도 작성자 정보를 넣지 않아요.
 - 공유 저장은 사본 없이 원본을 내 저장 목록에 넣어요(`saved_recipes`). 내게 없는 재료는 장바구니로. 저장을 취소해도 장바구니 항목은 그대로예요.
-- 인기순은 이번 주 저장 수 TOP 100, 순위 변동은 지난주 기록(`shared_recipe_weekly_ranks`)과 비교해요. 동점은 먼저 공유한 것이 앞(제안).
+- TOP 3·인기순은 공유 시점과 관계없이 이번 주 유효 저장이 1건 이상인 공개 글만 대상으로 해요. 0건 글을 제외한 뒤 순위를 매겨 최대 3개·100개를 반환하며, 대상이 부족하면 있는 만큼만 반환해요. 저장 취소로 0건이 되면 빠지고, 최신순에는 저장 수와 관계없이 남아요. 순위 변동은 지난주 기록(`shared_recipe_weekly_ranks`)과 비교해요. 본인 저장 제외·동점은 먼저 공유한 것이 앞이라는 규칙은 제안 상태를 유지해요. 저장 0건 제외는 2026-11-25 #255 리뷰 3번에서 확정했어요.
 - 신고는 사유 4개, 같은 글은 한 사람이 한 번만(`REPORT_ALREADY_EXISTS`). 자동 숨김 없이 운영자가 검수하고, 처리 화면은 어드민 디자인 때 정해요.
-- 매주 월요일 0시 작업: 지난주 TOP 100 순위를 기록하고 1~3위 레시피를 올린 회원에게 +10·+6·+3회(레시피 순위마다, 한 달 유효)를 `generation_quota_grants`로 줘요. 그때 남아 있는 저장만 세고, 같은 주는 두 번 주지 않아요. 본인 저장 제외·저장 0이면 보상 없음은 제안이에요.
+- 매주 월요일 0시 작업(#92): 지난주 유효 저장이 1건 이상인 글의 순위를 최대 100개 기록하고 1~3위 레시피를 올린 회원에게 +10·+6·+3회(레시피 순위마다, 한 달 유효)를 `generation_quota_grants`로 줘요. 그때 남아 있는 저장만 세고, 0건 글은 순위·보상에서 제외하며 같은 주는 두 번 주지 않아요. 본인 저장 제외는 제안이에요.
 - 일정이 밀리면 장바구니·공유 공간(P1)부터 2차로 넘겨요.
 
 ## 지금 코드와 다른 점
