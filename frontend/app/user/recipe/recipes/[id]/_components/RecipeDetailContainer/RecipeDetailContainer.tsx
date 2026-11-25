@@ -88,7 +88,7 @@ export function RecipeDetailContainer({
       {isPlaying ? (
         <ReadingIndicator onStop={reader.stop} />
       ) : (
-        <BottomBar>
+        <BottomBar className={styles.bottom}>
           {/* 요리 완료 → 재료 차감(p4.1.1.2) */}
           <Button
             disabled={!recipe}
