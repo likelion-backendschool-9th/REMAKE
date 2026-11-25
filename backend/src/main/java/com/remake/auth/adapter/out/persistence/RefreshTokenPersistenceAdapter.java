@@ -31,4 +31,9 @@ class RefreshTokenPersistenceAdapter implements LoadRefreshTokenPort, SaveRefres
 				}).orElseGet(() -> RefreshTokenJpaEntity.from(token));
 		return repository.save(entity).toDomain();
 	}
+
+	@Override
+	public void deleteAllByUserId(Long userId) {
+		repository.deleteByUserId(userId);
+	}
 }

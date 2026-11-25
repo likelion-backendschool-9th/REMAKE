@@ -20,6 +20,9 @@ public interface ReceiptHistoryPort {
 
 	boolean delete(Long userId, Long id);
 
+	/** 탈퇴 시 회원의 영수증을 모두 지우고, 지운 행의 image_key 목록을 돌려준다. */
+	List<String> deleteAllForUser(Long userId);
+
 	record StoredReceipt(Long id, ReceiptStoreCode storeCode, String storeName, LocalDate purchasedOn,
 			String imageKey) {
 	}
