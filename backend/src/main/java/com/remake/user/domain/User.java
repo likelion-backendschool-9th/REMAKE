@@ -89,7 +89,7 @@ public record User(
 			throw new IllegalArgumentException("식단 목적이 필요합니다.");
 		}
 		return new User(id, provider, providerUserId, email, role, status, plan, householdSize, onboardingCompleted,
-				recipeSupplementEnabled, notificationEnabled, mealPurpose, deletedAt);
+				recipeSupplementEnabled, notificationEnabled, mealPurpose, deletedAt, createdAt);
 	}
 
 	private static void validateHouseholdSize(int householdSize) {
