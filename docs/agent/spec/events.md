@@ -2,7 +2,7 @@
 
 Source of truth: the Korean "Remake event definition (Figma-based)" v2 (2026-11-22, Notion "이벤트 v2"; not in the repo). Names are snake_case and fixed; to add or rename an event, update that document first and ask the user.
 
-- Scale: 79 events (P0 36, P1 37, P2 5, plus E50 with priority (open, #144); CLIENT 45, SERVER 34), 103 properties (v2 has 102; `deleted_item_count` restored 11/24), 21 metrics (north star + 20 KPIs), 41 screen codes.
+- Scale: 79 events (P0 36, P1 37, P2 5, plus E50 with priority (open, #53); CLIENT 45, SERVER 34), 103 properties (v2 has 102; `deleted_item_count` restored 11/24), 21 metrics (north star + 20 KPIs), 41 screen codes.
 - API numbers are the numbers in [`api-summary.md`](api-summary.md); error codes are from [`errors.md`](errors.md).
 - Admin screens are not in Figma, so there are no admin events or dashboards.
 
@@ -124,7 +124,7 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 | E47 | `step_play_started` | CLIENT | P2 | recipe_id | - | 56 (frontend) | frontend (assigned by 이준호) |
 | E48 | `cook_deduct_viewed` | CLIENT | P1 | recipe_id, deduct_item_count | M08 | 56 (frontend) | frontend (assigned by 이준호) |
 | E49 | `cook_completed` | SERVER | P0 | recipe_id, deducted_count, adjusted_count, from_meal_plan | M08, M11, M17 | 32 `POST /user/recipes/{id}/cook` | 김종수 |
-| E50 | `cook_feedback_answered` | CLIENT | (open, #144) | recipe_id, recommended | - | 56 (frontend). Fridge (p2) bottom sheet "이 레시피 어땠나요?" after the cook deduction | frontend (assigned by 이준호) |
+| E50 | `cook_feedback_answered` | CLIENT | (open, #53) | recipe_id, recommended | - | 56 (frontend). Fridge (p2) bottom sheet "이 레시피 어땠나요?" after the cook deduction | frontend (assigned by 이준호) |
 | E77 | `recipe_favorited` | CLIENT | P2 | is_favorite | - | 56 (frontend) | frontend (assigned by 이준호) |
 
 ### Meal plan

@@ -21,31 +21,19 @@ final class ReceiptQuantity {
 		BigDecimal purchaseQuantity = request.purchaseQuantity();
 		Volume volume = request.volume();
 
-		int group = measurementGroup(unit);
 		int volumeGroup = volume == null ? 0 : measurementGroup(volume.unit());
 		if (volume != null && volumeGroup == 0) {
 			throw new InvalidFieldException("items[" + itemIndex + "].volume.unit", "용량에는 무게 또는 부피 단위를 사용해 주세요.");
 		}
 		if (amount == null) {
-			if (group != 0 && purchaseQuantity != null && group != volumeGroup) {
-				unit = IngredientUnit.PACK;
-			}
-			if (measurementGroup(unit) == 0) {
-				amount = purchaseQuantity;
-			} else if (volume != null && group == volumeGroup
-					&& (volume.scope() == VolumeScope.TOTAL || purchaseQuantity != null)) {
-				amount = volume.amount().scaleByPowerOfTen(unitScale(volume.unit()) - unitScale(unit));
-				if (volume.scope() == VolumeScope.PER_PACK) {
-					amount = amount.multiply(purchaseQuantity);
-				}
-			}
+			var calculated = calculate(unit, purchaseQuantity, volume);
+			amount = calculated.amount();
+			unit = calculated.unit();
 		}
-
 		if (amount == null) {
 			throw new InvalidFieldException("items[" + itemIndex + "].purchaseQuantity", "구매 수량을 확인해 주세요.");
 		}
-		if (amount.signum() <= 0 || amount.stripTrailingZeros().scale() > 3
-				|| amount.compareTo(new BigDecimal("10000000")) >= 0) {
+		if (!isValid(amount)) {
 			throw new InvalidFieldException("items[" + itemIndex + "].amount", "등록할 품목 수량을 확인해 주세요.");
 		}
 		var deductions = request.cartDeductions();
@@ -57,6 +45,33 @@ final class ReceiptQuantity {
 		}
 		return new Item(request.name().strip(), request.categoryCode(), amount, unit, request.price(), request.storage(),
 				request.expirationDate());
+	}
+
+	static Calculated calculate(IngredientUnit unit, BigDecimal purchaseQuantity, Volume volume) {
+		int group = measurementGroup(unit);
+		if (group == 0) {
+			return new Calculated(purchaseQuantity, unit);
+		}
+		if (volume == null || group != measurementGroup(volume.unit())) {
+			return purchaseQuantity == null ? new Calculated(null, unit)
+					: new Calculated(purchaseQuantity, IngredientUnit.PACK);
+		}
+		if (volume.scope() == VolumeScope.PER_PACK && purchaseQuantity == null) {
+			return new Calculated(null, unit);
+		}
+		BigDecimal amount = volume.amount().scaleByPowerOfTen(unitScale(volume.unit()) - unitScale(unit));
+		if (volume.scope() == VolumeScope.PER_PACK) {
+			amount = amount.multiply(purchaseQuantity);
+		}
+		return new Calculated(amount, unit);
+	}
+
+	static boolean isValid(BigDecimal amount) {
+		return amount != null && amount.signum() > 0 && amount.stripTrailingZeros().scale() <= 3
+				&& amount.compareTo(new BigDecimal("10000000")) < 0;
+	}
+
+	record Calculated(BigDecimal amount, IngredientUnit unit) {
 	}
 
 	private static int measurementGroup(IngredientUnit unit) {

@@ -6,7 +6,7 @@
 
 화면 코드: `receipt_list`(p3), `receipt_scan`(p3.1), `receipt_loading`(p3.3 스켈레톤), `receipt_scan_error`(OCR 실패 화면), `receipt_result`(p3.3), `receipt_item_edit`(p3.3.1), `receipt_item_add`(p3.3.2), `receipt_detail`(p3.2).
 API: 20 스캔, 21 등록, 22 목록, 23 상세, 24 삭제. 정기 작업: 영수증 정리(매일 새벽).
-**구현 상태(2026-11-24 기준)**: 등록 API(21, #49)와 `receipts`·`receipt_items` 테이블(V19)은 #224로 구현됐다. 스캔(20, #72), 목록·상세·삭제(22~24, #61, PR #238 진행 중), 6개월 정리 작업(#62)은 구현 전이라 해당 시나리오는 **막힘**으로 시작한다. 등록 시나리오는 스캔 없이 등록 API를 직접 불러 실행한다. 장바구니 차감 UseCase는 #219.
+**구현 상태(2026-11-25 기준)**: 등록 API(21, #49)와 `receipts`·`receipt_items` 테이블(V19)은 #224로 구현됐다. 목록·상세·삭제(22~24, #61, PR #238)와 6개월 정리 작업(#62)은 구현됐다. 스캔(20, #72)은 구현 전이라 해당 시나리오는 **막힘**으로 시작한다. 등록 시나리오는 스캔 없이 등록 API를 직접 불러 실행한다. 장바구니 차감 UseCase는 #219.
 v3에서 달라진 것(시나리오에서 뺌): 서버 초안(`SCANNED`)·7일 정리, `duplicateSuspected` 경고, 영수증 수정 API, 확정 전 목록·다시 열기, 스캔 하루 한도·`OCR_LIMIT_EXCEEDED`, `Idempotency-Key`, 분석 완료 알림(`RECEIPT_DONE`), OCR 결과의 품목 빼기, 보관 1년, 이전 `/expenses/monthly`.
 
 ### 스캔 (p3.1 · p3.3 · API 20)
