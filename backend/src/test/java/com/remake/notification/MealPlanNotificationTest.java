@@ -53,7 +53,7 @@ class MealPlanNotificationTest extends IntegrationTestSupport {
 	void 알림을_꺼도_식단표_완성_알림을_만들고_목록에_mealPlanId가_나온다() throws Exception {
 		Long mealPlanId = insertMealPlan();
 
-		createMealPlanNotificationUseCase.notifyMealPlanCompleted(me, mealPlanId, START, 5);
+		createMealPlanNotificationUseCase.notifyMealPlanCompleted(me, mealPlanId, START, 5, 5, 0);
 		awaitEventWrites();
 
 		mockMvc.perform(as(me, get("/api/v1/user/notifications")))

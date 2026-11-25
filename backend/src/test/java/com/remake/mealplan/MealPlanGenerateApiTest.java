@@ -143,6 +143,12 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		return jdbcTemplate.queryForObject(sql, Integer.class, args);
 	}
 
+	private String completedMessage(Long planId) {
+		return jdbcTemplate.queryForObject(
+				"SELECT message FROM notifications WHERE type = 'MEAL_PLAN_COMPLETED' AND meal_plan_id = ?",
+				String.class, planId);
+	}
+
 	private String eventProperty(String eventName, String property) {
 		awaitEventWrites();
 		return jdbcTemplate.queryForObject("SELECT properties->>? FROM events WHERE event_name = ?", String.class,
@@ -310,6 +316,7 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		assertThat(count("""
 				SELECT COUNT(*) FROM notifications WHERE user_id = ? AND type = 'MEAL_PLAN_COMPLETED' AND meal_plan_id = ?
 				""", userId, planId)).isEqualTo(1);
+		assertThat(completedMessage(planId)).endsWith("부터 5일치 식단표가 완성됐어요");
 		assertThat(eventProperty("meal_plan_generated", "generated_days")).isEqualTo("5");
 		assertThat(eventProperty("meal_plan_generated", "shortage_count")).isEqualTo("5");
 		assertThat(eventProperty("meal_plan_generated", "remaining_quota")).isEqualTo("0");
@@ -318,7 +325,7 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 냉장고_재료가_모자라면_만들_수_있는_날까지만_만든다() throws Exception {
+	void 냉장고_재료가_모자라면_만들_수_있는_날까지만_만들고_완성_알림에_부족_문장을_붙인다() throws Exception {
 		Long userId = createUser();
 		Long fridgeId = fridgeGrams(userId, "대파", 250);
 		aiUses(fridgeId, 100);
@@ -329,6 +336,8 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		Long planId = newestPlanId(userId);
 		assertThat(mealPlan(planId)).containsEntry("status", "COMPLETED").containsEntry("generated_days", 2);
 		assertThat(slotDates(planId)).containsExactly(TODAY, TODAY.plusDays(1));
+		// 장바구니 담기(#91) 전이라 담은 개수가 0이어서 장바구니 문장은 없다
+		assertThat(completedMessage(planId)).endsWith("부터 2일치 식단표가 완성됐어요. 재료가 부족해 2일치만 만들었어요");
 	}
 
 	@Test

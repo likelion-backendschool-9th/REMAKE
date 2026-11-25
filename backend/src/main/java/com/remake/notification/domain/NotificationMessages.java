@@ -26,13 +26,30 @@ public final class NotificationMessages {
 		return "기한이 지난 재료 " + count + "개가 있어요. 냉장고를 확인해 주세요";
 	}
 
-	/** 제안 문구(정책 8장). 식단표 시작일과 실제 생성 일수. */
-	public static String mealPlanCompleted(LocalDate startDate, int generatedDays) {
+	/**
+	 * 제안 문구(정책 8장). 식단표 시작일과 실제 생성 일수.
+	 *
+	 * <p>재료가 부족해 최대 일수를 못 채웠으면 "N일치만 만들었어요"를, 그때 장바구니에 담은 재료가 있으면
+	 * "부족한 재료 N개를 장바구니에 담았어요"를 덧붙인다(domain-rules 5장, 문구는 제안). 따로 토스트는 없다.
+	 *
+	 * @param maxDays        접수 때 요금제의 최대 일수(일반 5, 구독 7)
+	 * @param cartAddedCount 부족 재료로 장바구니에 담은 행 수
+	 */
+	public static String mealPlanCompleted(LocalDate startDate, int generatedDays, int maxDays, int cartAddedCount) {
 		Objects.requireNonNull(startDate, "startDate");
 		if (generatedDays < 1) {
 			throw new IllegalArgumentException("generatedDays must be >= 1");
 		}
-		return startDate.format(MEAL_PLAN_START) + "부터 " + generatedDays + "일치 식단표가 완성됐어요";
+		StringBuilder message = new StringBuilder()
+				.append(startDate.format(MEAL_PLAN_START)).append("부터 ")
+				.append(generatedDays).append("일치 식단표가 완성됐어요");
+		if (generatedDays < maxDays) {
+			message.append(". 재료가 부족해 ").append(generatedDays).append("일치만 만들었어요");
+			if (cartAddedCount > 0) {
+				message.append(". 부족한 재료 ").append(cartAddedCount).append("개를 장바구니에 담았어요");
+			}
+		}
+		return message.toString();
 	}
 
 	public static String mealPlanFailed(MealPlanFailReason reason) {
