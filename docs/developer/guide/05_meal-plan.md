@@ -83,6 +83,10 @@
 - 부족 재료는 07의 `AddCartItemsUseCase`로 장바구니에 담아요. 개수는 완성 알림 문구("부족한 재료 N개를 장바구니에 담았어요")와 E53 `cart_added_count`에 남겨요.
 - 겹침: `overwrite` 없이 온 요청이 기존 식단과 겹치면 409 `MEAL_PLAN_OVERLAP`(details.overlappingDates)로 거절하고 차감하지 않아요. 프론트가 모달을 띄운 뒤 `overwrite: true`로 다시 보내요. 덮어쓰면 요청 기간(시작일부터 최대 일수) 안의 기존 칸을 모두 지우되, 오늘 이미 요리한 끼니(`cooked_at`)는 남기고 채우지 않아요. 지울 칸이 잡아 둔 재료는 배정 계산에서 처음부터 빼서 새 식단이 쓰고, 재료가 모자라 못 만든 뒤쪽 날은 빈 날이 돼요(#78, 11/24 변경). 기존 칸은 서버 작업이 완성될 때 지워요(생성이 실패하면 기존 식단이 그대로 남아요).
 - 식단 삭제·교체는 오늘부터의 칸만 돼요. 지난 날짜는 `PAST_DATE_NOT_ALLOWED`.
+- 레시피 교체(42)는 식단표 생성과 같은 AI·지시문으로 그 칸 하나를 만들어요(그 식단표의 목적·인원). 사용자가 기다리므로 호출 한 번 25초, 실패하면 1회 다시 불러요(#50).
+  - 재료는 생성과 같은 배정 계산이에요. 다른 칸이 잡아 둔 양은 빼고, 그 칸이 쓰던 양은 돌려받고, 칸 날짜 전에 소비기한이 끝나는 재료는 빼요. 쓸 수 있는 냉장고 재료가 하나도 없으면 AI를 부르지 않고 422 `MEAL_PLAN_NO_INGREDIENTS`(차감 없음, 11/25 제안 #176).
+  - 같은 요리가 다시 나오지 않게 바꾸기 전 레시피가 쓰던 냉장고 재료는 주재료로 쓰지 말라고 보내고, 바꾸기 전 레시피·같은 날 다른 끼니의 이름도 피하게 해요(11/25 실측: 이름만 보내면 10번 중 9번이 같은 주재료였음).
+  - 오늘 요리한 칸도 바꿀 수 있고, 바꾸면 요리 완료 표시(`cooked_at`)가 지워져요. 바꾸기 전 레시피와 장바구니 항목은 그대로 둬요.
 - 식단에 배정해도 냉장고 재료는 빠지지 않고, 요리 완료(04) 때만 빠져요.
 - 식단 목적은 마지막 선택을 `users.last_meal_purpose`에 기억해 다음 기본값으로 써요. 의료 목적·칼로리 목표는 없고 "참고용 식단" 문구도 넣지 않아요.
 - 식단표 생성은 비동기예요. API 38이 시작일·횟수·겹침을 확인하고 `meal_plans`를 `GENERATING`으로 만든 뒤 202로 바로 응답해요. 서버 작업이 칸과 장바구니를 채우고 `COMPLETED`로 바꾼 뒤 차감하고 `MEAL_PLAN_COMPLETED` 알림("11월 24일부터 5일치 식단표가 완성됐어요", 제안)을 만들고 `notifications.meal_plan_id`에 식단표를 연결해요(누르면 p5에서 시작일). 재료 부족·AI 오류·시간 초과면 `FAILED`로 바꾸고 차감 없이 `MEAL_PLAN_FAILED` 알림을 만들어요(AI 오류·시간 초과 "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요", 재료 부족 "냉장고 재료가 부족해 식단표를 만들지 못했어요. 생성 횟수는 차감되지 않았어요", 누르면 생성 설정 화면). 실패 사유 칸은 두지 않아요(E54 `error_code`로만). 알림은 알림 받기 설정과 관계없이 만들어요.
@@ -97,7 +101,7 @@
 
 ## 에러 코드
 
-응답: `INVALID_INPUT`, `MEAL_PLAN_LIMIT_EXCEEDED`, `MEAL_PLAN_OVERLAP`, `MEAL_PLAN_IN_PROGRESS`, `PAST_DATE_NOT_ALLOWED`, `SLOT_NOT_FOUND`, `GENERATION_LIMIT_EXCEEDED`, 레시피 교체(42)의 `AI_UPSTREAM_ERROR`·`AI_TIMEOUT`·`AI_INVALID_RESPONSE`. 식단표 생성(38) 실패 알림의 사유(응답 아님): `MEAL_PLAN_NO_INGREDIENTS`, `AI_UPSTREAM_ERROR`, `AI_TIMEOUT`, `AI_INVALID_RESPONSE`. 공통 코드(`UNAUTHORIZED`, `TOKEN_EXPIRED`, `RATE_LIMITED`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`)는 모든 API에 나올 수 있어요. API별 코드와 화면 표시는 [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)에 있어요.
+응답: `INVALID_INPUT`, `MEAL_PLAN_LIMIT_EXCEEDED`, `MEAL_PLAN_OVERLAP`, `MEAL_PLAN_IN_PROGRESS`, `PAST_DATE_NOT_ALLOWED`, `SLOT_NOT_FOUND`, `GENERATION_LIMIT_EXCEEDED`, 레시피 교체(42)의 `MEAL_PLAN_NO_INGREDIENTS`(422)·`AI_UPSTREAM_ERROR`·`AI_TIMEOUT`·`AI_INVALID_RESPONSE`. 식단표 생성(38) 실패 알림의 사유(응답 아님): `MEAL_PLAN_NO_INGREDIENTS`, `AI_UPSTREAM_ERROR`, `AI_TIMEOUT`, `AI_INVALID_RESPONSE`. 공통 코드(`UNAUTHORIZED`, `TOKEN_EXPIRED`, `RATE_LIMITED`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`)는 모든 API에 나올 수 있어요. API별 코드와 화면 표시는 [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)에 있어요.
 
 ## 발행 이벤트
 

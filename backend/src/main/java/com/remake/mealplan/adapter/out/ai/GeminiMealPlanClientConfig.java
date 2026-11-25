@@ -18,6 +18,7 @@ import com.remake.global.config.GeminiProperties;
 class GeminiMealPlanClientConfig {
 
 	static final String GEMINI_MEAL_PLAN_REST_CLIENT = "geminiMealPlanRestClient";
+	static final String GEMINI_MEAL_SLOT_REPLACE_REST_CLIENT = "geminiMealSlotReplaceRestClient";
 
 	/**
 	 * Gemini가 식단표 전체를 보내 줄 때까지 기다리는 시간. 어림(30~60초)보다 넉넉히 잡은 값이라 실측 뒤 고친다.
@@ -32,6 +33,22 @@ class GeminiMealPlanClientConfig {
 		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
 		requestFactory.setConnectTimeout(properties.requestTimeout());
 		requestFactory.setReadTimeout(READ_TIMEOUT);
+		return restClientBuilder.clone()
+				.baseUrl(properties.baseUrl())
+				.requestFactory(requestFactory)
+				.build();
+	}
+
+	/**
+	 * 식단 칸 교체(API 42)용. 사용자가 응답을 기다리므로 레시피 생성과 같은 호출 한 번 제한(gemini.request-timeout, 기본 25초)을 쓴다.
+	 * 칸 하나라 답이 짧다. 1회 재시도까지 합쳐 Nginx 60초 안에 끝난다(#50).
+	 */
+	@Bean
+	@Qualifier(GEMINI_MEAL_SLOT_REPLACE_REST_CLIENT)
+	RestClient geminiMealSlotReplaceRestClient(RestClient.Builder restClientBuilder, GeminiProperties properties) {
+		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+		requestFactory.setConnectTimeout(properties.requestTimeout());
+		requestFactory.setReadTimeout(properties.requestTimeout());
 		return restClientBuilder.clone()
 				.baseUrl(properties.baseUrl())
 				.requestFactory(requestFactory)
