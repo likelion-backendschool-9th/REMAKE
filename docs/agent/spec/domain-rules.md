@@ -228,7 +228,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Meal-plan notifications are created even for members who turned notifications off.
 - Target: generation within 30 s, tune after measuring (measured from acceptance to job completion; the completion notification is sent at that moment). The 60 s limit is for recipes only; the server job's time limit is (open, #122).
 - A new generate request while one of mine is `GENERATING` is rejected with `MEAL_PLAN_IN_PROGRESS` (409, error toast).
-- Overwrite deletes the old overlapping slots when the job completes, so a failed job keeps the existing plan. (deferred, #144): whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap.
+- Overwrite deletes the old overlapping slots when the job completes, so a failed job keeps the existing plan. Calendar and overlap by status (#144, decided 11/25): only `COMPLETED` plans show in the calendar (39) and count for `hasAnyMealPlan`; `GENERATING` and `FAILED` plans are left out. The overlap check works on existing slots, so the plan status does not matter (a `GENERATING` or `FAILED` plan has no slots; a new request while one is `GENERATING` gets `MEAL_PLAN_IN_PROGRESS`).
 
 ## 6. Notifications (이상호)
 
