@@ -14,6 +14,8 @@ interface CartItemJpaRepository extends JpaRepository<CartItemJpaEntity, Long> {
 	List<CartItemJpaEntity> findByUserIdOrderById(Long userId);
 	long countByUserId(Long userId);
 
+	void deleteByUserId(Long userId);
+
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select c from CartItemJpaEntity c where c.userId = :userId and c.id in :ids order by c.id")
 	List<CartItemJpaEntity> findOwnedForUpdate(@Param("userId") Long userId, @Param("ids") List<Long> ids);

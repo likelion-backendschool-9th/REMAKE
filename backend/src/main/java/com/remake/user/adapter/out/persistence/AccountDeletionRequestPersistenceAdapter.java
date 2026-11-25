@@ -2,6 +2,7 @@ package com.remake.user.adapter.out.persistence;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 import org.springframework.stereotype.Component;
 
@@ -33,6 +34,17 @@ class AccountDeletionRequestPersistenceAdapter
 					return existing;
 				}).orElseGet(() -> AccountDeletionRequestJpaEntity.from(request));
 		return repository.save(entity).toDomain();
+	}
+
+	@Override
+	public OptionalInt incrementWrongAttempts(Long id) {
+		int updated = repository.incrementAttemptsIfOpen(id, AccountDeletionRequest.MAX_WRONG_ATTEMPTS);
+		if (updated == 0) {
+			return OptionalInt.empty();
+		}
+		return repository.findById(id)
+				.map(entity -> OptionalInt.of(entity.getAttempts()))
+				.orElse(OptionalInt.empty());
 	}
 
 	@Override

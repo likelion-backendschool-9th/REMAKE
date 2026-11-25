@@ -8,8 +8,10 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.OptionalInt;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -21,20 +23,26 @@ import org.springframework.util.StringUtils;
 import com.remake.auth.application.port.in.DeleteRefreshTokensForUserUseCase;
 import com.remake.auth.application.port.in.ExchangeOAuthProfileUseCase;
 import com.remake.auth.domain.SocialProfile;
+import com.remake.cart.application.port.in.DeleteCartItemsForUserUseCase;
 import com.remake.event.application.port.in.EventTrackCommand;
 import com.remake.event.application.port.in.EventTracker;
 import com.remake.event.domain.EventName;
 import com.remake.event.domain.Screen;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.ingredient.application.port.in.DeleteIngredientsForUserUseCase;
+import com.remake.mealplan.application.port.in.DeleteMealPlansForUserUseCase;
 import com.remake.notification.application.port.in.DeleteUserNotificationsUseCase;
+import com.remake.quota.application.port.in.DeleteUsageLogsForUserUseCase;
+import com.remake.receipt.application.port.in.DeleteReceiptsForUserUseCase;
+import com.remake.recipe.application.port.in.DeleteSavedRecipesForUserUseCase;
 import com.remake.user.application.port.in.DeleteAccountUseCase;
 import com.remake.user.application.port.in.PurgeExpiredDeletionCodesUseCase;
 import com.remake.user.application.port.in.RequestAccountDeletionCodeUseCase;
 import com.remake.user.application.port.out.LoadAccountDeletionRequestPort;
 import com.remake.user.application.port.out.LoadUserPort;
-import com.remake.user.application.port.out.PurgeUserOwnedDataPort;
 import com.remake.user.application.port.out.SaveAccountDeletionRequestPort;
+import com.remake.user.application.port.out.SaveExcludedIngredientPort;
 import com.remake.user.application.port.out.SaveUserPort;
 import com.remake.user.application.port.out.SendDeletionCodeMailPort;
 import com.remake.user.domain.AccountDeletionRequest;
@@ -44,7 +52,7 @@ import com.remake.user.domain.User;
 
 /**
  * 계정 삭제(API 9·10)와 하루 지난 인증번호 정리.
- * 구독 테이블이 아직 없으면 구독 종료 이벤트는 보내지 않는다.
+ * 구독 테이블이 아직 없으면 구독 종료 이벤트는 보내지 않는다(후속 이슈).
  */
 @Service
 public class AccountDeletionService
@@ -57,8 +65,14 @@ public class AccountDeletionService
 	private final LoadAccountDeletionRequestPort loadAccountDeletionRequestPort;
 	private final SaveAccountDeletionRequestPort saveAccountDeletionRequestPort;
 	private final SendDeletionCodeMailPort sendDeletionCodeMailPort;
-	private final PurgeUserOwnedDataPort purgeUserOwnedDataPort;
+	private final SaveExcludedIngredientPort saveExcludedIngredientPort;
 	private final DeleteUserNotificationsUseCase deleteUserNotificationsUseCase;
+	private final DeleteCartItemsForUserUseCase deleteCartItemsForUserUseCase;
+	private final DeleteMealPlansForUserUseCase deleteMealPlansForUserUseCase;
+	private final DeleteSavedRecipesForUserUseCase deleteSavedRecipesForUserUseCase;
+	private final DeleteIngredientsForUserUseCase deleteIngredientsForUserUseCase;
+	private final DeleteReceiptsForUserUseCase deleteReceiptsForUserUseCase;
+	private final DeleteUsageLogsForUserUseCase deleteUsageLogsForUserUseCase;
 	private final DeleteRefreshTokensForUserUseCase deleteRefreshTokensForUserUseCase;
 	private final ExchangeOAuthProfileUseCase exchangeOAuthProfileUseCase;
 	private final EventTracker eventTracker;
@@ -68,8 +82,14 @@ public class AccountDeletionService
 	public AccountDeletionService(LoadUserPort loadUserPort, SaveUserPort saveUserPort,
 			LoadAccountDeletionRequestPort loadAccountDeletionRequestPort,
 			SaveAccountDeletionRequestPort saveAccountDeletionRequestPort,
-			SendDeletionCodeMailPort sendDeletionCodeMailPort, PurgeUserOwnedDataPort purgeUserOwnedDataPort,
+			SendDeletionCodeMailPort sendDeletionCodeMailPort, SaveExcludedIngredientPort saveExcludedIngredientPort,
 			DeleteUserNotificationsUseCase deleteUserNotificationsUseCase,
+			DeleteCartItemsForUserUseCase deleteCartItemsForUserUseCase,
+			DeleteMealPlansForUserUseCase deleteMealPlansForUserUseCase,
+			DeleteSavedRecipesForUserUseCase deleteSavedRecipesForUserUseCase,
+			DeleteIngredientsForUserUseCase deleteIngredientsForUserUseCase,
+			DeleteReceiptsForUserUseCase deleteReceiptsForUserUseCase,
+			DeleteUsageLogsForUserUseCase deleteUsageLogsForUserUseCase,
 			DeleteRefreshTokensForUserUseCase deleteRefreshTokensForUserUseCase,
 			ExchangeOAuthProfileUseCase exchangeOAuthProfileUseCase, EventTracker eventTracker, Clock clock,
 			PlatformTransactionManager transactionManager) {
@@ -78,8 +98,14 @@ public class AccountDeletionService
 		this.loadAccountDeletionRequestPort = loadAccountDeletionRequestPort;
 		this.saveAccountDeletionRequestPort = saveAccountDeletionRequestPort;
 		this.sendDeletionCodeMailPort = sendDeletionCodeMailPort;
-		this.purgeUserOwnedDataPort = purgeUserOwnedDataPort;
+		this.saveExcludedIngredientPort = saveExcludedIngredientPort;
 		this.deleteUserNotificationsUseCase = deleteUserNotificationsUseCase;
+		this.deleteCartItemsForUserUseCase = deleteCartItemsForUserUseCase;
+		this.deleteMealPlansForUserUseCase = deleteMealPlansForUserUseCase;
+		this.deleteSavedRecipesForUserUseCase = deleteSavedRecipesForUserUseCase;
+		this.deleteIngredientsForUserUseCase = deleteIngredientsForUserUseCase;
+		this.deleteReceiptsForUserUseCase = deleteReceiptsForUserUseCase;
+		this.deleteUsageLogsForUserUseCase = deleteUsageLogsForUserUseCase;
 		this.deleteRefreshTokensForUserUseCase = deleteRefreshTokensForUserUseCase;
 		this.exchangeOAuthProfileUseCase = exchangeOAuthProfileUseCase;
 		this.eventTracker = eventTracker;
@@ -127,7 +153,13 @@ public class AccountDeletionService
 		long tenureDays = tenureDays(user, now);
 
 		deleteUserNotificationsUseCase.deleteUserNotifications(user.id());
-		purgeUserOwnedDataPort.purge(user.id());
+		deleteCartItemsForUserUseCase.deleteCartItemsForUser(user.id());
+		deleteMealPlansForUserUseCase.deleteMealPlansForUser(user.id());
+		deleteSavedRecipesForUserUseCase.deleteSavedRecipesForUser(user.id());
+		deleteIngredientsForUserUseCase.deleteIngredientsForUser(user.id());
+		deleteReceiptsForUserUseCase.deleteReceiptsForUser(user.id());
+		deleteUsageLogsForUserUseCase.deleteUsageLogsForUser(user.id());
+		saveExcludedIngredientPort.replaceAll(user.id(), List.of());
 		deleteRefreshTokensForUserUseCase.deleteAllForUser(user.id());
 		saveAccountDeletionRequestPort.deleteAllByUserId(user.id());
 		saveUserPort.save(user.withdraw(now));
@@ -165,17 +197,19 @@ public class AccountDeletionService
 			throw new BusinessException(ErrorCode.DELETION_CODE_EXPIRED);
 		}
 		if (!request.codeHash().equals(hash(plainCode))) {
-			// delete() 트랜잭션이 예외로 롤백돼도 틀린 횟수는 남겨야 한다.
-			AccountDeletionRequest updated = requiresNewTransaction.execute(status -> {
-				request.registerWrongAttempt();
-				return saveAccountDeletionRequestPort.save(request);
-			});
-			if (updated.isLocked()) {
+			// 바깥 TX 롤백과 무관하게, 동시에 틀려도 attempts가 겹치지 않게 DB에서 +1 한다.
+			OptionalInt updatedAttempts = requiresNewTransaction.execute(status ->
+					saveAccountDeletionRequestPort.incrementWrongAttempts(request.id()));
+			if (updatedAttempts == null || updatedAttempts.isEmpty()) {
+				throw new BusinessException(ErrorCode.DELETION_CODE_LOCKED);
+			}
+			int attempts = updatedAttempts.getAsInt();
+			if (attempts >= AccountDeletionRequest.MAX_WRONG_ATTEMPTS) {
 				throw new BusinessException(ErrorCode.DELETION_CODE_LOCKED);
 			}
 			throw new BusinessException(ErrorCode.DELETION_CODE_INVALID,
 					ErrorCode.DELETION_CODE_INVALID.getMessage(),
-					Map.of("remainingAttempts", updated.remainingAttempts()));
+					Map.of("remainingAttempts", AccountDeletionRequest.MAX_WRONG_ATTEMPTS - attempts));
 		}
 		request.markVerified(now);
 		saveAccountDeletionRequestPort.save(request);

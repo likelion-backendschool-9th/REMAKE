@@ -14,9 +14,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -26,13 +34,20 @@ import com.remake.auth.domain.SocialProfile;
 import com.remake.global.config.UploadProperties;
 import com.remake.global.web.LoginUserIdArgumentResolver;
 import com.remake.support.IntegrationTestSupport;
+import com.remake.global.error.BusinessException;
+import com.remake.global.error.ErrorCode;
+import com.remake.user.application.port.in.DeleteAccountUseCase;
 import com.remake.user.application.port.in.PurgeExpiredDeletionCodesUseCase;
 import com.remake.user.domain.AuthProvider;
+import com.remake.user.domain.DeletionMethod;
 
 class AccountDeletionApiTest extends IntegrationTestSupport {
 
 	@Autowired
 	private PurgeExpiredDeletionCodesUseCase purgeExpiredDeletionCodesUseCase;
+
+	@Autowired
+	private DeleteAccountUseCase deleteAccountUseCase;
 
 	@Autowired
 	private UploadProperties uploadProperties;
@@ -112,7 +127,7 @@ class AccountDeletionApiTest extends IntegrationTestSupport {
 				userId)).isZero();
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM receipts WHERE user_id = ?", Integer.class, userId))
 				.isZero();
-		assertThat(Files.exists(imageFile)).isFalse();
+		Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> !Files.exists(imageFile));
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = ?", Integer.class,
 				userId)).isZero();
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM account_deletion_requests WHERE user_id = ?",
@@ -153,6 +168,51 @@ class AccountDeletionApiTest extends IntegrationTestSupport {
 				.andExpect(status().isTooManyRequests())
 				.andExpect(jsonPath("$.code").value("DELETION_CODE_LOCKED"));
 
+		assertThat(jdbcTemplate.queryForObject("SELECT deleted_at FROM users WHERE id = ?", Object.class, userId))
+				.isNull();
+	}
+
+	@Test
+	void 틀린_인증번호를_동시에_보내도_다섯_번에_잠긴다() throws Exception {
+		Long userId = createUserWithEmail(AuthProvider.KAKAO, "kakao-race", "race@example.com");
+		captureDeletionCode(userId);
+
+		// REQUIRES_NEW가 바깥 TX와 커넥션을 동시에 쓰므로, 테스트 풀(기본 10)을 넘기지 않게 3개만 보낸다.
+		int threads = 3;
+		ExecutorService pool = Executors.newFixedThreadPool(threads);
+		CountDownLatch ready = new CountDownLatch(threads);
+		CountDownLatch start = new CountDownLatch(1);
+		AtomicInteger invalid = new AtomicInteger();
+		List<Future<?>> futures = new ArrayList<>();
+		var command = new DeleteAccountUseCase.Command(userId, DeletionMethod.EMAIL_CODE, "000000", null, null, null);
+		for (int i = 0; i < threads; i++) {
+			futures.add(pool.submit(() -> {
+				try {
+					ready.countDown();
+					start.await();
+					deleteAccountUseCase.delete(command);
+				} catch (BusinessException e) {
+					if (e.getErrorCode() != ErrorCode.DELETION_CODE_INVALID) {
+						throw e;
+					}
+					invalid.incrementAndGet();
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			}));
+		}
+		ready.await();
+		start.countDown();
+		for (Future<?> future : futures) {
+			future.get();
+		}
+		pool.shutdownNow();
+
+		// 덮어쓰기면 1에 머물고, 원자적 +1이면 동시 3번이 모두 반영돼 3이 된다.
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT attempts FROM account_deletion_requests WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+				Integer.class, userId)).isEqualTo(threads);
+		assertThat(invalid.get()).isEqualTo(threads);
 		assertThat(jdbcTemplate.queryForObject("SELECT deleted_at FROM users WHERE id = ?", Object.class, userId))
 				.isNull();
 	}

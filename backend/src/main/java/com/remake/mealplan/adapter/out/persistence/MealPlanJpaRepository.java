@@ -24,4 +24,6 @@ interface MealPlanJpaRepository extends JpaRepository<MealPlanJpaEntity, Long> {
 
 	List<MealPlanJpaEntity> findByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(MealPlanStatus status,
 			LocalDateTime createdAt);
+
+	void deleteByUserId(Long userId);
 }

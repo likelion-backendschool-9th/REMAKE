@@ -21,6 +21,8 @@ import com.remake.ingredient.domain.StorageLocation;
  */
 interface IngredientJpaRepository extends JpaRepository<IngredientJpaEntity, Long> {
 
+	void deleteByUserId(Long userId);
+
 	/** 사용자 본인의 재료만 읽는다. 다른 사용자의 재료는 없는 것과 같다. */
 	Optional<IngredientJpaEntity> findByIdAndUserId(Long id, Long userId);
 

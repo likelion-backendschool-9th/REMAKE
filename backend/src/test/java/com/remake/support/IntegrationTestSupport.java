@@ -118,6 +118,7 @@ public abstract class IntegrationTestSupport {
 	protected GeminiMealPlanAdapter mealPlanAiAdapter;
 
 	// 계정 삭제 인증번호 메일. 실제 SMTP를 쓰지 않고 테스트가 평문 번호를 가로챈다.
+	// (MockedAdapterWiringTest가 구체 어댑터 생성자를 검사하므로 포트가 아니라 어댑터를 바꾼다.)
 	@MockitoBean
 	protected LoggingDeletionCodeMailAdapter deletionCodeMailAdapter;
 
