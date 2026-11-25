@@ -1,0 +1,267 @@
+/* 피그마 p3.4-소비 패턴: 앱바 60 아래 월 탭(42), 탭 아래 30에 지출 영역, 그 아래 22에 한 주, 8 굵은 선 아래 37에 그 날 목록 */
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));
+}
+
+/* 월 탭: 높이 42, 옆 16, 아래 선 bg/subtle. 칸은 6등분, 고른 달은 text/title + 아래 파란 선 2 */
+.monthTabs {
+  display: flex;
+  height: 2.625rem;
+  padding: 0 var(--layout-gutter);
+  border-bottom: 1px solid var(--color-bg-subtle);
+}
+
+.monthTab {
+  flex: 1;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--color-text-disabled);
+  font: var(--font-title);
+  cursor: pointer;
+}
+
+.monthTab[aria-current="true"] {
+  border-bottom-color: var(--color-brand-primary);
+  color: var(--color-text-title);
+}
+
+.monthTab:focus-visible,
+.dayButton:focus-visible,
+.discarded:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -2px;
+}
+
+/* 지출: 탭 아래 30, 글과 막대 사이 18, 옆 16 */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+  margin-top: 1.875rem;
+  padding: 0 var(--layout-gutter);
+}
+
+.summaryText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3125rem;
+}
+
+/* "11월 버린 식비 4,700원": 링크라 text/primary, Remake/assist */
+.discarded {
+  color: var(--color-text-primary);
+  font: var(--font-assist);
+  text-decoration: none;
+}
+
+/* "403,771원 지출": 피그마 SemiBold 18(쓰는 굵기에 600이 없어 Remake/header Bold 18) */
+.total {
+  margin-top: -0.125rem;
+  color: var(--color-text-title);
+  font: var(--font-header);
+}
+
+.average {
+  color: var(--color-text-assist);
+  font: var(--font-content);
+}
+
+.summarySkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 막대 높이 14·조각 사이 2·radius 3, 범례는 막대 아래 13 */
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8125rem;
+}
+
+.bar {
+  display: flex;
+  gap: 0.125rem;
+  height: 0.875rem;
+}
+
+.barPart {
+  flex-basis: 0;
+  min-width: 0.25rem;
+  border-radius: 0.1875rem;
+}
+
+/* 범례: 줄 사이 5·칸 사이 10, 색 칸 10(radius 2) + 간격 3 + Regular 12 text/body */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3125rem 0.625rem;
+  padding: 0;
+  list-style: none;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.1875rem;
+  color: var(--color-text-body);
+  font: 400 0.75rem / normal var(--font-family-base);
+}
+
+.legendSwatch {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 0.125rem;
+}
+
+/* 한 주: 지출 아래 22, 위 선 1·아래 굵은 선 8(bg/subtle), 옆 16, 아래 4 */
+.week {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1.375rem;
+  padding: 0 var(--layout-gutter) var(--space-4);
+  border-top: 1px solid var(--color-bg-subtle);
+  border-bottom: 0.5rem solid var(--color-bg-subtle);
+}
+
+.weekRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  align-items: center;
+  justify-items: center;
+}
+
+/* 요일: 위 10, Remake/assist·text/body */
+.weekday {
+  padding-top: 0.625rem;
+  color: var(--color-text-body);
+  font: var(--font-assist);
+}
+
+/* 날: 47 원, Remake/content·text/assist. 고른 날은 회색 원(border/subtle #F5F5F5) + Bold·text/title */
+.dayButton {
+  width: 2.9375rem;
+  height: 2.9375rem;
+  margin-top: var(--space-4);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--color-text-assist);
+  font: var(--font-content);
+  cursor: pointer;
+}
+
+.dayButton[aria-pressed="true"] {
+  background: var(--color-border-subtle);
+  color: var(--color-text-title);
+  font: var(--font-content-strong);
+}
+
+/* 그 달 밖·오늘 뒤의 날: 고를 수 없어 흐리게 */
+.dayButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* 좌우로 미는 주 넘기기: 한 주가 한 쪽, 한 주씩 멈춤. 스크롤바는 숨김 */
+.weekTrack {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+/* 마우스로 끄는 동안: 손을 따라 움직이게 snap을 끄고, 글자 선택을 막는다 */
+.weekTrack[data-dragging="true"] {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
+}
+
+.weekTrack::-webkit-scrollbar {
+  display: none;
+}
+
+.weekPage {
+  display: flex;
+  flex: 0 0 100%;
+  flex-direction: column;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* 그 날 금액: 높이 24, Regular 10 text/body */
+.weekRow:last-child {
+  min-height: 1.5rem;
+}
+
+.dayAmount {
+  color: var(--color-text-body);
+  font: 400 0.625rem / normal var(--font-family-base);
+  white-space: nowrap;
+}
+
+/* 그 날 목록: 굵은 선 아래 37(피그마 콘텐츠 사이 37), 옆 16 */
+.day {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 2.3125rem;
+  padding: 0 var(--layout-gutter);
+}
+
+.dayHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+}
+
+/* "2026년 11월 20일": Remake/content·text/strong, "총 N원": Remake/assist·text/assist */
+.dayTitle {
+  color: var(--color-text-strong);
+  font: var(--font-content);
+}
+
+.dayTotal {
+  color: var(--color-text-assist);
+  font: var(--font-assist);
+}
+
+/* 품목 줄: 사이 5, 아래 선 bg/subtle, 가격 오른쪽 10 안쪽 */
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  padding-right: 0.625rem;
+  border-bottom: 1px solid var(--color-bg-subtle);
+}
+
+.price {
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+.itemSkeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* 빈 리스트: 날짜 아래 가운데 */
+.empty {
+  margin-top: 3.75rem;
+}

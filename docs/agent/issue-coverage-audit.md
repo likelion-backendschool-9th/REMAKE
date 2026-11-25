@@ -65,7 +65,7 @@ There are 12 P0 and 3 P1 issues. Apply the named WBS owners for common, backend,
 | 0.5 | orval type generation | The repo uses openapi-typescript/openapi-fetch; do not infer a tool migration |
 | 0.4·1.7 | 13 revised screens but reference to revision 17 | Verify original lists and actual counts in #183 |
 | 1.8 | Deletion-code errors below the field | Final PR #142 decision: toast for INVALID/EXPIRED/LOCKED |
-| 3.7·프론트 URL 표 | OCR item removal | PR #142 removed removal; keep editing and adding |
+| 3.7·프론트 URL 표 | OCR item removal | PR #142 removed removal; restored on 11/24 (wrong OCR items can be removed). Keep editing and adding |
 | 4.4 | Cooking records | Use ingredient_logs, cook_completed and cooked_at without a recipe_cook_logs table |
 | 4.9·프론트 URL 표 | Feedback location undecided and E50 deferred | Fridge bottom sheet settled; only event priority remains open in #53 |
 | 5.6·프론트 URL 표 | Meal generation waiting/failure screens | 202 acceptance and in-app completion/failure notifications; retain overlap/quota states |
@@ -110,7 +110,7 @@ All IDs below are v2 IDs. A mapping provides tracking, not proof of completion. 
 | 3.4 | Receipt queries, deletion and retention cleanup | 3.5 | [#61](https://github.com/likelion-backendschool-9th/REMAKE/issues/61), [#62](https://github.com/likelion-backendschool-9th/REMAKE/issues/62) | — | Mapped; implementation and verification remain |
 | 3.5 | Spending patterns and daily-item queries | 3.6 | [#73](https://github.com/likelion-backendschool-9th/REMAKE/issues/73) | — | Mapped; implementation and verification remain |
 | 3.6 | Receipt and OCR server events | 11.4 | [#49](https://github.com/likelion-backendschool-9th/REMAKE/issues/49), [#72](https://github.com/likelion-backendschool-9th/REMAKE/issues/72), [#172](https://github.com/likelion-backendschool-9th/REMAKE/issues/172) | — | Mapped; implementation and verification remain |
-| 3.7 | Capture, OCR editing and final registration screens | 3.3, 3.4 | [#101](https://github.com/likelion-backendschool-9th/REMAKE/issues/101), [#102](https://github.com/likelion-backendschool-9th/REMAKE/issues/102), [#173](https://github.com/likelion-backendschool-9th/REMAKE/issues/173) | — | PR #142 removed item removal; retain edit, add and final registration |
+| 3.7 | Capture, OCR editing and final registration screens | 3.3, 3.4 | [#101](https://github.com/likelion-backendschool-9th/REMAKE/issues/101), [#102](https://github.com/likelion-backendschool-9th/REMAKE/issues/102), [#173](https://github.com/likelion-backendschool-9th/REMAKE/issues/173) | — | PR #142 removed item removal; restored on 11/24. Retain edit, add, removal and final registration |
 | 3.8 | Receipt archive, detail and deletion screens | 3.5 | [#103](https://github.com/likelion-backendschool-9th/REMAKE/issues/103) | — | Mapped; implementation and verification remain |
 | 3.9 | My spending screen | 3.7 | [#104](https://github.com/likelion-backendschool-9th/REMAKE/issues/104) | — | Mapped; implementation and verification remain |
 | 4.1 | AI prompts, output format and option validation | 4.1 | [#74](https://github.com/likelion-backendschool-9th/REMAKE/issues/74) | [#156](https://github.com/likelion-backendschool-9th/REMAKE/pull/156) | AI port/adapter baseline complete; #75 connects the APIs |

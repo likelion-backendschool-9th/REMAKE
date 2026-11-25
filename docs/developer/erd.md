@@ -819,7 +819,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | p3 영수증 | 월 합계, 주차 합계, 영수증별 금액·"식재료 N개" | receipt_items.price 합계·개수(receipts.purchased_on 기준) |
 | p3 영수증 | "내 평균보다 N원 더 썼어요" | 최근 6개월 월 합계 평균과 비교 |
 | p3.4 소비 패턴 | 이번 달 지출, 평균 대비, 카테고리 비율, 날짜별 금액·품목 | receipt_items + 영수증 없이 추가한 재료(ingredients.receipt_item_id가 비고 price가 있는 것, 등록일 기준). 가격이 비면 냉장고에만 들어간 것으로 봄(ERD 답 3) |
-| 버린 금액 화면(추가 예정) | 이번 달 버린 식재료 금액 | ingredient_logs.cost_amount 합계(ERD 답 2) |
+| 버린 식재료 화면(p3.4.1, API는 #248에서 제안) | 이번 달 버린 식재료 금액 | ingredient_logs.cost_amount 합계(ERD 답 2) |
 | p1.3 설정 | 알레르기 N개 | user_excluded_ingredients 개수 |
 | p4.1 레시피 | 저장한 레시피 N, "바로 가능" 필터 | saved_recipes 개수, recipe_ingredients.name과 내 ingredients.name 비교 |
 | p4.1.4.1 공유 상세 | 하트(저장) 수, 빨간 테두리 재료(내가 없는 재료) | saved_recipes(shared_recipe_id) 개수, 재료명 비교 |

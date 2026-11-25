@@ -1,0 +1,18 @@
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 영수증 시트 안내(피그마 p3.3.1·p3.3.2): 입력칸 아래 "•" 줄, Remake/assist·text/assist, 두 줄 이상이라 행간 150% */
+.notes {
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  color: var(--color-text-assist);
+  font: var(--font-assist);
+  line-height: 1.5;
+  list-style: none;
+}
+
+.notes li::before {
+  content: "• ";
+}

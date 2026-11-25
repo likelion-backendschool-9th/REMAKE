@@ -2,7 +2,7 @@
 
 Source of truth: the Korean "Remake event definition (Figma-based)" v2 (2026-11-22, Notion "이벤트 v2"; not in the repo). Names are snake_case and fixed; to add or rename an event, update that document first and ask the user.
 
-- Scale: 79 events (P0 36, P1 37, P2 5, plus E50 with priority (open, #144); CLIENT 45, SERVER 34), 102 properties, 21 metrics (north star + 20 KPIs), 41 screen codes.
+- Scale: 79 events (P0 36, P1 37, P2 5, plus E50 with priority (open, #144); CLIENT 45, SERVER 34), 103 properties (v2 has 102; `deleted_item_count` restored 11/24), 21 metrics (north star + 20 KPIs), 41 screen codes.
 - API numbers are the numbers in [`api-summary.md`](api-summary.md); error codes are from [`errors.md`](errors.md).
 - Admin screens are not in Figma, so there are no admin events or dashboards.
 
@@ -102,8 +102,8 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 | E31 | `receipt_scan_failed` | SERVER | P0 | error_code, duration_ms | M03, M10, M16, M20 | 20 `POST /user/receipts/scan` | 이동준 |
 | E32 | `receipt_item_edited` | CLIENT | P0 | item_index, edit_field | M04 | 56 (frontend) | frontend (assigned by 이준호) |
 | E33 | `receipt_item_added_manually` | CLIENT | P1 | (common only) | M04 | 56 (frontend) | frontend (assigned by 이준호) |
-| E34 | `receipt_saved` | SERVER | P0 | receipt_id, registered_count, ocr_item_count, edited_item_count, added_item_count, duration_sec, food_total_amount, cart_removed_count | M04, M05, M12, M17 | 21 `POST /user/receipts` | 이동준 |
-| E76 | `receipt_result_abandoned` | CLIENT | P0 | ocr_item_count, edited_item_count, added_item_count | M04 | 56 (frontend) | frontend (assigned by 이준호) |
+| E34 | `receipt_saved` | SERVER | P0 | receipt_id, registered_count, ocr_item_count, edited_item_count, deleted_item_count, added_item_count, duration_sec, food_total_amount, cart_removed_count | M04, M05, M12, M17 | 21 `POST /user/receipts` | 이동준 |
+| E76 | `receipt_result_abandoned` | CLIENT | P0 | ocr_item_count, edited_item_count, deleted_item_count, added_item_count | M04 | 56 (frontend) | frontend (assigned by 이준호) |
 | E35 | `receipt_list_viewed` | CLIENT | P1 | month_offset, has_comparison | M19 | 56 (frontend) | frontend (assigned by 이준호) |
 | E36 | `receipt_detail_viewed` | CLIENT | P2 | (common only) | - | 56 (frontend) | frontend (assigned by 이준호) |
 | E37 | `receipt_deleted` | CLIENT | P1 | (common only) | - | 56 (frontend) | frontend (assigned by 이준호) |
@@ -219,6 +219,7 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 | `registered_count` | number | >= 0 | E34 |
 | `ocr_item_count` | number | >= 0 | E34, E76 |
 | `edited_item_count` | number | >= 0 | E34, E76 |
+| `deleted_item_count` | number | >= 0; OCR items the user removed before registering (restored 11/24) | E34, E76 |
 | `added_item_count` | number | >= 0 | E34, E76 |
 | `food_total_amount` | number | KRW | E34 |
 | `cart_removed_count` | number | >= 0; actual cart rows deleted at zero after selected receipt deductions (#57), not deducted quantity or request count | E34 |
@@ -287,7 +288,7 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 | M01 | Login to onboarding completion | users with `onboarding_completed` / users with `signup_completed` (within 24 h). Step drop-off from `onboarding_step_completed` | E11, E12, E13 | >= 70% |
 | M02 | First ingredient within 24 h of signup | users with >= 1 `ingredient_added` within 24 h / users with `signup_completed` | E11, E22 | >= 60% |
 | M03 | Receipt OCR success rate | `receipt_scan_succeeded` / (succeeded + failed). Count `RECEIPT_NO_FOOD_ITEMS`, `RECEIPT_TOO_OLD`, `RECEIPT_DUPLICATE` separately from OCR quality | E28, E30, E31 | >= 90% |
-| M04 | OCR item edit rate | sum of `edited_item_count` in `receipt_saved` + `receipt_result_abandoned` / sum of their `ocr_item_count`. Adds are secondary (there is no item removal) | E32, E33, E34, E76 | <= 20% |
+| M04 | OCR item edit rate | sum of `edited_item_count` + `deleted_item_count` in `receipt_saved` + `receipt_result_abandoned` / sum of their `ocr_item_count` (a removed item was read wrongly). Adds are secondary | E32, E33, E34, E76 | <= 20% |
 | M05 | Receipt registration time | per ingredient: receipt = median of `receipt_saved.duration_sec` / `registered_count`; manual = median of `ingredient_added(add_source=manual).duration_sec` | E21, E22, E28, E34 | <= 50% of manual |
 | M06 | Expiry notification to view rate | users with `notification_banner_clicked` or `notification_list_viewed` / users with `notification_sent(expiry_soon)` (same day) | E66, E67, E68 | >= 25% |
 | M07 | Expiring ingredient use rate | `ingredient_used` with `expiry_status` danger or soon / (used + discarded + `ingredient_expired` in the same states) | E19, E25, E26, E27 | >= 70% |
@@ -358,5 +359,5 @@ Values for `screen`, `screen_name`, and `previous_screen`. Screens marked "scree
 - `EventName` (76 values) must follow the 79 events above. Add: `subscription_checkout_started`, `subscription_started`, `subscription_payment_failed`, `subscription_renewed`, `subscription_canceled`, `subscription_ended`, `recipe_favorited`, `meal_plan_overlap_answered`, `meal_slot_deleted`, `meal_slot_replaced`, `meal_slot_replace_failed`, `cart_moved_to_fridge`. Rename `notification_clicked` to `notification_banner_clicked`. Remove: `pwa_install_prompted`, `pwa_installed`, `push_permission_result`, `camera_unavailable` (use `error_shown` with `CAMERA_UNAVAILABLE`), `meal_plan_shortage_shown`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`, `shared_recipe_saved` (use `recipe_saved` with `save_source=shared`).
 - `cook_feedback_answered` (E50) is no longer on hold (11/22): the frontend sends it from the fridge (p2) bottom sheet shown after the cook deduction. Tracking data only (success rate, later improvements); no API or table. In the code, change its property `feedback_value` to `recipe_id` and `recommended`. Priority is (open, #144).
 - The `Screen` enum (25 uppercase values) must become the 41 lowercase screen codes above.
-- Properties removed: `permission_result`, `was_skipped`, `skipped_step_count`, `is_expiration_estimated`, `duplicate_suspected`, `allergen_warning`, `needs_check_count`, `feedback_value` (E50 now uses `recipe_id`, `recommended`), `deleted_item_count` (no item removal on the OCR result), `slot_source`, `has_recipe`, `group_count`, `channel`, `click_from`, `photo_count`.
+- Properties removed: `permission_result`, `was_skipped`, `skipped_step_count`, `is_expiration_estimated`, `duplicate_suspected`, `allergen_warning`, `needs_check_count`, `feedback_value` (E50 now uses `recipe_id`, `recommended`), `slot_source`, `has_recipe`, `group_count`, `channel`, `click_from`, `photo_count`.
 - Priorities now follow the source document. Decision [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58) moved sharing, cart, and reward events to P1; the source keeps them P1. Its admin parts (ADMIN gate, analytics APIs) are on hold because admin screens are not in Figma.

@@ -1,0 +1,64 @@
+/* 피그마 p3.4.1: 헤더 영역 90(서브 헤더 56 + 위아래 17), 요약은 헤더 아래 8, 옆 16 */
+.header {
+  height: 5.625rem;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--space-8) var(--layout-gutter) calc(2.5rem + env(safe-area-inset-bottom));
+}
+
+/* 요약: 줄 사이 4. "11월에 버린 식재료" Remake/content·text/primary, 금액 Remake/display·text/strong, 안내 Remake/assist·text/assist */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 누를 수 없는 글이라 파랑 대신 text/body(blueprint §6 상호작용 색). 피그마는 text/primary */
+.month {
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+.total {
+  color: var(--color-text-strong);
+  font: var(--font-display);
+}
+
+.notice {
+  color: var(--color-text-assist);
+  font: var(--font-assist);
+}
+
+/* 묶음 제목은 요약 아래 8(피그마 요약 끝 194 → 제목 202) */
+.list {
+  margin-top: var(--space-8);
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* 금액: Remake/content-strong·text/title, 가격 없음: text/assist */
+.amount {
+  color: var(--color-text-title);
+  font: var(--font-content-strong);
+}
+
+.noPrice {
+  color: var(--color-text-assist);
+  font: var(--font-content-strong);
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
