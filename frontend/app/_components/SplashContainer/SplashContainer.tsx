@@ -14,8 +14,8 @@ type SplashContainerProps = {
 
 /**
  * 스플래시(/). 피그마 스플래쉬 start(5782-4629) → end(5782-4666)를 이어 움직인다.
- * 파란 바탕 가운데 흰 원 안에 로고 그림 → 흰 원이 커져 화면을 덮고, 아래 "리메이크"·슬로건이 흰 글자에서 진한 글자로,
- * 슬로건 끝에 "!"가 나타난다(0.8초 뒤 시작해 1.8초에 원이 다 덮고, 모두 약 2초). 움직임 줄이기 설정이면 처음부터 end 장면.
+ * 파란 바탕 가운데 흰 원 안에 로고 그림 → 흰 원이 커져 화면을 덮고, 아래 "리메이크"·슬로건이 흰 글자에서 진한 글자로
+ * 바뀐다(0.8초 뒤 시작해 1.8초에 원이 다 덮음). 슬로건 끝 "!"는 피그마 start에는 없지만 처음부터 보인다(사용자 결정). 움직임 줄이기 설정이면 처음부터 end 장면.
  * TODO(#95): 애니메이션이 끝나면 로그인 여부를 확인해 로그인(/public/auth/login)·온보딩·냉장고(/user/fridge/ingredients)로
  * 이동한다. 로그인 쿠키는 HttpOnly라 화면에서 읽지 못하므로 API로 확인한다.
  */
@@ -33,11 +33,7 @@ export function SplashContainer({ stillPhase }: SplashContainerProps) {
       />
       <div className={styles.brand}>
         <h1 className={styles.name}>리메이크</h1>
-        <p className={styles.slogan}>
-          당신에게 딱 맞춘 AI 식생활 비서
-          {/* 끝 장면에만 보이는 느낌표. 자리는 처음부터 잡아 둬서 나타날 때 글자가 옆으로 밀리지 않는다 */}
-          <span className={styles.bang}>!</span>
-        </p>
+        <p className={styles.slogan}>당신에게 딱 맞춘 AI 식생활 비서!</p>
       </div>
     </main>
   );

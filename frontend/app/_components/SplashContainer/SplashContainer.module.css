@@ -1,7 +1,7 @@
 /* 피그마 스플래쉬 start(5782-4629)·end(5782-4666), 360×800 기준.
    흰 원 278과 로고 그림 216×128은 같은 중심(위에서 317, 약 39.6%). "리메이크"(GmarketSans Bold 36)와 슬로건
    (Remake/content)은 아래쪽에 간격 6으로 둔다(피그마는 15, 사용자 결정으로 6). start: 바탕 brand/primary, 글자 text/on-color.
-   end: 흰 원이 화면을 덮고 글자 text/strong, 슬로건 끝 "!" */
+   end: 흰 원이 화면을 덮고 글자 text/strong. 슬로건 끝 "!"는 두 장면 모두 보인다(피그마 start에는 없음, 사용자 결정) */
 .splash {
   --splash-center: 39.6%;
   position: relative;
@@ -57,12 +57,8 @@
   font: var(--font-content);
 }
 
-.bang {
-  opacity: 0;
-}
-
 /* 움직임: 0.8초 start 장면 → 1초 동안 흰 원이 커짐(1.8초에 다 덮음, 지름 278 × 6으로 480×1300 화면까지) →
-   원 가장자리가 글자에 닿을 무렵 글자 색이 바뀜 → 끝에 "!"와 흰 바탕(아주 긴 화면에서 원이 못 덮은 구석까지) */
+   원 가장자리가 글자에 닿을 무렵 글자 색이 바뀜 → 끝에 흰 바탕(아주 긴 화면에서 원이 못 덮은 구석까지) */
 .splash[data-phase="play"] {
   animation: splash-surface 0s linear 1.8s forwards;
 }
@@ -73,10 +69,6 @@
 
 .splash[data-phase="play"] .brand {
   animation: splash-ink 0.4s ease 1.2s forwards;
-}
-
-.splash[data-phase="play"] .bang {
-  animation: splash-bang 0.2s ease 1.8s forwards;
 }
 
 @keyframes splash-surface {
@@ -97,12 +89,6 @@
   }
 }
 
-@keyframes splash-bang {
-  to {
-    opacity: 1;
-  }
-}
-
 /* end 장면(미리보기, 움직임 줄이기) */
 .splash[data-phase="end"] {
   background: var(--color-bg-surface);
@@ -116,15 +102,10 @@
   color: var(--color-text-strong);
 }
 
-.splash[data-phase="end"] .bang {
-  opacity: 1;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .splash[data-phase="play"],
   .splash[data-phase="play"] .circle,
-  .splash[data-phase="play"] .brand,
-  .splash[data-phase="play"] .bang {
+  .splash[data-phase="play"] .brand {
     animation: none;
   }
 
@@ -138,9 +119,5 @@
 
   .splash[data-phase="play"] .brand {
     color: var(--color-text-strong);
-  }
-
-  .splash[data-phase="play"] .bang {
-    opacity: 1;
   }
 }
