@@ -55,10 +55,10 @@ class RecipeSaveService implements SaveRecipeUseCase, GetSavedRecipesUseCase {
 		boolean inserted = savedRecipePort.insertIfAbsent(userId, recipeId, LocalDateTime.now(clock));
 		int cartAddedCount = 0;
 		if (inserted) {
-			// save_source는 EventPropertyValues 허용 목록대로 대문자(내 레시피 = RECIPE)
+			// 이벤트 명세: 내 레시피는 own, 공유 저장은 shared.
 			eventTracker.track(EventName.RECIPE_SAVED, Screen.RECIPE_DETAIL, Map.of(
 					"recipe_id", recipeId,
-					"save_source", "RECIPE",
+					"save_source", "own",
 					"cart_added_count", cartAddedCount), EventTrackCommand.ofUser(userId));
 		}
 		return new SaveResult(true, cartAddedCount);

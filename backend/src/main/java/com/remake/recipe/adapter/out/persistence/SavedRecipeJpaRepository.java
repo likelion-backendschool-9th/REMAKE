@@ -30,6 +30,14 @@ interface SavedRecipeJpaRepository extends JpaRepository<SavedRecipeJpaEntity, L
 			@Param("savedAt") LocalDateTime savedAt);
 
 	@Modifying
+	@Query(value = """
+			INSERT INTO saved_recipes (user_id, recipe_id, shared_recipe_id, is_favorite, saved_at)
+			VALUES (:userId, :recipeId, :sharedRecipeId, false, :savedAt)
+			ON CONFLICT (user_id, recipe_id) DO NOTHING""", nativeQuery = true)
+	int insertSharedIfAbsent(@Param("userId") Long userId, @Param("recipeId") Long recipeId,
+			@Param("sharedRecipeId") Long sharedRecipeId, @Param("savedAt") LocalDateTime savedAt);
+
+	@Modifying
 	@Query("delete from SavedRecipeJpaEntity s where s.userId = :userId and s.recipeId = :recipeId")
 	int deleteByUserIdAndRecipeId(@Param("userId") Long userId, @Param("recipeId") Long recipeId);
 

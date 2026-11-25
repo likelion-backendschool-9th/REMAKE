@@ -38,6 +38,11 @@ class SavedRecipePersistenceAdapter implements SavedRecipePort {
 	}
 
 	@Override
+	public boolean insertSharedIfAbsent(Long userId, Long recipeId, Long sharedRecipeId, LocalDateTime savedAt) {
+		return repository.insertSharedIfAbsent(userId, recipeId, sharedRecipeId, savedAt) > 0;
+	}
+
+	@Override
 	public void delete(Long userId, Long recipeId) {
 		repository.deleteByUserIdAndRecipeId(userId, recipeId);
 	}

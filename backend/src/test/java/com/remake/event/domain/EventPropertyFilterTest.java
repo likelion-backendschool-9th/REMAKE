@@ -77,4 +77,18 @@ class EventPropertyFilterTest {
 		assertThat(EventPropertyFilter.filter(EventName.CART_ITEM_ADDED,
 				Map.of("cart_source", "FREE_TEXT", "item_count", 3))).isEmpty();
 	}
+	@Test
+	void 레시피저장과_취소는_명세의_소문자출처만_허용한다() {
+		for (EventName event : new EventName[]{EventName.RECIPE_SAVED, EventName.RECIPE_UNSAVED}) {
+			for (String source : new String[]{"own", "shared"}) {
+				assertThat(EventPropertyFilter.filter(event, Map.of("save_source", source)))
+						.contains(Map.of("save_source", source));
+			}
+			for (String source : new String[]{"RECIPE", "SHARED_RECIPE", "unknown"}) {
+				assertThat(EventPropertyFilter.filter(event, Map.of("save_source", source))).isEmpty();
+			}
+		}
+		assertThat(EventName.fromWireName("shared_recipe_saved")).isEmpty();
+	}
+
 }
