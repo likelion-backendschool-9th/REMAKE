@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import com.remake.global.web.LoginUserIdArgumentResolver;
+import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.recipe.application.port.in.GetRecipeListItemsUseCase;
 import com.remake.recipe.application.port.in.RecipeListItem;
 import com.remake.recipe.application.port.out.SaveRecipePort;
@@ -86,6 +87,8 @@ class SavedRecipeApiTest extends IntegrationTestSupport {
 	@Test
 	void 저장은_다시_보내도_같은_결과이고_처음_저장에만_이벤트를_남긴다() throws Exception {
 		Long recipeId = recipe(userId, "계란말이", "계란");
+		// 계란이 냉장고에 있어 부족 재료가 없다(장바구니 담기는 아래 다른 테스트에서 본다)
+		createIngredient(userId, "DAIRY_EGG", "계란", TODAY.plusDays(3));
 
 		save(recipeId).andExpect(status().isOk())
 				.andExpect(jsonPath("$.saved").value(true))
@@ -204,6 +207,45 @@ class SavedRecipeApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.totalCount").value(3))
 				.andExpect(jsonPath("$.totalElements").value(1))
 				.andExpect(jsonPath("$.content[0].recipeId").value(eggSoup));
+	}
+
+	/** 재료 줄을 그대로 넣는다(카테고리·냉장고 재료 id 포함) */
+	private Long recipeWith(Long owner, RecipeIngredient... ingredients) {
+		return transactionTemplate.execute(status -> saveRecipePort.save(Recipe.create(owner, RecipeSource.QUICK,
+				"보충 레시피", 1, 10, null, null, List.of(ingredients), List.of("만든다.")))).id();
+	}
+
+	private List<String> cartRows() {
+		return jdbcTemplate.queryForList("""
+				SELECT c.name || ':' || trim_scale(c.amount) || ':' || c.unit || ':' || k.code
+				FROM cart_items c JOIN ingredient_categories k ON k.id = c.category_id
+				WHERE c.user_id = ?""", String.class, userId);
+	}
+
+	@Test
+	void 저장하면_냉장고에_없는_보충_재료만_장바구니에_담고_다시_저장해도_겹치지_않는다() throws Exception {
+		Long mushroom = createIngredient(userId, "VEGETABLE", "버섯", TODAY.plusDays(3));
+		Long recipeId = recipeWith(userId,
+				new RecipeIngredient(mushroom, "버섯", BigDecimal.ONE, RecipeUnit.EA, IngredientCategoryCode.VEGETABLE),
+				new RecipeIngredient(null, "무지개채소", new BigDecimal("200"), RecipeUnit.G, IngredientCategoryCode.VEGETABLE),
+				new RecipeIngredient(null, "양파", BigDecimal.ONE, RecipeUnit.EA, null),
+				new RecipeIngredient(null, "모르는재료", BigDecimal.ONE, RecipeUnit.EA, null),
+				new RecipeIngredient(null, "물", new BigDecimal("200"), RecipeUnit.ML, IngredientCategoryCode.ETC),
+				new RecipeIngredient(null, "후추", null, RecipeUnit.TO_TASTE, IngredientCategoryCode.SEASONING));
+
+		// 냉장고 재료로 만든 줄(버섯)·물·약간은 빼고, 카테고리를 모르고 사전에도 없는 줄(모르는재료)은 건너뛴다
+		save(recipeId).andExpect(status().isOk()).andExpect(jsonPath("$.cartAddedCount").value(2));
+		assertThat(cartRows()).containsExactlyInAnyOrder("무지개채소:200:G:VEGETABLE", "양파:1:EA:VEGETABLE");
+		awaitEventWrites();
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT properties::text FROM events WHERE event_name = 'recipe_saved' AND user_id = ?", String.class,
+				userId)).contains("\"cart_added_count\": 2");
+
+		// 이미 저장한 레시피를 다시 보내면 담지 않는다. 저장 취소 뒤 다시 저장해도 장바구니에 있는 재료는 겹치지 않는다(#57)
+		save(recipeId).andExpect(jsonPath("$.cartAddedCount").value(0));
+		mockMvc.perform(as(userId, delete(SAVED_URL + "/" + recipeId))).andExpect(status().isNoContent());
+		save(recipeId).andExpect(jsonPath("$.cartAddedCount").value(0));
+		assertThat(cartRows()).hasSize(2);
 	}
 
 	@Test
