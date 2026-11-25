@@ -40,6 +40,10 @@ class IngredientLogJpaEntity extends BaseCreatedEntity {
 	// 재료가 지워지면(수량 0 포함) null이 된다
 	private Long ingredientId;
 
+	// 기록한 때의 재료 카테고리. 재료를 지우거나 카테고리를 고쳐도 바뀌지 않는다
+	@Column(nullable = false)
+	private Long categoryId;
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 10)
 	private IngredientLogType type;
@@ -62,6 +66,7 @@ class IngredientLogJpaEntity extends BaseCreatedEntity {
 		IngredientLogJpaEntity entity = new IngredientLogJpaEntity();
 		entity.userId = log.userId();
 		entity.ingredientId = log.ingredientId();
+		entity.categoryId = log.categoryId();
 		entity.type = log.type();
 		entity.name = log.name();
 		entity.amount = log.amount();
@@ -71,6 +76,6 @@ class IngredientLogJpaEntity extends BaseCreatedEntity {
 	}
 
 	IngredientLog toDomain() {
-		return new IngredientLog(id, userId, ingredientId, type, name, amount, unit, costAmount);
+		return new IngredientLog(id, userId, ingredientId, categoryId, type, name, amount, unit, costAmount);
 	}
 }

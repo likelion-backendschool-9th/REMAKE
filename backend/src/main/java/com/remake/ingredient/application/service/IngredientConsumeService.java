@@ -79,7 +79,7 @@ public class IngredientConsumeService implements ConsumeIngredientUseCase {
 				saveIngredientPort.save(ingredient);
 			}
 			saveIngredientLogPort.save(new IngredientLog(null, ingredient.userId(), deleted ? null : ingredient.id(),
-					command.type(), ingredient.name(), amount, ingredient.unit(), costAmount));
+					ingredient.categoryId(), command.type(), ingredient.name(), amount, ingredient.unit(), costAmount));
 			trackEvent(command, ingredient, dDay, costAmount);
 			return new ConsumeIngredientResult(ingredient.amount(), deleted, costAmount);
 		// 아래 예외는 IllegalArgumentException의 하위 클래스라 반드시 IllegalArgumentException보다 먼저 잡는다(순서가 바뀌면 INVALID_INPUT이 된다).

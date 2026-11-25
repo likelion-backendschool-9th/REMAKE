@@ -52,14 +52,25 @@ class IngredientSchemaMigrationTest extends IntegrationTestSupport {
 				INSERT INTO %s.ingredient_logs (user_id, ingredient_id, type, name, amount, unit, created_at)
 				VALUES (1, ?, 'USED', '다쓴우유', 1, 'EA', now())
 				""".formatted(SCHEMA), finishedId);
+		jdbc.update("""
+				INSERT INTO %s.ingredient_logs (user_id, ingredient_id, type, name, amount, unit, created_at)
+				VALUES (1, ?, 'USED', '우유', 1, 'EA', now())
+				""".formatted(SCHEMA), activeId);
 
 		flyway("latest").migrate();
 
 		// 다 쓴 재료만 지워지고, 기록은 이름·단위를 남긴 채 재료 연결만 비워진다
 		assertThat(jdbc.queryForList("SELECT id FROM " + SCHEMA + ".ingredients", Long.class)).containsExactly(activeId);
-		assertThat(jdbc.queryForObject("SELECT ingredient_id FROM " + SCHEMA + ".ingredient_logs", Long.class)).isNull();
-		assertThat(jdbc.queryForObject("SELECT name FROM " + SCHEMA + ".ingredient_logs", String.class))
-				.isEqualTo("다쓴우유");
+		assertThat(jdbc.queryForObject("SELECT ingredient_id FROM " + SCHEMA + ".ingredient_logs WHERE name = '다쓴우유'",
+				Long.class)).isNull();
+		assertThat(jdbc.queryForObject("SELECT name FROM " + SCHEMA + ".ingredient_logs WHERE ingredient_id IS NULL",
+				String.class)).isEqualTo("다쓴우유");
+		// V22: 재료가 남아 있는 기록은 그 재료의 카테고리, 이미 지워진 기록은 '기타'(ETC)로 채워진다
+		assertThat(jdbc.queryForObject("SELECT category_id FROM " + SCHEMA + ".ingredient_logs WHERE ingredient_id = ?",
+				Long.class, activeId)).isEqualTo(5L);
+		assertThat(jdbc.queryForObject("SELECT c.code FROM " + SCHEMA + ".ingredient_logs l JOIN " + SCHEMA
+				+ ".ingredient_categories c ON c.id = l.category_id WHERE l.ingredient_id IS NULL", String.class))
+				.isEqualTo("ETC");
 		assertThat(columns(jdbc, "ingredients"))
 				.doesNotContain("is_expiration_estimated", "status", "version")
 				.contains("expiration_date", "amount", "initial_amount");

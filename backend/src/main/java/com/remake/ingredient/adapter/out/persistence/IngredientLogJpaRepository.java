@@ -1,10 +1,28 @@
 package com.remake.ingredient.adapter.out.persistence;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import com.remake.ingredient.domain.DiscardedIngredientLog;
 
 interface IngredientLogJpaRepository extends JpaRepository<IngredientLogJpaEntity, Long> {
 
 	boolean existsByIngredientId(Long ingredientId);
 
 	void deleteByUserId(Long userId);
+
+	@Query("""
+			select new com.remake.ingredient.domain.DiscardedIngredientLog(l.name, c.code, l.createdAt, l.costAmount)
+			from IngredientLogJpaEntity l
+			join IngredientCategoryJpaEntity c on c.id = l.categoryId
+			where l.userId = :userId and l.type = com.remake.ingredient.domain.IngredientLogType.DISCARDED
+			  and l.createdAt >= :from and l.createdAt < :to
+			order by l.createdAt desc, l.id desc
+			""")
+	List<DiscardedIngredientLog> findDiscardedBetween(@Param("userId") Long userId, @Param("from") LocalDateTime from,
+			@Param("to") LocalDateTime to);
 }

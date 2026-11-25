@@ -27,7 +27,7 @@
 | 6 | `subscription_payments` | Subscription payments | One row per first payment and per monthly auto-payment (success or failure) | 1 login/settings | 이준호 | 12 |
 | 7 | `ingredient_categories` | Ingredient categories | 12 categories (image, default storage, default shelf life) | 2 fridge | 김재연 | 7 |
 | 8 | `ingredients` | Fridge ingredients | One fridge ingredient. Deleted when the amount reaches 0. Registrations without a receipt also record their origin | 2 fridge | 김재연 | 13 |
-| 9 | `ingredient_logs` | Ingredient use and discard logs | "Used / discarded" and cook deductions. Source of the discarded cost | 2 fridge | 김재연 | 9 |
+| 9 | `ingredient_logs` | Ingredient use and discard logs | "Used / discarded" and cook deductions. Source of the discarded cost | 2 fridge | 김재연 | 10 |
 | 10 | `receipts` | Receipts | One registered receipt. Kept 6 months. Deleting removes it from spending and patterns (fridge ingredients stay) | 3 receipts | 이동준 | 9 |
 | 11 | `receipt_items` | Receipt items | One food line of a receipt | 3 receipts | 이동준 | 9 |
 | 12 | `recipes` | Recipes | AI-generated recipe. Never edited after creation | 4 AI recipes | 김종수 | 9 |
@@ -64,6 +64,7 @@ erDiagram
   receipt_items |o--o| ingredients : "receipt_item_id"
   users ||--o{ ingredient_logs : "user_id"
   ingredients |o--o{ ingredient_logs : "ingredient_id"
+  ingredient_categories ||--o{ ingredient_logs : "category_id"
   users ||--o{ receipts : "user_id"
   receipts ||--o{ receipt_items : "receipt_id"
   ingredient_categories ||--o{ receipt_items : "category_id"
@@ -187,6 +188,7 @@ erDiagram
     bigint id PK
     bigint user_id FK
     bigint ingredient_id FK
+    bigint category_id FK
     varchar type
     varchar name
     numeric amount
@@ -504,6 +506,7 @@ One fridge ingredient. The row is deleted when the amount reaches 0. Owner 김�
 | `id` | bigint | PK |  | no |  | ID |
 | `user_id` | bigint | FK | users | no |  | Member (counted by month even after the ingredient is deleted) |
 | `ingredient_id` | bigint | FK | ingredients | yes |  | Ingredient. Cleared when it is deleted |
+| `category_id` | bigint | FK | ingredient_categories | no |  | Category at logging time. Never changes when the ingredient is deleted or its category is edited (read by the discarded-ingredients list) |
 | `type` | varchar |  |  | no |  | USED/DISCARDED |
 | `name` | varchar |  |  | no |  | Ingredient name at logging time |
 | `amount` | numeric(10,3) |  |  | no |  | Amount taken out |
@@ -800,6 +803,7 @@ An index on `(user_id, created_at)` supports period queries.
 | `receipt_items` | `ingredients` | receipt_item_id | 1:1 | yes | SET NULL |
 | `users` | `ingredient_logs` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `ingredients` | `ingredient_logs` | ingredient_id | 1:N | yes | SET NULL |
+| `ingredient_categories` | `ingredient_logs` | category_id | 1:N | no | RESTRICT (reference data, never deleted) |
 | `users` | `receipts` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `users` | `manual_ingredient_expenses` | user_id | 1:N | no | CASCADE (the app deletes on withdrawal) |
 | `ingredient_categories` | `manual_ingredient_expenses` | category_id | 1:N | no | RESTRICT |
