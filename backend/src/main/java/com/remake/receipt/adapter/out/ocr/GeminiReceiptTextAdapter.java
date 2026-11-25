@@ -28,7 +28,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 @Slf4j
 @Component
-class GeminiReceiptTextAdapter implements ReadReceiptTextPort {
+public class GeminiReceiptTextAdapter implements ReadReceiptTextPort {
 
 	private static final String TRANSCRIPTION_PROMPT = """
 			사진 속 영수증을 읽고 아래 형식의 평문만 출력하세요.

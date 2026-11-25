@@ -60,9 +60,17 @@ class MockedAdapterWiringTest extends IntegrationTestSupport {
 				.toList();
 	}
 
+	// 생성자가 하나면 그것을, 여럿이면 Spring이 쓰는 @Autowired 생성자 하나를 검사한다(나머지는 단위 테스트용).
 	private static Constructor<?> singleConstructor(Class<?> type) {
 		Constructor<?>[] constructors = type.getDeclaredConstructors();
-		assertThat(constructors).as(type.getSimpleName() + "는 생성자 주입용 생성자 하나만 둔다").hasSize(1);
-		return constructors[0];
+		if (constructors.length == 1) {
+			return constructors[0];
+		}
+		List<Constructor<?>> autowired = Arrays.stream(constructors)
+				.filter(constructor -> constructor.isAnnotationPresent(Autowired.class))
+				.toList();
+		assertThat(autowired).as(type.getSimpleName() + "는 생성자가 여럿이면 Spring이 쓸 하나에 @Autowired를 붙인다")
+				.hasSize(1);
+		return autowired.get(0);
 	}
 }
