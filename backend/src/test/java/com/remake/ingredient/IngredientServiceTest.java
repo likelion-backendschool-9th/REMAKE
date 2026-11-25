@@ -175,9 +175,9 @@ class IngredientServiceTest extends IntegrationTestSupport {
 		// 쓰거나 버린 기록이 생기면 수량을 고칠 수 없다.
 		jdbcTemplate.update("UPDATE ingredients SET amount = 2 WHERE id = ?", id);
 		jdbcTemplate.update("""
-				INSERT INTO ingredient_logs (user_id, ingredient_id, type, name, amount, unit, created_at)
-				VALUES (?, ?, 'USED', '사과', 3, 'EA', ?)
-				""", owner, id, java.time.LocalDateTime.now(clock));
+				INSERT INTO ingredient_logs (user_id, ingredient_id, category_id, type, name, amount, unit, created_at)
+				VALUES (?, ?, (SELECT category_id FROM ingredients WHERE id = ?), 'USED', '사과', 3, 'EA', ?)
+				""", owner, id, id, java.time.LocalDateTime.now(clock));
 		assertThatThrownBy(() -> updateUseCase.updateIngredient(new UpdateIngredientCommand(owner, id, null, null, null,
 				null, null, new java.math.BigDecimal("9"))))
 				.isInstanceOf(BusinessException.class)
@@ -235,9 +235,9 @@ class IngredientServiceTest extends IntegrationTestSupport {
 	void 사용_기록이_있어도_이름을_바꾸면_단위를_다시_정하고_기록은_그대로다() {
 		Long id = createMilk(owner, null);
 		jdbcTemplate.update("""
-				INSERT INTO ingredient_logs (user_id, ingredient_id, type, name, amount, unit, created_at)
-				VALUES (?, ?, 'USED', '우유', 1, 'EA', ?)
-				""", owner, id, java.time.LocalDateTime.now(clock));
+				INSERT INTO ingredient_logs (user_id, ingredient_id, category_id, type, name, amount, unit, created_at)
+				VALUES (?, ?, (SELECT category_id FROM ingredients WHERE id = ?), 'USED', '우유', 1, 'EA', ?)
+				""", owner, id, id, java.time.LocalDateTime.now(clock));
 
 		FridgeIngredient updated = updateUseCase.updateIngredient(
 				new UpdateIngredientCommand(owner, id, "대파", null, null, null, null));

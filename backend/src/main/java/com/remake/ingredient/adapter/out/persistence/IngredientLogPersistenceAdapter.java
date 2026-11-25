@@ -1,9 +1,13 @@
 package com.remake.ingredient.adapter.out.persistence;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.stereotype.Component;
 
 import com.remake.ingredient.application.port.out.LoadIngredientLogPort;
 import com.remake.ingredient.application.port.out.SaveIngredientLogPort;
+import com.remake.ingredient.domain.DiscardedIngredientLog;
 import com.remake.ingredient.domain.IngredientLog;
 
 import lombok.RequiredArgsConstructor;
@@ -23,5 +27,10 @@ class IngredientLogPersistenceAdapter implements SaveIngredientLogPort, LoadIngr
 	@Override
 	public boolean existsByIngredientId(Long ingredientId) {
 		return repository.existsByIngredientId(ingredientId);
+	}
+
+	@Override
+	public List<DiscardedIngredientLog> findDiscardedBetween(Long userId, LocalDateTime from, LocalDateTime to) {
+		return repository.findDiscardedBetween(userId, from, to);
 	}
 }
