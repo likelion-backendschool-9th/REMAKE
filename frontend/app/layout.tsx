@@ -11,6 +11,8 @@ import { gmarketSans } from "./fonts/fonts";
 import "./fonts/pretendard.css";
 // 받는 동안 보이는 기기 글꼴의 폭·높이를 Pretendard에 맞춘다
 import "./fonts/pretendard-fallback.css";
+// 문서 스크롤바(OverlayScrollbars, lib/page-scrollbar)
+import "overlayscrollbars/overlayscrollbars.css";
 import "./globals.css";
 import styles from "./layout.module.css";
 
@@ -33,8 +35,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={gmarketSans.variable}>
-      <body>
+    // data-overlayscrollbars-initialize: 스크립트가 스크롤바를 바꾸기 전 잠깐 기본 스크롤바가 보였다 사라지는 깜빡임을 막는다
+    <html lang="ko" className={gmarketSans.variable} data-overlayscrollbars-initialize="">
+      <body data-overlayscrollbars-initialize="">
         <AppProviders>
           <div className={styles.shell}>{children}</div>
         </AppProviders>

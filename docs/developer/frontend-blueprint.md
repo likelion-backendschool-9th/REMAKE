@@ -34,6 +34,7 @@
 | 날짜            | dayjs                                                                            | 날짜 표시, 식단표 달력                                                                                                                        |
 | 아이콘          | @solar-icons/react (Solar)                                                       | 트리 셰이킹되는 React 컴포넌트, 오프라인에서도 동작                                                                                           |
 | 폰트            | Pretendard(`pretendard` 패키지, dynamic subset) + GmarketSans(`next/font/local`) | Pretendard: 한글 UI 폰트, 화면에 나온 글자 묶음만 받음. 거의 모든 화면이 쓰는 묶음은 미리 받음. GmarketSans: 로고 글자 전용, 영문만 남긴 파일 |
+| 스크롤바        | OverlayScrollbars                                                                | 내용 위에 겹쳐 그리는 문서 스크롤바: 자리를 차지하지 않아 시트가 스크롤을 막아도 가운데 화면이 움직이지 않고, 스크롤할 때만 보임              |
 | PWA             | Serwist                                                                          | 서비스 워커, 오프라인 화면. 알림은 앱 안에서만(기기 푸시 없음)                                                                                |
 | 스토어 배포     | PWABuilder (TWA)                                                                 | 안드로이드 앱 패키지 생성                                                                                                                     |
 | 웹 배포         | `output: "standalone"` + nginx                                                   | Node 서버를 nginx 뒤에서 실행                                                                                                                 |
@@ -293,7 +294,7 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - 크롬 계열(TWA 포함)은 `CloseWatcher`로 안드로이드 뒤로 버튼과 Esc를 닫기 요청으로 받아, 페이지 이동 없이 열린 시트만 닫습니다. `CloseWatcher`는 방문 기록을 쓰지 않습니다.
 - `CloseWatcher`가 없는 브라우저(사파리, 파이어폭스)는 Esc로 닫습니다. 뒤로가기(iOS 밀어서 뒤로)는 평소처럼 이전 화면으로 갑니다.
 - 시트가 열린 화면이 숨겨지면(시트 안에서 다른 화면으로 이동, 뒤로가기) 시트를 닫습니다. `cacheComponents`라 이전 화면은 상태를 가진 채 남아 있어서, 닫지 않으면 돌아왔을 때 시트가 열린 채 보입니다.
-- 시트·모달이 열려 있는 동안 뒤 화면은 스크롤되지 않습니다.
+- 시트·모달이 열려 있는 동안 뒤 화면은 스크롤되지 않습니다. `useDialogLayer`가 `lib/page-scrollbar.ts`의 `setPageScrollLocked`로 막고, 이 함수는 `body`에 붙인 OverlayScrollbars(`AppProviders`에서 만듦)의 overflow 옵션을 바꿉니다. 이 스크롤바는 자리를 차지하지 않아서, 막으면서 스크롤바가 사라져도 가운데 화면이 좌우로 움직이지 않습니다. `html`이나 `body`에 직접 `overflow: hidden`을 줘서 막지 않습니다.
 - `onClose`에는 닫힌 상태만 반영합니다. 화면이 숨겨질 때도 불리기 때문입니다. 취소 기록 같은 다른 동작은 넣지 않고 취소 버튼의 처리 함수에 넣습니다. 확인 뒤 다른 화면으로 갈 때는 먼저 닫고 이동합니다.
 - 시트가 겹쳐 열려 있으면 가장 위의 것만 닫습니다.
 
