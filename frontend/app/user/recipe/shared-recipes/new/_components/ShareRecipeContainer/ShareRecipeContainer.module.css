@@ -1,11 +1,11 @@
-/* 피그마 p4.1.1.1-레시피 공유 작성: 서브 헤더 바로 아래 사진 칸(360×240), 아래 20에 제목 입력, 그 아래 레시피 내용.
-   아래 고정 버튼에 가리지 않게 아래 여백 */
+/* 피그마 p4.1.1.1-레시피 공유 작성(5778-2904): 서브 헤더 바로 아래 사진 칸(360×240), 아래 23에 제목 입력, 그 아래 레시피 내용.
+   아래 여백: Tips와 아래 고정 버튼 사이 36(버튼 53 + 고정 영역 아래 여백 24를 더함) */
 .main {
   display: flex;
   flex: 1;
   flex-direction: column;
   width: 100%;
-  padding-bottom: calc(7.5rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(7.0625rem + env(safe-area-inset-bottom));
   background: var(--color-bg-surface);
 }
 
@@ -73,12 +73,12 @@
   white-space: nowrap;
 }
 
-/* 제목 입력: 사진 아래 20, 라벨과 칸 사이 8 */
+/* 제목 입력: 사진 아래 23에 라벨, 라벨·입력칸 사이 10, 입력칸 아래 10(재료 준비 위 여백 15와 합쳐 25) */
 .titleField {
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
-  padding: 1.25rem var(--layout-gutter) 0;
+  gap: var(--space-10);
+  padding: 1.4375rem var(--layout-gutter) 0.625rem;
 }
 
 /* "레시피 제목 *": Remake/title·text/title, 별표 text/danger */

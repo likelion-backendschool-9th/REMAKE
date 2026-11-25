@@ -156,12 +156,13 @@
   color: var(--color-text-primary);
 }
 
-/* Tips!: 단계 영역 아래 19, 바탕 bg/subtle, radius 12, 여백 13, 제목·목록 사이 12 */
+/* Tips!: 단계 영역 바로 아래(마지막 단계와 15 = 단계 영역 아래 여백, 피그마 5778-2904), 바탕 bg/subtle, radius 12,
+   여백 13, 제목·목록 사이 12 */
 .tips {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  margin: 1.1875rem var(--layout-gutter) 0;
+  margin: 0 var(--layout-gutter);
   padding: 0.8125rem;
   border-radius: 0.75rem;
   background: var(--color-bg-subtle);
