@@ -56,4 +56,11 @@ remake:
     # false면 레시피 생성 횟수 한도(BASIC 하루 2회)를 넘어도 막지 않는다(사용 기록은 남음). 본인 Gemini 키로 반복 테스트하는 로컬 전용.
     # 한도 동작을 확인할 때는 backend/.env에 QUOTA_ENFORCED=true를 넣는다. 운영·테스트 설정에는 넣지 않는다(기본 true).
     enforced: ${QUOTA_ENFORCED:false}
+  toss:
+    # true면 토스 HTTP 없이 가짜 billingKey·paymentKey를 쓴다. 실제 연동 때 false와 키를 넣는다.
+    mock-enabled: ${TOSS_MOCK_ENABLED:true}
+    secret-key: ${TOSS_SECRET_KEY:}
+    # billingKey AES 키 원문(SHA-256으로 유도). 로컬 기본값은 개발 전용이다.
+    billing-key-secret: ${TOSS_BILLING_KEY_SECRET:local-dev-only-billing-key-secret!!}
+    base-url: ${TOSS_BASE_URL:https://api.tosspayments.com}
 
