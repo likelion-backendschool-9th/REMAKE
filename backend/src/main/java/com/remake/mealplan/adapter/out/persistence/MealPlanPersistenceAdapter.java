@@ -98,6 +98,14 @@ class MealPlanPersistenceAdapter implements LoadMealPlanPort, SaveMealPlanPort, 
 	}
 
 	@Override
+	public List<MealPlanSlot> loadByIdsForUpdate(Collection<Long> slotIds) {
+		if (slotIds.isEmpty()) {
+			return List.of();
+		}
+		return slotRepository.findAllByIdForUpdate(slotIds).stream().map(MealPlanSlotJpaEntity::toDomain).toList();
+	}
+
+	@Override
 	public void saveAll(List<MealPlanSlot> slots) {
 		slotRepository.saveAll(slots.stream().map(MealPlanSlotJpaEntity::from).toList());
 	}

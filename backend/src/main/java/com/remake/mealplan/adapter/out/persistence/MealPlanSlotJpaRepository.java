@@ -1,12 +1,16 @@
 package com.remake.mealplan.adapter.out.persistence;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 /**
  * 달력·하루 조회 메서드는 그 API를 만들 때 추가한다.
@@ -37,4 +41,9 @@ interface MealPlanSlotJpaRepository extends JpaRepository<MealPlanSlotJpaEntity,
 			  and exists (select p.id from MealPlanJpaEntity p where p.id = s.mealPlanId and p.userId = :userId)
 			""")
 	Optional<MealPlanSlotJpaEntity> findByIdAndUserId(@Param("slotId") Long slotId, @Param("userId") Long userId);
+
+	/** 칸들을 잠그고 읽는다. 여러 칸을 잠글 때 순서가 엇갈리지 않게 id 순. 이미 지워진 칸은 빠진다. */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select s from MealPlanSlotJpaEntity s where s.id in :ids order by s.id")
+	List<MealPlanSlotJpaEntity> findAllByIdForUpdate(@Param("ids") Collection<Long> ids);
 }
