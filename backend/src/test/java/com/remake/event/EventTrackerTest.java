@@ -24,6 +24,7 @@ class EventTrackerTest extends IntegrationTestSupport {
 
 	@Test
 	void 커밋_후에만_서버_이벤트가_쌓인다() {
+		Long userId = createUser();
 		transactionTemplate.executeWithoutResult(status -> eventTracker.track(
 				EventName.RECEIPT_SAVED,
 				Screen.RECEIPT_RESULT,
@@ -36,25 +37,26 @@ class EventTrackerTest extends IntegrationTestSupport {
 						"added_item_count", 0,
 						"duration_sec", 12,
 						"food_total_amount", 1000),
-				EventTrackCommand.of(1L, "sess", "PWA", "1.0.0")));
+				EventTrackCommand.of(userId, "sess", "PWA", "1.0.0")));
 
 		awaitEventWrites();
 
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM events", Integer.class)).isEqualTo(1);
 		assertThat(jdbcTemplate.queryForObject("SELECT source FROM events", String.class)).isEqualTo("SERVER");
 		assertThat(jdbcTemplate.queryForObject("SELECT event_name FROM events", String.class)).isEqualTo("receipt_saved");
-		assertThat(jdbcTemplate.queryForObject("SELECT user_id FROM events", Long.class)).isEqualTo(1L);
+		assertThat(jdbcTemplate.queryForObject("SELECT user_id FROM events", Long.class)).isEqualTo(userId);
 	}
 
 	@Test
 	void 롤백되면_서버_이벤트를_남기지_않는다() {
+		Long userId = createUser();
 		// rollback-only는 예외 없이 끝난다. track이 예외를 던지면 그대로 테스트가 실패해야 하므로 삼키지 않는다.
 		transactionTemplate.executeWithoutResult(status -> {
 			eventTracker.track(
 					EventName.LOGIN_SUCCEEDED,
 					Screen.LOGIN,
 					Map.of("provider", "kakao", "is_new_user", true),
-					EventTrackCommand.ofUser(99L));
+					EventTrackCommand.ofUser(userId));
 			status.setRollbackOnly();
 		});
 
@@ -68,7 +70,7 @@ class EventTrackerTest extends IntegrationTestSupport {
 				EventName.LOGIN_FAILED,
 				Screen.LOGIN,
 				Map.of("provider", "google", "error_code", "OAUTH_FAILED", "email", "a@b.com"),
-				EventTrackCommand.ofUser(7L));
+				EventTrackCommand.ofUser(createUser()));
 
 		awaitEventWrites();
 

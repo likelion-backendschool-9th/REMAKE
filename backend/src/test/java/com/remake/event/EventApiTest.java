@@ -19,6 +19,7 @@ class EventApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 클라이언트_이벤트를_수집하고_모르는_이름은_거절한다() throws Exception {
+		Long userId = createUser();
 		String body = """
 				{
 				  "events": [
@@ -36,7 +37,7 @@ class EventApiTest extends IntegrationTestSupport {
 				""";
 
 		mockMvc.perform(post("/api/v1/user/events")
-						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, 1L)
+						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, userId)
 						.contentType(MediaType.APPLICATION_JSON)
 						.header(EventController.HEADER_PLATFORM, "PWA")
 						.header(EventController.HEADER_APP_VERSION, "1.0.0")
@@ -53,7 +54,7 @@ class EventApiTest extends IntegrationTestSupport {
 		assertThat(props).contains("entry_source").doesNotContain("email");
 		assertThat(jdbcTemplate.queryForObject("SELECT platform FROM events", String.class)).isEqualTo("PWA");
 		assertThat(jdbcTemplate.queryForObject("SELECT source FROM events", String.class)).isEqualTo("CLIENT");
-		assertThat(jdbcTemplate.queryForObject("SELECT user_id FROM events", Long.class)).isEqualTo(1L);
+		assertThat(jdbcTemplate.queryForObject("SELECT user_id FROM events", Long.class)).isEqualTo(userId);
 	}
 
 	@Test
@@ -76,7 +77,7 @@ class EventApiTest extends IntegrationTestSupport {
 				""";
 
 		mockMvc.perform(post("/api/v1/user/events")
-						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, 1L)
+						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, createUser())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(body))
 				.andExpect(status().isAccepted())
@@ -108,7 +109,7 @@ class EventApiTest extends IntegrationTestSupport {
 				""";
 
 		mockMvc.perform(post("/api/v1/user/events")
-						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, 1L)
+						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, createUser())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(body))
 				.andExpect(status().isAccepted())
@@ -125,7 +126,7 @@ class EventApiTest extends IntegrationTestSupport {
 				.collect(Collectors.joining(","));
 
 		mockMvc.perform(post("/api/v1/user/events")
-						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, 1L)
+						.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, createUser())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"events\":[" + events + "]}"))
 				.andExpect(status().isContentTooLarge())
