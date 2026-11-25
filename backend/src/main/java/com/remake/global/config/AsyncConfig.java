@@ -22,7 +22,7 @@ public class AsyncConfig {
 	 * 식단표 생성 서버 작업(API 38이 202로 답한 뒤 AI 호출·저장). 작업 하나가 AI를 기다리며 수십 초 걸리므로 이벤트와 나눈다.
 	 * 회원당 생성 중인 식단표는 하나라 동시에 도는 작업 수 = 동시에 만드는 회원 수다.
 	 * 대기열이 가득 차면 MealPlanGenerationJobAdapter가 그 식단표를 바로 실패로 끝낸다.
-	 * 배포로 앱이 멈출 때 도는 작업을 25초까지 기다린다(컨테이너 stop_grace_period 40초 안). 그래도 끊긴 작업은 GENERATING으로 남는다.
+	 * 배포로 앱이 멈출 때 도는 작업을 25초까지 기다린다(컨테이너 stop_grace_period 70초 안). 그래도 끊긴 작업은 GENERATING으로 남는다.
 	 */
 	@Bean(name = MEAL_PLAN_TASK_EXECUTOR)
 	public Executor mealPlanTaskExecutor() {
