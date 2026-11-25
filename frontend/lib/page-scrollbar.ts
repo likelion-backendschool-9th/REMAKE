@@ -14,6 +14,8 @@ export function initPageScrollbar(): () => void {
     { target: document.body },
     {
       scrollbars: {
+        // 모양은 globals.css의 .os-theme-remake(피그마 스크롤)
+        theme: "os-theme-remake",
         // 스크롤할 때만 보인다. 처음 스크롤하기 전에는 숨긴다
         autoHide: "scroll",
         autoHideSuspend: true,
