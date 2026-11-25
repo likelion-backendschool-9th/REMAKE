@@ -88,6 +88,9 @@ v3에서 사라진 것(시나리오에서 뺌): 추정 표시, `FINISHED` 상태
 | ING-49 | 전체 | | E19~E27 행동을 각각 한 번 실행 | `fridge_list_viewed`(FE), `fridge_filter_applied`(FE), `ingredient_add_started`(FE), `ingredient_added`(BE), `ingredient_edited`(FE), `ingredient_deleted`(FE), `ingredient_used`·`ingredient_discarded`(BE), `ingredient_expired`(서버 정기 작업)가 각각 **한 번만** 적재된다. SERVER/CLIENT 중복 없음 | V | 확정 | P0 | #196, #172, #116 |
 | ING-50 | 전체 | | 위 이벤트의 속성 확인 | 재료 이름·메일 등 개인정보·자유 입력이 없다. `category_code`·개수·enum만. 속성 값은 정의서 값(`use_via` manual/cook, `expiry_status` danger/soon/ok)이다 | V | 확정 | P0 | #196 |
 | ING-51 | 전체 | | 필터·추가 시작·수정 이벤트의 enum 값(`filter_type`, `add_source`, `edit_field`) | 정의서 값으로 보냈을 때 서버가 받아들인다. **현재 코드의 허용 값이 정의서와 달라(예: `add_source` 정의서 manual/receipt/cart, 코드 MANUAL/RECEIPT/CATALOG) 거절될 수 있다** | V | 확인 | P0 | #172, #196 |
+| ING-52 | 16, 13 | 장바구니에서 옮긴 양파 200 G(사전 단위는 EA) | 이름을 "햇양파"로 수정 | 단위 `G`와 수량 200이 그대로다(`햇양파 200개`로 뜻이 바뀌지 않는다). 상세 응답의 `unitFollowsName`이 `false`이고, 수정 화면은 API 14를 부르지 않고 지금 단위를 보여 준다 | A, E | 확정 | P0 | #233 |
+| ING-53 | 16 | 영수증으로 등록한 삼겹살 2 PACK | 이름을 "목살"로 수정 / 카테고리만 수정 | 단위 `PACK`과 수량 2가 그대로다. 사용·버림 기록이 있어도 같다 | A | 확정 | P0 | #233 |
+| ING-54 | 13, 16 | 사전 단위 우유(PACK) | 상세 조회 후 이름을 "대파"로 수정 | `unitFollowsName`이 `true`이고, 수정하면 BUNCH로 다시 정해진다(API 14 미리보기와 같음). 수정 뒤 응답도 `true` | A, E | 확정 | P0 | #233 |
 
 ### 화면 대기·미결
 

@@ -108,7 +108,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		Long id = registerUseCase.registerIngredient(command("우유", IngredientCategoryCode.DAIRY_EGG,
 				LocalDate.of(2026, 3, 12), null, new BigDecimal("2"), null));
 
-		Ingredient saved = getUseCase.getIngredient(userId, id).ingredient();
+		Ingredient saved = getUseCase.getIngredient(userId, id).fridgeIngredient().ingredient();
 		assertThat(saved.name()).isEqualTo("우유");
 		assertThat(saved.categoryId()).isEqualTo(categoryId("DAIRY_EGG"));
 		assertThat(saved.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 12));
@@ -123,7 +123,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		Long id = registerUseCase.registerIngredient(command("양파", IngredientCategoryCode.VEGETABLE, null,
 				LocalDate.of(2026, 3, 1), BigDecimal.ONE, null));
 
-		Ingredient saved = getUseCase.getIngredient(userId, id).ingredient();
+		Ingredient saved = getUseCase.getIngredient(userId, id).fridgeIngredient().ingredient();
 		assertThat(saved.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 8));
 	}
 
@@ -131,7 +131,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 	void 기준일이_없으면_오늘을_기준으로_추정한다() {
 		Long id = registerUseCase.registerIngredient(command("양파", IngredientCategoryCode.VEGETABLE, null, null, BigDecimal.ONE, null));
 
-		assertThat(getUseCase.getIngredient(userId, id).ingredient().expirationDate()).isEqualTo(LocalDate.of(2026, 3, 11));
+		assertThat(getUseCase.getIngredient(userId, id).fridgeIngredient().ingredient().expirationDate()).isEqualTo(LocalDate.of(2026, 3, 11));
 	}
 
 	@Test
@@ -139,7 +139,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		Long id = registerUseCase.registerIngredient(command("양파", IngredientCategoryCode.VEGETABLE,
 				LocalDate.of(2026, 3, 9), LocalDate.of(2026, 3, 1), BigDecimal.ONE, createReceiptItem(userId, "양파", "VEGETABLE")));
 
-		Ingredient saved = getUseCase.getIngredient(userId, id).ingredient();
+		Ingredient saved = getUseCase.getIngredient(userId, id).fridgeIngredient().ingredient();
 		assertThat(saved.expirationDate()).isEqualTo(LocalDate.of(2026, 3, 9));
 	}
 
@@ -153,8 +153,8 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 						new BigDecimal("0.6"), porkItemId)));
 
 		assertThat(ids).hasSize(2);
-		Ingredient milk = getUseCase.getIngredient(userId, ids.get(0)).ingredient();
-		Ingredient pork = getUseCase.getIngredient(userId, ids.get(1)).ingredient();
+		Ingredient milk = getUseCase.getIngredient(userId, ids.get(0)).fridgeIngredient().ingredient();
+		Ingredient pork = getUseCase.getIngredient(userId, ids.get(1)).fridgeIngredient().ingredient();
 		assertThat(milk.name()).isEqualTo("우유");
 		assertThat(milk.receiptItemId()).isEqualTo(milkItemId);
 		// 달걀·유제품의 기본 보관 일수 10일
@@ -207,9 +207,9 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		Long contained = registerUseCase.registerIngredient(commandWithUnit("유기농 우유", IngredientCategoryCode.DAIRY_EGG, null));
 		Long unknown = registerUseCase.registerIngredient(commandWithUnit("알수없는재료", IngredientCategoryCode.ETC, null));
 
-		assertThat(getUseCase.getIngredient(userId, exact).ingredient().unit()).isEqualTo(IngredientUnit.BUNCH);
-		assertThat(getUseCase.getIngredient(userId, contained).ingredient().unit()).isEqualTo(IngredientUnit.PACK);
-		assertThat(getUseCase.getIngredient(userId, unknown).ingredient().unit()).isEqualTo(IngredientUnit.EA);
+		assertThat(getUseCase.getIngredient(userId, exact).fridgeIngredient().ingredient().unit()).isEqualTo(IngredientUnit.BUNCH);
+		assertThat(getUseCase.getIngredient(userId, contained).fridgeIngredient().ingredient().unit()).isEqualTo(IngredientUnit.PACK);
+		assertThat(getUseCase.getIngredient(userId, unknown).fridgeIngredient().ingredient().unit()).isEqualTo(IngredientUnit.EA);
 	}
 
 	@Test
@@ -218,7 +218,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		Long id = registerUseCase.registerIngredient(commandWithUnit("한돈 앞다리 돼지고기", IngredientCategoryCode.MEAT,
 				IngredientUnit.PACK));
 
-		assertThat(getUseCase.getIngredient(userId, id).ingredient().unit()).isEqualTo(IngredientUnit.PACK);
+		assertThat(getUseCase.getIngredient(userId, id).fridgeIngredient().ingredient().unit()).isEqualTo(IngredientUnit.PACK);
 	}
 
 	@Test
