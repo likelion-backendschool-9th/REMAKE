@@ -12,9 +12,7 @@ import { SelectSheet } from "@/components/SelectSheet/SelectSheet";
 import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
 
-import { ReadingIndicator } from "../../../../_components/ReadingIndicator/ReadingIndicator";
 import { RecipeBody } from "../../../../_components/RecipeBody/RecipeBody";
-import { useStepReader } from "../../../../_hooks/useStepReader";
 import {
   REPORT_REASONS,
   type ReportReason,
@@ -32,7 +30,8 @@ type SharedRecipeDetailContainerProps = {
 
 /**
  * p4.1.4.1 공유 레시피 상세(완전 익명). 서브 헤더(← 제목 ⋮ 신고), 사진, 재료 준비(내 냉장고에 없는 재료는 빨간 테두리),
- * 만드는 방법, Tips!, 하트 + 저장 수, 아래 "레시피 저장"(부족한 재료는 장바구니로).
+ * 만드는 방법(읽어 주기 없음, 남이 공유한 글이라 내 레시피 상세·생성 결과에만 둔다), Tips!, 하트 + 저장 수,
+ * 아래 "레시피 저장"(부족한 재료는 장바구니로).
  * 하트와 "레시피 저장"은 같은 동작이다. 다시 누르면 저장 취소(저장 수 -1, 장바구니는 그대로)(domain-rules 7).
  * 상태: 기본 / 신고하기 시트 / 저장(하트 빨강, 저장 수 +1) / 스켈레톤(실제 라우트 처음 상태).
  */
@@ -43,8 +42,6 @@ export function SharedRecipeDetailContainer({
   const [isReportOpen, setIsReportOpen] = useState(initialReportOpen);
   // TODO: API 53(저장)·54(저장 취소)를 붙이면 응답의 saveCount·saved로 바꾼다. 저장하면 cartAddedCount 토스트(디자인 대기)
   const [savedOverride, setSavedOverride] = useState<boolean | null>(null);
-  const reader = useStepReader(recipe?.steps);
-  const isPlaying = reader.playingStepNo !== null;
 
   const saved = savedOverride ?? recipe?.saved ?? false;
   const saveCount = recipe ? recipe.saveCount + (saved === recipe.saved ? 0 : saved ? 1 : -1) : 0;
@@ -91,13 +88,7 @@ export function SharedRecipeDetailContainer({
           )}
         </div>
 
-        <RecipeBody
-          recipe={recipe}
-          playingStepNo={reader.playingStepNo}
-          onPlay={reader.play}
-          onStop={reader.stop}
-          className={styles.body}
-        />
+        <RecipeBody recipe={recipe} className={styles.body} />
 
         {recipe && (
           <button type="button" className={styles.heart} aria-pressed={saved} onClick={toggleSave}>
@@ -111,15 +102,14 @@ export function SharedRecipeDetailContainer({
         )}
       </main>
 
-      {isPlaying ? (
-        <ReadingIndicator onStop={reader.stop} />
-      ) : (
-        <BottomBar bottomNotice="레시피 저장 시 부족한 재료는 장바구니로 들어가요">
-          <Button disabled={!recipe} onClick={toggleSave}>
-            레시피 저장
-          </Button>
-        </BottomBar>
-      )}
+      <BottomBar
+        bottomNotice="레시피 저장 시 부족한 재료는 장바구니로 들어가요"
+        className={styles.bottom}
+      >
+        <Button disabled={!recipe} onClick={toggleSave}>
+          레시피 저장
+        </Button>
+      </BottomBar>
 
       <SelectSheet<ReportReason>
         isOpen={isReportOpen}

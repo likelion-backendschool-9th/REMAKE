@@ -10,9 +10,7 @@ import { Button } from "@/components/Button/Button";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
 import { TextField } from "@/components/TextField/TextField";
 
-import { ReadingIndicator } from "../../../../_components/ReadingIndicator/ReadingIndicator";
 import { RecipeBody } from "../../../../_components/RecipeBody/RecipeBody";
-import { useStepReader } from "../../../../_hooks/useStepReader";
 import type { RecipeContent } from "../../../../_lib/recipe";
 
 import styles from "./ShareRecipeContainer.module.css";
@@ -32,7 +30,7 @@ type ShareRecipeContainerProps = {
 };
 
 /**
- * p4.1.1.1 레시피 공유 작성. 사진 1장(필수, 누르면 고르기·바꾸기), 레시피 제목(필수, 100자), 레시피 내용(읽기 전용),
+ * p4.1.1.1 레시피 공유 작성. 사진 1장(필수, 누르면 고르기·바꾸기), 레시피 제목(필수, 100자), 레시피 내용(읽기 전용, 읽어 주기 없음),
  * "레시피 공유하기"(사진과 제목이 있어야 켜짐, 확인 모달 없음). 같은 레시피는 한 주에 한 번(domain-rules 7).
  * 상태: 기본 / 인풋 포커스 / 사진 수정(사진 고른 뒤) / 완료(사진·제목 다 있음).
  */
@@ -46,8 +44,6 @@ export function ShareRecipeContainer({
   const titleId = useId();
   const [photoUrl, setPhotoUrl] = useState(initialPhotoUrl);
   const [title, setTitle] = useState(initialTitle);
-  const reader = useStepReader(recipe?.steps);
-  const isPlaying = reader.playingStepNo !== null;
   const canShare = Boolean(recipe && photoUrl && title.trim());
 
   useEffect(() => {
@@ -131,23 +127,14 @@ export function ShareRecipeContainer({
           />
         </div>
 
-        <RecipeBody
-          recipe={recipe}
-          playingStepNo={reader.playingStepNo}
-          onPlay={reader.play}
-          onStop={reader.stop}
-        />
+        <RecipeBody recipe={recipe} />
       </main>
 
-      {isPlaying ? (
-        <ReadingIndicator onStop={reader.stop} />
-      ) : (
-        <BottomBar>
-          <Button disabled={!canShare} onClick={handleShare}>
-            레시피 공유하기
-          </Button>
-        </BottomBar>
-      )}
+      <BottomBar className={styles.bottom}>
+        <Button disabled={!canShare} onClick={handleShare}>
+          레시피 공유하기
+        </Button>
+      </BottomBar>
     </>
   );
 }

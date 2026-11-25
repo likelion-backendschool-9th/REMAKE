@@ -100,3 +100,8 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* 아래 고정 영역: 바탕을 투명하게 해 버튼만 떠 보이게 한다(뒤 내용이 버튼 옆·아래로 비쳐 보임) */
+.bottom {
+  background: transparent;
+}
