@@ -10,6 +10,7 @@ import { RankChange } from "@/components/RankChange/RankChange";
 import { SearchField } from "@/components/SearchField/SearchField";
 import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
+import { useDebounce } from "@/hooks/useDebounce";
 import { dayjs } from "@/lib/dayjs";
 
 import { formatIngredientSummary, sharedRecipePath } from "../../../_lib/recipe";
@@ -51,7 +52,11 @@ export function RankingContainer({
 }: RankingContainerProps) {
   const [sort] = useState<RankingSort>(initialSort);
   const [query, setQuery] = useState(initialQuery);
-  const keyword = query.trim();
+  // 검색은 글자를 치는 동안 기다렸다가 멈추면 반영한다(나중에 API 50 ?q= 요청이 글자마다 나가지 않게).
+  // 지우면(빈 값) 기다리지 않고 바로 전체 목록으로 돌아간다
+  const typedKeyword = query.trim();
+  const debouncedKeyword = useDebounce(typedKeyword);
+  const keyword = typedKeyword === "" ? "" : debouncedKeyword;
 
   return (
     <>
@@ -105,7 +110,7 @@ function RankingList({
   now?: string;
 }) {
   const [now] = useState(() => nowProp ?? dayjs().format());
-  // TODO: 검색어는 API 50(?q=)으로 보낸다. 인기순은 TOP 100 안에서 제목 검색, 전체 순위를 유지한다
+  // TODO: 검색어(디바운스된 keyword)는 API 50(?q=)으로 보낸다. 인기순은 TOP 100 안에서 제목 검색, 전체 순위를 유지한다
   const rows = keyword
     ? ranking.content.filter((item) => item.title.toLowerCase().includes(keyword.toLowerCase()))
     : ranking.content;
