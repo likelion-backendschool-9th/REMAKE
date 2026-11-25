@@ -41,6 +41,10 @@ interface SavedRecipeJpaRepository extends JpaRepository<SavedRecipeJpaEntity, L
 	@Query("delete from SavedRecipeJpaEntity s where s.userId = :userId and s.recipeId = :recipeId")
 	int deleteByUserIdAndRecipeId(@Param("userId") Long userId, @Param("recipeId") Long recipeId);
 
+	@Modifying(clearAutomatically = true, flushAutomatically = true)
+	@Query("delete from SavedRecipeJpaEntity s where s.userId = :userId")
+	int deleteAllByUserId(@Param("userId") Long userId);
+
 	@Modifying
 	@Query("update SavedRecipeJpaEntity s set s.favorite = :favorite where s.userId = :userId and s.recipeId = :recipeId")
 	int updateFavorite(@Param("userId") Long userId, @Param("recipeId") Long recipeId,

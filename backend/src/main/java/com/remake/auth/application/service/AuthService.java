@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.remake.auth.application.port.in.DeleteRefreshTokensForUserUseCase;
+import com.remake.auth.application.port.in.ExchangeOAuthProfileUseCase;
 import com.remake.auth.application.port.in.LogoutUseCase;
 import com.remake.auth.application.port.in.RefreshAccessTokenUseCase;
 import com.remake.auth.application.port.in.SocialLoginUseCase;
@@ -26,6 +28,7 @@ import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.user.application.port.in.FindOrCreateSocialUserUseCase;
 import com.remake.user.application.port.in.GetUserUseCase;
+import com.remake.user.domain.AuthProvider;
 import com.remake.user.domain.User;
 
 import lombok.RequiredArgsConstructor;
@@ -36,7 +39,8 @@ import lombok.RequiredArgsConstructor;
  */
 @Service
 @RequiredArgsConstructor
-public class AuthService implements SocialLoginUseCase, RefreshAccessTokenUseCase, LogoutUseCase {
+public class AuthService implements SocialLoginUseCase, RefreshAccessTokenUseCase, LogoutUseCase,
+		DeleteRefreshTokensForUserUseCase, ExchangeOAuthProfileUseCase {
 
 	private final OAuthClientPort oAuthClientPort;
 	private final FindOrCreateSocialUserUseCase findOrCreateSocialUserUseCase;
@@ -140,6 +144,17 @@ public class AuthService implements SocialLoginUseCase, RefreshAccessTokenUseCas
 				saveRefreshTokenPort.save(stored.revoke(LocalDateTime.now(clock)));
 			}
 		});
+	}
+
+	@Override
+	@Transactional
+	public void deleteAllForUser(Long userId) {
+		saveRefreshTokenPort.deleteAllByUserId(userId);
+	}
+
+	@Override
+	public SocialProfile exchange(AuthProvider provider, String code, String redirectUri, String state) {
+		return oAuthClientPort.exchange(provider, code, redirectUri, state);
 	}
 
 	private void trackLoginFailed(String provider, String errorCode) {

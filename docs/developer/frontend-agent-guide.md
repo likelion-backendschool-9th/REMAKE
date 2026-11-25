@@ -26,7 +26,7 @@ AI 코딩 에이전트(Claude Code, Codex 등)가 `frontend/`에서 작업할 �
 - 날짜는 `lib/dayjs.ts`에서 export한 `dayjs`를 씁니다 (ko 로케일 설정됨).
 - 폼은 React Hook Form + Zod(`@hookform/resolvers/zod`)로 만듭니다.
 - 백엔드 API가 아직 없으면 `mocks/handlers.ts`에 MSW 핸들러를 추가해서 개발합니다.
-- 제품 정책에서 온 UI 규칙(blueprint.md §10)을 따릅니다. AI 입력은 선택식만: 레시피·식단표 생성에 자유 입력 칸을 만들지 않습니다. 소비기한 `status`와 `dDay`는 서버가 준 값을 보여 주고 다시 계산하지 않습니다.
+- 제품 정책에서 온 UI 규칙(blueprint.md §10)을 따릅니다. AI 입력은 선택식만: 레시피·식단표 생성에 자유 입력 칸을 만들지 않습니다. 소비기한 `status`와 `dDay`는 서버가 준 값을 보여 주고 다시 계산하지 않습니다. 예외: 등록 전 OCR 결과(저장 전이고 사용자가 소비기한을 고침)는 프론트가 KST 날짜로 계산합니다.
 - 분석 이벤트는 공용 트래커로만 보냅니다(blueprint.md §11). 이벤트 속성에 개인정보나 자유 텍스트를 넣지 않습니다.
 
 ## 코드 위치 (코로케이션)

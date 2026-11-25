@@ -142,4 +142,18 @@ class ReceiptPersistenceAdapter implements SaveReceiptPort, FindDuplicateReceipt
 				.setParameter("id", id)
 				.executeUpdate() == 1;
 	}
+
+	@Override
+	public List<String> deleteAllForUser(Long userId) {
+		List<String> imageKeys = entityManager.createQuery("""
+				SELECT r.imageKey FROM ReceiptJpaEntity r WHERE r.userId = :userId
+				""", String.class)
+				.setParameter("userId", userId)
+				.getResultList();
+		// receipt_items는 receipts ON DELETE CASCADE
+		entityManager.createQuery("DELETE FROM ReceiptJpaEntity r WHERE r.userId = :userId")
+				.setParameter("userId", userId)
+				.executeUpdate();
+		return imageKeys;
+	}
 }

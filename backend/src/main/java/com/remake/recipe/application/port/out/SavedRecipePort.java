@@ -22,6 +22,9 @@ public interface SavedRecipePort {
 
 	void delete(Long userId, Long recipeId);
 
+	/** 탈퇴 시 그 회원의 저장 목록만 지운다. */
+	void deleteAllByUserId(Long userId);
+
 	void updateFavorite(Long userId, Long recipeId, boolean favorite);
 
 	long countByUserId(Long userId);

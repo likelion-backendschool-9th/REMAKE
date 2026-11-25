@@ -28,3 +28,15 @@
   outline: 2px solid var(--color-brand-primary);
   outline-offset: -2px;
 }
+
+/* 세로(피그마 p3.3-ocr 결과-케밥 선택): 항목 사이 10, 항목마다 흰 칸 + shadow-control, 고른 항목은 글자만 파랑 */
+.group[data-orientation="vertical"] {
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+.group[data-orientation="vertical"] .option {
+  flex: none;
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-control);
+}

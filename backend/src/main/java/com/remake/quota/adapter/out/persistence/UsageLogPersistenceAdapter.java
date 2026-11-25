@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Component;
 
+import com.remake.quota.application.port.out.DeleteUsageLogsForUserPort;
 import com.remake.quota.application.port.out.UsageLogPort;
 import com.remake.quota.domain.UsageType;
 
@@ -13,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 /** usage_logs 읽기·쓰기와 회원 단위 잠금. */
 @Component
 @RequiredArgsConstructor
-class UsageLogPersistenceAdapter implements UsageLogPort {
+class UsageLogPersistenceAdapter implements UsageLogPort, DeleteUsageLogsForUserPort {
 
 	/**
 	 * PostgreSQL 권고 잠금(advisory lock)의 첫 번째 키. 기능마다 다른 값을 써서 다른 잠금과 겹치지 않게 한다.
@@ -44,5 +45,10 @@ class UsageLogPersistenceAdapter implements UsageLogPort {
 				.setParameter("namespace", QUOTA_LOCK_NAMESPACE)
 				.setParameter("userId", Math.toIntExact(userId))
 				.getSingleResult();
+	}
+
+	@Override
+	public void deleteAllByUserId(Long userId) {
+		repository.deleteByUserId(userId);
 	}
 }

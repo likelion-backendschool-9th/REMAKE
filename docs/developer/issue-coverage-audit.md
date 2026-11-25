@@ -65,7 +65,7 @@ WBS 76개 작업을 전부 대조해 누락 추적 이슈 15개를 등록했다.
 | 0.5 | orval 타입 생성 | 현재 레포는 openapi-typescript·openapi-fetch. 도구 교체 요구로 해석하지 않음 |
 | 0.4·1.7 | 수정 13개인데 수정 17번 참조 | 추가/수정 원목록·실제 개수 확인 #183 |
 | 1.8 | 인증번호 오류를 입력칸 아래 표시 | PR #142 최종 결정은 INVALID/EXPIRED/LOCKED 토스트 |
-| 3.7·프론트 URL 표 | OCR 품목 빼기 | PR #142에서 빼기 취소. 수정·추가 유지 |
+| 3.7·프론트 URL 표 | OCR 품목 빼기 | PR #142에서 빼기 취소, 11/24 다시 넣음(OCR이 잘못 읽은 품목을 뺄 수 있음). 수정·추가 유지 |
 | 4.4 | 요리 기록 | 별도 recipe_cook_logs 신설 없이 ingredient_logs·cook_completed·cooked_at 사용 |
 | 4.9·프론트 URL 표 | 추천 위치 미정·E50 보류 | 냉장고 바텀 시트 확정. 이벤트 우선순위만 #53 미결 |
 | 5.6·프론트 URL 표 | 식단 생성 대기·실패 전용 화면 | 202 접수·완성/실패 앱 안 알림. 겹침·한도 안내 유지 |
@@ -110,7 +110,7 @@ WBS 76개 작업을 전부 대조해 누락 추적 이슈 15개를 등록했다.
 | 3.4 | 영수증 목록·상세·삭제·보관 정리 | 3.5 | [#61](https://github.com/likelion-backendschool-9th/REMAKE/issues/61), [#62](https://github.com/likelion-backendschool-9th/REMAKE/issues/62) | — | 연결됨·구현/검증 진행 대상 |
 | 3.5 | 소비 패턴·일별 품목 조회 | 3.6 | [#73](https://github.com/likelion-backendschool-9th/REMAKE/issues/73) | — | 연결됨·구현/검증 진행 대상 |
 | 3.6 | 영수증·OCR 서버 이벤트 | 11.4 | [#49](https://github.com/likelion-backendschool-9th/REMAKE/issues/49), [#72](https://github.com/likelion-backendschool-9th/REMAKE/issues/72), [#172](https://github.com/likelion-backendschool-9th/REMAKE/issues/172) | — | 연결됨·구현/검증 진행 대상 |
-| 3.7 | 촬영·OCR 편집·최종 등록 화면 | 3.3, 3.4 | [#101](https://github.com/likelion-backendschool-9th/REMAKE/issues/101), [#102](https://github.com/likelion-backendschool-9th/REMAKE/issues/102), [#173](https://github.com/likelion-backendschool-9th/REMAKE/issues/173) | — | 품목 빼기는 PR #142에서 제거; 수정·추가·최종 등록 유지 |
+| 3.7 | 촬영·OCR 편집·최종 등록 화면 | 3.3, 3.4 | [#101](https://github.com/likelion-backendschool-9th/REMAKE/issues/101), [#102](https://github.com/likelion-backendschool-9th/REMAKE/issues/102), [#173](https://github.com/likelion-backendschool-9th/REMAKE/issues/173) | — | 품목 빼기는 PR #142에서 제거했다가 11/24 다시 넣음; 수정·추가·빼기·최종 등록 유지 |
 | 3.8 | 영수증 보관함·상세·삭제 화면 | 3.5 | [#103](https://github.com/likelion-backendschool-9th/REMAKE/issues/103) | — | 연결됨·구현/검증 진행 대상 |
 | 3.9 | 나의 소비 화면 | 3.7 | [#104](https://github.com/likelion-backendschool-9th/REMAKE/issues/104) | — | 연결됨·구현/검증 진행 대상 |
 | 4.1 | AI 프롬프트·출력 형식·옵션 검증 | 4.1 | [#74](https://github.com/likelion-backendschool-9th/REMAKE/issues/74) | [#156](https://github.com/likelion-backendschool-9th/REMAKE/pull/156) | AI 포트·어댑터 기반 완료; API 연결은 #75 |

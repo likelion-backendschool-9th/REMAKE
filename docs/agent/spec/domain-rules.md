@@ -130,13 +130,13 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Name is the ingredient, not the product ("비비고 냉동 만두" ✗ → "만두" ✓).
 - Unit: the server picks it from the name (and the category, API 14 with `categoryCode`). The amount field is disabled until the name is set; the frontend asks API 14 again when the name or category changes so the shown unit equals the saved one. Changing the name or the category re-picks only the unit (with the new name and category); the number stays. Sending the same values again keeps the unit. This applies on add and on edit, also when the ingredient already has use/discard logs (each log keeps the name and unit recorded at that time).
 - Amount edit: it fixes an input mistake, so it changes `amount` and `initial_amount` together (the discarded cost divides by `initial_amount`). Reject it with `INVALID_INPUT` once the ingredient has any use/discard log (#128).
-- Expiry status: danger = expired or today (D-DAY); soon = D-1 to D-3; ok = later. Shown as `D-N`, `D-DAY`, `폐기-N`.
+- Expiry status: danger = expired or today (D-DAY); soon = D-1 to D-3; ok = later. Shown as `D-N`, `D-DAY`, `폐기-N`. Saved ingredients: the server computes them (summary counts, status filter, and notifications use the same result). Only the OCR result before registration is computed by the frontend with the KST date, because it is not stored and the user edits it (11/25).
 - Filter and sort: tapping a status card shows only that status; "재료 위치" and "재료 종류" sheets filter one at a time. Sorted by nearest expiry. List title "N개의 위험/임박/여유 재료". **No ingredient search.**
 - Row tap opens the used/discarded sheet; the trailing `>` opens edit.
 - Used/discarded: choose "사용 했어요" or "버렸어요" + amount + confirm. Discarded shows "이번 달 버린 식재료 금액에 더해져요".
 - More than available: `INSUFFICIENT_QUANTITY` (400). The sheet caps the amount at what remains (capping method is a proposal).
 - Amount reaches 0: delete the ingredient row; logs keep the name.
-- Discarded cost = price × discarded amount ÷ original amount. No price, no cost. The screen showing this month's discarded cost has no position yet (screen pending).
+- Discarded cost = price × discarded amount ÷ original amount. No price, no cost. This month's discarded cost shows on "나의 소비" as "N월 버린 식비", which opens p3.4.1 "버린 식재료" (decided 11/25; API proposed in #248).
 - Delete: delete icon on the edit screen (screen pending). Allowed even with logs; logs keep the name.
 - Price is optional on manual add too ("가격을 정확히 작성할수록 소비 패턴 분석률이 올라가요"). Priced ingredients count in spending patterns.
 - Default expiry: ingredients from receipts and the cart get the category default shelf life. No "estimated" flag (only a notice on the OCR result screen). Estimation base date, frozen/room values, and recalculation are up to the developer.
@@ -146,11 +146,12 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 ## 3. Receipts and spending (이동준)
 
 - Scan: "영수증 스캔 하기" → camera, or "첨부 하기" / gallery icon → image upload (screens after upload are pending).
-- Camera unavailable: shared toast "카메라를 쓸 수 없어요. 갤러리에서 골라 주세요" (`CAMERA_UNAVAILABLE`, wording is a proposal).
+- Camera (decided 11/25): open the device camera app, not an in-app camera. Use a file input: camera = `accept="image/*" capture="environment"`, album = `accept="image/*"` without `capture`. Both return one photo file that goes to the scan. No in-app viewfinder, receipt guide frame, flash, or focus control; no permission check or toggle (the device camera app handles its own permission). Devices without a camera open the file picker instead.
+- Camera unavailable: shared toast "카메라를 쓸 수 없어요. 갤러리에서 골라 주세요" (`CAMERA_UNAVAILABLE`, wording is a proposal). With the device camera app this rarely happens; keep it as a fallback when no photo can be taken.
 - No scan limit. OCR is synchronous (up to 30 s) with the OCR result skeleton. No "analysis done" notification.
 - OCR failure: one failure screen with different wording for: unreadable (not a receipt, OCR error, timeout), no food items, purchase date older than 6 months, already registered. The user rescans (screen pending).
 - Results contain food only (non-food such as 수세미, 냄비 is filtered out). Each item is filled with category, storage, amount, price, and expiry.
-- Review on "영수증 재료": edit (p3.3.1), add (p3.3.2). The OCR result shows food items only, so there is no item removal (screens to add no. 5 canceled, 11/22). Edits stay in screen state and are sent with registration.
+- Review on "영수증 재료": edit (p3.3.1), add (p3.3.2), remove. Removal is allowed so the user can drop an item OCR read wrongly: trash icon on p3.3.1 → confirm modal "재료를 삭제할까요?" (restored 11/24; it was canceled on 11/22). Add and rescan open from the app bar ⋮ sheet ("재료 추가", "영수증 재촬영"). Edits, additions and removals stay in screen state and are sent with registration (removed items are simply not sent).
 - Notice: "소비 기한은 카테고리 기본 보관 기간으로 추정 했어요. 소비기한을 확인 하시고 수정해 주세요".
 - Register ("식재료 N개 등록 하기"): save the image, receipt, items, and fridge ingredients at once. Unregistered OCR results are never stored; leaving without registering records only an accuracy event.
 - Purchase date and store name: empty if OCR cannot read them; both are required at registration.
@@ -161,7 +162,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Monthly total: food item amounts of that month's receipts (by purchase date).
 - Average: difference from my past average (monthly average of the last 6 months). Excluding this month, using only months with records, and hiding when there is no history are (proposal).
 - Store icon: match the store name to 14 codes (CU, GS25, SEVEN_ELEVEN, EMART24, EMART, HOMEPLUS, LOTTE_MART, COSTCO, TRADERS, HANARO, GS_FRESH, LOTTE_SUPER, EMART_EVERYDAY, HOMEPLUS_EXPRESS). No match: leave empty and show the default icon (matching method is a proposal).
-- Detail: original image, "2026년 11월 영수증", store and branch, items (image, name, storage, amount, price), total (food items), delete.
+- Detail: original image, "2026년 11월 영수증", store and branch, purchase date (date only; the purchase time is not shown, decided 11/25), items (image, name, storage, amount, price), total (food items), delete.
 - Registered receipts cannot be edited, only deleted. Fridge ingredients are edited in the fridge (editing a price there does not change the receipt).
 - Delete: modal → delete receipt, items, and image; it leaves spending and patterns; fridge ingredients stay.
 - Retention: 6 months from the purchase date; a daily early-morning job deletes older receipts with their images.
@@ -170,6 +171,9 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Pattern scope: receipt items + ingredients added without a receipt that have a price (by registration date). Unpriced ones are treated as fridge-only and excluded. Discarded ingredients stay included (already bought).
 - Category ratio: 12 categories; categories with 0 spending are left out (proposal).
 - Day selection: default today (or the last purchase day if not this month, proposal). No spending: "해당 날짜에는 소비가 없습니다".
+- Week row: swipe left/right (carousel) to the previous/next week of the selected month (decided 11/25). Days outside the selected month and days after today cannot be chosen (proposal).
+- Average difference: "평균보다 N만원 더 지출" / "덜 지출". From 10,000 원, round to 만원; below that, show 원 (decided 11/25). A difference of 0 shows "평균과 같게 지출" (proposal).
+- Discarded food (p3.4.1): "N월 버린 식비 N원" link at the top of 나의 소비 → "N월에 버린 식재료" total (priced items only), "가격을 넣은 재료만 금액에 더해져요", rows (category image, name, "M월 D일 버림", amount or "가격 없음"), newest first. API: API 25 `discardedAmount` and API 61 (proposal, #248).
 - No frequent items or purchase cycles.
 
 ## 4. AI recipes (김종수)

@@ -4,13 +4,9 @@ import { useState } from "react";
 
 import { BottomBar } from "@/components/BottomBar/BottomBar";
 import { Button } from "@/components/Button/Button";
+import { IngredientForm, type IngredientSheet } from "@/components/IngredientForm/IngredientForm";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
-
-import {
-  IngredientForm,
-  type IngredientSheet,
-} from "../../../_components/IngredientForm/IngredientForm";
-import { EMPTY_DRAFT, type IngredientDraft, isDraftComplete } from "../../../_lib/ingredient-form";
+import { EMPTY_DRAFT, type IngredientDraft, isDraftComplete } from "@/lib/ingredient-form";
 
 import styles from "./AddIngredientContainer.module.css";
 
