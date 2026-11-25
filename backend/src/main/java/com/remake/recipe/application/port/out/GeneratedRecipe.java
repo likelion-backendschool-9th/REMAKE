@@ -22,7 +22,12 @@ public record GeneratedRecipe(
 	 * @param fridgeIngredientId 요청에 넣은 냉장고 재료 id 중 하나. 냉장고에 없는 재료면 null
 	 * @param amount             양. 비어 있으면 "약간"
 	 * @param unit               단위 코드 문자열(검증 전)
+	 * @param categoryCode       냉장고에 없는 재료에 AI가 고른 카테고리 코드 문자열(검증 전). 없으면 null
 	 */
-	public record Ingredient(Long fridgeIngredientId, String name, BigDecimal amount, String unit) {
+	public record Ingredient(Long fridgeIngredientId, String name, BigDecimal amount, String unit, String categoryCode) {
+
+		public Ingredient(Long fridgeIngredientId, String name, BigDecimal amount, String unit) {
+			this(fridgeIngredientId, name, amount, unit, null);
+		}
 	}
 }

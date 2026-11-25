@@ -231,6 +231,7 @@ erDiagram
     varchar name
     numeric amount
     varchar unit
+    varchar category_code
     int sort_order
     timestamp created_at
   }
@@ -568,6 +569,7 @@ Ingredients and amounts of a recipe. Owner 김종수 (4 AI recipes).
 | `name` | varchar |  |  | no |  | Ingredient name |
 | `amount` | numeric(10,3) |  |  | yes |  | Amount. Empty means "to taste" |
 | `unit` | varchar |  |  | no |  | Unit |
+| `category_code` | varchar |  |  | yes |  | Ingredient category (12 codes) for adding missing ingredients to the cart (#76). Decided at generation: catalog name match, else the fridge ingredient's category, else the AI's pick. Empty for rows made before this column or when the AI gave no valid code |
 | `sort_order` | int |  |  | no |  | Order |
 | `created_at` | timestamp |  |  | no |  | Created time |
 

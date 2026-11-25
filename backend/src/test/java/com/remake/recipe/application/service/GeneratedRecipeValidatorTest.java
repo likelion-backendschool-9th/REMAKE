@@ -7,11 +7,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.recipe.application.port.out.GeneratedRecipe;
 import com.remake.recipe.application.port.out.RecipeAiRequest;
 import com.remake.recipe.domain.CustomOptions;
@@ -164,5 +167,30 @@ class GeneratedRecipeValidatorTest {
 		assertThatThrownBy(() -> GeneratedRecipeValidator.toRecipe(USER_ID, request, generated))
 				.isInstanceOfSatisfying(BusinessException.class,
 						e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.AI_INVALID_RESPONSE));
+	}
+
+	@Test
+	void 재료_카테고리는_사전_냉장고_재료_AI_순서로_정한다() {
+		RecipeAiRequest request = new RecipeAiRequest(RecipeSource.QUICK, 2, true, List.of(
+				new RecipeAiRequest.FridgeItem(EGG_ID, "계란", new BigDecimal("6"), "EA", LocalDate.of(2026, 3, 6), true,
+						IngredientCategoryCode.DAIRY_EGG),
+				new RecipeAiRequest.FridgeItem(ONION_ID, "양파", new BigDecimal("2"), "EA", LocalDate.of(2026, 3, 20),
+						false, IngredientCategoryCode.ETC)),
+				null, List.of());
+		// 사전에는 "양파"만 VEGETABLE로 있다고 본다
+		Function<String, Optional<IngredientCategoryCode>> catalog = name -> "양파".equals(name)
+				? Optional.of(IngredientCategoryCode.VEGETABLE) : Optional.empty();
+
+		Recipe recipe = GeneratedRecipeValidator.toRecipe(USER_ID, request, generated(
+				new GeneratedRecipe.Ingredient(EGG_ID, "계란", BigDecimal.ONE, "EA", "MEAT"),
+				new GeneratedRecipe.Ingredient(ONION_ID, "양파", BigDecimal.ONE, "EA", null),
+				new GeneratedRecipe.Ingredient(null, "청상추", BigDecimal.ONE, "EA", " vegetable "),
+				new GeneratedRecipe.Ingredient(null, "알수없는재료", BigDecimal.ONE, "EA", "SNACK")), catalog);
+
+		assertThat(recipe.ingredients()).extracting(RecipeIngredient::categoryCode).containsExactly(
+				IngredientCategoryCode.DAIRY_EGG, // 냉장고 재료의 카테고리(AI 값보다 먼저)
+				IngredientCategoryCode.VEGETABLE, // 사전(냉장고 재료의 ETC보다 먼저)
+				IngredientCategoryCode.VEGETABLE, // AI 값(공백·대소문자 맞춤)
+				null); // 12개 코드에 없는 AI 값은 비움(실패 아님)
 	}
 }

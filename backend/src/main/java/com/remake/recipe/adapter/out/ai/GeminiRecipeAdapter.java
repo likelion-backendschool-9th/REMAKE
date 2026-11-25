@@ -21,6 +21,7 @@ import org.springframework.web.client.RestClientResponseException;
 import com.remake.global.config.GeminiProperties;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.recipe.application.port.out.GenerateRecipeAiPort;
 import com.remake.recipe.application.port.out.GeneratedRecipe;
 import com.remake.recipe.application.port.out.RecipeAiRequest;
@@ -62,7 +63,10 @@ public class GeminiRecipeAdapter implements GenerateRecipeAiPort {
 			8. tips는 한두 문장, 없으면 null.
 			9. ingredients에는 steps에서 실제로 쓰는 재료만, 실제로 쓰는 양만큼 넣는다. 냉장고 재료를 모두 쓸 필요는 없고,
 			   요리에 어울리지 않는 재료는 빼도 된다. ingredients의 모든 재료는 steps 어딘가에 나와야 한다.
-			""".formatted(Arrays.toString(RecipeUnit.values()));
+			10. fridgeIngredientId가 null인 재료(냉장고에 없는 재료, 물 포함)는 categoryCode를 다음 코드 중 하나로 고른다: %s.
+			    애매하면 ETC를 쓴다. 냉장고 재료(fridgeIngredientId가 있는 재료)의 categoryCode는 null로 둔다.
+			""".formatted(Arrays.toString(RecipeUnit.values()),
+			Arrays.toString(IngredientCategoryCode.values()));
 
 	private final RestClient restClient;
 	private final GeminiProperties properties;
@@ -168,7 +172,8 @@ public class GeminiRecipeAdapter implements GenerateRecipeAiPort {
 								: null,
 						textOrNull(node.path("name")),
 						node.path("amount").isNumber() ? node.path("amount").decimalValue() : null,
-						textOrNull(node.path("unit"))));
+						textOrNull(node.path("unit")),
+						textOrNull(node.path("categoryCode"))));
 			}
 		}
 		List<String> steps = null;
@@ -254,7 +259,9 @@ public class GeminiRecipeAdapter implements GenerateRecipeAiPort {
 											"name", Map.of("type", "STRING"),
 											"amount", Map.of("type", "NUMBER", "nullable", true),
 											"unit", Map.of("type", "STRING", "enum",
-													Arrays.stream(RecipeUnit.values()).map(Enum::name).toList())),
+													Arrays.stream(RecipeUnit.values()).map(Enum::name).toList()),
+											"categoryCode", Map.of("type", "STRING", "nullable", true, "enum",
+													Arrays.stream(IngredientCategoryCode.values()).map(Enum::name).toList())),
 									"required", List.of("name", "unit"))),
 					"steps", Map.of("type", "ARRAY", "items", Map.of("type", "STRING"))),
 			"required", List.of("title", "cookMinutes", "ingredients", "steps"),
