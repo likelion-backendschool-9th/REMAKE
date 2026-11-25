@@ -14,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.remake.global.config.GeminiProperties;
@@ -23,9 +22,11 @@ import com.remake.global.error.ErrorCode;
 import com.remake.receipt.application.port.out.ReadReceiptTextPort;
 import com.remake.receipt.domain.ReceiptImageFormat;
 
+import lombok.extern.slf4j.Slf4j;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 
+@Slf4j
 @Component
 class GeminiReceiptTextAdapter implements ReadReceiptTextPort {
 
@@ -41,27 +42,28 @@ class GeminiReceiptTextAdapter implements ReadReceiptTextPort {
 			확실한 수량과 금액이 있는 행만 옮기고, 상품명에 찍힌 팩당 용량은 그대로 두세요.
 			카드·회원·연락처 정보, 합계 줄, 추가 설명, 마크다운은 출력하지 마세요.
 			""";
-	private static final URI ENDPOINT = URI.create(GeminiProperties.DEFAULT_BASE_URL
-			+ "/v1beta/models/gemini-3.5-flash-lite:generateContent");
 
-	private final String apiKey;
+	private final GeminiProperties properties;
+	private final URI endpoint;
 	private final JsonMapper json;
 	private final HttpClient http;
 
 	@Autowired
-	GeminiReceiptTextAdapter(@Value("${remake.ocr.gemini-api-key:}") String apiKey, JsonMapper json) {
-		this(apiKey, json, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build());
+	GeminiReceiptTextAdapter(GeminiProperties properties, JsonMapper json) {
+		this(properties, json, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build());
 	}
 
-	GeminiReceiptTextAdapter(String apiKey, JsonMapper json, HttpClient http) {
-		this.http = http;
-		this.apiKey = apiKey;
+	GeminiReceiptTextAdapter(GeminiProperties properties, JsonMapper json, HttpClient http) {
+		this.properties = properties;
+		this.endpoint = URI.create(properties.baseUrl().replaceFirst("/+$", "")
+				+ "/v1beta/models/" + properties.model() + ":generateContent");
 		this.json = json;
+		this.http = http;
 	}
 
 	@Override
 	public String read(byte[] image, Duration timeout) {
-		if (apiKey.isBlank()) {
+		if (!properties.hasApiKey()) {
 			throw new BusinessException(ErrorCode.OCR_UPSTREAM_ERROR);
 		}
 		String mimeType = switch (ReceiptImageFormat.detect(image)) {
@@ -74,9 +76,9 @@ class GeminiReceiptTextAdapter implements ReadReceiptTextPort {
 				Map.of("mimeType", mimeType, "data", Base64.getEncoder().encodeToString(image))));
 		var body = Map.of("contents", List.of(Map.of("parts", parts)),
 				"generationConfig", Map.of("temperature", 0, "maxOutputTokens", 2048));
-		HttpRequest request = HttpRequest.newBuilder(ENDPOINT).timeout(timeout)
+		HttpRequest request = HttpRequest.newBuilder(endpoint).timeout(timeout)
 				.header("Content-Type", "application/json")
-				.header("x-goog-api-key", apiKey)
+				.header("x-goog-api-key", properties.apiKey())
 				.POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build();
 		long remaining = timeout.toNanos() - (System.nanoTime() - started);
 		if (remaining <= 0) {
@@ -86,10 +88,14 @@ class GeminiReceiptTextAdapter implements ReadReceiptTextPort {
 		try {
 			var response = responseFuture.get(remaining, TimeUnit.NANOSECONDS);
 			if (response.statusCode() != 200) {
+				log.warn("Gemini receipt OCR failed with HTTP status {}", response.statusCode());
 				throw new BusinessException(ErrorCode.OCR_UPSTREAM_ERROR);
 			}
 			var candidate = json.readTree(response.body()).path("candidates").path(0);
-			if (!"STOP".equals(candidate.path("finishReason").asString())) {
+			String finishReason = candidate.path("finishReason").asString("");
+			if (!"STOP".equals(finishReason)) {
+				log.warn("Gemini receipt OCR did not finish, finishReason={}",
+						finishReason.matches("[A-Z][A-Z_0-9]{0,63}") ? finishReason : "UNKNOWN");
 				throw new BusinessException(ErrorCode.OCR_UPSTREAM_ERROR);
 			}
 			var text = new StringBuilder();
