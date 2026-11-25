@@ -48,19 +48,15 @@ class EventTrackerTest extends IntegrationTestSupport {
 
 	@Test
 	void 롤백되면_서버_이벤트를_남기지_않는다() {
-		try {
-			transactionTemplate.executeWithoutResult(status -> {
-				eventTracker.track(
-						EventName.LOGIN_SUCCEEDED,
-						Screen.LOGIN,
-						Map.of("provider", "kakao", "is_new_user", true),
-						EventTrackCommand.ofUser(99L));
-				status.setRollbackOnly();
-			});
-		}
-		catch (Exception ignored) {
-			// rollback-only는 예외 없이 끝난다
-		}
+		// rollback-only는 예외 없이 끝난다. track이 예외를 던지면 그대로 테스트가 실패해야 하므로 삼키지 않는다.
+		transactionTemplate.executeWithoutResult(status -> {
+			eventTracker.track(
+					EventName.LOGIN_SUCCEEDED,
+					Screen.LOGIN,
+					Map.of("provider", "kakao", "is_new_user", true),
+					EventTrackCommand.ofUser(99L));
+			status.setRollbackOnly();
+		});
 
 		awaitEventWrites();
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM events", Integer.class)).isZero();
