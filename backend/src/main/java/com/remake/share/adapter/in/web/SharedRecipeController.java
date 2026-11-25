@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +21,7 @@ import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.global.web.LoginUserId;
 import com.remake.share.application.port.in.GetSharedRecipeUseCase;
+import com.remake.share.application.port.in.GetSharedRecipeRankingUseCase;
 import com.remake.share.application.port.in.PublishSharedRecipeUseCase;
 import com.remake.share.application.port.in.ReportSharedRecipeUseCase;
 import com.remake.share.application.port.in.SaveSharedRecipeUseCase;
@@ -43,6 +45,21 @@ public class SharedRecipeController {
 	private final GetSharedRecipeUseCase getSharedRecipe;
 	private final ReportSharedRecipeUseCase reportSharedRecipe;
 	private final SaveSharedRecipeUseCase saveSharedRecipe;
+	private final GetSharedRecipeRankingUseCase rankings;
+
+	@Operation(summary = "이번 주 공유 레시피 TOP 3", description = "KST 월요일부터 현재 유지 중인 저장 수 기준입니다. 순위 변동은 반환하지 않습니다.")
+	@GetMapping("/weekly-top")
+	public GetSharedRecipeRankingUseCase.WeeklyTop weeklyTop() {
+		return rankings.weeklyTop();
+	}
+
+	@Operation(summary = "공유 레시피 랭킹", description = "popular는 이번 주 TOP 100 안에서 제목을 검색하며 전체 순위를 유지합니다. latest는 전체 공개 글의 공유 시각순이며 rank·rankChange는 null입니다. rankChange는 지난주 순위 - 현재 순위입니다.")
+	@GetMapping("/ranking")
+	public GetSharedRecipeRankingUseCase.Ranking ranking(@RequestParam(defaultValue = "popular") String sort,
+			@RequestParam(defaultValue = "") String q, @RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "20") int size) {
+		return rankings.ranking(sort, q, page, size);
+	}
 
 	@Operation(summary = "공유 레시피 저장", description = "원본을 참조로 저장하고 현재 부족 재료를 장바구니에 담습니다. 이미 저장한 PUT 재시도는 추가 담기를 하지 않습니다.")
 	@PutMapping("/{id}/save")
