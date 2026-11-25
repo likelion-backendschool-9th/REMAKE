@@ -37,7 +37,7 @@
 | 16 | `usage_logs` | Generation usage | One row per successful recipe or meal-plan generation. Source of remaining counts | 4 AI recipes | 김종수 | 5 |
 | 17 | `meal_plans` | Meal plans | One meal-plan generation request and its result (generating, done, failed) | 5 meal plan | 한윤수 | 9 |
 | 18 | `meal_plan_slots` | Meal plan slots | One recipe per date and meal | 5 meal plan | 한윤수 | 8 |
-| 19 | `cart_items` | Cart | Missing ingredients (added automatically by saving a shared recipe, saving my recipe with supplemented ingredients, and meal-plan generation) | 7 sharing/cart | 최유리 | 9 |
+| 19 | `cart_items` | Cart | Missing ingredients (added automatically by saving a shared recipe, saving my recipe with supplemented ingredients, and meal-plan generation) | 7 sharing/cart | 최유리 | 10 |
 | 20 | `shared_recipes` | Shared recipes | Posts in the shared space (fully anonymous) | 7 sharing/cart | 최유리 | 7 |
 | 21 | `shared_recipe_reports` | Shared recipe reports | One report | 7 sharing/cart | 최유리 | 6 |
 | 22 | `shared_recipe_weekly_ranks` | Weekly ranking records | Last week's final ranks (for rank change arrows) | 7 sharing/cart | 최유리 | 6 |
@@ -80,6 +80,7 @@ erDiagram
   recipes ||--o{ meal_plan_slots : "recipe_id"
   users ||--o{ cart_items : "user_id"
   recipes |o--o{ cart_items : "recipe_id"
+  meal_plan_slots |o--o{ cart_items : "meal_plan_slot_id"
   ingredient_categories ||--o{ cart_items : "category_id"
   recipes ||--o{ shared_recipes : "recipe_id"
   shared_recipes ||--o{ shared_recipe_reports : "shared_recipe_id"
@@ -281,6 +282,7 @@ erDiagram
     bigint id PK
     bigint user_id FK
     bigint recipe_id FK
+    bigint meal_plan_slot_id FK
     bigint category_id FK
     varchar name
     numeric amount
@@ -647,12 +649,15 @@ Missing-ingredient list (added automatically when saving a shared recipe, saving
 | `id` | bigint | PK |  | no |  | ID |
 | `user_id` | bigint | FK | users | no |  | Member |
 | `recipe_id` | bigint | FK | recipes | yes |  | Source recipe |
+| `meal_plan_slot_id` | bigint | FK | meal_plan_slots | yes |  | Initial meal-slot source (#57). SET NULL on slot deletion; keep recipe and cart quantity. Reusing an existing cart row does not replace its source |
 | `category_id` | bigint | FK | ingredient_categories | no |  | Category estimated when added (used when moving to the fridge) |
 | `name` | varchar |  |  | no |  | Ingredient name |
 | `amount` | numeric(10,3) |  |  | no |  | Amount |
 | `unit` | varchar |  |  | no |  | Unit |
 | `created_at` | timestamp |  |  | no |  | Added time |
 | `updated_at` | timestamp |  |  | no |  | Amount change time |
+
+Cart identity (#89): a partial unique index on `(user_id, recipe_id, name, unit)` where `recipe_id IS NOT NULL` prevents concurrent duplicate additions. New additions always use an original recipe ID. Existing quantities and initial slot sources are preserved. `amount` is positive. On cart-to-fridge movement, preserve the nine fridge units and convert only TBSP/TSP/CUP to ML (15/5/200); reject numeric overflow with `INVALID_INPUT`.
 
 ### 20. `shared_recipes` (Shared recipes)
 
@@ -791,6 +796,7 @@ Internal reference data that maps an ingredient name to a unit, category and she
 | `recipes` | `meal_plan_slots` | recipe_id | 1:N | no | RESTRICT (recipes are never deleted) |
 | `users` | `cart_items` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `recipes` | `cart_items` | recipe_id | 1:N | yes | SET NULL |
+| `meal_plan_slots` | `cart_items` | meal_plan_slot_id | 1:N | yes | SET NULL |
 | `ingredient_categories` | `cart_items` | category_id | 1:N | no | RESTRICT |
 | `recipes` | `shared_recipes` | recipe_id | 1:N | no | RESTRICT (recipes are never deleted) |
 | `shared_recipes` | `shared_recipe_reports` | shared_recipe_id | 1:N | no | CASCADE |
@@ -829,37 +835,35 @@ These values appear on screens but have no column. They are computed from the so
 
 | Case | Rule |
 | --- | --- |
-| Withdrawal | Clear `provider_user_id` and `email`, set `deleted_at`. Delete excluded ingredients, tokens, deletion codes, fridge ingredients, use logs, receipts, meal plans, cart, and notifications. Keep the `users` row, recipes, and shared recipes (anonymous). Events keep only the member number |
+| Withdrawal | Clear `provider_user_id` and `email`, set `deleted_at`. Delete excluded ingredients, tokens, deletion codes, fridge ingredients, use logs, receipts, meal plans, cart, and notifications. Keep the `users` row, recipes, and the shared recipes the author has not deleted (anonymous) (11/24 terms decision). Events keep only the member number |
 | Amount reaches 0 | When "used / discarded" or cooking brings the amount to 0, delete the `ingredients` row. The record stays in `ingredient_logs` with the name |
 | Amount edit | Editing the amount (input mistake) sets `amount` and `initial_amount` together. Reject with `INVALID_INPUT` if the ingredient has any `ingredient_logs` row (#128) |
 | Ingredient delete | The delete icon on the edit screen (to be added) deletes the row. Links from logs, recipe ingredients, and notifications are only cleared |
 | Receipt registration | OCR results are not stored before registration. "Register N food items" creates `receipts`, `receipt_items`, and `ingredients` at once |
 | Duplicate receipt | Block registration if one of my receipts has the same store (branch name), receipt number, and purchase time (if the number is unreadable compare store, purchase date, and the list of food names; if the time is unreadable compare by purchase date). Check at scan and again at registration |
 | Cart -> fridge | Fill storage and expiry from the category's `default_storage` and `default_shelf_life_days`; leave the price empty. The category was set when the item was added. Delete moved items from `cart_items` |
-| Automatic cart removal | On receipt registration, delete cart items whose name equals a registered ingredient |
+| Receipt cart deduction (#57) | Only explicitly selected cart rows, using the final registered name and identical unit. Sum deductions per target, reject totals above the remaining amount, subtract and delete only at zero. Skip leaves the cart unchanged. Join the receipt/fridge transaction; failures roll back all changes |
 | Meal delete / replace | Delete removes the `meal_plan_slots` row. Replace generates a new recipe, changes `recipe_id`, and uses one daily recipe generation (one `usage_logs` RECIPE row). Only slots from today on; past slots cannot be changed |
 | Meal-plan generation | API 38 checks the start date, quota, and overlap, creates `meal_plans` as `GENERATING`, and replies 202. A server job fills the slots and the cart, sets `COMPLETED`, charges one `usage_logs` row, and creates a `MEAL_PLAN_COMPLETED` notification. Too few ingredients, AI error, or timeout set `FAILED`, charge nothing, and create `MEAL_PLAN_FAILED`. Meal-plan notifications ignore `notification_enabled`. A new request while one is `GENERATING` → `MEAL_PLAN_IN_PROGRESS` (409). `MEAL_PLAN_COMPLETED` sets `notifications.meal_plan_id` (tap opens p5 at the start date); `MEAL_PLAN_FAILED` opens the setup screen. No failure-reason column. Overwrite deletes the old overlapping slots when the job completes, so a failed job keeps the existing plan. (deferred, #144): whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap |
-| Meal-plan overwrite | The start date can only be today or later, so past days never change. Delete existing slots on dates that overlap the new plan, except today's meals already cooked (`cooked_at` set): they keep their recipe and the new plan does not fill them. The delete happens when the generation job completes, not at acceptance |
+| Meal-plan overwrite | The start date can only be today or later, so past days never change. Delete existing slots on dates in the requested period (start date through the maximum days, including days not made for lack of ingredients, #78), except today's meals already cooked (`cooked_at` set): they keep their recipe and the new plan does not fill them. The delete happens when the generation job completes, not at acceptance |
 | Cooked mark | Cooking a recipe opened from today's slot sets that slot's `cooked_at` (never for other days) |
 | Receipt delete | Delete the `receipts` and `receipt_items` rows (image included). It leaves spending and patterns; registered fridge ingredients stay (only `receipt_item_id` is cleared) |
 | Recipe "delete" | Remove only from the saved list (`saved_recipes`). Shared posts and others' saves stay |
-| Withdrawal and subscription | End the subscription immediately on withdrawal (ENDED, clear `billing_key`, no more payments). Keep `subscription_payments` (payment records). Refunds for the remaining period are an open question (policy ch. 12 item 13) |
+| Withdrawal and subscription | End the subscription immediately on withdrawal (ENDED, clear `billing_key`, no more payments). Keep `subscription_payments` (payment records). No refund for the remaining period (11/24 terms decision; resolves policy ch. 12 item 13) |
 | Cleanup jobs | Every early morning: receipts older than 6 months by purchase date (with images), notifications older than 30 days, deletion codes older than a day |
 | Subscription start | Toss card registration -> the server issues a billingKey -> on first payment success create `subscriptions` (ACTIVE) and `subscription_payments` (DONE) and set `users.plan` = PREMIUM. If the first payment fails, do not create a subscription (record the failure only). Premium limits apply at once (recipes 4 per day, meal plans 4 this month and 7 days) |
-| Subscription renewal | Every early morning, charge ACTIVE subscriptions whose `next_billing_date` is today with the billingKey. On success extend the period by a month. Failure handling is an open question (policy ch. 12 item 11) |
+| Subscription renewal | Every early morning, charge ACTIVE subscriptions whose `next_billing_date` is today with the billingKey. On success extend the period by a month. On failure end the subscription at once (ENDED, clear `billing_key`, `users.plan` = BASIC); to subscribe again, register a card again (11/24 terms decision; resolves policy ch. 12 item 11) |
 | Subscription cancel | Cancel request sets `status` = CANCELED and `canceled_at`. PREMIUM stays until the day before the next billing date; on that date's early morning do not charge, set ENDED, clear `billing_key`, set `users.plan` = BASIC. Basic limits apply afterwards (counts already used this month still count) |
 | Common | Amounts `numeric(10,3)`, money `bigint` (KRW), time `timestamp` (Korea time), JSON `jsonb`. `created_at` on every app-created row, `updated_at` only on tables whose values change |
 
 ## Differences from the current code
 
-Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged migrations; match this ERD with new numbered migrations.
+Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged migrations; match this ERD with new numbered migrations. `ingredient_categories` and `ingredients` already match (V11, #71).
 
 | Table | Current code | To match this ERD |
 | --- | --- | --- |
 | `users` | Has `status` (ACTIVE/SUSPENDED) | Drop `status` |
 | `refresh_tokens` | Has `revoked_at` (logout = mark revoked) | Drop `revoked_at`. Logout deletes the row |
-| `ingredient_categories` | Has `default_unit`, no `sort_order`, SEASONING named '양념·소스' | Drop `default_unit`, add `sort_order` (Appendix A order), rename SEASONING to '양념' |
-| `ingredients` | Has `is_expiration_estimated`, `status` (ACTIVE/FINISHED), `version` | Drop the three columns. Delete the row when the amount reaches 0 |
 | `ingredient_catalog` | PR #140 (V5): no `unit`, has autocomplete API `GET /user/ingredient-catalog` | Add `unit`, remove the autocomplete API |
 | `events` | Same | Nothing to change |
 
@@ -888,7 +892,7 @@ Summary: 17 changed, 7 kept, 7 removed, 1 on hold, 2 added -> 26 tables in the n
 | `meal_plans` | kept | - | - | Same structure |
 | `meal_plan_slots` | changed | cooked_at | user_id, menu_name, source | Slots always belong to a plan and get a full recipe (no manual slots). `meal_plan_id` and `recipe_id` required. `cooked_at` keeps cooked meals on overwrite |
 | `meal_plan_slot_ingredients` | removed | - | (whole table) | No per-slot planned-ingredient screen |
-| `cart_items` | changed | category_id | meal_plan_id, meal_plan_slot_id, group_name | p7 rows show only the source recipe name. `category_id` for moving to the fridge |
+| `cart_items` | changed | category_id | meal_plan_id, group_name | v4 initially removed the slot key; #57 restores nullable meal_plan_slot_id with SET NULL. p7 shows the source recipe name; category_id is used for moving to the fridge |
 | `shared_recipes` | changed | image_key | save_count | `recipe_id` no longer unique (can be shared again each week). Save count is computed. One photo, so `image_key` lives here |
 | `shared_recipe_photos` | removed | - | (whole table) | One shared photo -> `shared_recipes.image_key` |
 | `shared_recipe_reports` | changed | - | reason_detail, result, handled_by, handled_at | No "other" text input; no admin screen. UK(reporter_id + shared_recipe_id) kept |

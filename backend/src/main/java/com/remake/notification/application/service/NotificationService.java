@@ -24,6 +24,7 @@ import com.remake.ingredient.domain.ExpiredIngredientCount;
 import com.remake.ingredient.domain.ExpiringIngredient;
 import com.remake.notification.application.port.in.CleanupOldNotificationsUseCase;
 import com.remake.notification.application.port.in.CreateMealPlanNotificationUseCase;
+import com.remake.notification.application.port.in.DeleteUserNotificationsUseCase;
 import com.remake.notification.application.port.in.GetNotificationSummaryUseCase;
 import com.remake.notification.application.port.in.GetNotificationsUseCase;
 import com.remake.notification.application.port.in.RunExpiryNotificationBatchUseCase;
@@ -45,7 +46,8 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class NotificationService implements GetNotificationSummaryUseCase, GetNotificationsUseCase,
-		RunExpiryNotificationBatchUseCase, CleanupOldNotificationsUseCase, CreateMealPlanNotificationUseCase {
+		RunExpiryNotificationBatchUseCase, CleanupOldNotificationsUseCase, CreateMealPlanNotificationUseCase,
+		DeleteUserNotificationsUseCase {
 
 	private static final int RETENTION_DAYS = 30;
 
@@ -126,6 +128,12 @@ public class NotificationService implements GetNotificationSummaryUseCase, GetNo
 	public int cleanupOldNotifications() {
 		LocalDateTime before = LocalDate.now(clock).minusDays(RETENTION_DAYS).atStartOfDay();
 		return deleteNotificationPort.deleteCreatedBefore(before);
+	}
+
+	@Override
+	@Transactional
+	public void deleteUserNotifications(Long userId) {
+		deleteNotificationPort.deleteByUserId(userId);
 	}
 
 	@Override

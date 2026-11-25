@@ -77,11 +77,11 @@ bash deploy/deploy.sh status              # active slot per app and container st
 
 Deploy flow. Only the app being deployed changes; the other app's slots are never touched.
 
-1. (Backend only) Start `postgres` only if it is not running. If it is already running, leave it untouched.
+1. (Backend only) Start `postgres` only if it is not running. If it is already running, leave it untouched. If the synced migration files include a number the DB has not applied yet, back up the whole DB before the new slot applies it ([Backup before a new migration](#backup-before-a-new-migration)). If the backup fails, stop without starting the new slot.
 2. Build and start the new version in that app's inactive slot, then wait until its health check (backend `/actuator/health/readiness`, frontend `/`) is healthy.
 3. When healthy, rewrite `proxy/<app>.conf` to point to the new slot, validate with `nginx -t`, and reload the proxy.
 4. Confirm that the proxy actually routes requests to the new slot, and that the app's path on the host port (`APP_PORT`) responds (backend `/api/`, frontend `/`). Only 5xx or a connection failure counts as failure; a 4xx such as 404 means the request reached the app and passes.
-5. Only after these checks pass, stop the previous slot. Its container and image are kept for rollback. The backend waits up to 30 seconds for in-flight requests to finish.
+5. Only after these checks pass, stop the previous slot. Its container and image are kept for rollback. The backend waits up to 60 seconds (the same as the proxy's response limit) for in-flight requests to finish.
 
 There is only one proxy, so deploys and rollbacks run one at a time regardless of the app. If another deploy is in progress, the script waits for it to finish (up to 15 minutes) and then continues. So when a shared-file change starts both CD workflows at once, both apps are deployed in turn.
 
@@ -103,6 +103,30 @@ The DB schema is managed by Flyway. Change tables only through versioned SQL fil
 
 To pause deployment (server maintenance, freezing the version for a demo, or waiting for a fix PR after a rollback), set `REMAKE_DEPLOY_ENABLED` to `false`. The CD workflows then only run their checks and skip the server deploy, and the server keeps running the last deployed version.
 
+## Backup before a new migration
+
+When a new backend slot starts, Flyway applies the migrations the DB does not have yet. A migration that drops a column or deletes rows cannot be undone with a rollback: the previous image does not start on the new schema (`validate` fails), and the deleted data is gone. So before starting a new backend slot, `deploy/deploy.sh` compares the largest `V<number>` among the synced migration files with the largest version in `flyway_schema_history`. When the files are ahead, it backs up the whole DB with `pg_dump` (custom format).
+
+- Location: `backups/remake-<time>-V<applied>-before-V<new>.dump` in the deploy directory. A backup contains member data, so the folder is `700` and each file `600`. The CD sync does not touch this folder.
+- Only the 5 most recent backups are kept (`BACKUP_KEEP`). No backup is taken when there is no new migration, or on the first deployment (no `flyway_schema_history` yet).
+- If the backup fails (the applied version cannot be read, `pg_dump` fails, or the folder cannot be created), the deploy stops without starting the new slot, and the previous version keeps serving. Fix the cause and re-run the failed Backend CD.
+- Backend CI warns about statements that are hard to undo in a PR's new migrations. See the [CI document](ci.md#warning-statements-that-are-hard-to-undo).
+
+To bring the DB back to the state right before a migration (for example, when a migration deleted data by mistake):
+
+1. Set `REMAKE_DEPLOY_ENABLED` to `false` so that CD does not deploy in the meantime.
+2. Restore the backup taken right before that migration. Data written after the backup (from the start of that deployment) is lost.
+
+   ```bash
+   cd <DEPLOY_PATH>
+   ls -l backups/
+   docker compose --env-file .env -f compose.prod.yml exec -T postgres \
+     sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --single-transaction' < backups/<file>.dump
+   ```
+
+3. Run `bash deploy/deploy.sh backend rollback`. The DB has the previous schema again, so the previous image starts. If more backend deploys happened after that migration, the previous slot is not the version before the migration; decide with the deployment owner.
+4. The restored DB no longer has that migration applied, so the next backend deploy runs it again. Fix the migration with the deployment owner before setting `REMAKE_DEPLOY_ENABLED` back to `true`.
+
 ## What the app needs because of the deployment setup
 
 These are not team rules; they are conditions that came from implementing the deployment. The app must meet them for the current deployment setup to work. The numeric limits are Nginx defaults left as they are (60 seconds; 1MB request body outside `/api/`), except the `/api/` request body limit, raised to 32MB for uploads. If you need more, tell the deployment owner so they can be adjusted.
@@ -113,6 +137,6 @@ These are not team rules; they are conditions that came from implementing the de
 | Add new environment variables to `compose.prod.yml` too | The server's `.env` is only used by compose to fill `${...}` in the configuration file. The container receives only the values listed under `environment` in `compose.prod.yml`. | The app works locally and fails to start only in production. A required variable (`${VAR:?...}`) missing from the server's `.env` stops every compose command, because compose reads the whole file first: backend and frontend deploys and rollback all fail until the value is added. Running containers keep serving. | Add a new setting (token secret, external API key, etc.) to the backend `environment` and to `deploy/prod.env.example`. **Before merging**, mention the deployment owner (`@Yunsu0407`) in the PR body with the variable names. The owner puts the real value in the server's `.env` and replies on the PR; merge after that. Deploy CI shows a warning for every new variable in `compose.prod.yml`. |
 | Do not store files inside the container | Every deployment replaces the container. The request body size is limited to 32MB for `/api/` and 1MB for other paths: the host Nginx allows 32MB for every path, and the proxy keeps 1MB outside `/api/`. | Stored files are lost after a redeploy. Requests over the limit get an HTML 413 from Nginx, not the app's JSON error. | Store uploads under `REMAKE_UPLOAD_ROOT_DIRECTORY` (`/data/uploads`, the `remake_uploads` volume). Keep the app's own limits (Spring `max-file-size` 10MB, `max-request-size` 30MB) below 32MB so the app answers first. For a new kind of stored file or a larger limit, decide with the deployment owner. |
 | Expect two versions to run together during a deployment | From the moment the new slot starts until the switch and the old slot stops, both versions usually run for a few tens of seconds. State kept only in server memory is lost at the switch. | Scheduled jobs such as `@Scheduled` can run twice. If login state is kept in an in-memory server session, every user is logged out on every deployment. | Make scheduled jobs safe to run twice or prevent duplicate runs. Do not keep login state in an in-memory server session. |
-| Each request finishes within 60 seconds | The proxy and the host Nginx wait up to 60 seconds for a response. During a deployment the old version waits at most 30 seconds for in-flight requests before stopping. | Long requests are cut off with 504 or interrupted by a deployment. | For long-running work such as OCR, do not wait for completion inside the request; accept the job and let the client poll its status. |
+| Each request finishes within 60 seconds | The proxy and the host Nginx wait up to 60 seconds for a response. During a deployment the old version also waits up to 60 seconds for in-flight requests before stopping, so a request that finishes within 60 seconds is not cut off by a deployment. | Long requests are cut off with 504 or interrupted by a deployment. | For long-running work such as OCR, do not wait for completion inside the request; accept the job and let the client poll its status. |
 | Register the development server domain with external services | The app runs behind `https://remake.newlecture.com`. It recognizes that the original request was HTTPS from the headers passed by the host Nginx (`server.forward-headers-strategy: native`). | External integrations such as social login fail only in production. | Register social login redirect URIs and similar addresses as `https://remake.newlecture.com/...`. |
 | Write logs to the console (standard output) | `docker logs` and the log size limit (10MB × 3) apply only to console output. | Log files pile up inside the container without a size limit and are lost on redeploy. | Keep Spring's default (console output) and do not add a log file configuration. |

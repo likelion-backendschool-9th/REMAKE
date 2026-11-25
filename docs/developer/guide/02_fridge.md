@@ -27,7 +27,7 @@
 | 재료 입력 항목 | 재료명·카테고리·보관 위치(냉장·냉동·실온)·소비기한·가격(선택)·수량. 직접 추가와 OCR 결과 수정·추가가 같은 항목 | 확정(피그마) |
 | 필수 입력 | 재료명·카테고리·보관 위치·소비기한·수량 필수, 가격 선택. 필수값 전 버튼 비활성 | 확정 |
 | 재료명 | 제품명이 아니라 재료명("비비고 냉동 만두 X → 만두 O") | 확정(피그마) |
-| 단위 | 서버가 재료명(과 카테고리)에 맞춰 정함. 재료명을 정하기 전에는 수량 칸 비활성, 정하면 단위를 받아 켬. 카테고리를 바꿔도 다시 받음. 재료명을 바꾸면 단위만 다시 정하고 숫자는 그대로. 추가·수정 모두 같고, 사용·버림 기록이 있어도 같음(기록은 당시 이름·단위를 따로 가짐) | 확정 |
+| 단위 | 서버가 재료명(과 카테고리)에 맞춰 정함. 재료명을 정하기 전에는 수량 칸 비활성, 정하면 단위를 받아 켬. 카테고리를 바꿔도 다시 받음. 재료명이나 카테고리를 바꾸면 단위만 다시 정하고 숫자는 그대로. 추가·수정 모두 같고, 사용·버림 기록이 있어도 같음(기록은 당시 이름·단위를 따로 가짐) | 확정 |
 | 수량 수정 | 입력 실수를 고치는 용도라 `amount`와 `initial_amount`를 같이 바꿈. 사용·버림 기록이 있으면 `INVALID_INPUT`으로 거절(#128) | 확정(#128) |
 | 수량 | 분수 없이 숫자, 소수 셋째 자리까지. 냉장고 단위 9개(g·kg·ml·L·개·팩·단·쪽·장). 수량 변경 간격은 PRD 부록 A(제안) | 확정 / 간격은 제안 |
 | 단위 통일 | 봉지·캔·병·통 → 팩, 마리·알·모·포기 → 개 | 확정 |
@@ -59,8 +59,8 @@
 | 12 | GET | `/user/ingredients` | 내 재료 목록. 소비기한 가까운 순. 검색 없음(피그마에 없음). 냉장고 재료라 페이징 없이 전부 | `?status=DANGER\|SOON\|OK &storage=FRIDGE\|FREEZER\|PANTRY &categoryCode=` | `200 { items: [{ id, name, categoryCode, imageUrl, storage, amount, unit, expirationDate, dDay, status }] }` | ingredients, ingredient_categories |
 | 13 | GET | `/user/ingredients/{id}` | 재료 하나 | `-` | `200 { id, name, categoryCode, imageUrl, storage, amount, unit, expirationDate, dDay, status, price }` | ingredients |
 | 14 | GET | `/user/ingredient-units` | 재료명에 맞는 단위를 백엔드가 정해 줌(ERD 답 5). 재료명을 정하기 전에는 수량 칸 비활성, 재료명을 정하면 호출해 단위를 받고 수량 칸을 켬. 재료명이나 카테고리를 바꾸면 다시 호출(API 답 1). 등록 전인 OCR 재료 수정(p3.3.1)에서 바꿀 때도 호출(API 답 8). `categoryCode`는 선택이고, 넣으면 저장될 단위와 같음 | `?name=대파&categoryCode=VEGETABLE` | `200 { unit }` | - |
-| 15 | POST | `/user/ingredients` | 직접 추가. 카테고리 필수("전체" 없음, ERD 답 4). 단위는 서버가 정함. 가격은 선택(넣으면 소비 패턴에 들어감, ERD 답 3) | `{ name, categoryCode, storage, expirationDate, amount, price? }` | `201 (재료 하나 모양)` | ingredients |
-| 16 | PATCH | `/user/ingredients/{id}` | 바꾼 값만 보냄. 재료명을 바꾸면 서버가 새 이름에 맞게 단위를 다시 정해 응답에 줌(예: 대파 1단 → 양파 1개, API 답 8). 기록이 있어도 같음. `amount`를 바꾸면 `initial_amount`도 같이 바뀌고, 사용·버림 기록이 있으면 `INVALID_INPUT`(#128) | `{ name?, categoryCode?, storage?, expirationDate?, price?, amount? }` | `200 (재료 하나 모양)` | ingredients |
+| 15 | POST | `/user/ingredients` | 직접 추가. 카테고리 필수("전체" 없음, ERD 답 4). 요청에 `unit`이 없고 서버가 재료명·카테고리로 정해 응답에 줌(API 14와 같은 규칙). 가격은 선택(넣으면 소비 패턴에 들어감, ERD 답 3) | `{ name, categoryCode, storage, expirationDate, amount, price? }` | `201 (재료 하나 모양)` | ingredients |
+| 16 | PATCH | `/user/ingredients/{id}` | 바꾼 값만 보냄. 재료명이나 카테고리를 바꾸면 서버가 새 값에 맞게 단위를 다시 정해 응답에 줌(예: 대파 1단 → 양파 1개, API 답 8. API 14와 같은 결과). 같은 값을 다시 보내면 그대로. 기록이 있어도 같음. `amount`를 바꾸면 `initial_amount`도 같이 바뀌고, 사용·버림 기록이 있으면 `INVALID_INPUT`(#128) | `{ name?, categoryCode?, storage?, expirationDate?, price?, amount? }` | `200 (재료 하나 모양)` | ingredients |
 | 17 | DELETE | `/user/ingredients/{id}` | 재료 삭제. 사용·버림 기록은 이름과 함께 남음 | `-` | `204` | ingredients, ingredient_logs |
 | 18 | POST | `/user/ingredients/{id}/consume` | 사용·버림 기록. 버리면 버린 금액 계산(가격이 있을 때). 0이 되면 재료 삭제 | `{ type: "USED"\|"DISCARDED", amount }` | `200 { remainingAmount, deleted, costAmount? }` | ingredients, ingredient_logs |
 | 19 | GET | `/user/ingredient-categories` | 카테고리 12개 | `-` | `200 { items: [{ code, name, imageUrl }] }` | ingredient_categories |
@@ -77,23 +77,19 @@
 
 - 소비기한 상태는 서버가 계산해 `dDay`, `status`로 내려줘요. 위험 = 지났거나 D-DAY, 임박 = D-1~D-3, 여유 = 그 뒤. 기준(3일)은 상수 한 곳에 둬요.
 - 알림의 임박 기준은 화면과 달라요(의도한 차이). D-DAY는 화면에서 위험, 알림에서 임박(`EXPIRY_SOON`)이에요. 알림 작업(06)이 이 영역 UseCase로 재료를 조회해요.
-- 단위는 사용자가 고르지 않아요. 서버가 재료명으로 `ingredient_catalog`에서 정해요. 순서는 (1) 재료명이 사전 이름과 정확히 같으면 그 단위, (2) 아니면 재료명 안에 들어 있는 사전 이름 중 같은 카테고리의 두 글자 이상인 것(여러 개면 가장 긴 이름)의 단위, (3) 그래도 없으면 `EA`예요(#145 결정). 영수증에 찍힌 용량 단위("300g"의 g)는 사전 단위보다 앞서지 않아요. 직접 추가, 영수증 등록 API 21, 장바구니 → 냉장고 API 47이 모두 `ResolveIngredientUnitUseCase` 하나를 써요.
-- 재료 수정(PATCH)은 보낸 값만 바꿔요. 이름을 바꾸면 단위만 다시 정하고 숫자는 그대로예요(대파 1단 → 양파 1개). 사용·버림 기록이 있어도 같아요. 기록은 당시 이름·단위·버린 금액을 따로 갖고 있어서 지난 기록은 바뀌지 않아요.
+- 단위는 사용자가 고르지 않아요. 서버가 재료명으로 `ingredient_catalog`에서 정해요. 순서는 (1) 재료명이 사전 이름과 정확히 같으면 그 단위, (2) 아니면 재료명 안에 들어 있는 사전 이름 중 같은 카테고리의 두 글자 이상인 것(여러 개면 가장 긴 이름)의 단위, (3) 그래도 없으면 `EA`예요(#145 결정). 영수증에 찍힌 용량 단위("300g"의 g)는 사전 단위보다 앞서지 않아요. 직접 추가와 영수증 등록 API 21은 `ResolveIngredientUnitUseCase`를 써요. 장바구니 → 냉장고 API 47은 2026-11-24 장바구니 담당 유리(`@ureeStar`)의 #89 구현 협의 결정([#145 기록](https://github.com/likelion-backendschool-9th/REMAKE/issues/145#issuecomment-7125362300))에 따라 이미 정해진 수량·단위를 보존하고 큰술·작은술·컵만 ml로 환산해 `RegisterCartIngredientsUseCase`로 등록해요. 이름으로 단위만 다시 정하지 않아요. 이는 #145의 기존 “장바구니도 같은 단위 결정 함수 사용”에 대한 예외예요. 같은 이름의 재료가 `EA`·`G` 등 서로 다른 단위의 냉장고 행으로 존재할 수 있고, 영수증 차감은 같은 단위만 허용하므로 `EA` 영수증으로 `G` 장바구니를 차감하지 않아요. 냉장고 담당 재연님(`@jykim78982`)께 #145에서 영향 확인을 요청했으며 아직 영역 간 합의 완료로 기록하지 않아요.
+- 재료 수정(PATCH)은 보낸 값만 바꿔요. 이름이나 카테고리가 실제로 바뀌면 단위만 다시 정하고 숫자는 그대로예요(대파 1단 → 양파 1개). 같은 이름·카테고리를 다시 보내면 단위는 그대로예요. 카테고리도 포함하는 이유는 화면이 이름·카테고리가 바뀔 때마다 API 14로 단위를 미리 보여 주므로, 저장 결과가 미리 본 것과 같아야 하기 때문이에요. 사용·버림 기록이 있어도 같아요. 기록은 당시 이름·단위·버린 금액을 따로 갖고 있어서 지난 기록은 바뀌지 않아요.
 - 수량 수정은 입력 실수를 고치는 용도예요. `amount`와 `initial_amount`를 같이 바꿔요(버린 금액이 처음 수량으로 나누기 때문). 사용·버림 기록이 하나라도 있으면 `INVALID_INPUT`으로 거절해요(#128).
 - 수량이 0이 되면 `ingredients` 행을 지우고 기록은 `ingredient_logs`에 이름과 함께 남아요. 재료 삭제도 기록이 있어도 돼요(기록·레시피 재료·알림의 연결만 비움).
 - 버린 금액 = 가격 × 버린 수량 ÷ 처음 수량. 가격이 없으면 금액을 남기지 않아요. 이 값이 이번 달 버린 식재료 금액의 원본이에요.
-- 동시 수정은 나중 요청이 이겨요. 차감은 남은 수량을 확인하고 빼요(낙관적 락 `version` 없음).
+- 같은 재료를 동시에 사용·폐기·수정·삭제해도 재료 행을 잠가서 차례로 처리해요. 늦은 요청은 앞 요청이 끝난 뒤의 수량을 보고, 이미 지워졌으면 404예요(낙관적 락 `version` 없음).
 - 요리 후 재료 차감(04)과 장바구니 → 냉장고(07), 영수증 등록(03)도 이 영역 UseCase로 재료를 만들고 빼요. 단위 환산(같은 종류끼리만)은 한 곳에 두고 04와 같이 써요.
 - 카테고리·재료 사전 데이터는 Flyway 마이그레이션으로만 넣어요. 머지된 마이그레이션 파일은 고치지 않고 새 번호를 추가해요.
 
 ## 지금 코드와 다른 점
 
-- `ingredient_categories`: `default_unit` 삭제, `sort_order` 추가(부록 A 순서), SEASONING 이름 '양념·소스' → '양념'.
-- `ingredients`: `is_expiration_estimated`, `status`(ACTIVE/FINISHED), `version` 삭제. 수량이 0이면 행 삭제.
 - `ingredient_catalog`(PR #140, V5): `unit` 추가, 자동완성 API는 빼기.
-- 재료 추가 요청에 `unit`이 없어요(서버가 정함). 단위 변경 금지 규칙은 없어졌어요(이름을 바꾸면 단위도 다시 정함).
 - `GET /user/ingredients`의 `q`(검색)는 없어요(피그마에 검색 없음).
-- 에러 코드 `INVALID_UNIT`, `INGREDIENT_ALREADY_FINISHED`, `INGREDIENT_HAS_LOGS`, `CONCURRENT_UPDATE`, `CATALOG_ITEM_NOT_FOUND`는 v2에 없어요.
 
 ## 에러 코드
 
@@ -120,8 +116,9 @@
 - [x] 요약 수치와 목록의 위험·임박·여유 상태 일치
 - [x] 상태 카드·위치·종류 필터 (API)
 - [ ] 빈 목록 화면 (API는 빈 목록·0 요약을 돌려줌, 화면은 프론트 #99)
-- [ ] 재료명으로 단위 받기, 이름 바꾸면 단위만 다시(기록이 있어도)
+- [x] 재료명으로 단위 받기, 이름·카테고리를 바꾸면 단위만 다시(기록이 있어도)
 - [x] 수량 수정 시 `initial_amount`도 같이 변경, 기록이 있으면 `INVALID_INPUT`
 - [x] 사용·버림 후 수량 0이면 행 삭제, 버린 금액 계산
 - [x] 기록 있는 재료 삭제
+- [x] 냉장고 스키마 정리(#71): `ingredients`의 `is_expiration_estimated`·`status`·`version`, `ingredient_categories`의 `default_unit` 삭제, `sort_order` 추가, SEASONING 이름 '양념'
 - [ ] 카테고리·재료 사전 마이그레이션

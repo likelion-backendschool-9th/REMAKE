@@ -1,0 +1,48 @@
+/* 피그마 common-약관드로워: 화면 전체 bg/surface, 헤더 영역 높이 60(위아래 2 + 서브 헤더 56),
+   내용 위 여백 15, 폭 328(옆 여백 16), Remake/title·text/body */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  /* 딤·시트는 화면 영역(최대 480, 가운데) 안에만 둔다. 바깥 회색 배경은 덮지 않음(피그마 딤 배경 폭 360) */
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  background: var(--color-bg-surface);
+}
+
+.drawer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--layout-max-width);
+  height: 100dvh;
+  padding-top: 0.125rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--color-bg-surface);
+  outline: 0;
+  animation: slide-in 0.25s ease-out;
+}
+
+.content {
+  padding: 0.9375rem var(--layout-gutter) calc(var(--space-16) + env(safe-area-inset-bottom));
+  color: var(--color-text-body);
+  font: var(--font-title);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    animation: none;
+  }
+}

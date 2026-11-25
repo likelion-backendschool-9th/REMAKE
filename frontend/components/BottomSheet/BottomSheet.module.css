@@ -1,0 +1,78 @@
+/* 피그마 6. 겹쳐 뜨는 것 > 딤 배경(bg/dim) + 바텀시트
+   시트: bg/surface, 위쪽 radius/xl, 여백 위 10·옆 16·아래 16, 내용-버튼 간격 space/20, 내용 간격 space/4, shadow-sheet */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  /* 딤·시트는 화면 영역(최대 480, 가운데) 안에만 둔다. 바깥 회색 배경은 덮지 않음(피그마 딤 배경 폭 360) */
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.dim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-dim);
+  animation: fade-in 0.2s ease-out;
+}
+
+.sheet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+  width: 100%;
+  max-width: var(--layout-max-width);
+  max-height: 90dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain; /* 시트 끝까지 스크롤해도 뒤 화면으로 넘어가지 않게 */
+  padding: var(--space-10) var(--space-16) calc(var(--space-16) + env(safe-area-inset-bottom));
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-sheet);
+  outline: 0;
+  animation: slide-up 0.25s ease-out;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dim,
+  .sheet {
+    animation: none;
+  }
+}
+
+.sheet[data-square] {
+  border-radius: 0;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

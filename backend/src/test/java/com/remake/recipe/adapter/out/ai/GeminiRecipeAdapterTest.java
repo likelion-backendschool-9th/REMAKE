@@ -37,6 +37,7 @@ import com.remake.recipe.application.port.out.RecipeAiRequest;
 import com.remake.recipe.domain.CustomOptions;
 import com.remake.recipe.domain.RecipeSource;
 import com.remake.recipe.domain.Taste;
+import com.remake.user.domain.AllergenCode;
 
 import tools.jackson.databind.json.JsonMapper;
 
@@ -67,8 +68,8 @@ class GeminiRecipeAdapterTest {
 		return new RecipeAiRequest(RecipeSource.CUSTOM, 2, false,
 				List.of(new RecipeAiRequest.FridgeItem(10L, "계란", new BigDecimal("6"), "EA", LocalDate.of(2026, 3, 6),
 						true)),
-				new CustomOptions(2, List.of(10L), Taste.SPICY, null, null, null, null, List.of("SHRIMP")),
-				List.of("SHRIMP"));
+				new CustomOptions(2, List.of(10L), Taste.SPICY, null, null, null, null, List.of(AllergenCode.SHRIMP)),
+				List.of(AllergenCode.SHRIMP));
 	}
 
 	/** Gemini 응답 모양: candidates[0].content.parts[0].text 에 레시피 JSON 문자열 */

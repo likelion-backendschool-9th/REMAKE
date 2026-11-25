@@ -5,13 +5,15 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 import com.remake.ingredient.domain.ExpiredIngredient;
 import com.remake.ingredient.domain.ExpiredIngredientCount;
 import com.remake.ingredient.domain.ExpiringIngredient;
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.ingredient.domain.StorageLocation;
 
 /**
@@ -22,37 +24,44 @@ interface IngredientJpaRepository extends JpaRepository<IngredientJpaEntity, Lon
 	/** 사용자 본인의 재료만 읽는다. 다른 사용자의 재료는 없는 것과 같다. */
 	Optional<IngredientJpaEntity> findByIdAndUserId(Long id, Long userId);
 
+	/**
+	 * findByIdAndUserId와 같지만 행을 잠그고(SELECT ... FOR UPDATE) 읽는다. 쓰기 트랜잭션 안에서만 쓴다.
+	 * 같은 재료에 대한 사용·폐기·수정·삭제가 차례로 처리되고, 늦은 요청은 앞 요청이 끝난 뒤의 값을 읽는다
+	 * (이미 지워졌으면 비어 있다). 잠금은 트랜잭션이 끝날 때 풀린다.
+	 */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select i from IngredientJpaEntity i where i.id = :id and i.userId = :userId")
+	Optional<IngredientJpaEntity> findByIdAndUserIdForUpdate(@Param("id") Long id, @Param("userId") Long userId);
+
 	@Query("""
 			select i from IngredientJpaEntity i
-			where i.userId = :userId and i.status = :status
+			where i.userId = :userId
 			  and (:storage is null or i.storage = :storage)
 			  and (:categoryId is null or i.categoryId = :categoryId)
 			order by i.expirationDate, i.id
 			""")
-	List<IngredientJpaEntity> search(@Param("userId") Long userId, @Param("status") IngredientStatus status,
+	List<IngredientJpaEntity> search(@Param("userId") Long userId,
 			@Param("storage") StorageLocation storage, @Param("categoryId") Long categoryId);
 
-	@Query("select i.expirationDate from IngredientJpaEntity i where i.userId = :userId and i.status = :status")
-	List<LocalDate> findExpirationDates(@Param("userId") Long userId, @Param("status") IngredientStatus status);
+	@Query("select i.expirationDate from IngredientJpaEntity i where i.userId = :userId")
+	List<LocalDate> findExpirationDates(@Param("userId") Long userId);
 
 	@Query("""
 			select new com.remake.ingredient.domain.ExpiringIngredient(i.userId, i.id, i.name, i.expirationDate)
 			from IngredientJpaEntity i
-			where i.status = :status and i.expirationDate between :from and :to
+			where i.expirationDate between :from and :to
 			order by i.userId, i.expirationDate, i.id
 			""")
-	List<ExpiringIngredient> findExpiringBetween(@Param("status") IngredientStatus status,
-			@Param("from") LocalDate from, @Param("to") LocalDate to);
+	List<ExpiringIngredient> findExpiringBetween(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
 	@Query("""
 			select new com.remake.ingredient.domain.ExpiredIngredientCount(i.userId, count(i))
 			from IngredientJpaEntity i
-			where i.status = :status and i.expirationDate < :date
+			where i.expirationDate < :date
 			group by i.userId
 			order by i.userId
 			""")
-	List<ExpiredIngredientCount> countByUserExpiredBefore(@Param("status") IngredientStatus status,
-			@Param("date") LocalDate date);
+	List<ExpiredIngredientCount> countByUserExpiredBefore(@Param("date") LocalDate date);
 
 	// 카테고리 code는 같은 기능의 기준 데이터 테이블과 묶어서 한 번에 읽는다.
 	@Query("""
@@ -60,8 +69,8 @@ interface IngredientJpaRepository extends JpaRepository<IngredientJpaEntity, Lon
 					case when i.price is null then false else true end)
 			from IngredientJpaEntity i
 			join IngredientCategoryJpaEntity c on c.id = i.categoryId
-			where i.status = :status and i.expirationDate = :date
+			where i.expirationDate = :date
 			order by i.userId, i.id
 			""")
-	List<ExpiredIngredient> findExpiredOn(@Param("status") IngredientStatus status, @Param("date") LocalDate date);
+	List<ExpiredIngredient> findExpiredOn(@Param("date") LocalDate date);
 }

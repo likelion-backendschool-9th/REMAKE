@@ -1,0 +1,26 @@
+/* 피그마 p1.3.3: 라벨(Remake/title·text/title)-칸 간격 15, 칸 사이 10.
+   칸은 정사각형으로 줄 폭을 6칸이 나눠 가진다(360 폭에서 46×46, 피그마와 같음). 넓은 화면에서는 함께 커진다 */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9375rem;
+}
+
+.label {
+  color: var(--color-text-title);
+  font: var(--font-title);
+}
+
+.cells {
+  display: flex;
+  gap: var(--space-10);
+}
+
+/* OtpCell의 고정 크기(44×48)보다 우선하도록 선택자를 한 단계 더 붙인다 */
+.cells .cell {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  aspect-ratio: 1;
+}

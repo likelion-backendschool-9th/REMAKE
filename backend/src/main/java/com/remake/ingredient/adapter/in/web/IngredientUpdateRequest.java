@@ -31,7 +31,7 @@ public class IngredientUpdateRequest {
 	private LocalDate expirationDate;
 	@DecimalMin(value = "0", inclusive = false)
 	@Digits(integer = 7, fraction = 3)
-	@Schema(description = "사용·폐기한 적이 없는 재료만 고칠 수 있습니다. 단위는 바꿀 수 없습니다.")
+	@Schema(description = "사용·폐기한 적이 없는 재료만 고칠 수 있습니다. 단위는 받지 않고, 이름이나 카테고리를 바꾸면 서버가 단위를 다시 정합니다.")
 	private BigDecimal amount;
 	@PositiveOrZero
 	@Schema(nullable = true, description = "키를 보내지 않으면 그대로, null이면 가격을 지웁니다.")

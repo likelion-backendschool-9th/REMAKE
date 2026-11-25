@@ -20,7 +20,7 @@ class IngredientCategoryPersistenceAdapter implements LoadIngredientCategoryPort
 
 	@Override
 	public List<IngredientCategory> loadAll() {
-		return repository.findAllByOrderByIdAsc().stream()
+		return repository.findAllByOrderBySortOrderAsc().stream()
 				.map(IngredientCategoryJpaEntity::toDomain)
 				.toList();
 	}

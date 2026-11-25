@@ -9,6 +9,7 @@ import com.remake.recipe.domain.CookingTool;
 import com.remake.recipe.domain.Cuisine;
 import com.remake.recipe.domain.RecipeSource;
 import com.remake.recipe.domain.Taste;
+import com.remake.user.domain.AllergenCode;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
@@ -27,7 +28,7 @@ public record GenerateRecipeRequest(
 		CookingTool tool,
 		CookingMethod method,
 		Cuisine cuisine,
-		@Schema(description = "커스텀에서 고른 알레르기 칩 코드") @Size(max = 19) List<@NotNull String> allergenCodes) {
+		@Schema(description = "커스텀에서 고른 알레르기 칩 코드(ERD 부록 B 19개). 모르는 코드는 400 INVALID_INPUT") @Size(max = 19) List<@NotNull AllergenCode> allergenCodes) {
 
 	GenerateRecipeCommand toCommand() {
 		return new GenerateRecipeCommand(mode, servings, ingredientIds, taste, cookTime, tool, method, cuisine,

@@ -1,0 +1,7 @@
+/* 피그마 p2.2: 서브 헤더 아래 17에 카드, 옆 여백 16. 아래 고정 버튼(BottomBar)에 가리지 않게 아래 여백 */
+.main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 1.0625rem var(--layout-gutter) calc(7.5rem + env(safe-area-inset-bottom));
+}

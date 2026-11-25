@@ -7,7 +7,6 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -35,10 +34,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return respond(ErrorResponse.of(e.getErrorCode(), e.getMessage(), e.getDetails()));
 	}
 
-	// JPA @Version이 다른 요청의 수정을 감지함
-	@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
-	public ResponseEntity<ErrorResponse> handleOptimisticLock(ObjectOptimisticLockingFailureException e) {
-		return respond(ErrorResponse.of(ErrorCode.CONCURRENT_UPDATE));
+	@ExceptionHandler(InvalidFieldException.class)
+	public ResponseEntity<ErrorResponse> handleInvalidField(InvalidFieldException e) {
+		return respond(ErrorResponse.of(e.getErrorCode(), List.of(new ErrorResponse.FieldError(e.getField(), e.getMessage()))));
 	}
 
 	// 예상하지 못한 오류: 서버 로그에는 전체 내용을 남기고, 사용자에게는 내부 내용을 숨긴다.

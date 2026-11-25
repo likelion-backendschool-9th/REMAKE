@@ -1,6 +1,7 @@
 package com.remake.mealplan.adapter.out.persistence;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -54,6 +55,20 @@ class MealPlanPersistenceAdapter
 				.findByUserIdAndStatusAndStartDateBetweenOrderByStartDateAscIdAsc(userId, status, from, to)
 				.stream()
 				.map(MealPlanJpaEntity::toDomain)
+				.toList();
+	}
+
+	@Override
+	public Optional<MealPlan> loadByIdForUpdate(Long mealPlanId) {
+		return mealPlanRepository.findByIdForUpdate(mealPlanId).map(MealPlanJpaEntity::toDomain);
+	}
+
+	@Override
+	public List<GeneratingMealPlan> loadGeneratingAcceptedBefore(LocalDateTime acceptedBefore) {
+		return mealPlanRepository
+				.findByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(MealPlanStatus.GENERATING, acceptedBefore)
+				.stream()
+				.map(entity -> new GeneratingMealPlan(entity.getId(), entity.getCreatedAt()))
 				.toList();
 	}
 

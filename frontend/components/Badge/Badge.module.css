@@ -1,0 +1,32 @@
+/* 피그마 5. 칩·배지 > 배지: 여백 2/6, radius/xs, Remake/assist-strong */
+.badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-section);
+  color: var(--color-text-body);
+  font: var(--font-assist-strong);
+  white-space: nowrap;
+}
+
+.badge[data-tone="danger"] {
+  background: var(--color-bg-badge-danger);
+  color: var(--color-text-danger);
+}
+
+.badge[data-tone="warning"] {
+  background: var(--color-bg-badge-warning);
+  color: var(--color-text-warning);
+}
+
+.badge[data-tone="safe"] {
+  background: var(--color-bg-badge-safe);
+  color: var(--color-text-safe);
+}
+
+.badge[data-tone="primary"] {
+  background: var(--color-bg-primary-subtle);
+  color: var(--color-text-primary);
+}

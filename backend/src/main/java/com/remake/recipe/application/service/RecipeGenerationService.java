@@ -1,6 +1,7 @@
 package com.remake.recipe.application.service;
 
 import java.time.Duration;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,7 +34,9 @@ import com.remake.recipe.domain.CustomOptions;
 import com.remake.recipe.domain.Recipe;
 import com.remake.recipe.domain.RecipeIngredient;
 import com.remake.recipe.domain.RecipeSource;
+import com.remake.user.application.port.in.GetUserGenerationPreferencesUseCase;
 import com.remake.user.application.port.in.GetUserUseCase;
+import com.remake.user.domain.AllergenCode;
 import com.remake.user.domain.User;
 
 import lombok.extern.slf4j.Slf4j;
@@ -61,6 +64,7 @@ class RecipeGenerationService implements GenerateRecipeUseCase, RegenerateRecipe
 	private static final int MAX_SERVINGS = 50;
 
 	private final GetUserUseCase getUserUseCase;
+	private final GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase;
 	private final GetFridgeUseCase getFridgeUseCase;
 	private final ConsumeRecipeQuotaUseCase consumeRecipeQuotaUseCase;
 	private final GetUsageQuotasUseCase getUsageQuotasUseCase;
@@ -71,13 +75,15 @@ class RecipeGenerationService implements GenerateRecipeUseCase, RegenerateRecipe
 	private final TransactionTemplate transactionTemplate;
 	private final Duration retryDelay;
 
-	RecipeGenerationService(GetUserUseCase getUserUseCase, GetFridgeUseCase getFridgeUseCase,
+	RecipeGenerationService(GetUserUseCase getUserUseCase,
+			GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase, GetFridgeUseCase getFridgeUseCase,
 			ConsumeRecipeQuotaUseCase consumeRecipeQuotaUseCase, GetUsageQuotasUseCase getUsageQuotasUseCase,
 			GenerateRecipeAiPort aiPort,
 			SaveRecipePort saveRecipePort, LoadRecipePort loadRecipePort, EventTracker eventTracker,
 			TransactionTemplate transactionTemplate,
 			@Value("${remake.recipe.ai-retry-delay:1500ms}") Duration retryDelay) {
 		this.getUserUseCase = getUserUseCase;
+		this.getUserGenerationPreferencesUseCase = getUserGenerationPreferencesUseCase;
 		this.getFridgeUseCase = getFridgeUseCase;
 		this.consumeRecipeQuotaUseCase = consumeRecipeQuotaUseCase;
 		this.getUsageQuotasUseCase = getUsageQuotasUseCase;
@@ -104,8 +110,8 @@ class RecipeGenerationService implements GenerateRecipeUseCase, RegenerateRecipe
 				? new CustomOptions(servings, command.ingredientIds(), command.taste(), command.cookTime(),
 						command.tool(), command.method(), command.cuisine(), command.allergenCodes())
 				: null;
-		// 빠른 생성의 제외 재료는 설정의 알레르기(user_excluded_ingredients)를 써야 하지만 아직 그 테이블이 없어 비워 둔다.
-		List<String> allergens = mode == RecipeSource.CUSTOM ? command.allergenCodes() : List.of();
+		List<AllergenCode> allergens = excludedAllergens(userId,
+				mode == RecipeSource.CUSTOM ? command.allergenCodes() : List.of());
 		RecipeAiRequest request = new RecipeAiRequest(mode, servings, user.recipeSupplementEnabled(),
 				GenerationIngredients.toAiItems(selected), options, allergens);
 		return run(userId, request, selected, false);
@@ -128,19 +134,30 @@ class RecipeGenerationService implements GenerateRecipeUseCase, RegenerateRecipe
 		List<FridgeIngredient> fridge = getFridgeUseCase.getFridgeIngredients(userId, null, null, null);
 		List<FridgeIngredient> selected;
 		int servings;
-		List<String> allergens;
+		List<AllergenCode> allergens;
 		if (original.source() == RecipeSource.CUSTOM) {
 			selected = GenerationIngredients.selectRemaining(fridge, options.ingredientIds());
 			servings = options.servings();
-			allergens = options.allergenCodes();
+			allergens = excludedAllergens(userId, options.allergenCodes());
 		} else {
 			selected = GenerationIngredients.select(fridge, List.of());
 			servings = servingsOf(user, GenerateRecipeCommand.quick());
-			allergens = List.of();
+			allergens = excludedAllergens(userId, List.of());
 		}
 		RecipeAiRequest request = new RecipeAiRequest(original.source(), servings, user.recipeSupplementEnabled(),
 				GenerationIngredients.toAiItems(selected), options, allergens);
 		return run(userId, request, selected, true);
+	}
+
+	/**
+	 * AI에 보낼 제외 알레르기. 설정의 제외 재료(지금 값)는 빠른 생성·커스텀·다시 받기 모두 항상 넣고,
+	 * 커스텀에서 고른 칩을 더한다. 중복 없이 ERD 부록 B 순서로 보낸다.
+	 */
+	private List<AllergenCode> excludedAllergens(Long userId, List<AllergenCode> chosen) {
+		EnumSet<AllergenCode> codes = EnumSet.noneOf(AllergenCode.class);
+		codes.addAll(getUserGenerationPreferencesUseCase.getPreferences(userId).excludedAllergenCodes());
+		codes.addAll(chosen);
+		return List.copyOf(codes);
 	}
 
 	/** 횟수 확인부터 저장까지. 생성과 다시 받기가 같이 쓴다. */

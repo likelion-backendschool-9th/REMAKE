@@ -1,0 +1,64 @@
+/* 피그마 7. 목록 행·카드 > 토스트: 최소 높이 48, 여백 14/16, 간격 8, radius 12, shadow-modal, Remake/content·text/on-color
+   배경 bg/toast(기본·성공·오류 공통). 아이콘 색은 피그마 변수가 아닌 값 그대로: 성공 체크 #73D999, 오류 아이콘 #FF7373 */
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.875rem var(--space-16);
+  border-radius: 0.75rem;
+  background: var(--color-bg-toast);
+  box-shadow: var(--shadow-modal);
+}
+
+.icon {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.toast[data-variant="success"] .icon {
+  color: #73d999;
+}
+
+.toast[data-variant="error"] .icon {
+  color: #ff7373;
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-on-color);
+  font: var(--font-content);
+}
+
+/* 나타남: 아래에서 위로 스르륵(0.3초). 사라짐: 아래로 내려가며 흐려짐(0.25초, TOAST_LEAVE_MS와 맞춤) */
+.toast {
+  animation: toast-in 0.3s ease-out;
+}
+
+.toast[data-leaving] {
+  animation: toast-out 0.25s ease-in forwards;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .toast[data-leaving] {
+    animation: none;
+  }
+}

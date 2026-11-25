@@ -1,5 +1,8 @@
 package com.remake.support;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -27,8 +30,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import com.remake.auth.adapter.out.oauth.SocialOAuthAdapter;
 import com.remake.global.config.AsyncConfig;
-import com.remake.ingredient.domain.IngredientStatus;
-import com.remake.mealplan.adapter.out.ai.UnavailableMealPlanAiAdapter;
+import com.remake.global.config.UploadProperties;
+import com.remake.mealplan.adapter.out.ai.GeminiMealPlanAdapter;
 import com.remake.recipe.adapter.out.ai.GeminiRecipeAdapter;
 import com.remake.user.domain.AuthProvider;
 
@@ -88,6 +91,9 @@ public abstract class IntegrationTestSupport {
 	@Autowired
 	private TestDatabase testDatabase;
 
+	@Autowired
+	private UploadProperties uploadProperties;
+
 	// 이벤트 비동기 적재가 truncate 전에 끝나게 기다린다. SyncTaskExecutor로 바꾸지 않는다.
 	@Autowired
 	@Qualifier(AsyncConfig.EVENT_TASK_EXECUTOR)
@@ -106,9 +112,9 @@ public abstract class IntegrationTestSupport {
 	@MockitoBean
 	protected GeminiRecipeAdapter geminiRecipeAdapter;
 
-	// 식단표 AI. 테스트마다 만들 칸·예외를 stub한다. stub하지 않으면 빈 목록(하루도 못 만듦)이다.
+	// 식단표 AI. 실제 Gemini를 부르지 않는다. 테스트마다 만들 칸·예외를 stub한다. stub하지 않으면 빈 목록(칸 빠짐 = AI_INVALID_RESPONSE)이다.
 	@MockitoBean
-	protected UnavailableMealPlanAiAdapter mealPlanAiAdapter;
+	protected GeminiMealPlanAdapter mealPlanAiAdapter;
 
 	/** 테스트용 회원 한 명을 넣고 id를 돌려준다. provider_user_id는 호출마다 다르게 만든다. */
 	protected Long createUser() {
@@ -123,24 +129,6 @@ public abstract class IntegrationTestSupport {
 				VALUES (?, ?, NULL, 'USER', 'ACTIVE', 'BASIC', false, false, true, ?, ?)
 				RETURNING id
 				""", Long.class, provider.name(), providerUserId, now, now);
-	}
-
-	/**
-	 * 고정 id로 회원이 없으면 넣는다. 예전 테스트가 쓰던 101L 같은 번호를 ingredients FK에 맞출 때 쓴다.
-	 */
-	protected void ensureUser(Long id) {
-		Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE id = ?", Integer.class, id);
-		if (count != null && count > 0) {
-			return;
-		}
-		LocalDateTime now = LocalDateTime.now(clock);
-		jdbcTemplate.update("""
-				INSERT INTO users (id, provider, provider_user_id, email, role, status, plan, onboarding_completed,
-				                   recipe_supplement_enabled, notification_enabled, created_at, updated_at)
-				OVERRIDING SYSTEM VALUE
-				VALUES (?, 'KAKAO', ?, NULL, 'USER', 'ACTIVE', 'BASIC', false, false, true, ?, ?)
-				""", id, "fixed-" + id, now, now);
-		jdbcTemplate.execute("SELECT setval(pg_get_serial_sequence('users', 'id'), (SELECT COALESCE(MAX(id), 1) FROM users))");
 	}
 
 	/** 서버 EventTracker(@Async) 적재가 끝날 때까지 기다린다. */
@@ -163,30 +151,31 @@ public abstract class IntegrationTestSupport {
 		return jdbcTemplate.queryForObject("SELECT id FROM ingredient_categories WHERE code = ?", Long.class, code);
 	}
 
-	/** 냉장고 재료 한 건을 넣고 id를 돌려준다. 단위·양은 기본값(EA, 1)이고 생성·수정 시각은 시험용 시계를 따른다. */
-	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate,
-			IngredientStatus status) {
-		return createIngredient(userId, categoryCode, name, expirationDate, status, null);
+	/**
+	 * 냉장고 재료 한 건을 넣고 id를 돌려준다. 단위·양은 기본값(EA, 1)이고 생성·수정 시각은 시험용 시계를 따른다.
+	 * 사용자는 createUser()로 먼저 만든다. 없는 사용자 번호면 외래 키 오류로 실패한다.
+	 */
+	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate) {
+		return createIngredient(userId, categoryCode, name, expirationDate, null);
 	}
 
 	protected Long createIngredient(Long userId, String categoryCode, String name, LocalDate expirationDate,
-			IngredientStatus status, Long price) {
-		ensureUser(userId);
+			Long price) {
 		LocalDateTime now = LocalDateTime.now(clock);
 		return jdbcTemplate.queryForObject("""
 				INSERT INTO ingredients (user_id, category_id, name, storage, expiration_date, amount, initial_amount,
-				                         unit, price, status, created_at, updated_at)
-				VALUES (?, ?, ?, 'FRIDGE', ?, 1, 1, 'EA', ?, ?, ?, ?)
+				                         unit, price, created_at, updated_at)
+				VALUES (?, ?, ?, 'FRIDGE', ?, 1, 1, 'EA', ?, ?, ?)
 				RETURNING id
-				""", Long.class, userId, categoryId(categoryCode), name, expirationDate, price, status.name(), now, now);
+				""", Long.class, userId, categoryId(categoryCode), name, expirationDate, price, now, now);
 	}
 
 	/**
 	 * 레시피 한 건(빠른 생성, 1인분, 10분)을 넣고 id를 돌려준다. 재료·단계는 넣지 않는다.
 	 * 식단 칸·장바구니·저장 목록처럼 레시피 id만 필요한 테스트가 쓴다(레시피 FK가 있어 없는 번호는 넣을 수 없다).
+	 * 사용자는 createUser()로 먼저 만든다.
 	 */
 	protected Long createRecipe(Long userId) {
-		ensureUser(userId);
 		return jdbcTemplate.queryForObject("""
 				INSERT INTO recipes (user_id, source, title, servings, cook_minutes, created_at)
 				VALUES (?, 'QUICK', '테스트 레시피', 1, 10, ?)
@@ -194,11 +183,31 @@ public abstract class IntegrationTestSupport {
 				""", Long.class, userId, LocalDateTime.now(clock));
 	}
 
+	// 출처 외래 키를 만족하도록 테스트에서 실제 영수증 품목을 만든다.
+	protected Long createReceiptItem(Long userId, String name, String categoryCode) {
+		LocalDateTime now = LocalDateTime.now(clock);
+		Long receiptId = jdbcTemplate.queryForObject("""
+				INSERT INTO receipts (user_id, purchased_on, store_name, image_key, created_at)
+				VALUES (?, ?, '동네마트', 'test-image', ?) RETURNING id
+				""", Long.class, userId, now.toLocalDate(), now);
+		return jdbcTemplate.queryForObject("""
+				INSERT INTO receipt_items (receipt_id, category_id, name, storage, created_at)
+				VALUES (?, ?, ?, 'FRIDGE', ?) RETURNING id
+				""", Long.class, receiptId, categoryId(categoryCode), name, now);
+	}
+
 	@AfterEach
-	void cleanUp() {
+	void cleanUp() throws IOException {
 		awaitMealPlanJobs();
 		awaitEventWrites();
 		clock.reset();
 		testDatabase.cleanUp();
+		// 파일 저장 어댑터는 가짜로 바꾸지 않는다. 테스트 전용 폴더의 파일만 지운다.
+		Path root = Path.of(uploadProperties.rootDirectory());
+		try (var files = Files.walk(root)) {
+			for (Path file : files.filter(path -> !Files.isDirectory(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)).toList()) {
+				Files.deleteIfExists(file);
+			}
+		}
 	}
 }

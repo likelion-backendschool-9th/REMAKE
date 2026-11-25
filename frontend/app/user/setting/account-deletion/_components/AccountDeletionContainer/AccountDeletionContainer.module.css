@@ -1,0 +1,48 @@
+/* 피그마 p1.3.3: 설명 아래 28에 "인증 번호", 칸·타이머 줄 사이 15.
+   타이머·재전송하기 Remake/content·text/danger, 간격 8, 재전송하기는 밑줄(아래 선 1px) */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9375rem;
+  margin-top: 1.75rem;
+}
+
+.resend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.timer {
+  color: var(--color-text-danger);
+  font: var(--font-content);
+  font-variant-numeric: tabular-nums;
+}
+
+.resendButton {
+  padding-bottom: 1px;
+  border-bottom: 1px solid currentColor;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 오류 토스트: 화면 아래 고정 버튼(BottomBar, 위 12 + 버튼 53 + 아래 24) 위에 16 띄운다 */
+.toastArea {
+  position: fixed;
+  right: 0;
+  bottom: calc(6.0625rem + env(safe-area-inset-bottom));
+  left: 0;
+  z-index: var(--z-toast);
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: 0 var(--layout-gutter);
+  pointer-events: none;
+}

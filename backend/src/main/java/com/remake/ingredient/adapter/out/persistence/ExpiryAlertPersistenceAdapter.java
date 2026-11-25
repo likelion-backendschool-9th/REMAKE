@@ -9,11 +9,10 @@ import com.remake.ingredient.application.port.out.LoadExpiryAlertIngredientPort;
 import com.remake.ingredient.domain.ExpiredIngredient;
 import com.remake.ingredient.domain.ExpiredIngredientCount;
 import com.remake.ingredient.domain.ExpiringIngredient;
-import com.remake.ingredient.domain.IngredientStatus;
 
 import lombok.RequiredArgsConstructor;
 
-/** 알림용 재료 읽기 Port 구현. ACTIVE 재료만 읽는다. 엔티티를 거치지 않고 필요한 값만 도메인 객체로 읽는다. */
+/** 알림용 재료 읽기 Port 구현. 엔티티를 거치지 않고 필요한 값만 도메인 객체로 읽는다. */
 @Component
 @RequiredArgsConstructor
 class ExpiryAlertPersistenceAdapter implements LoadExpiryAlertIngredientPort {
@@ -22,16 +21,16 @@ class ExpiryAlertPersistenceAdapter implements LoadExpiryAlertIngredientPort {
 
 	@Override
 	public List<ExpiringIngredient> loadExpiringBetween(LocalDate from, LocalDate to) {
-		return ingredientRepository.findExpiringBetween(IngredientStatus.ACTIVE, from, to);
+		return ingredientRepository.findExpiringBetween(from, to);
 	}
 
 	@Override
 	public List<ExpiredIngredientCount> countExpiredBefore(LocalDate date) {
-		return ingredientRepository.countByUserExpiredBefore(IngredientStatus.ACTIVE, date);
+		return ingredientRepository.countByUserExpiredBefore(date);
 	}
 
 	@Override
 	public List<ExpiredIngredient> loadExpiredOn(LocalDate date) {
-		return ingredientRepository.findExpiredOn(IngredientStatus.ACTIVE, date);
+		return ingredientRepository.findExpiredOn(date);
 	}
 }

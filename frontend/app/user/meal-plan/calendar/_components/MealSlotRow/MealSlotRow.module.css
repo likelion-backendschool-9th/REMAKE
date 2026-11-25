@@ -1,0 +1,100 @@
+/* 피그마 p5 식단 리스트: 위아래 10, 칩-글 12, 레시피 이름-재료 4, 재료 사이 5(점 2), 오른쪽 ⋮ 24 */
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: var(--space-10) 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.main:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* 끼니 칩: 여백 8, radius 4, Remake/title. 아침=파랑, 점심=주황, 저녁=초록(피그마 색에 가장 가까운 토큰) */
+.chip {
+  flex: none;
+  padding: var(--space-8);
+  border-radius: var(--radius-xs);
+  font: var(--font-title);
+}
+
+.chip[data-meal="BREAKFAST"] {
+  background: var(--color-bg-primary-subtle);
+  color: var(--color-text-primary);
+}
+
+.chip[data-meal="LUNCH"] {
+  background: var(--color-bg-badge-warning);
+  color: var(--color-text-warning);
+}
+
+.chip[data-meal="DINNER"] {
+  background: var(--color-bg-badge-safe);
+  color: var(--color-text-safe);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--color-text-title);
+  font: var(--font-content);
+}
+
+/* 즐겨찾기 별 13, 노랑 */
+.star {
+  flex: none;
+  width: 0.8125rem;
+  height: 0.8125rem;
+  color: #fcc419;
+}
+
+.ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) 0;
+  color: var(--color-text-assist);
+  font: var(--font-assist);
+}
+
+/* 재료 사이 점(2×2): 앞뒤 간격 5 */
+.ingredient + .ingredient::before {
+  content: "";
+  display: inline-block;
+  width: 0.125rem;
+  height: 0.125rem;
+  margin: 0 0.3125rem;
+  border-radius: var(--radius-full);
+  background: currentColor;
+  vertical-align: middle;
+}
+
+.extra {
+  margin-left: 0.3125rem;
+}
+
+/* ⋮ 아이콘 24를 오른쪽 끝에 두면서 누르는 영역 44를 지킨다 */
+.more {
+  margin-right: -0.625rem;
+}

@@ -1,0 +1,15 @@
+/* 모든 화면을 담는 컨테이너. 모바일 기준 최대 폭(480px)을 넘는 화면에서는 가운데에 둔다(blueprint §6).
+   화면 아래 고정 영역·시트·모달처럼 position: fixed이거나 body에 포털로 붙는 요소는 이 컨테이너 밖이라 각자 같은 폭을 건다 */
+.shell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  /* 바깥은 회색(body), 화면 영역은 흰 바탕 */
+  background: var(--color-bg-surface);
+  /* 그림자 등 화면 영역을 넘는 것은 잘라 바깥에 보이지 않게 한다.
+     hidden 대신 clip: 스크롤 영역을 만들지 않아 헤더의 position: sticky가 그대로 동작한다 */
+  overflow: clip;
+}

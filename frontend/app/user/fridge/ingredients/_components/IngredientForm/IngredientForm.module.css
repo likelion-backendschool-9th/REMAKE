@@ -1,0 +1,29 @@
+/* 피그마 p2.1·p2.2 재료 정보 카드: bg/surface, border/default, radius/lg, 옆 여백 14 */
+.card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 var(--space-14);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
+
+/* 카드 안 설정형 행: 위 24·아래 23·옆 5(기본 행보다 높다) */
+.row {
+  padding: 1.5rem 0.3125rem 1.4375rem;
+}
+
+/* 수량 행: 스테퍼(24)가 있어 위 20·아래 19 */
+.amountRow {
+  padding: 1.25rem 0.3125rem 1.1875rem;
+}
+
+.card > :last-child {
+  border-bottom: 0;
+}
+
+/* 카드 아래 10에 안내 박스 */
+.info {
+  margin-top: var(--space-10);
+}

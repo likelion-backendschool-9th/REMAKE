@@ -73,4 +73,9 @@ class NotificationPersistenceAdapter implements LoadNotificationPort, SaveNotifi
 	public int deleteCreatedBefore(LocalDateTime before) {
 		return notificationJpaRepository.deleteByCreatedAtBefore(before);
 	}
+
+	@Override
+	public int deleteByUserId(Long userId) {
+		return notificationJpaRepository.deleteByUserId(userId);
+	}
 }

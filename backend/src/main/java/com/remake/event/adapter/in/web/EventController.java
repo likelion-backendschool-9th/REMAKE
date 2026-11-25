@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.remake.event.application.port.in.IngestClientEventsUseCase;
 import com.remake.global.config.OpenApiConfig;
+import com.remake.global.web.LoginUserId;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -17,10 +18,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-/**
- * 프론트 이벤트 배치 수집. 로그인 사용자 API(#66 이후 Security가 userId를 채움).
- * 지금은 Security가 없어 userId를 null로 저장한다.
- */
+/** 로그인 사용자의 프론트 이벤트를 배치로 수집한다. */
 @Tag(name = "이벤트")
 @SecurityRequirement(name = OpenApiConfig.COOKIE_AUTH)
 @RestController
@@ -37,6 +35,7 @@ public class EventController {
 	@PostMapping
 	@ResponseStatus(HttpStatus.ACCEPTED)
 	public EventIngestResponse ingest(
+			@LoginUserId Long userId,
 			@Valid @RequestBody EventIngestRequest request,
 			@RequestHeader(value = HEADER_PLATFORM, required = false) String platform,
 			@RequestHeader(value = HEADER_APP_VERSION, required = false) String appVersion) {
@@ -48,7 +47,6 @@ public class EventController {
 						item.occurredAt(),
 						item.sessionId()))
 				.toList();
-		// TODO(#66): SecurityContext에서 로그인 userId를 넣어 전달한다.
-		return EventIngestResponse.from(ingestClientEventsUseCase.ingest(null, platform, appVersion, commands));
+		return EventIngestResponse.from(ingestClientEventsUseCase.ingest(userId, platform, appVersion, commands));
 	}
 }

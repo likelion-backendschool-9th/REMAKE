@@ -20,4 +20,6 @@ interface RecipeIngredientJpaRepository extends JpaRepository<RecipeIngredientJp
 			""")
 	List<RecipeIngredientJpaEntity> findAllOfUserRecipes(@Param("recipeIds") Collection<Long> recipeIds,
 			@Param("userId") Long userId);
+
+	List<RecipeIngredientJpaEntity> findByRecipeIdInOrderByRecipeIdAscSortOrderAsc(Collection<Long> recipeIds);
 }

@@ -191,53 +191,20 @@ class MealPlanTrimmerTest {
 	}
 
 	@Test
-	void 덮어쓸_날의_예전_배정량은_그날을_만들_때_돌려받는다() {
+	void AI에_알려_준_양을_다_쓰는_칸들은_모두_만든다() {
 		Set<MealType> meals = EnumSet.of(MealType.DINNER);
-		// 예전 식단표가 1~3일에 매일 100g. 냉장고 300g이라 남은 양은 0이지만,
-		// 하루씩 만들 때 그날 예전 칸의 100g을 돌려받아 새 칸에 쓴다.
-		List<AllocatedSlot> old = List.of(
-				new AllocatedSlot(TODAY, List.of(fridge(PORK, "100", RecipeUnit.G))),
-				new AllocatedSlot(TODAY.plusDays(1), List.of(fridge(PORK, "100", RecipeUnit.G))),
-				new AllocatedSlot(TODAY.plusDays(2), List.of(fridge(PORK, "100", RecipeUnit.G))));
-		StockLedger ledger = StockLedger.of(List.of(stock(PORK, "300", IngredientUnit.G)), old, TODAY);
+		// 냉장고 1000g, 남는 칸이 200g을 잡아 둠 → AI에 800g을 알려 준다.
+		// 자르기도 같은 장부라 하루 200g씩 4일이면 800g을 다 써도 4일 모두 만든다.
+		List<AllocatedSlot> remaining = List.of(
+				new AllocatedSlot(TODAY.plusDays(10), List.of(fridge(PORK, "200", RecipeUnit.G))));
+		StockLedger ledger = StockLedger.of(List.of(stock(PORK, "1000", IngredientUnit.G)), remaining, TODAY);
 
-		TrimResult result = MealPlanTrimmer.trim(schedule(3, meals), porkEveryMeal(3, meals, "100"), ledger);
-
-		assertThat(result.generatedDays()).isEqualTo(3);
-	}
-
-	@Test
-	void AI에_보낼_재료는_덮어쓸_기간의_예전_배정량을_돌려받은_양이다() {
-		// 예전 식단표가 1~3일에 매일 100g, 4일에 50g. 냉장고 400g.
-		// 1~3일을 덮어쓰면 그 300g은 돌려받고, 기간 밖인 4일의 50g만 빼서 350g을 보낸다.
-		List<AllocatedSlot> old = List.of(
-				new AllocatedSlot(TODAY, List.of(fridge(PORK, "100", RecipeUnit.G))),
-				new AllocatedSlot(TODAY.plusDays(1), List.of(fridge(PORK, "100", RecipeUnit.G))),
-				new AllocatedSlot(TODAY.plusDays(2), List.of(fridge(PORK, "100", RecipeUnit.G))),
-				new AllocatedSlot(TODAY.plusDays(3), List.of(fridge(PORK, "50", RecipeUnit.G))));
-		StockLedger ledger = StockLedger.of(List.of(stock(PORK, "400", IngredientUnit.G)), old, TODAY);
-
-		assertThat(ledger.available(schedule(3, EnumSet.of(MealType.DINNER)))).singleElement()
-				.satisfies(stock -> assertThat(stock.amount()).isEqualByComparingTo("350"));
-		assertThat(ledger.available(schedule(1, EnumSet.of(MealType.DINNER)))).singleElement()
-				.satisfies(stock -> assertThat(stock.amount()).isEqualByComparingTo("150"));
-	}
-
-	@Test
-	void 못_만든_날의_예전_배정량은_돌려받지_않는다() {
-		Set<MealType> meals = EnumSet.of(MealType.DINNER);
-		// 예전 식단표 2일째 칸이 200g. 새 칸은 1일 150g, 2일 300g. 냉장고 400g.
-		// 1일: 남은 200g 안에서 150g → 됨. 2일: 예전 200g을 돌려받아도 남은 250g < 300g → 멈춤.
-		List<AllocatedSlot> old = List.of(
-				new AllocatedSlot(TODAY.plusDays(1), List.of(fridge(PORK, "200", RecipeUnit.G))));
-		List<PlannedSlot> slots = List.of(
-				slot(1, MealType.DINNER, fridge(PORK, "150", RecipeUnit.G)),
-				slot(2, MealType.DINNER, fridge(PORK, "300", RecipeUnit.G)));
-		StockLedger ledger = StockLedger.of(List.of(stock(PORK, "400", IngredientUnit.G)), old, TODAY);
-
-		TrimResult result = MealPlanTrimmer.trim(schedule(2, meals), slots, ledger);
-
-		assertThat(result.generatedDays()).isEqualTo(1);
+		assertThat(ledger.available()).singleElement()
+				.satisfies(stock -> assertThat(stock.amount()).isEqualByComparingTo("800"));
+		assertThat(MealPlanTrimmer.trim(schedule(4, meals), porkEveryMeal(4, meals, "200"), ledger).generatedDays())
+				.isEqualTo(4);
+		assertThat(MealPlanTrimmer.trim(schedule(5, meals), porkEveryMeal(5, meals, "200"), ledger).generatedDays())
+				.isEqualTo(4);
 	}
 
 	@Test
@@ -248,7 +215,7 @@ class MealPlanTrimmerTest {
 		StockLedger ledger = ledger(List.of(expired, dDay));
 		MealSchedule oneDinner = schedule(1, EnumSet.of(MealType.DINNER));
 
-		assertThat(ledger.available(oneDinner)).extracting(FridgeStock::ingredientId).containsExactly(ONION);
+		assertThat(ledger.available()).extracting(FridgeStock::ingredientId).containsExactly(ONION);
 		assertThat(MealPlanTrimmer.trim(oneDinner,
 				List.of(slot(1, MealType.DINNER, fridge(PORK, "100", RecipeUnit.G))), ledger).generatedDays())
 				.isZero();
@@ -272,6 +239,21 @@ class MealPlanTrimmerTest {
 		assertThat(result.generatedDays()).isEqualTo(1);
 		assertThat(result.shortages()).containsExactly(
 				new TrimResult.Shortage(new MealSlotKey(TODAY, MealType.DINNER), greenOnion));
+	}
+
+	@Test
+	void 물은_냉장고에_없어도_장바구니에_담지_않고_양념은_담는다() {
+		// 레시피 생성(#201)과 같은 기준: 물만 예외, 소금 같은 양념은 양이 있으면 부족 재료다(#158)
+		SlotIngredient salt = missing("소금", "1", RecipeUnit.TSP);
+		List<PlannedSlot> slots = List.of(slot(1, MealType.DINNER, fridge(PORK, "200", RecipeUnit.G),
+				missing("물", "500", RecipeUnit.ML), missing(" 물 ", "100", RecipeUnit.ML), salt));
+
+		TrimResult result = MealPlanTrimmer.trim(schedule(1, EnumSet.of(MealType.DINNER)), slots,
+				ledger(List.of(stock(PORK, "300", IngredientUnit.G))));
+
+		assertThat(result.generatedDays()).isEqualTo(1);
+		assertThat(result.shortages()).containsExactly(
+				new TrimResult.Shortage(new MealSlotKey(TODAY, MealType.DINNER), salt));
 	}
 
 	@Test
@@ -318,7 +300,7 @@ class MealPlanTrimmerTest {
 		StockLedger ledger = StockLedger.of(
 				List.of(stock(PORK, "1", IngredientUnit.KG), stock(ONION, "2", IngredientUnit.EA)), allocated, TODAY);
 
-		assertThat(ledger.available(schedule(3, EnumSet.of(MealType.DINNER)))).singleElement().satisfies(stock -> {
+		assertThat(ledger.available()).singleElement().satisfies(stock -> {
 			assertThat(stock.ingredientId()).isEqualTo(PORK);
 			assertThat(stock.amount()).isEqualByComparingTo("0.7");
 			assertThat(stock.unit()).isEqualTo(IngredientUnit.KG);

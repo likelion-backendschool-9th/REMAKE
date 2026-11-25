@@ -21,7 +21,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import com.remake.global.web.LoginUserIdArgumentResolver;
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.recipe.application.port.out.GeneratedRecipe;
 import com.remake.recipe.application.port.out.RecipeAiRequest;
 import com.remake.recipe.application.port.out.SaveRecipePort;
@@ -32,6 +31,7 @@ import com.remake.recipe.domain.RecipeSource;
 import com.remake.recipe.domain.RecipeUnit;
 import com.remake.recipe.domain.Taste;
 import com.remake.support.IntegrationTestSupport;
+import com.remake.user.domain.AllergenCode;
 
 // API 29 다시 받기, API 30 상세. Gemini 어댑터는 가짜. 기본 시각 2026-03-04 10:00(서울)
 class RecipeRegenerateAndDetailApiTest extends IntegrationTestSupport {
@@ -54,7 +54,7 @@ class RecipeRegenerateAndDetailApiTest extends IntegrationTestSupport {
 	}
 
 	private Long fridge(String category, String name) {
-		return createIngredient(userId, category, name, TODAY.plusDays(5), IngredientStatus.ACTIVE);
+		return createIngredient(userId, category, name, TODAY.plusDays(5));
 	}
 
 	private Recipe saveRecipe(Long owner, RecipeSource source, CustomOptions options) {
@@ -117,9 +117,9 @@ class RecipeRegenerateAndDetailApiTest extends IntegrationTestSupport {
 		Long onion = fridge("VEGETABLE", "양파");
 		Long gone = fridge("MEAT", "다 먹은 고기");
 		CustomOptions options = new CustomOptions(3, List.of(egg, onion, gone), Taste.SPICY, null, null, null, null,
-				List.of("SHRIMP"));
+				List.of(AllergenCode.SHRIMP));
 		Recipe original = saveRecipe(userId, RecipeSource.CUSTOM, options);
-		jdbcTemplate.update("UPDATE ingredients SET status = 'FINISHED' WHERE id = ?", gone);
+		jdbcTemplate.update("DELETE FROM ingredients WHERE id = ?", gone);
 		when(geminiRecipeAdapter.generate(any())).thenReturn(aiRecipe(egg, onion));
 
 		mockMvc.perform(as(userId, post(URL + original.id() + "/regenerate")))
@@ -131,7 +131,7 @@ class RecipeRegenerateAndDetailApiTest extends IntegrationTestSupport {
 		assertThat(sent.source()).isEqualTo(RecipeSource.CUSTOM);
 		assertThat(sent.servings()).isEqualTo(3);
 		assertThat(sent.customOptions().taste()).isEqualTo(Taste.SPICY);
-		assertThat(sent.excludedAllergenCodes()).containsExactly("SHRIMP");
+		assertThat(sent.excludedAllergenCodes()).containsExactly(AllergenCode.SHRIMP);
 		assertThat(sent.fridgeIngredients()).extracting(RecipeAiRequest.FridgeItem::ingredientId)
 				.containsExactly(egg, onion);
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM recipes WHERE user_id = ?", Integer.class,

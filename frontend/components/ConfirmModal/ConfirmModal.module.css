@@ -1,0 +1,104 @@
+/* 피그마 6. 겹쳐 뜨는 것 > 확인 모달: 폭 320, 여백 위 16·옆 20·아래 20, 간격 space/12, radius/md, shadow-modal
+   제목 Remake/header, 문구 Remake/content-regular, 버튼 줄 Remake/subheader·간격 space/20·위 여백 space/8 */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  /* 딤·시트는 화면 영역(최대 480, 가운데) 안에만 둔다. 바깥 회색 배경은 덮지 않음(피그마 딤 배경 폭 360) */
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-20);
+}
+
+.dim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-dim);
+}
+
+.modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  width: 100%;
+  max-width: 20rem;
+  padding: var(--space-16) var(--space-20) var(--space-20);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-modal);
+  outline: 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-strong);
+  font: var(--font-header);
+}
+
+/* 닫기 버튼: 누르는 영역 44×44, 아이콘 16(요청에 따라 피그마의 0.8배 축소 35.2·12.8 대신 기본 크기).
+   위아래로 4씩 겹쳐 머리 높이를 지키고, 아이콘 오른쪽 끝이 피그마처럼 내용 끝에서 11쯤 안쪽에 오도록 오른쪽을 3 넘긴다 */
+.close {
+  margin: calc(var(--space-4) * -1) -0.1875rem calc(var(--space-4) * -1) 0;
+}
+
+.message {
+  color: var(--color-text-body);
+  font: var(--font-content-regular);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-20);
+  padding-top: var(--space-8);
+}
+
+.action {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-body);
+  font: var(--font-subheader);
+  white-space: nowrap;
+}
+
+.action::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 2.75rem);
+  height: max(100%, 2.75rem);
+  transform: translate(-50%, -50%);
+}
+
+.action[data-tone="primary"] {
+  color: var(--color-text-primary);
+}
+
+.action[data-tone="danger"] {
+  color: var(--color-text-danger);
+}
+
+.action:disabled {
+  color: var(--color-text-disabled);
+  cursor: progress;
+}
+
+.action:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}

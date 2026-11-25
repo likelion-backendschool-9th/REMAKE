@@ -9,6 +9,8 @@
 #
 # 동작 요약
 #   1. (백엔드만) postgres 가 떠 있지 않을 때만 띄운다. 이미 떠 있으면 건드리지 않는다.
+#      동기화된 마이그레이션 파일 중 DB 에 아직 적용되지 않은 번호가 있으면, 새 슬롯이 적용하기 전에
+#      DB 전체를 BACKUP_DIR 에 백업한다. 백업하지 못하면 전환하지 않고 중단한다. (이전 버전이 계속 서비스된다)
 #   2. 비활성 슬롯에 새 버전을 빌드해서 띄우고 헬스체크가 통과할 때까지 기다린다.
 #      통과하지 못하면 전환하지 않고 중단한다. (이전 버전이 계속 서비스된다)
 #   3. proxy/<앱>.conf 를 새 슬롯으로 바꾸고, nginx 설정을 검사한 뒤 reload 한다.
@@ -29,6 +31,8 @@
 #   DRAIN_SECONDS  전환 후 이전 슬롯을 내리기 전 대기 시간(초) (기본 5)
 #   VERIFY_TIMEOUT 전환 후 새 슬롯 응답 확인 대기 시간(초) (기본 15)
 #   LOCK_TIMEOUT   다른 배포가 끝나기를 기다리는 최대 시간(초) (기본 900)
+#   BACKUP_DIR     새 마이그레이션 적용 전 DB 백업을 두는 폴더 (기본 backups)
+#   BACKUP_KEEP    남길 DB 백업 개수 (기본 5)
 
 set -euo pipefail
 
@@ -41,6 +45,10 @@ READY_TIMEOUT="${READY_TIMEOUT:-180}"
 DRAIN_SECONDS="${DRAIN_SECONDS:-5}"
 VERIFY_TIMEOUT="${VERIFY_TIMEOUT:-15}"
 LOCK_TIMEOUT="${LOCK_TIMEOUT:-900}"
+BACKUP_DIR="${BACKUP_DIR:-backups}"
+BACKUP_KEEP="${BACKUP_KEEP:-5}"
+# 백엔드 CD 가 동기화한 마이그레이션 파일. 새 슬롯 이미지 안의 파일과 같은 커밋이다.
+MIGRATION_DIR="backend/src/main/resources/db/migration"
 UPSTREAM_DIR="proxy"
 APPS=(backend frontend)
 
@@ -76,6 +84,7 @@ check_requirements() {
   [[ -f "$ENV_FILE" ]] || die "$ENV_FILE 파일이 없다 (DB 값과 APP_PORT 를 채운 .env 가 필요하다)"
   [[ -f "$COMPOSE_FILE" ]] || die "$COMPOSE_FILE 파일이 없다"
   docker info >/dev/null 2>&1 || die "docker 를 사용할 수 없다 (docker 그룹 권한을 확인한다)"
+  [[ "$BACKUP_KEEP" =~ ^[1-9][0-9]*$ ]] || die "BACKUP_KEEP 은 1 이상의 정수여야 한다 (지금: $BACKUP_KEEP)"
   check_compose_config
 }
 
@@ -133,6 +142,92 @@ ensure_postgres() {
   running postgres && return 0
   log "postgres 가 실행 중이 아니라 먼저 띄운다"
   "${COMPOSE[@]}" up -d --wait postgres || die "postgres 를 띄우지 못했다"
+}
+
+# ---- 마이그레이션 전 DB 백업 ---------------------------------------------------
+# 새 백엔드 슬롯은 기동할 때 Flyway 로 아직 적용되지 않은 마이그레이션을 적용한다. 열·행을 지우는 마이그레이션은
+# 롤백으로 되돌릴 수 없어서(이전 이미지가 새 구조에서 뜨지 않는다), 적용 직전의 백업이 되돌릴 유일한 방법이다.
+
+# postgres 컨테이너 안에서 SQL 하나를 실행하고 결과(한 줄)를 출력한다. 접속 정보는 컨테이너의 환경 변수를 쓴다.
+psql_value() {
+  # shellcheck disable=SC2016 # $POSTGRES_USER 등은 컨테이너 안의 sh 가 펼친다. SQL 은 $1 로 넘긴다.
+  "${COMPOSE[@]}" exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAq -c "$1"' sh "$1"
+}
+
+# 동기화된 마이그레이션 파일(V<번호>__*.sql, 하위 폴더 포함)의 가장 큰 번호. 파일이 없으면 0.
+latest_migration_file() {
+  local file v max=0
+  while IFS= read -r -d '' file; do
+    v="${file##*/V}"
+    v="${v%%__*}"
+    if [[ "$v" =~ ^[0-9]+$ ]] && (( 10#$v > max )); then max=$((10#$v)); fi
+  done < <(find "$MIGRATION_DIR" -type f -name 'V*__*.sql' -print0 2>/dev/null)
+  echo "$max"
+}
+
+# DB 에 적용된 가장 큰 번호. flyway_schema_history 가 없으면(아직 마이그레이션한 적 없음) 0. 읽지 못하면 실패.
+latest_applied_migration() {
+  local exists value
+  exists="$(psql_value "SELECT to_regclass('public.flyway_schema_history') IS NOT NULL")" || return 1
+  if [[ "$exists" != t ]]; then echo 0; return 0; fi
+  value="$(psql_value "SELECT coalesce(max(version::int), 0) FROM flyway_schema_history WHERE success AND version ~ '^[0-9]+\$'")" || return 1
+  [[ "$value" =~ ^[0-9]+$ ]] || return 1
+  echo "$value"
+}
+
+# 아직 적용되지 않은 마이그레이션이 있으면 DB 전체를 백업한다. 없으면 아무것도 하지 않는다.
+# 실패하면 1 을 돌려준다(부르는 쪽이 배포를 중단한다). 파일 이름은 시각으로 시작해 이름순이 시간순이다.
+backup_before_migration() {
+  local files applied target tmp pending
+  files="$(latest_migration_file)"
+  if [[ "$files" == 0 ]]; then
+    log "마이그레이션 파일이 없어 DB 를 백업하지 않는다"
+    return 0
+  fi
+  if ! applied="$(latest_applied_migration)"; then
+    warn "DB 에 적용된 마이그레이션 번호를 읽지 못했다."
+    return 1
+  fi
+  if (( applied == 0 )); then
+    log "DB 에 적용된 마이그레이션이 없어(첫 배포) 백업하지 않는다"
+    return 0
+  fi
+  if (( files <= applied )); then
+    log "새 마이그레이션 없음 (DB V$applied, 파일 V$files). 백업하지 않는다"
+    return 0
+  fi
+  if ! mkdir -p "$BACKUP_DIR" || ! chmod 700 "$BACKUP_DIR"; then
+    warn "백업 폴더($BACKUP_DIR)를 만들지 못했다."
+    return 1
+  fi
+  target="$BACKUP_DIR/remake-$(date '+%Y%m%d-%H%M%S')-V$applied-before-V$files.dump"
+  tmp="$target.partial"
+  pending="V$files"
+  if (( applied + 1 < files )); then pending="V$((applied + 1))~V$files"; fi
+  log "새 마이그레이션($pending) 적용 전 DB 백업: $target"
+  # 회원 데이터가 들어 있어 이 계정만 읽을 수 있게 만든다(umask 077 → 600). 중간에 실패한 파일은 남기지 않는다.
+  # shellcheck disable=SC2016 # $POSTGRES_USER 등은 컨테이너 안의 sh 가 펼친다.
+  if ! (umask 077 && "${COMPOSE[@]}" exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' >"$tmp"); then
+    rm -f "$tmp"
+    warn "pg_dump 에 실패했다."
+    return 1
+  fi
+  if [[ ! -s "$tmp" ]] || ! mv "$tmp" "$target"; then
+    rm -f "$tmp"
+    warn "백업 파일을 저장하지 못했다."
+    return 1
+  fi
+  log "DB 백업 완료 ($(du -h "$target" | cut -f1))"
+  prune_backups
+}
+
+# 최근 BACKUP_KEEP 개만 남긴다. 이 스크립트가 만든 이름(remake-*.dump)만 지운다. 지우지 못해도 배포는 계속한다.
+prune_backups() {
+  local backups=("$BACKUP_DIR"/remake-*.dump) i
+  [[ -e "${backups[0]}" ]] || return 0
+  for ((i = 0; i < ${#backups[@]} - BACKUP_KEEP; i++)); do
+    rm -f -- "${backups[i]}" || warn "오래된 백업 ${backups[i]} 을 지우지 못했다."
+  done
 }
 
 # ---- 프록시 --------------------------------------------------------------------
@@ -330,7 +425,11 @@ cmd_deploy() {
   log "[$APP] 배포 시작: 활성=${active:-없음} -> 새 슬롯=$target"
 
   ensure_upstream_files
-  if [[ "$APP" == backend ]]; then ensure_postgres; fi
+  if [[ "$APP" == backend ]]; then
+    ensure_postgres
+    backup_before_migration \
+      || die "새 마이그레이션 전 DB 백업에 실패해 중단한다. 새 슬롯을 띄우지 않았고 이전 버전(${active:-없음})은 그대로다. 원인을 고친 뒤 다시 배포한다."
+  fi
 
   log "$APP-$target 빌드 및 기동 (헬스체크 최대 ${READY_TIMEOUT}초)"
   start_slot "$target" --build \

@@ -15,22 +15,23 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import com.jayway.jsonpath.JsonPath;
 import com.remake.global.web.LoginUserIdArgumentResolver;
-import com.remake.ingredient.domain.IngredientStatus;
 import com.remake.support.IntegrationTestSupport;
 
 // 재료 API. 통합 테스트는 요청 속성으로 로그인 사용자를 넣는다(AuthCookieFilter가 SecurityContext로 옮긴다).
 class IngredientApiTest extends IntegrationTestSupport {
 
 	private static final String URL = "/api/v1/user/ingredients";
-	private static final Long ME = 101L;
-	private static final Long OTHER = 102L;
 	private static final LocalDate EXPIRATION = LocalDate.of(2026, 3, 12);
+
+	private Long me;
+	private Long other;
 
 	@BeforeEach
 	void setUpUsers() {
-		ensureUser(ME);
-		ensureUser(OTHER);
+		me = createUser();
+		other = createUser();
 	}
 
 	private MockHttpServletRequestBuilder as(Long userId, MockHttpServletRequestBuilder builder) {
@@ -41,15 +42,20 @@ class IngredientApiTest extends IntegrationTestSupport {
 		return builder.contentType(MediaType.APPLICATION_JSON).content(body);
 	}
 
-	private static String createBody(String unit) {
+	private static String createBody() {
+		return createBody("우유", "DAIRY_EGG");
+	}
+
+	// 요청에는 단위가 없다. 서버가 재료명과 카테고리로 정한다.
+	private static String createBody(String name, String categoryCode) {
 		return """
-				{ "name": "우유", "categoryCode": "DAIRY_EGG", "storage": "FRIDGE", "expirationDate": "2026-03-12",
-				  "amount": 2, "unit": "%s", "price": 3000 }
-				""".formatted(unit);
+				{ "name": "%s", "categoryCode": "%s", "storage": "FRIDGE", "expirationDate": "2026-03-12",
+				  "amount": 2, "price": 3000 }
+				""".formatted(name, categoryCode);
 	}
 
 	private Long createMilk(Long userId) {
-		return createIngredient(userId, "DAIRY_EGG", "우유", EXPIRATION, IngredientStatus.ACTIVE, 3000L);
+		return createIngredient(userId, "DAIRY_EGG", "우유", EXPIRATION, 3000L);
 	}
 
 	@Test
@@ -61,40 +67,63 @@ class IngredientApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 재료를_추가하고_상세로_다시_조회한다() throws Exception {
-		mockMvc.perform(json(as(ME, post(URL)), createBody("PACK")))
+		mockMvc.perform(json(as(me, post(URL)), createBody()))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.name").value("우유"))
 				.andExpect(jsonPath("$.categoryCode").value("DAIRY_EGG"))
 				.andExpect(jsonPath("$.storage").value("FRIDGE"))
 				.andExpect(jsonPath("$.expirationDate").value("2026-03-12"))
-				.andExpect(jsonPath("$.isExpirationEstimated").value(false))
+				.andExpect(jsonPath("$.imageUrl").value("/images/categories/dairy-egg.png"))
 				.andExpect(jsonPath("$.unit").value("PACK"))
 				.andExpect(jsonPath("$.price").value(3000))
-				.andExpect(jsonPath("$.status").value("ACTIVE"));
+				// 시험용 시계의 오늘(2026-03-04)부터 8일 남아 여유다
+				.andExpect(jsonPath("$.dDay").value(8))
+				.andExpect(jsonPath("$.status").value("OK"))
+				.andExpect(jsonPath("$.isExpirationEstimated").doesNotExist());
 
 		Long id = jdbcTemplate.queryForObject("SELECT id FROM ingredients", Long.class);
-		mockMvc.perform(as(ME, get(URL + "/" + id)))
+		mockMvc.perform(as(me, get(URL + "/" + id)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.id").value(id))
 				.andExpect(jsonPath("$.amount").value(2));
 	}
 
 	@Test
-	void 냉장고_단위가_아니면_INVALID_UNIT이다() throws Exception {
-		mockMvc.perform(json(as(ME, post(URL)), createBody("TBSP")))
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("INVALID_UNIT"));
-		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredients", Long.class)).isZero();
+	void 요청에_단위가_들어와도_읽지_않고_서버가_정한_단위로_저장한다() throws Exception {
+		String body = """
+				{ "name": "우유", "categoryCode": "DAIRY_EGG", "storage": "FRIDGE", "expirationDate": "2026-03-12",
+				  "amount": 2, "unit": "G", "price": 3000 }
+				""";
+
+		mockMvc.perform(json(as(me, post(URL)), body))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.unit").value("PACK"));
+		assertThat(jdbcTemplate.queryForObject("SELECT unit FROM ingredients", String.class)).isEqualTo("PACK");
+	}
+
+	@Test
+	void 단위_미리보기와_저장된_단위가_같다() throws Exception {
+		String[][] cases = { { "대파", "VEGETABLE" }, { "유기농 우유", "DAIRY_EGG" }, { "한돈 앞다리 돼지고기", "MEAT" },
+				{ "알수없는재료", "ETC" }, { "유기농 우유", "VEGETABLE" } };
+		for (String[] c : cases) {
+			String preview = JsonPath.read(mockMvc.perform(as(me, get("/api/v1/user/ingredient-units")
+							.param("name", c[0]).param("categoryCode", c[1])))
+					.andReturn().getResponse().getContentAsString(), "$.unit");
+
+			mockMvc.perform(json(as(me, post(URL)), createBody(c[0], c[1])))
+					.andExpect(status().isCreated())
+					.andExpect(jsonPath("$.unit").value(preview));
+		}
 	}
 
 	@Test
 	void 잘못된_입력은_INVALID_INPUT이고_틀린_칸을_알려_준다() throws Exception {
 		String body = """
 				{ "name": "", "categoryCode": "DAIRY_EGG", "storage": "FRIDGE", "expirationDate": "2026-03-12",
-				  "amount": 0, "unit": "EA", "price": -1 }
+				  "amount": 0, "price": -1 }
 				""";
 
-		mockMvc.perform(json(as(ME, post(URL)), body))
+		mockMvc.perform(json(as(me, post(URL)), body))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"))
 				.andExpect(jsonPath("$.fieldErrors[?(@.field == 'name')]").exists())
@@ -104,65 +133,65 @@ class IngredientApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 필수값이_빠지면_INVALID_INPUT이다() throws Exception {
-		mockMvc.perform(json(as(ME, post(URL)), "{ \"name\": \"우유\" }"))
+		mockMvc.perform(json(as(me, post(URL)), "{ \"name\": \"우유\" }"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
 	}
 
 	@Test
 	void 다른_사용자의_재료는_조회_수정_삭제_모두_404이다() throws Exception {
-		Long id = createMilk(OTHER);
+		Long id = createMilk(other);
 
-		mockMvc.perform(as(ME, get(URL + "/" + id)))
+		mockMvc.perform(as(me, get(URL + "/" + id)))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("INGREDIENT_NOT_FOUND"));
-		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), "{ \"storage\": \"FREEZER\" }"))
+		mockMvc.perform(json(as(me, patch(URL + "/" + id)), "{ \"storage\": \"FREEZER\" }"))
 				.andExpect(status().isNotFound());
-		mockMvc.perform(as(ME, delete(URL + "/" + id)))
+		mockMvc.perform(as(me, delete(URL + "/" + id)))
 				.andExpect(status().isNotFound());
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredients", Long.class)).isEqualTo(1);
 	}
 
 	@Test
-	void 수정하면_보낸_값만_바뀌고_소비기한을_고치면_추정_표시가_꺼진다() throws Exception {
-		Long id = createMilk(ME);
-		jdbcTemplate.update("UPDATE ingredients SET is_expiration_estimated = true WHERE id = ?", id);
+	void 수정하면_보낸_값만_바뀐다() throws Exception {
+		Long id = createMilk(me);
 
 		String body = """
 				{ "name": "  두유  ", "categoryCode": "BEAN_TOFU", "expirationDate": "2026-03-20" }
 				""";
-		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), body))
+		mockMvc.perform(json(as(me, patch(URL + "/" + id)), body))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.name").value("두유"))
 				.andExpect(jsonPath("$.categoryCode").value("BEAN_TOFU"))
 				.andExpect(jsonPath("$.expirationDate").value("2026-03-20"))
-				.andExpect(jsonPath("$.isExpirationEstimated").value(false))
+				.andExpect(jsonPath("$.dDay").value(16))
+				.andExpect(jsonPath("$.status").value("OK"))
 				.andExpect(jsonPath("$.storage").value("FRIDGE"))
 				.andExpect(jsonPath("$.price").value(3000));
 	}
 
 	@Test
 	void 가격은_키를_보내지_않으면_그대로이고_null이면_지운다() throws Exception {
-		Long id = createMilk(ME);
+		Long id = createMilk(me);
 
-		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), "{ \"storage\": \"FREEZER\" }"))
+		mockMvc.perform(json(as(me, patch(URL + "/" + id)), "{ \"storage\": \"FREEZER\" }"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.storage").value("FREEZER"))
 				.andExpect(jsonPath("$.price").value(3000));
 
-		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), "{ \"price\": 2500 }"))
+		mockMvc.perform(json(as(me, patch(URL + "/" + id)), "{ \"price\": 2500 }"))
 				.andExpect(jsonPath("$.price").value(2500));
 
-		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), "{ \"price\": null }"))
+		mockMvc.perform(json(as(me, patch(URL + "/" + id)), "{ \"price\": null }"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.price").doesNotExist());
 	}
 
 	@Test
 	void 수정의_잘못된_입력은_INVALID_INPUT이고_값이_바뀌지_않는다() throws Exception {
-		Long id = createMilk(ME);
+		Long id = createMilk(me);
 
-		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), "{ \"name\": \"   \", \"price\": -1 }"))
+		mockMvc.perform(json(as(me, patch(URL + "/" + id)), "{ \"name\": \"   \", \"price\": -1 }"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"))
 				.andExpect(jsonPath("$.fieldErrors[?(@.field == 'name')]").exists())
@@ -174,29 +203,29 @@ class IngredientApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 삭제하면_204이고_다시_조회하면_404이다() throws Exception {
-		Long id = createMilk(ME);
+		Long id = createMilk(me);
 
-		mockMvc.perform(as(ME, delete(URL + "/" + id))).andExpect(status().isNoContent());
-		mockMvc.perform(as(ME, get(URL + "/" + id))).andExpect(status().isNotFound());
+		mockMvc.perform(as(me, delete(URL + "/" + id))).andExpect(status().isNoContent());
+		mockMvc.perform(as(me, get(URL + "/" + id))).andExpect(status().isNotFound());
 	}
 
 	@Test
 	void 수량을_고치고_사용한_재료는_거부하며_단위는_바꿀_수_없다() throws Exception {
-		Long id = createMilk(ME);
+		Long id = createMilk(me);
 
-		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), "{ \"amount\": 4, \"unit\": \"KG\" }"))
+		mockMvc.perform(json(as(me, patch(URL + "/" + id)), "{ \"amount\": 4, \"unit\": \"KG\" }"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.amount").value(4))
 				.andExpect(jsonPath("$.unit").value("EA"));
 
 		// 사용한 기록이 있으면 수량을 고칠 수 없다.
-		mockMvc.perform(json(as(ME, post(URL + "/" + id + "/consume")), "{ \"type\": \"USED\", \"amount\": 1 }"))
+		mockMvc.perform(json(as(me, post(URL + "/" + id + "/consume")), "{ \"type\": \"USED\", \"amount\": 1 }"))
 				.andExpect(status().isOk());
-		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), "{ \"amount\": 9 }"))
+		mockMvc.perform(json(as(me, patch(URL + "/" + id)), "{ \"amount\": 9 }"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
 
-		mockMvc.perform(json(as(ME, patch(URL + "/" + id)), "{ \"amount\": 0 }"))
+		mockMvc.perform(json(as(me, patch(URL + "/" + id)), "{ \"amount\": 0 }"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.fieldErrors[?(@.field == 'amount')]").exists());
 	}

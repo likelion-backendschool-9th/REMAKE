@@ -30,8 +30,8 @@ public enum EventName {
 	LOGIN_SUCCEEDED("login_succeeded", EventSource.SERVER, Set.of("provider", "is_new_user")), // E09
 	LOGIN_FAILED("login_failed", EventSource.SERVER, Set.of("provider", "error_code")), // E10
 	SIGNUP_COMPLETED("signup_completed", EventSource.SERVER, Set.of("provider")), // E11
-	ONBOARDING_STEP_COMPLETED("onboarding_step_completed", EventSource.CLIENT, Set.of("onboarding_step", "was_skipped")), // E12
-	ONBOARDING_COMPLETED("onboarding_completed", EventSource.SERVER, Set.of("skipped_step_count", "excluded_count")), // E13
+	ONBOARDING_STEP_COMPLETED("onboarding_step_completed", EventSource.CLIENT, Set.of("onboarding_step")), // E12
+	ONBOARDING_COMPLETED("onboarding_completed", EventSource.SERVER, Set.of("excluded_count")), // E13
 	SETTING_CHANGED("setting_changed", EventSource.CLIENT, Set.of("setting_key", "new_value_bool")), // E14
 	EXCLUDED_INGREDIENTS_UPDATED("excluded_ingredients_updated", EventSource.CLIENT, Set.of("excluded_count")), // E15
 	LOGOUT_CONFIRMED("logout_confirmed", EventSource.CLIENT, Set.of()), // E16
@@ -40,7 +40,7 @@ public enum EventName {
 	FRIDGE_LIST_VIEWED("fridge_list_viewed", EventSource.CLIENT, Set.of("total_count", "danger_count", "soon_count", "ok_count")), // E19
 	FRIDGE_FILTER_APPLIED("fridge_filter_applied", EventSource.CLIENT, Set.of("filter_type", "filter_value")), // E20
 	INGREDIENT_ADD_STARTED("ingredient_add_started", EventSource.CLIENT, Set.of("add_source")), // E21
-	INGREDIENT_ADDED("ingredient_added", EventSource.SERVER, Set.of("add_source", "category_code", "storage", "has_price", "is_expiration_estimated", "duration_sec")), // E22
+	INGREDIENT_ADDED("ingredient_added", EventSource.SERVER, Set.of("add_source", "category_code", "storage", "has_price", "duration_sec")), // E22
 	INGREDIENT_EDITED("ingredient_edited", EventSource.CLIENT, Set.of("edit_field")), // E23
 	INGREDIENT_DELETED("ingredient_deleted", EventSource.CLIENT, Set.of("category_code")), // E24
 	INGREDIENT_USED("ingredient_used", EventSource.SERVER, Set.of("use_via", "category_code", "expiry_status", "used_ratio")), // E25
@@ -52,7 +52,7 @@ public enum EventName {
 	RECEIPT_SCAN_FAILED("receipt_scan_failed", EventSource.SERVER, Set.of("error_code", "duration_ms")), // E31
 	RECEIPT_ITEM_EDITED("receipt_item_edited", EventSource.CLIENT, Set.of("item_index", "edit_field")), // E32
 	RECEIPT_ITEM_ADDED_MANUALLY("receipt_item_added_manually", EventSource.CLIENT, Set.of()), // E33
-	RECEIPT_SAVED("receipt_saved", EventSource.SERVER, Set.of("receipt_id", "registered_count", "ocr_item_count", "edited_item_count", "deleted_item_count", "added_item_count", "duration_sec", "food_total_amount")), // E34
+	RECEIPT_SAVED("receipt_saved", EventSource.SERVER, Set.of("receipt_id", "registered_count", "ocr_item_count", "edited_item_count", "deleted_item_count", "added_item_count", "duration_sec", "food_total_amount", "cart_removed_count")), // E34
 	RECEIPT_RESULT_ABANDONED("receipt_result_abandoned", EventSource.CLIENT, Set.of("ocr_item_count", "edited_item_count", "deleted_item_count", "added_item_count", "duration_sec")), // E76
 	RECEIPT_LIST_VIEWED("receipt_list_viewed", EventSource.CLIENT, Set.of("month_offset", "has_comparison")), // E35
 	RECEIPT_DETAIL_VIEWED("receipt_detail_viewed", EventSource.CLIENT, Set.of()), // E36
@@ -68,11 +68,11 @@ public enum EventName {
 	RECIPE_SAVED_LIST_VIEWED("recipe_saved_list_viewed", EventSource.CLIENT, Set.of("saved_count")), // E46
 	STEP_PLAY_STARTED("step_play_started", EventSource.CLIENT, Set.of("recipe_id")), // E47
 	COOK_DEDUCT_VIEWED("cook_deduct_viewed", EventSource.CLIENT, Set.of("recipe_id", "deduct_item_count", "needs_check_count")), // E48
-	COOK_COMPLETED("cook_completed", EventSource.SERVER, Set.of("recipe_id", "deducted_count", "adjusted_count", "servings")), // E49
+	COOK_COMPLETED("cook_completed", EventSource.SERVER, Set.of("recipe_id", "deducted_count", "adjusted_count", "from_meal_plan")), // E49
 	COOK_FEEDBACK_ANSWERED("cook_feedback_answered", EventSource.CLIENT, Set.of("feedback_value")), // E50
 	MEAL_PLAN_SETUP_VIEWED("meal_plan_setup_viewed", EventSource.CLIENT, Set.of("remaining_quota")), // E51
 	MEAL_PLAN_GENERATE_STARTED("meal_plan_generate_started", EventSource.CLIENT, Set.of("meal_purpose", "meal_type_count", "servings", "start_offset_days")), // E52
-	MEAL_PLAN_GENERATED("meal_plan_generated", EventSource.SERVER, Set.of("meal_plan_id", "meal_purpose", "meal_type_count", "generated_days", "shortage_count", "duration_ms", "remaining_quota")), // E53
+	MEAL_PLAN_GENERATED("meal_plan_generated", EventSource.SERVER, Set.of("meal_plan_id", "meal_purpose", "meal_type_count", "generated_days", "shortage_count", "cart_added_count", "was_overwritten", "duration_ms", "remaining_quota")), // E53
 	MEAL_PLAN_GENERATE_FAILED("meal_plan_generate_failed", EventSource.SERVER, Set.of("error_code", "duration_ms")), // E54
 	MEAL_PLAN_SHORTAGE_SHOWN("meal_plan_shortage_shown", EventSource.CLIENT, Set.of("shortage_count", "generated_days")), // E55
 	MEAL_CALENDAR_VIEWED("meal_calendar_viewed", EventSource.CLIENT, Set.of("month_offset", "has_plan")), // E56
@@ -81,6 +81,7 @@ public enum EventName {
 	MEAL_SLOT_DETAIL_GENERATED("meal_slot_detail_generated", EventSource.SERVER, Set.of("recipe_id", "duration_ms")), // E59
 	MEAL_SLOT_DETAIL_FAILED("meal_slot_detail_failed", EventSource.SERVER, Set.of("error_code", "duration_ms")), // E60
 	MEAL_ADDED("meal_added", EventSource.SERVER, Set.of("meal_type", "date_relation", "recipe_id")), // E61
+	CART_MOVED_TO_FRIDGE("cart_moved_to_fridge", EventSource.SERVER, Set.of("moved_count", "was_select_all")), // E82
 	CART_ITEM_ADDED("cart_item_added", EventSource.SERVER, Set.of("cart_source", "item_count")), // E62
 	CART_VIEWED("cart_viewed", EventSource.CLIENT, Set.of("group_count", "item_count")), // E63
 	CART_AMOUNT_CHANGED("cart_amount_changed", EventSource.CLIENT, Set.of()), // E64
@@ -91,7 +92,7 @@ public enum EventName {
 	RANKING_VIEWED("ranking_viewed", EventSource.CLIENT, Set.of("ranking_view", "query_used")), // E69
 	SHARED_RECIPE_VIEWED("shared_recipe_viewed", EventSource.CLIENT, Set.of("shared_recipe_id", "view_from", "rank_bucket")), // E70
 	SHARED_WRITE_STARTED("shared_write_started", EventSource.CLIENT, Set.of("recipe_id")), // E71
-	SHARED_RECIPE_PUBLISHED("shared_recipe_published", EventSource.SERVER, Set.of("shared_recipe_id", "photo_count")), // E72
+	SHARED_RECIPE_PUBLISHED("shared_recipe_published", EventSource.SERVER, Set.of("shared_recipe_id")), // E72
 	SHARED_RECIPE_SAVED("shared_recipe_saved", EventSource.SERVER, Set.of("shared_recipe_id", "cart_added_count")), // E73
 	SHARED_RECIPE_REPORTED("shared_recipe_reported", EventSource.SERVER, Set.of("shared_recipe_id", "report_reason")), // E74
 	WEEKLY_REWARD_GRANTED("weekly_reward_granted", EventSource.SERVER, Set.of("reward_rank", "reward_amount")); // E75

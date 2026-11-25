@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -18,6 +20,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.stubbing.Answer;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -25,12 +28,14 @@ import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.global.web.LoginUserIdArgumentResolver;
 import com.remake.mealplan.application.port.out.GeneratedMealSlot;
+import com.remake.mealplan.application.port.out.MealPlanAiBusyException;
 import com.remake.mealplan.application.port.out.MealPlanAiRequest;
 import com.remake.mealplan.domain.FridgeStock;
 import com.remake.mealplan.domain.MealType;
 import com.remake.mealplan.domain.SlotIngredient;
 import com.remake.recipe.domain.RecipeUnit;
 import com.remake.support.IntegrationTestSupport;
+import com.remake.user.domain.AllergenCode;
 
 // API 38 식단표 생성: 접수(202·거절)와 서버 작업(완성·실패). 기본 시각 2026-03-04 10:00(서울), 일반 회원은 월 1회·최대 5일.
 class MealPlanGenerateApiTest extends IntegrationTestSupport {
@@ -55,13 +60,17 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 
 	/** 냉장고 재료(채소, 그램 단위, 기한 넉넉함). */
 	private Long fridgeGrams(Long userId, String name, int grams) {
+		return fridgeGrams(userId, name, grams, TODAY.plusDays(30));
+	}
+
+	private Long fridgeGrams(Long userId, String name, int grams, LocalDate expirationDate) {
 		LocalDateTime now = LocalDateTime.now(clock);
 		return jdbcTemplate.queryForObject("""
 				INSERT INTO ingredients (user_id, category_id, name, storage, expiration_date, amount, initial_amount,
-				                         unit, price, status, created_at, updated_at)
-				VALUES (?, ?, ?, 'FRIDGE', ?, ?, ?, 'G', NULL, 'ACTIVE', ?, ?)
+				                         unit, price, created_at, updated_at)
+				VALUES (?, ?, ?, 'FRIDGE', ?, ?, ?, 'G', NULL, ?, ?)
 				RETURNING id
-				""", Long.class, userId, categoryId("VEGETABLE"), name, TODAY.plusDays(30), grams, grams, now, now);
+				""", Long.class, userId, categoryId("VEGETABLE"), name, expirationDate, grams, grams, now, now);
 	}
 
 	/** 이미 완성된 식단표 하나(칸은 따로 넣는다). */
@@ -93,7 +102,11 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 
 	/** AI 가짜: 요청한 칸마다 냉장고 재료 gramsEach와 냉장고에 없는 간장 1큰술을 쓰는 레시피. */
 	private void aiUses(Long fridgeId, int gramsEach) {
-		given(mealPlanAiAdapter.generate(any())).willAnswer(invocation -> {
+		given(mealPlanAiAdapter.generate(any())).willAnswer(everySlotUses(fridgeId, gramsEach));
+	}
+
+	private static Answer<List<GeneratedMealSlot>> everySlotUses(Long fridgeId, int gramsEach) {
+		return invocation -> {
 			MealPlanAiRequest request = invocation.getArgument(0);
 			List<GeneratedMealSlot> slots = new ArrayList<>();
 			for (LocalDate date : request.schedule().dates()) {
@@ -105,7 +118,7 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 				}
 			}
 			return slots;
-		});
+		};
 	}
 
 	private Map<String, Object> mealPlan(Long id) {
@@ -146,6 +159,35 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 접수하면_고른_식단_목적을_다음_기본값으로_기억하고_거절된_요청은_바꾸지_않는다() throws Exception {
+		// 냉장고가 비어 생성은 재료 부족으로 실패하지만(차감 없음) 고른 목적은 기억한다
+		Long userId = createUser();
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+		assertThat(lastMealPurpose(userId)).isEqualTo("HIGH_PROTEIN");
+
+		generate(userId, purposeBody(TODAY.minusDays(1), "DIET")).andExpect(status().isBadRequest());
+		assertThat(lastMealPurpose(userId)).isEqualTo("HIGH_PROTEIN");
+
+		generate(userId, purposeBody(TODAY, "DIET")).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+		mockMvc.perform(get("/api/v1/user/profile").requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, userId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lastMealPurpose").value("DIET"));
+	}
+
+	private String lastMealPurpose(Long userId) {
+		return jdbcTemplate.queryForObject("SELECT last_meal_purpose FROM users WHERE id = ?", String.class, userId);
+	}
+
+	private static String purposeBody(LocalDate startDate, String purpose) {
+		return """
+				{"startDate":"%s","purpose":"%s","mealTypes":["DINNER"],"servings":2}
+				""".formatted(startDate, purpose);
+	}
+
+	@Test
 	void 지난_시작일은_PAST_DATE_NOT_ALLOWED다() throws Exception {
 		Long userId = createUser();
 
@@ -165,6 +207,21 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		generate(userId, body(TODAY, "[\"DINNER\",\"DINNER\"]", false))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+	}
+
+	@Test
+	void 식사_인원이_1부터_50_밖이면_INVALID_INPUT이다() throws Exception {
+		Long userId = createUser();
+
+		for (int servings : new int[] {0, 51}) {
+			generate(userId, """
+					{"startDate":"%s","purpose":"BALANCED","mealTypes":["DINNER"],"servings":%d}
+					""".formatted(TODAY, servings))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.code").value("INVALID_INPUT"))
+					.andExpect(jsonPath("$.fieldErrors[0].field").value("servings"));
+		}
+		assertThat(count("SELECT COUNT(*) FROM meal_plans WHERE user_id = ?", userId)).isZero();
 	}
 
 	@Test
@@ -251,6 +308,8 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		assertThat(eventProperty("meal_plan_generated", "generated_days")).isEqualTo("5");
 		assertThat(eventProperty("meal_plan_generated", "shortage_count")).isEqualTo("5");
 		assertThat(eventProperty("meal_plan_generated", "remaining_quota")).isEqualTo("0");
+		assertThat(eventProperty("meal_plan_generated", "cart_added_count")).isEqualTo("0");
+		assertThat(eventProperty("meal_plan_generated", "was_overwritten")).isEqualTo("false");
 	}
 
 	@Test
@@ -284,6 +343,26 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 				.extracting(FridgeStock::amount)
 				.satisfies(amount -> assertThat(amount).isEqualByComparingTo("100"));
 		assertThat(mealPlan(newestPlanId(userId))).containsEntry("generated_days", 1);
+		assertThat(request.getValue().excludedAllergenCodes()).isEmpty();
+	}
+
+	@Test
+	void 설정의_제외_재료를_AI에_쓰지_말_재료로_보낸다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		for (AllergenCode code : List.of(AllergenCode.MILK, AllergenCode.EGG)) {
+			jdbcTemplate.update("INSERT INTO user_excluded_ingredients (user_id, allergen_code) VALUES (?, ?)", userId,
+					code.name());
+		}
+		aiUses(fridgeId, 100);
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		ArgumentCaptor<MealPlanAiRequest> request = ArgumentCaptor.forClass(MealPlanAiRequest.class);
+		verify(mealPlanAiAdapter).generate(request.capture());
+		assertThat(request.getValue().excludedAllergenCodes())
+				.containsExactlyInAnyOrder(AllergenCode.MILK, AllergenCode.EGG);
 	}
 
 	@Test
@@ -304,20 +383,121 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void AI가_하루도_못_채우면_재료_부족으로_실패한다() throws Exception {
+	void AI가_첫날부터_냉장고_재료를_넘게_쓰면_다시_부르지_않고_재료_부족으로_실패한다() throws Exception {
 		Long userId = createUser();
-		fridgeGrams(userId, "대파", 1000);
-		// AI 가짜를 stub하지 않으면 빈 목록을 돌려준다
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		aiUses(fridgeId, 2000);
 
 		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
 		awaitMealPlanJobs();
 
+		verify(mealPlanAiAdapter, times(1)).generate(any());
 		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "FAILED");
 		assertThat(eventProperty("meal_plan_generate_failed", "error_code")).isEqualTo("MEAL_PLAN_NO_INGREDIENTS");
 	}
 
 	@Test
-	void 덮어쓰면_만든_날의_기존_칸을_바꾸고_오늘_요리한_칸과_범위_밖_칸은_남긴다() throws Exception {
+	void AI가_칸을_빠뜨리면_한_번_더_불러_두_번째_응답으로_만든다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		given(mealPlanAiAdapter.generate(any())).willReturn(List.of()).willAnswer(everySlotUses(fridgeId, 100));
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(2)).generate(any());
+		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "COMPLETED").containsEntry("generated_days", 5);
+	}
+
+	@Test
+	void AI가_두_번_다_칸이_망가지면_AI_INVALID_RESPONSE로_실패하고_횟수는_그대로다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		// 칸은 다 있지만 첫날 레시피의 단계가 비어 있다(칸 하나만 망가져도 응답 전체가 실패)
+		given(mealPlanAiAdapter.generate(any())).willAnswer(invocation -> {
+			List<GeneratedMealSlot> slots = new ArrayList<>(everySlotUses(fridgeId, 100).answer(invocation));
+			GeneratedMealSlot first = slots.getFirst();
+			slots.set(0, new GeneratedMealSlot(first.date(), first.mealType(), first.title(), first.cookMinutes(),
+					first.tips(), first.ingredients(), List.of()));
+			return slots;
+		});
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(2)).generate(any());
+		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "FAILED");
+		assertThat(count("SELECT COUNT(*) FROM recipes WHERE user_id = ?", userId)).isZero();
+		assertThat(count("SELECT COUNT(*) FROM usage_logs WHERE user_id = ?", userId)).isZero();
+		assertThat(eventProperty("meal_plan_generate_failed", "error_code")).isEqualTo("AI_INVALID_RESPONSE");
+	}
+
+	@Test
+	void AI가_재료가_떨어진_칸을_못_만듦으로_보내면_다시_부르지_않고_그_앞날까지_만든다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		given(mealPlanAiAdapter.generate(any())).willAnswer(invocation -> {
+			List<GeneratedMealSlot> slots = new ArrayList<>(everySlotUses(fridgeId, 100).answer(invocation));
+			for (int i = 2; i < slots.size(); i++) {
+				slots.set(i, GeneratedMealSlot.skipped(slots.get(i).date(), slots.get(i).mealType()));
+			}
+			return slots;
+		});
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(1)).generate(any());
+		Long planId = newestPlanId(userId);
+		assertThat(mealPlan(planId)).containsEntry("status", "COMPLETED").containsEntry("generated_days", 2);
+		assertThat(slotDates(planId)).containsExactly(TODAY, TODAY.plusDays(1));
+	}
+
+	@Test
+	void AI가_과부하로_거절하면_더_불러_만든다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		given(mealPlanAiAdapter.generate(any())).willThrow(new MealPlanAiBusyException(), new MealPlanAiBusyException(),
+				new MealPlanAiBusyException()).willAnswer(everySlotUses(fridgeId, 100));
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(4)).generate(any());
+		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "COMPLETED");
+	}
+
+	@Test
+	void AI가_10번_모두_과부하면_AI_UPSTREAM_ERROR로_실패한다() throws Exception {
+		Long userId = createUser();
+		fridgeGrams(userId, "대파", 1000);
+		given(mealPlanAiAdapter.generate(any())).willThrow(new MealPlanAiBusyException());
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(10)).generate(any());
+		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "FAILED");
+		assertThat(eventProperty("meal_plan_generate_failed", "error_code")).isEqualTo("AI_UPSTREAM_ERROR");
+	}
+
+	@Test
+	void 시작일_전에_소비기한이_끝나는_재료는_AI에_보내지_않는다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		fridgeGrams(userId, "버섯", 200, TODAY.plusDays(1));
+		aiUses(fridgeId, 100);
+
+		generate(userId, body(TODAY.plusDays(2), "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		ArgumentCaptor<MealPlanAiRequest> request = ArgumentCaptor.forClass(MealPlanAiRequest.class);
+		verify(mealPlanAiAdapter).generate(request.capture());
+		assertThat(request.getValue().ingredients()).extracting(FridgeStock::name).containsExactly("대파");
+	}
+
+	@Test
+	void 덮어쓰면_요청_기간의_기존_칸을_바꾸고_오늘_요리한_칸과_범위_밖_칸은_남긴다() throws Exception {
 		Long userId = createUser();
 		Long fridgeId = fridgeGrams(userId, "대파", 1000);
 		Long oldPlan = completedPlan(userId, TODAY, 7);
@@ -337,6 +517,30 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", cookedToday)).isEqualTo(1);
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", tomorrow)).isZero();
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", outside)).isEqualTo(1);
+		assertThat(eventProperty("meal_plan_generated", "was_overwritten")).isEqualTo("true");
+	}
+
+	@Test
+	void 덮어쓰면_기존_칸의_재료를_처음부터_쓰고_못_만든_뒤쪽_날은_빈_날이_된다() throws Exception {
+		// 대파 1000g을 기존 식단 5일이 하루 200g씩 모두 잡아 둠. 같은 5일을 덮어쓰고 새 레시피는 하루 300g.
+		// 기존 칸의 1000g을 처음부터 돌려받아 3일치(900g)를 만들고, 4·5일의 기존 칸은 지워 빈 날이 된다.
+		// (하루씩 돌려받던 이전 규칙이면 첫날 200g < 300g이라 하루도 못 만들었다, #78 11-24)
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		Long oldPlan = completedPlan(userId, TODAY, 5);
+		for (int day = 0; day < 5; day++) {
+			slot(userId, oldPlan, TODAY.plusDays(day), fridgeId, 200, false);
+		}
+		aiUses(fridgeId, 300);
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", true)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		Long newPlan = newestPlanId(userId);
+		assertThat(mealPlan(newPlan)).containsEntry("status", "COMPLETED").containsEntry("generated_days", 3);
+		assertThat(slotDates(newPlan)).containsExactly(TODAY, TODAY.plusDays(1), TODAY.plusDays(2));
+		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE meal_plan_id = ?", oldPlan)).isZero();
+		assertThat(eventProperty("meal_plan_generated", "was_overwritten")).isEqualTo("true");
 	}
 
 	@Test
@@ -350,6 +554,7 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		generate(userId, body(TODAY, "[\"DINNER\"]", true)).andExpect(status().isAccepted());
 		awaitMealPlanJobs();
 
+		verify(mealPlanAiAdapter, times(2)).generate(any());
 		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "FAILED");
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", oldSlot)).isEqualTo(1);
 		assertThat(count("SELECT COUNT(*) FROM usage_logs WHERE user_id = ?", userId)).isZero();
