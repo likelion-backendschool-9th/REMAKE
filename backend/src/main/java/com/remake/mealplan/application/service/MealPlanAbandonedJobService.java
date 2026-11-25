@@ -20,7 +20,7 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <p>정상 작업은 몇십 초 안에 스스로 완성·실패로 끝나므로 이 정리에 걸리지 않는다. 걸리는 것은 배포로 컨테이너가 멈추며
  * 사라진 작업(대기열 포함)뿐이다. 실패 알림·횟수(차감 없음)·기존 식단(그대로)은 일반 실패와 같다.
- * E54 error_code는 AI_TIMEOUT: errors.md가 식단표 서버 작업 시간 제한을 AI_TIMEOUT으로 둔다(#144 미결).
+ * E54 error_code는 AI_TIMEOUT: errors.md가 식단표 서버 작업 시간 제한을 AI_TIMEOUT으로 둔다(시간 제한 값은 #122 미결).
  */
 @Slf4j
 @Service
@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 public class MealPlanAbandonedJobService implements FailAbandonedMealPlansUseCase {
 
 	/**
-	 * 끊긴 작업으로 보는 기준(가이드 05 "제안" 값, #144 서버 작업 시간 제한이 정해지면 맞춘다).
+	 * 끊긴 작업으로 보는 기준(가이드 05 "제안" 값, #122 서버 작업 시간 제한이 정해지면 맞춘다).
 	 * 정상 작업이 걸릴 수 있는 최대 시간(AI 호출 시간 제한 × 시도 횟수 + 대기열에서 기다리는 시간)보다 길어야 한다.
 	 * 더 짧으면 느리지만 살아 있는 작업을 실패로 끝내 버린다(늦게 끝난 결과는 버려진다).
 	 */

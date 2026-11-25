@@ -19,14 +19,14 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 월 달력(API 39). 기간은 완성된(COMPLETED) 식단표만 보여 준다.
- * 생성 중·실패 식단표는 끝 날짜가 없고 칸도 없어 넣지 않는다(#144 준호 님 제안 A, 결정되면 CALENDAR_STATUS만 바꾼다).
+ * 생성 중·실패 식단표는 끝 날짜가 없고 칸도 없어 넣지 않는다(#144 확정). 기준을 바꾸면 CALENDAR_STATUS 한 곳만 고친다.
  * hasAnyMealPlan(빈 화면 조건)도 같은 상태로 센다: 첫 식단표를 만드는 중이면 아직 false다.
  */
 @Service
 @RequiredArgsConstructor
 public class MealPlanCalendarService implements GetMealPlanCalendarUseCase {
 
-	/** 달력에 기간을 보여 줄 식단표 상태(#144 미결, 제안 A). */
+	/** 달력에 기간을 보여 줄 식단표 상태(#144 확정: 완성된 식단표만). */
 	static final MealPlanStatus CALENDAR_STATUS = MealPlanStatus.COMPLETED;
 
 	private final LoadMealPlanPort loadMealPlanPort;
