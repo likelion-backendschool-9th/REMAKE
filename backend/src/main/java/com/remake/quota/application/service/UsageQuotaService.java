@@ -2,6 +2,7 @@ package com.remake.quota.application.service;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -14,6 +15,7 @@ import com.remake.global.error.ErrorCode;
 import com.remake.quota.application.port.in.ConsumeMealPlanQuotaUseCase;
 import com.remake.quota.application.port.in.ConsumeRecipeQuotaUseCase;
 import com.remake.quota.application.port.in.GetUsageQuotasUseCase;
+import com.remake.quota.application.port.out.RecipeRewardPort;
 import com.remake.quota.application.port.out.UsageLogPort;
 import com.remake.quota.domain.MealPlanQuota;
 import com.remake.quota.domain.PlanQuota;
@@ -27,7 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * 생성 횟수 계산과 차감. 남은 횟수는 저장하지 않고 usage_logs를 세어 계산한다(초기화 작업 없음).
  * "오늘"·"이번 달"은 주입한 Clock(한국 시간)으로 정한다.
- * 보상 횟수(generation_quota_grants)는 그 테이블이 생기기 전까지 0으로 계산한다(공유·장바구니 영역이 만들면 연결).
+ * 기본 횟수 소진 후 만료되지 않은 보상 횟수를 차감한다.
  * <p>
  * remake.quota.enforced=false면 한도를 넘어도 막지 않는다(기록은 그대로 남김). 개발자 본인 키로 반복 테스트하는 로컬 전용이고,
  * 기본값은 true라 운영·테스트 설정에는 넣지 않는다.
@@ -36,18 +38,17 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseCase, ConsumeMealPlanQuotaUseCase {
 
-	/** 보상 테이블이 생기기 전까지 쓸 수 있는 보상 횟수 */
-	private static final int NO_BONUS = 0;
-
 	private final UsageLogPort usageLogPort;
 	private final GetUserUseCase getUserUseCase;
+	private final RecipeRewardPort rewards;
 	private final Clock clock;
 	private final boolean enforced;
 
-	UsageQuotaService(UsageLogPort usageLogPort, GetUserUseCase getUserUseCase, Clock clock,
+	UsageQuotaService(UsageLogPort usageLogPort, GetUserUseCase getUserUseCase, RecipeRewardPort rewards, Clock clock,
 			@Value("${remake.quota.enforced:true}") boolean enforced) {
 		this.usageLogPort = usageLogPort;
 		this.getUserUseCase = getUserUseCase;
+		this.rewards = rewards;
 		this.clock = clock;
 		this.enforced = enforced;
 		if (!enforced) {
@@ -87,8 +88,16 @@ class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseC
 		if (enforced && quota.exhausted()) {
 			throw limitExceeded(quota);
 		}
-		usageLogPort.save(userId, UsageType.RECIPE, null);
-		return new RecipeQuota(quota.limit(), quota.used() + 1, quota.bonusRemaining(), quota.resetsAt());
+		Long grantId = null;
+		if (quota.used() >= quota.limit() && quota.bonusRemaining() > 0) {
+			grantId = rewards.consume(userId, LocalDateTime.now(clock)).orElse(null);
+			if (enforced && grantId == null) {
+				throw limitExceeded(quota);
+			}
+		}
+		usageLogPort.save(userId, UsageType.RECIPE, grantId);
+		return new RecipeQuota(quota.limit(), quota.used() + 1,
+				quota.bonusRemaining() - (grantId == null ? 0 : 1), quota.resetsAt());
 	}
 
 	@Override
@@ -120,7 +129,8 @@ class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseC
 
 	private RecipeQuota recipeQuota(Long userId, PlanQuota plan, LocalDate today) {
 		int used = usageLogPort.countSince(userId, UsageType.RECIPE, today.atStartOfDay());
-		return new RecipeQuota(plan.recipeDaily(), used, NO_BONUS, today.plusDays(1).atStartOfDay());
+		return new RecipeQuota(plan.recipeDaily(), used, rewards.remaining(userId, LocalDateTime.now(clock)),
+				today.plusDays(1).atStartOfDay());
 	}
 
 	private PlanQuota planOf(Long userId) {

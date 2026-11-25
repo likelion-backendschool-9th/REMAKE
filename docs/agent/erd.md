@@ -4,7 +4,7 @@
 
 2026-11-22 · 이준호. Source: Notion "ERD v4" (Figma-based, with a screen-evidence column). This file carries the same content for development; see the source for the Figma node evidence.
 
-- 26 tables: the 25 Figma-based tables + the unit dictionary `ingredient_catalog` (11/22 decision; internal reference data with no screen).
+- 26 product tables: the 25 Figma-based tables + the unit dictionary `ingredient_catalog` (11/22 decision; internal reference data with no screen). The internal weekly settlement table below records completed jobs, including empty weeks (#92).
 - Admin screens are not in Figma, so there are no admin-only columns or tables (only `users.role`, report `status`, and shared post `status`).
 - Notifications are in-app only (no device push).
 
@@ -92,6 +92,10 @@ erDiagram
   ingredients |o--o{ notifications : "ingredient_id"
   meal_plans |o--o{ notifications : "meal_plan_id"
   ingredient_categories ||--o{ ingredient_catalog : "category_id"
+  shared_recipe_weekly_settlements {
+    date week_start PK
+    timestamp created_at
+  }
   users {
     bigint id PK
     varchar provider
@@ -763,6 +767,20 @@ Internal reference data that maps an ingredient name to a unit, category and she
 | `is_common_exclusion` | boolean |  |  | no | false | Representative-allergen flag added in PR #140. Allergies are stored as `user_excluded_ingredients.allergen_code` (19 chips), so screens and APIs do not use it |
 
 - The server picks the unit for an ingredient name in this order (decided in #145): (1) the name equals a dictionary name exactly, so use its unit; (2) otherwise the dictionary names contained in the name, in the same category only, two characters or more, the longest one wins, so use its unit; (3) otherwise `EA`. A unit printed on a receipt (for example the `g` in "300g") does not override the dictionary unit.
+
+### Internal execution table: `shared_recipe_weekly_settlements` (#92)
+
+Use one row per completed week, including weeks with no eligible posts. Insert this row, final ranks, and reward grants in the same transaction. A unique week key serializes concurrent executions; rollback removes the claim so a failed run can retry. This is a job completion record, not a public API resource.
+
+| Column | Type | Key | Null | Description |
+| --- | --- | --- | --- | --- |
+| `week_start` | date | PK | no | Monday of the counted week |
+| `created_at` | timestamp | | no | Execution time from the server Clock |
+
+- #92 implementation: `FinalizeWeeklyRankingUseCase.finalizePreviousWeek()` settles the immediately preceding KST week. Count currently retained saves in `[week_start 00:00, next Monday 00:00)` from VISIBLE posts, using the same own-save exclusion and tie-order proposals as #88. Exclude zero-save posts (confirmed). Proposed: retain withdrawn authors in ranks but skip their reward without promoting lower ranks.
+- Store up to 100 ranks and grant +10/+6/+3 per recipe, including multiple wins by one author. Grant expiry is actual payment time plus one calendar month (clamp to month end). Consume base quota first, then unexpired grants by expiry and ID; save the consumed `grant_id` in `usage_logs` in the same transaction.
+- An empty week is final too: use `shared_recipe_weekly_settlements` rather than inferring completion from rank rows. E75 is submitted after commit through EventTracker; tracking remains best effort and is not retried by re-running a settled week.
+- Timing limitation: deleted saves have no historical record. A delayed first execution counts the retained rows at execution time; it cannot reconstruct saves removed after the boundary. There is no automatic missed-week backfill. Do not claim exact historical recovery. Author deletion and post-settlement reward policy remain open in #230.
 
 ## Relationships
 
