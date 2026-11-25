@@ -10,6 +10,8 @@ spring:
       max-request-size: 30MB
 
 remake:
+  ocr:
+    gemini-api-key: ${OCR_GEMINI_API_KEY:}
   upload:
     root-directory: ${REMAKE_UPLOAD_ROOT_DIRECTORY:${java.io.tmpdir}/remake-uploads}
 

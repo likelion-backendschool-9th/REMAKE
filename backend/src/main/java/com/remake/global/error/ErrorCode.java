@@ -66,7 +66,11 @@ public enum ErrorCode {
 	// 영수증
 	RECEIPT_NOT_FOUND(HttpStatus.NOT_FOUND, "영수증을 찾을 수 없어요."),
 	RECEIPT_DUPLICATE(HttpStatus.CONFLICT, "이미 등록한 영수증이에요"),
-	RECEIPT_TOO_OLD(HttpStatus.UNPROCESSABLE_CONTENT, "6개월이 지난 영수증은 등록할 수 없어요");
+	RECEIPT_TOO_OLD(HttpStatus.UNPROCESSABLE_CONTENT, "6개월이 지난 영수증은 등록할 수 없어요"),
+	RECEIPT_NOT_RECOGNIZED(HttpStatus.UNPROCESSABLE_CONTENT, "영수증의 품목을 읽지 못했습니다."),
+	RECEIPT_NO_FOOD_ITEMS(HttpStatus.UNPROCESSABLE_CONTENT, "식재료가 없는 영수증이에요"),
+	OCR_UPSTREAM_ERROR(HttpStatus.BAD_GATEWAY, "영수증을 읽는 중 문제가 생겼습니다."),
+	OCR_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "영수증 읽기 시간이 초과되었습니다.");
 
 	private final HttpStatus status;
 	private final String message;
