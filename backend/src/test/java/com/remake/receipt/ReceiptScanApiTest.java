@@ -23,12 +23,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockMultipartFile;
 
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-
 import com.remake.auth.application.port.out.JwtTokenPort;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
-import com.remake.receipt.application.port.out.ReadReceiptTextPort;
 import com.remake.support.IntegrationTestSupport;
 import com.remake.user.domain.UserRole;
 
@@ -39,9 +36,6 @@ class ReceiptScanApiTest extends IntegrationTestSupport {
 	private static final String SCAN_PATH = "/api/v1/user/receipts/scan";
 	@Autowired
 	private JwtTokenPort jwtTokens;
-
-	@MockitoBean
-	private ReadReceiptTextPort receiptText;
 
 	private Long userId;
 

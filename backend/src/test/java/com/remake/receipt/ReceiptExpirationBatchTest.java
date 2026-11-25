@@ -19,12 +19,10 @@ import jakarta.servlet.http.Cookie;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import com.remake.auth.application.port.out.JwtTokenPort;
 import com.remake.receipt.application.port.in.ExpireOldReceiptsUseCase;
 import com.remake.receipt.application.port.in.RetryReceiptImageDeletionUseCase;
-import com.remake.receipt.application.port.out.ReceiptImageStoragePort;
 import com.remake.receipt.domain.ReceiptRetention;
 import com.remake.share.application.port.out.LoadSharedRecipePhotoPort;
 import com.remake.share.application.port.out.SharedRecipePhotoStoragePort;
@@ -48,8 +46,6 @@ class ReceiptExpirationBatchTest extends IntegrationTestSupport {
 	private SharedRecipePhotoStoragePort sharedPhotos;
 	@Autowired
 	private LoadSharedRecipePhotoPort sharedPhotoLoader;
-	@MockitoSpyBean
-	private ReceiptImageStoragePort images;
 
 	@Test
 	void 구매일_6개월_경계에서_지난_영수증만_지우고_냉장고_재료는_남긴다() throws Exception {

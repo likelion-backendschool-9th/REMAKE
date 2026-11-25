@@ -24,6 +24,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -32,6 +33,8 @@ import com.remake.auth.adapter.out.oauth.SocialOAuthAdapter;
 import com.remake.global.config.AsyncConfig;
 import com.remake.global.config.UploadProperties;
 import com.remake.mealplan.adapter.out.ai.GeminiMealPlanAdapter;
+import com.remake.receipt.adapter.out.ocr.GeminiReceiptTextAdapter;
+import com.remake.receipt.application.port.out.ReceiptImageStoragePort;
 import com.remake.recipe.adapter.out.ai.GeminiRecipeAdapter;
 import com.remake.user.adapter.out.mail.LoggingDeletionCodeMailAdapter;
 import com.remake.user.domain.AuthProvider;
@@ -121,6 +124,15 @@ public abstract class IntegrationTestSupport {
 	// (MockedAdapterWiringTest가 구체 어댑터 생성자를 검사하므로 포트가 아니라 어댑터를 바꾼다.)
 	@MockitoBean
 	protected LoggingDeletionCodeMailAdapter deletionCodeMailAdapter;
+
+	// 영수증 사진 판독(OCR). 실제 Gemini를 부르지 않는다. 테스트마다 판독 결과 문자열·예외를 stub한다.
+	@MockitoBean
+	protected GeminiReceiptTextAdapter receiptText;
+
+	// 영수증 사진 저장소. 진짜 구현을 그대로 쓰되 호출을 지켜보고 일부 호출만 실패시킬 수 있다.
+	// 테스트 클래스마다 따로 선언하면 Spring 컨텍스트가 하나 더 떠서(앱·DB 기동 2회) 여기 한 곳에 둔다.
+	@MockitoSpyBean
+	protected ReceiptImageStoragePort images;
 
 	/** 테스트용 회원 한 명을 넣고 id를 돌려준다. provider_user_id는 호출마다 다르게 만든다. */
 	protected Long createUser() {

@@ -87,16 +87,14 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 
 	@Test
 	void 등록이_롤백되면_이벤트도_남지_않는다() {
-		try {
-			transactionTemplate.executeWithoutResult(status -> {
-				registerUseCase.registerIngredient(command("우유", IngredientCategoryCode.DAIRY_EGG,
-						LocalDate.of(2026, 3, 12), null, BigDecimal.ONE, null));
-				status.setRollbackOnly();
-			});
-		}
-		catch (Exception ignored) {
-			// rollback-only는 예외 없이 끝난다
-		}
+		// rollback-only는 예외 없이 끝난다. 등록이 예외를 던지면 그대로 테스트가 실패해야 하므로 삼키지 않는다.
+		transactionTemplate.executeWithoutResult(status -> {
+			registerUseCase.registerIngredient(command("우유", IngredientCategoryCode.DAIRY_EGG,
+					LocalDate.of(2026, 3, 12), null, BigDecimal.ONE, null));
+			// 롤백 전에 실제로 저장됐는지 확인한다. 저장이 안 돼서 0건인 경우와 롤백돼서 0건인 경우를 가른다.
+			assertThat(countIngredients()).isOne();
+			status.setRollbackOnly();
+		});
 		awaitEventWrites();
 
 		assertThat(countIngredients()).isZero();

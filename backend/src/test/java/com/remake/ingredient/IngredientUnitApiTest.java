@@ -17,7 +17,7 @@ class IngredientUnitApiTest extends IntegrationTestSupport {
 	private static final String URL = "/api/v1/user/ingredient-units";
 
 	private MockHttpServletRequestBuilder login(MockHttpServletRequestBuilder request) {
-		return request.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, 1L);
+		return request.requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, createUser());
 	}
 
 	@Test
