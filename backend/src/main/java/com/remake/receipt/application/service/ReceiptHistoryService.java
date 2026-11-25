@@ -16,8 +16,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
@@ -26,7 +24,6 @@ import com.remake.ingredient.domain.IngredientCategory;
 import com.remake.receipt.application.port.in.ReceiptHistoryUseCase;
 import com.remake.receipt.application.port.out.ReceiptHistoryPort;
 import com.remake.receipt.application.port.out.ReceiptHistoryPort.StoredReceipt;
-import com.remake.receipt.application.port.out.ReceiptImageDeletionPort;
 import com.remake.receipt.application.port.out.ReceiptImageStoragePort;
 
 import lombok.RequiredArgsConstructor;
@@ -40,8 +37,7 @@ class ReceiptHistoryService implements ReceiptHistoryUseCase {
 
 	private final ReceiptHistoryPort receipts;
 	private final ReceiptImageStoragePort images;
-	private final ReceiptImageDeletionPort pendingImages;
-	private final ReceiptImageDeletionService imageDeletion;
+	private final ReceiptDeletionService deletion;
 	private final GetIngredientCategoriesUseCase categories;
 	private final Clock clock;
 
@@ -117,21 +113,7 @@ class ReceiptHistoryService implements ReceiptHistoryUseCase {
 	@Override
 	@Transactional
 	public void delete(Long userId, Long id) {
-		StoredReceipt receipt = requireReceipt(userId, id);
-		if (!receipts.delete(userId, id)) {
-			throw new BusinessException(ErrorCode.RECEIPT_NOT_FOUND);
-		}
-		pendingImages.enqueue(receipt.imageKey());
-		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-			@Override
-			public void afterCommit() {
-				try {
-					imageDeletion.deleteAfterCommit(receipt.imageKey());
-				} catch (RuntimeException failure) {
-					log.warn("Receipt image cleanup remains queued for {}", id, failure);
-				}
-			}
-		});
+		deletion.deleteOwned(userId, id);
 	}
 
 	private StoredReceipt requireReceipt(Long userId, Long id) {

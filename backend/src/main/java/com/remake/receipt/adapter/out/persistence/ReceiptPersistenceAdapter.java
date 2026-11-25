@@ -119,8 +119,18 @@ class ReceiptPersistenceAdapter implements SaveReceiptPort, FindDuplicateReceipt
 				.setParameter("userId", userId)
 				.setParameter("id", id)
 				.getResultList().stream().findFirst()
-				.map(r -> new StoredReceipt(r.getId(), r.getStoreCode(), r.getStoreName(), r.getPurchasedOn(),
-						r.getImageKey()));
+				.map(this::toStoredReceipt);
+	}
+
+	@Override
+	public List<StoredReceipt> findPurchasedBefore(LocalDate cutoff) {
+		return entityManager.createQuery("""
+				SELECT r FROM ReceiptJpaEntity r WHERE r.purchasedOn < :cutoff ORDER BY r.purchasedOn, r.id
+				""", ReceiptJpaEntity.class)
+				.setParameter("cutoff", cutoff)
+				.getResultList().stream()
+				.map(this::toStoredReceipt)
+				.toList();
 	}
 
 	@Override
@@ -144,6 +154,13 @@ class ReceiptPersistenceAdapter implements SaveReceiptPort, FindDuplicateReceipt
 	}
 
 	@Override
+	public boolean deleteById(Long id) {
+		return entityManager.createQuery("DELETE FROM ReceiptJpaEntity r WHERE r.id = :id")
+				.setParameter("id", id)
+				.executeUpdate() == 1;
+	}
+
+	@Override
 	public List<String> deleteAllForUser(Long userId) {
 		List<String> imageKeys = entityManager.createQuery("""
 				SELECT r.imageKey FROM ReceiptJpaEntity r WHERE r.userId = :userId
@@ -155,5 +172,10 @@ class ReceiptPersistenceAdapter implements SaveReceiptPort, FindDuplicateReceipt
 				.setParameter("userId", userId)
 				.executeUpdate();
 		return imageKeys;
+	}
+
+	private StoredReceipt toStoredReceipt(ReceiptJpaEntity receipt) {
+		return new StoredReceipt(receipt.getId(), receipt.getStoreCode(), receipt.getStoreName(),
+				receipt.getPurchasedOn(), receipt.getImageKey());
 	}
 }
