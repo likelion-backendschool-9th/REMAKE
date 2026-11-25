@@ -56,12 +56,14 @@ public enum ErrorCode {
 	RECIPE_NOT_FOUND(HttpStatus.NOT_FOUND, "레시피를 찾을 수 없어요"),
 	SAVED_RECIPE_NOT_FOUND(HttpStatus.NOT_FOUND, "저장된 레시피가 아니에요"),
 	COOK_ITEM_INVALID(HttpStatus.BAD_REQUEST, "차감할 재료를 확인해 주세요"),
-	// 식단표 (문구는 에러 정의서 v2. 생성 작업의 실패 사유 MEAL_PLAN_NO_INGREDIENTS는 응답이 아니라 알림이라 여기 없음)
+	// 식단표 (문구는 에러 정의서 v2. 생성 작업(38)의 MEAL_PLAN_NO_INGREDIENTS는 응답이 아니라 실패 알림 사유)
 	MEAL_PLAN_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "이번 달 식단표 생성 횟수를 모두 사용했어요"),
 	MEAL_PLAN_OVERLAP(HttpStatus.CONFLICT, "이미 식단이 있는 날짜가 있어요. 덮어쓸까요?"),
 	MEAL_PLAN_IN_PROGRESS(HttpStatus.CONFLICT, "식단표를 만들고 있어요. 완성되면 알림을 보내드려요"),
 	PAST_DATE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "지난 날짜는 바꿀 수 없어요"),
 	SLOT_NOT_FOUND(HttpStatus.NOT_FOUND, "식단을 찾을 수 없어요"),
+	// 식단 칸 교체(42)에서 쓸 수 있는 냉장고 재료가 없을 때. 42의 오류 목록에 없어 제안한 값(#176 PR에서 확인)
+	MEAL_PLAN_NO_INGREDIENTS(HttpStatus.UNPROCESSABLE_CONTENT, "냉장고 재료가 부족해 레시피를 바꾸지 못했어요. 횟수는 차감되지 않았어요"),
 	// 이벤트
 	EVENT_BATCH_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE, "이벤트는 한 번에 50개까지 보낼 수 있습니다."),
 	// 영수증

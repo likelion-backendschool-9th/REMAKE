@@ -149,7 +149,7 @@ class MealPlanResultWriter {
 		return Math.max(Duration.between(acceptedAt, clock.instant()).toMillis(), 0);
 	}
 
-	private static MealPlanRecipeCommand toRecipeCommand(GeneratedMealSlot slot, int servings) {
+	static MealPlanRecipeCommand toRecipeCommand(GeneratedMealSlot slot, int servings) {
 		return new MealPlanRecipeCommand(slot.title(), servings, slot.cookMinutes(), slot.tips(),
 				slot.ingredients().stream().map(MealPlanResultWriter::toRecipeIngredient).toList(), slot.steps());
 	}
