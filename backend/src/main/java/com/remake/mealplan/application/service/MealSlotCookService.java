@@ -26,7 +26,9 @@ class MealSlotCookService implements MarkMealSlotCookedUseCase {
 	@Override
 	@Transactional
 	public void markCooked(Long userId, Long mealPlanSlotId, Long recipeId) {
-		MealPlanSlot slot = mealPlanSlotPort.findByIdAndUserId(mealPlanSlotId, userId)
+		// 잠그고 읽는다: 식단표 덮어쓰기 저장(MealPlanResultWriter.complete)이 이 칸을 지우는 중이면 끝날 때까지 기다리고,
+		// 지워졌으면 비어 있어 아래 INVALID_INPUT이 된다
+		MealPlanSlot slot = mealPlanSlotPort.findByIdAndUserIdForUpdate(mealPlanSlotId, userId)
 				.filter(s -> s.recipeId().equals(recipeId))
 				.orElseThrow(() -> new BusinessException(ErrorCode.INVALID_INPUT, "식단 칸을 확인해 주세요."));
 		LocalDateTime now = LocalDateTime.now(clock);

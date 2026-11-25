@@ -83,6 +83,8 @@ public enum EventName {
 	MEAL_SLOT_DETAIL_FAILED("meal_slot_detail_failed", EventSource.SERVER, Set.of("error_code", "duration_ms")), // E60
 	MEAL_ADDED("meal_added", EventSource.SERVER, Set.of("meal_type", "date_relation", "recipe_id")), // E61
 	MEAL_SLOT_DELETED("meal_slot_deleted", EventSource.SERVER, Set.of("meal_type", "date_relation")), // E79
+	MEAL_SLOT_REPLACED("meal_slot_replaced", EventSource.SERVER, Set.of("meal_type", "date_relation", "duration_ms", "remaining_quota")), // E80
+	MEAL_SLOT_REPLACE_FAILED("meal_slot_replace_failed", EventSource.SERVER, Set.of("error_code", "duration_ms")), // E81
 	CART_MOVED_TO_FRIDGE("cart_moved_to_fridge", EventSource.SERVER, Set.of("moved_count", "was_select_all")), // E82
 	CART_ITEM_ADDED("cart_item_added", EventSource.SERVER, Set.of("cart_source", "item_count")), // E62
 	CART_VIEWED("cart_viewed", EventSource.CLIENT, Set.of("group_count", "item_count")), // E63

@@ -30,6 +30,7 @@ import com.remake.ingredient.application.port.in.ResolveIngredientUnitUseCase;
 import com.remake.receipt.application.port.in.RegisterReceiptUseCase;
 import com.remake.receipt.application.port.out.ReceiptImageStoragePort;
 import com.remake.receipt.application.port.out.SaveReceiptPort;
+import com.remake.receipt.domain.ReceiptRetention;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,8 +52,8 @@ class ReceiptRegistrationService implements RegisterReceiptUseCase {
 	@Override
 	@Transactional
 	public Result register(Long userId, InputStream image, Command command) {
-		// 구매일이 정확히 6개월 전인 영수증은 등록할 수 있다.
-		if (command.purchasedOn().isBefore(LocalDate.now(clock).minusMonths(6))) {
+		// 구매일이 정확히 6개월 전인 영수증은 등록할 수 있다. 저장일 대체 규칙은 없다.
+		if (ReceiptRetention.isTooOld(command.purchasedOn(), LocalDate.now(clock))) {
 			throw new BusinessException(ErrorCode.RECEIPT_TOO_OLD);
 		}
 		var items = new ArrayList<Item>(command.items().size());
