@@ -506,7 +506,7 @@ One fridge ingredient. The row is deleted when the amount reaches 0. Owner ê¹€ìž
 | `id` | bigint | PK |  | no |  | ID |
 | `user_id` | bigint | FK | users | no |  | Member (counted by month even after the ingredient is deleted) |
 | `ingredient_id` | bigint | FK | ingredients | yes |  | Ingredient. Cleared when it is deleted |
-| `category_id` | bigint | FK | ingredient_categories | no |  | Category at logging time. Never changes when the ingredient is deleted or its category is edited (read by the discarded-ingredients list) |
+| `category_id` | bigint | FK | ingredient_categories | yes (NOT NULL in a follow-up) |  | Category at logging time. The new code always fills it; V22 leaves it nullable so the old version can still write logs during a deploy or after a rollback, and a follow-up migration fills the remaining NULLs and sets NOT NULL. Never changes when the ingredient is deleted or its category is edited (read by the discarded-ingredients list) |
 | `type` | varchar |  |  | no |  | USED/DISCARDED |
 | `name` | varchar |  |  | no |  | Ingredient name at logging time |
 | `amount` | numeric(10,3) |  |  | no |  | Amount taken out |
@@ -803,7 +803,7 @@ An index on `(user_id, created_at)` supports period queries.
 | `receipt_items` | `ingredients` | receipt_item_id | 1:1 | yes | SET NULL |
 | `users` | `ingredient_logs` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `ingredients` | `ingredient_logs` | ingredient_id | 1:N | yes | SET NULL |
-| `ingredient_categories` | `ingredient_logs` | category_id | 1:N | no | RESTRICT (reference data, never deleted) |
+| `ingredient_categories` | `ingredient_logs` | category_id | 1:N | yes (NOT NULL in a follow-up) | RESTRICT (reference data, never deleted) |
 | `users` | `receipts` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `users` | `manual_ingredient_expenses` | user_id | 1:N | no | CASCADE (the app deletes on withdrawal) |
 | `ingredient_categories` | `manual_ingredient_expenses` | category_id | 1:N | no | RESTRICT |

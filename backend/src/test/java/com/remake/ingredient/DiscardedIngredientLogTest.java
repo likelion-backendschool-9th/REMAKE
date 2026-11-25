@@ -125,4 +125,21 @@ class DiscardedIngredientLogTest extends IntegrationTestSupport {
 		assertThat(logs).extracting(DiscardedIngredientLog::name).containsExactly("귤", "배");
 		assertThat(logs.get(0).discardedAt()).isEqualTo(LocalDateTime.of(2026, 3, 15, 12, 0));
 	}
+
+	@Test
+	void 배포_중_구버전이_카테고리_없이_쓴_기록도_목록에_나오고_카테고리만_비어_있다() {
+		// V22는 NOT NULL을 걸지 않는다. 구버전은 category_id 없이 INSERT한다
+		jdbcTemplate.update("""
+				INSERT INTO ingredient_logs (user_id, ingredient_id, type, name, amount, unit, cost_amount, created_at)
+				VALUES (?, NULL, 'DISCARDED', '상추', 1, 'EA', 1500, ?)
+				""", me, TODAY.atTime(9, 0));
+
+		List<DiscardedIngredientLog> logs = discardedUseCase.getDiscardedLogs(me, TODAY.atStartOfDay(),
+				TODAY.plusDays(1).atStartOfDay());
+
+		assertThat(logs).hasSize(1);
+		assertThat(logs.get(0).name()).isEqualTo("상추");
+		assertThat(logs.get(0).categoryCode()).isNull();
+		assertThat(logs.get(0).costAmount()).isEqualTo(1500L);
+	}
 }

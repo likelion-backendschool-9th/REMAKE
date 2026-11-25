@@ -15,10 +15,12 @@ interface IngredientLogJpaRepository extends JpaRepository<IngredientLogJpaEntit
 
 	void deleteByUserId(Long userId);
 
+	// left join: 배포 중 구버전이 쓴 기록은 category_id가 비어 있을 수 있다(V22는 NOT NULL을 걸지 않음). 이런 기록도
+	// 버린 목록·합계에서 빠지면 안 되므로 카테고리만 null로 돌려준다.
 	@Query("""
 			select new com.remake.ingredient.domain.DiscardedIngredientLog(l.name, c.code, l.createdAt, l.costAmount)
 			from IngredientLogJpaEntity l
-			join IngredientCategoryJpaEntity c on c.id = l.categoryId
+			left join IngredientCategoryJpaEntity c on c.id = l.categoryId
 			where l.userId = :userId and l.type = com.remake.ingredient.domain.IngredientLogType.DISCARDED
 			  and l.createdAt >= :from and l.createdAt < :to
 			order by l.createdAt desc, l.id desc
