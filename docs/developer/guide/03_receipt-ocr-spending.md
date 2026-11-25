@@ -63,13 +63,23 @@
 
 | 번호 | 메서드 | 경로 | 설명 | 요청 | 응답 | 관련 테이블 |
 | --- | --- | --- | --- | --- | --- | --- |
-| 20 | POST | `/user/receipts/scan` | OCR 분석만 하고 저장하지 않음(11/20 결정). 동기 처리. 식재료만 돌려줌. 식재료가 하나도 없거나 구매일이 6개월 지난 영수증은 실패로 돌려주고 OCR 실패 화면(추가될 페이지 4번)에서 보여줌(에러 정의서 답 4). 이미 등록한 영수증(판매처(지점명)·영수증 번호·구매 시각이 모두 같은 영수증(번호를 못 읽었으면 판매처·구매일·식재료 이름 목록, 시각을 못 읽었으면 구매일로 비교))도 같은 화면에서 실패로 보여줌(정책 답 8·10) | `multipart image(jpg·png·heic, 10MB)` | `200 { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount, unit, price, expirationDate }] }` | receipts(중복 확인만) |
-| 21 | POST | `/user/receipts` | 영수증·품목·냉장고 재료를 한 번에 저장. 단위는 서버가 재료명으로 정함(ERD 답 5). 선택한 장바구니 행만 실제 등록량 이내·동일 단위로 차감(#57). 건너뛰면 유지하며 0이 된 행만 삭제. 6개월 지난 영수증은 등록 불가(11/20 결정). 이미 등록한 영수증이면 한 번 더 막음(정책 답 8·10) | `multipart image + payload { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount, price, expirationDate, cartDeductions?: [{ cartItemId, amount }] }] }` | `201 { receiptId, ingredientCount, cartRemovedCount }` | receipts, receipt_items, ingredients, cart_items |
+| 20 | POST | `/user/receipts/scan` | OCR 분석만 하고 저장하지 않음(11/20 결정). 동기 처리. 식재료만 돌려줌. 식재료가 하나도 없거나 구매일이 6개월 지난 영수증은 실패로 돌려주고 OCR 실패 화면(추가될 페이지 4번)에서 보여줌(에러 정의서 답 4). 이미 등록한 영수증(판매처(지점명)·영수증 번호·구매 시각이 모두 같은 영수증(번호를 못 읽었으면 판매처·구매일·식재료 이름 목록, 시각을 못 읽었으면 구매일로 비교))도 같은 화면에서 실패로 보여줌(정책 답 8·10) | `multipart image(jpg·png·heic, 10MB)` | `200 { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount, unit, price, expirationDate, purchaseQuantity?, volume?: { amount, unit, scope } }] }` | receipts(중복 확인만) |
+| 21 | POST | `/user/receipts` | 영수증·품목·냉장고 재료를 한 번에 저장. 단위는 서버가 재료명으로 정함(ERD 답 5). 선택한 장바구니 행만 실제 등록량 이내·동일 단위로 차감(#57). 건너뛰면 유지하며 0이 된 행만 삭제. 6개월 지난 영수증은 등록 불가(11/20 결정). 이미 등록한 영수증이면 한 번 더 막음(정책 답 8·10) | `multipart image + payload { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount?, purchaseQuantity?, volume?: { amount, unit, scope }, price, expirationDate, cartDeductions?: [{ cartItemId, amount }] }] }` | `201 { receiptId, ingredientCount, cartRemovedCount }` | receipts, receipt_items, ingredients, cart_items |
 | 22 | GET | `/user/receipts` | 그 달 영수증. 월 합계는 영수증 품목만, 평균은 최근 6개월 월 합계 평균 | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, weeks: [{ label, startDate, endDate, totalAmount, receipts: [{ id, storeCode, storeName, purchasedOn, itemCount, totalAmount }] }] }` | receipts, receipt_items |
 | 23 | GET | `/user/receipts/{id}` | 영수증 하나 | `-` | `200 { id, storeCode, storeName, purchasedOn, imageUrl, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }], totalAmount }` | receipts, receipt_items |
 | 24 | DELETE | `/user/receipts/{id}` | 영수증·품목·이미지 삭제. 식비·소비 패턴에서도 빠지고 냉장고 재료는 남음(ERD 답 1) | `-` | `204` | receipts, receipt_items, ingredients |
 | 25 | GET | `/user/expenses/patterns` | 그 달 소비. 영수증 품목 + 영수증 없이 가격을 넣은 재료(등록일 기준, ERD 답 3) | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | receipt_items, ingredients |
 | 26 | GET | `/user/expenses/daily-items` | 고른 날의 품목 | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | receipt_items, ingredients |
+
+API 20 응답의 `purchaseQuantity`와 `volume`은 #72에서 반영 예정이며, #101에서 프론트 연동을 확인해요.
+
+### 영수증 수량 계약 (#173)
+
+- API 20의 `amount`와 `unit`은 미리보기예요. 확인된 구매 수량은 `purchaseQuantity`, 포장 용량은 `volume { amount, unit, scope }`로 받아요. 용량 단위는 `G`, `KG`, `ML`, `L`이에요. 수량을 정할 수 없으면 확인 화면에서 값을 입력해요.
+- API 21은 같은 구매 수량과 용량 필드를 받아요. `PER_PACK`이면 팩당 용량에 구매 수량을 곱하고, `TOTAL`이면 전체 용량을 한 번만 반영해요.
+- 사용자가 최종 수량을 직접 입력하면 `amount`를 보내고, 서버는 API 14와 같은 사전 단위로 저장해요. 자동 계산 결과나 `PACK` 미리보기대로 등록할 때는 `amount`를 생략해요.
+- 사전 단위가 무게·부피일 때 같은 종류의 용량을 환산해요. 용량이 없거나 종류가 달라 환산할 수 없고 구매 수량을 알 수 있으면 `PACK`에 구매 수량을 저장해요. 사전 단위가 개수 계열이면 구매 수량을 사용해요.
+- 저장 수량을 정할 수 없으면 400 `INVALID_INPUT`의 `fieldErrors`에 `items[i].purchaseQuantity`를 내려줘요. 예를 들어 사전 단위가 `G`일 때 팩당 500g × 2는 `1000 G`, 전체 500g은 `500 G`, 팩당 500mL × 1은 `1 PACK`, 직접 입력한 `amount: 600`은 `600 G`예요.
 
 등록한 영수증을 고치는 API는 없어요. 이전의 `GET /user/expenses/monthly`·`/monthly/analysis`는 API 22·25에 합쳤어요.
 
