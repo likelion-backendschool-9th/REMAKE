@@ -58,7 +58,8 @@ import lombok.extern.slf4j.Slf4j;
  * <li>AI 호출과 검사. 실패하면 잠깐 쉬고 1회 다시 시도한다(25초 × 2 + 쉬는 시간 &lt; Nginx 60초, #50)</li>
  * <li>한 트랜잭션에서 새 레시피 저장 + 칸의 레시피 변경(요리 완료 표시 지움) + 하루 횟수 차감</li>
  * </ol>
- * AI 호출은 트랜잭션 밖에서 한다. 실패는 차감하지 않고 meal_slot_replace_failed 이벤트로 남긴다.
+ * AI 호출은 트랜잭션 밖에서 한다. 실패는 차감하지 않고 meal_slot_replace_failed 이벤트로 남긴다
+ * (재료 없음, AI 실패, AI 뒤 저장 직전에 칸이 없어졌거나 자정이 지난 경우).
  * 바꾸기 전 레시피와 장바구니 항목은 그대로 둔다(부족 재료 담기는 #91, 장바구니 자동 삭제 없음).
  */
 @Slf4j
@@ -158,9 +159,13 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 		try {
 			saved = transactionTemplate.execute(status -> save(userId, slotId, plan.servings(), generated));
 		} catch (BusinessException e) {
-			// 확인과 저장 사이에 다른 요청이 마지막 횟수를 썼다. 저장은 롤백됐다.
+			// 저장은 롤백됐다. 확인과 저장 사이에 다른 요청이 마지막 횟수를 썼으면 레시피 생성(E41)과 같이 quota_exceeded만 남긴다.
+			// AI를 기다리는 동안 칸이 지워졌거나(SLOT_NOT_FOUND) 자정이 지났으면(PAST_DATE_NOT_ALLOWED) AI는 불렀지만 결과를
+			// 못 남긴 것이라 실패 이벤트로 센다(M10 응답 시간, M16 호출 수에서 빠지지 않게).
 			if (e.getErrorCode() == ErrorCode.GENERATION_LIMIT_EXCEEDED) {
 				trackQuotaExceeded(userId);
+			} else {
+				trackFailure(userId, e.getErrorCode(), start);
 			}
 			throw e;
 		}

@@ -405,6 +405,9 @@ class MealSlotReplaceApiTest extends IntegrationTestSupport {
 
 		assertThat(recipeUsage()).isZero();
 		assertThat(count("SELECT COUNT(*) FROM recipes WHERE user_id = ? AND title = '대파두부볶음'", me)).isZero();
+		assertThat(events("meal_slot_replace_failed")).singleElement().satisfies(event -> assertThat(event)
+				.containsEntry("error_code", "SLOT_NOT_FOUND").containsEntry("has_duration", true));
+		assertThat(events("meal_slot_replaced")).isEmpty();
 	}
 
 	@Test
@@ -419,5 +422,7 @@ class MealSlotReplaceApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.code").value("PAST_DATE_NOT_ALLOWED"));
 
 		assertThat(recipeUsage()).isZero();
+		assertThat(events("meal_slot_replace_failed")).singleElement().satisfies(event -> assertThat(event)
+				.containsEntry("error_code", "PAST_DATE_NOT_ALLOWED").containsEntry("has_duration", true));
 	}
 }
