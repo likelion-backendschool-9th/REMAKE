@@ -220,7 +220,7 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 - Text that wraps to two or more lines uses a line height of 150% (`line-height: 1.5` after the `font` token), even when the Figma text style says 140%. Single-line text keeps the token line height.
 - Use interaction colors (the primary blue `--color-text-primary` / `--color-brand-primary` and link styles) only on buttons and links. Do not use them for plain text, counts, or decoration, so that blue always means "this can be tapped".
 - Never use a placeholder in place of a label. Every input has a visible label (or a `<label>` the screen reader reads); a placeholder only shows an example value.
-- Give every choice group a default option (radio, segmented control, chips, select sheet, wheel). Preselect the most common or safest option instead of starting with nothing selected.
+- Give every choice group a default option (radio, segmented control, chips, select sheet, wheel). Preselect the most common or safest option instead of starting with nothing selected. Exception: leave a choice empty when a wrong preselection would be saved silently if the user skips it (e.g. ingredient category, which drives the unit lookup, the category image and filter, and event `category_code`). The save button stays disabled until the user picks one.
 - Put a style file next to its component with the same name. Example: `IngredientCard.tsx` + `IngredientCard.module.css`
 
 ### 6.1 Semantic HTML

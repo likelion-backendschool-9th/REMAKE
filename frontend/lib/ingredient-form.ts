@@ -45,12 +45,13 @@ export type IngredientDetail = {
 };
 
 /**
- * 재료 추가의 처음 값. 선택지는 기본 옵션을 미리 골라 둔다(blueprint §6): 카테고리 육류, 보관 위치 냉장.
- * 재료명·소비 기한은 사용자가 정해야 해서 비워 둔다
+ * 재료 추가의 처음 값. 보관 위치는 기본 옵션 냉장을 미리 골라 둔다(blueprint §6).
+ * 카테고리는 잘못 미리 고르면 그대로 저장되는 값이라 비워 두고, 고르기 전에는 저장 버튼이 꺼진다(isDraftComplete).
+ * 재료명·소비 기한도 사용자가 정해야 해서 비워 둔다
  */
 export const EMPTY_DRAFT: IngredientDraft = {
   name: "",
-  categoryCode: "MEAT",
+  categoryCode: null,
   storage: "FRIDGE",
   expirationDate: null,
   price: null,
