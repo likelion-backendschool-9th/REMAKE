@@ -47,13 +47,13 @@ public class SharedRecipeController {
 	private final SaveSharedRecipeUseCase saveSharedRecipe;
 	private final GetSharedRecipeRankingUseCase rankings;
 
-	@Operation(summary = "이번 주 공유 레시피 TOP 3", description = "KST 월요일부터 현재 유지 중인 저장 수 기준입니다. 순위 변동은 반환하지 않습니다.")
+	@Operation(summary = "이번 주 공유 레시피 TOP 3", description = "KST 월요일부터 현재까지 유효 저장이 1건 이상인 공개 글을 최대 3개 반환합니다. 순위 변동은 반환하지 않습니다.")
 	@GetMapping("/weekly-top")
 	public GetSharedRecipeRankingUseCase.WeeklyTop weeklyTop() {
 		return rankings.weeklyTop();
 	}
 
-	@Operation(summary = "공유 레시피 랭킹", description = "popular는 이번 주 TOP 100 안에서 제목을 검색하며 전체 순위를 유지합니다. latest는 전체 공개 글의 공유 시각순이며 rank·rankChange는 null입니다. rankChange는 지난주 순위 - 현재 순위입니다.")
+	@Operation(summary = "공유 레시피 랭킹", description = "popular는 이번 주 유효 저장이 1건 이상인 공개 글의 TOP 100 안에서 제목을 검색하며 전체 순위를 유지합니다. latest는 저장 수와 관계없이 전체 공개 글의 공유 시각순이며 rank·rankChange는 null입니다. rankChange는 지난주 순위 - 현재 순위입니다.")
 	@GetMapping("/ranking")
 	public GetSharedRecipeRankingUseCase.Ranking ranking(@RequestParam(defaultValue = "popular") String sort,
 			@RequestParam(defaultValue = "") String q, @RequestParam(defaultValue = "0") int page,

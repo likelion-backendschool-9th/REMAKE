@@ -31,6 +31,7 @@ class SharedRecipeRankingPersistenceAdapter implements LoadSharedRecipeRankingPo
 					AND (NOT :excludeOwn OR s.user_id <> r.user_id)
 				WHERE p.status = 'VISIBLE'
 				GROUP BY p.id
+				HAVING COUNT(s.id) > 0
 			), ranked AS (
 				SELECT counts.*, ROW_NUMBER() OVER (ORDER BY %s) AS rank_no FROM counts
 			)

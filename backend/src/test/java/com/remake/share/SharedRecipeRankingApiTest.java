@@ -50,7 +50,7 @@ class SharedRecipeRankingApiTest extends IntegrationTestSupport {
 		save(current, reader, monday);
 		request(get(ROOT + "/ranking"))
 				.andExpect(jsonPath("$.content[0].id").value(current))
-				.andExpect(jsonPath("$.content[1].id").value(old));
+				.andExpect(jsonPath("$.totalElements").value(1));
 		request(get(ROOT + "/weekly-top"))
 				.andExpect(jsonPath("$.items[0].id").value(current));
 	}
@@ -63,9 +63,13 @@ class SharedRecipeRankingApiTest extends IntegrationTestSupport {
 		save(second, reader, now);
 		request(get(ROOT + "/ranking")).andExpect(jsonPath("$.content[0].id").value(first));
 		request(delete(ROOT + "/" + first + "/save")).andExpect(jsonPath("$.saved").value(false));
-		request(get(ROOT + "/ranking")).andExpect(jsonPath("$.content[0].id").value(second));
+		request(get(ROOT + "/ranking")).andExpect(jsonPath("$.content[0].id").value(second))
+				.andExpect(jsonPath("$.totalElements").value(1));
+		request(get(ROOT + "/weekly-top")).andExpect(jsonPath("$.items.length()").value(1))
+				.andExpect(jsonPath("$.items[0].id").value(second));
 		request(put(ROOT + "/" + first + "/save")).andExpect(jsonPath("$.saved").value(true));
-		request(get(ROOT + "/ranking")).andExpect(jsonPath("$.content[0].id").value(first));
+		request(get(ROOT + "/ranking")).andExpect(jsonPath("$.content[0].id").value(first))
+				.andExpect(jsonPath("$.totalElements").value(2));
 	}
 
 	@Test
@@ -77,6 +81,8 @@ class SharedRecipeRankingApiTest extends IntegrationTestSupport {
 		save(up, reader, now);
 		save(up, createUser(), now);
 		save(down, reader, now);
+		save(same, reader, now);
+		save(fresh, reader, now);
 		previous(up, 3, monday.minusWeeks(1));
 		previous(down, 1, monday.minusWeeks(1));
 		previous(same, 3, monday.minusWeeks(1));
@@ -113,9 +119,12 @@ class SharedRecipeRankingApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 검색과_페이지를_적용해도_전체순위를_유지하고_제목만_검색한다() throws Exception {
-		post("다른 제목", monday);
+		Long other = post("다른 제목", monday);
 		Long first = post("Chicken 하나", monday.plusHours(1));
 		Long second = post("CHICKEN 둘", monday.plusHours(2));
+		save(other, reader, now);
+		save(first, reader, now);
+		save(second, reader, now);
 		request(get(ROOT + "/ranking").param("q", " chicken ").param("size", "1"))
 				.andExpect(jsonPath("$.content[0].id").value(first))
 				.andExpect(jsonPath("$.content[0].rank").value(2))
@@ -138,9 +147,10 @@ class SharedRecipeRankingApiTest extends IntegrationTestSupport {
 	@Test
 	void 인기순은_TOP100을_먼저_정하고_최신순은_100위밖의_글도_검색한다() throws Exception {
 		for (int i = 0; i < 100; i++) {
-			post("공유 " + i, monday.plusSeconds(i));
+			save(post("공유 " + i, monday.plusSeconds(i)), reader, now);
 		}
 		Long last = post("100위 밖", monday.plusHours(1));
+		save(last, reader, now);
 		request(get(ROOT + "/ranking").param("size", "100"))
 				.andExpect(jsonPath("$.totalElements").value(100))
 				.andExpect(jsonPath("$.content.length()").value(100))
@@ -156,7 +166,9 @@ class SharedRecipeRankingApiTest extends IntegrationTestSupport {
 	@Test
 	void 검색어의_와일드카드와_SQL문자는_문자그대로_검색하고_이벤트를_발행하지않는다() throws Exception {
 		Long special = post("100%_양파's", monday);
-		post("다른 글", now);
+		Long other = post("다른 글", now);
+		save(special, reader, now);
+		save(other, reader, now);
 		request(get(ROOT + "/ranking").param("q", "%_"))
 				.andExpect(jsonPath("$.totalElements").value(1))
 				.andExpect(jsonPath("$.content[0].id").value(special));
@@ -183,7 +195,7 @@ class SharedRecipeRankingApiTest extends IntegrationTestSupport {
 				createUser(), recipeId, now);
 		request(get(ROOT + "/ranking"))
 				.andExpect(jsonPath("$.content[0].id").value(second))
-				.andExpect(jsonPath("$.content[1].id").value(first));
+				.andExpect(jsonPath("$.totalElements").value(1));
 	}
 
 	@Test
@@ -206,6 +218,7 @@ class SharedRecipeRankingApiTest extends IntegrationTestSupport {
 	@Test
 	void TOP3가_3개미만이어도_있는만큼_반환하며_물과_꼬집과_약간도_요약에_포함한다() throws Exception {
 		Long post = post("간단 요리", monday, "물", "후추", "소금");
+		save(post, reader, now);
 		request(get(ROOT + "/weekly-top"))
 				.andExpect(jsonPath("$.items.length()").value(1))
 				.andExpect(jsonPath("$.items[0].id").value(post))
@@ -216,8 +229,8 @@ class SharedRecipeRankingApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 모든목록이_원본순서의_앞3개와_나머지개수를_같이반환하며_재료0개도_허용한다() throws Exception {
-		post("다섯 재료", monday, "닭가슴살", "청상추", "계란", "물", "소금");
-		post("재료 없음", monday.plusHours(1));
+		save(post("다섯 재료", monday, "닭가슴살", "청상추", "계란", "물", "소금"), reader, now);
+		save(post("재료 없음", monday.plusHours(1)), reader, now);
 		request(get(ROOT + "/weekly-top"))
 				.andExpect(jsonPath("$.items[0].ingredientSummary").value("닭가슴살 · 청상추 · 계란"))
 				.andExpect(jsonPath("$.items[0].extraIngredientCount").value(2))
@@ -228,6 +241,43 @@ class SharedRecipeRankingApiTest extends IntegrationTestSupport {
 					.andExpect(jsonPath("$.content[0].ingredientSummary").value("닭가슴살 · 청상추 · 계란"))
 					.andExpect(jsonPath("$.content[0].extraIngredientCount").value(2));
 		}
+	}
+
+	@Test
+	void 공유글이_3개이상이어도_이번주_유효저장이_없으면_랭킹은_비고_최신순에는_남는다() throws Exception {
+		post("저장 없음", monday.minusWeeks(3));
+		Long old = post("지난주 저장만", monday.minusWeeks(2));
+		Long own = post("본인 저장만", monday.minusWeeks(1));
+		save(old, reader, monday.minusSeconds(1));
+		save(own, author, now);
+		request(get(ROOT + "/weekly-top")).andExpect(jsonPath("$.items").isEmpty());
+		request(get(ROOT + "/ranking"))
+				.andExpect(jsonPath("$.content").isEmpty())
+				.andExpect(jsonPath("$.totalElements").value(0))
+				.andExpect(jsonPath("$.hasNext").value(false));
+		request(get(ROOT + "/ranking").param("sort", "latest"))
+				.andExpect(jsonPath("$.totalElements").value(3));
+	}
+
+	@Test
+	void 유효저장이_있는_2개만_연속순위로_반환하고_0건글로_TOP3를_채우지않는다() throws Exception {
+		post("오래된 저장 0건", monday.minusWeeks(3));
+		Long one = post("유효 저장 하나", monday.minusWeeks(2));
+		post("중간 저장 0건", monday.minusWeeks(1));
+		Long two = post("유효 저장 둘", monday);
+		save(one, reader, now);
+		save(two, reader, now);
+		save(two, createUser(), now);
+		request(get(ROOT + "/weekly-top"))
+				.andExpect(jsonPath("$.items.length()").value(2))
+				.andExpect(jsonPath("$.items[0].id").value(two))
+				.andExpect(jsonPath("$.items[0].rank").value(1))
+				.andExpect(jsonPath("$.items[1].id").value(one))
+				.andExpect(jsonPath("$.items[1].rank").value(2));
+		request(get(ROOT + "/ranking"))
+				.andExpect(jsonPath("$.totalElements").value(2))
+				.andExpect(jsonPath("$.content[0].rank").value(1))
+				.andExpect(jsonPath("$.content[1].rank").value(2));
 	}
 
 	@Test

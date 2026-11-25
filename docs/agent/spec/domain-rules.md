@@ -268,11 +268,12 @@ Apply #57, the [ERD](../erd.md#19-cart_items-cart), and the subsequently approve
 ### Sharing (weekly recipes)
 
 - Recipe tab "금주의 레시피" TOP 3 cards + 전체 보기 → "금주의 인기 레시피". No my recipes / shared tab switch.
-- TOP 3 card: rank, photo, title, ingredient summary +N. No rank change. Fewer than 3: empty state (screen pending).
+- TOP 3 card: rank, photo, title, ingredient summary +N. No rank change. Return up to 3 eligible posts, or 0–2 when fewer qualify; never fill vacant ranks with zero-save posts (empty state screen pending).
 - Popular list: "11월 셋째 주", popular (default) / latest, search, rows (rank, photo, title, ingredient summary +N, rank change). Popular = TOP 100 by saves this week.
 - Rank change vs last week: blue ↑N, red ↓N; "—" if no rank last week; same rank shown as "—" (proposal).
-- Latest: "—" instead of rank and change, shared time on the right (1분 전 to 30일 전).
-- Popular count: saves received this week (from Monday); ties go to the earlier share (proposal).
+- Latest: all visible posts regardless of save count; "—" instead of rank and change, shared time on the right (1분 전 to 30일 전).
+- Ranking eligibility (confirmed 2026-11-25, PR #255 review item 3): exclude posts with zero valid saves this week before assigning TOP 3 and popular TOP 100 ranks. Return only eligible posts, up to each limit. Share age is unrestricted; cumulative saves do not determine eligibility.
+- Popular count: saves received from Monday 00:00 KST through the current time that still exist; ties go to the earlier share (proposal). Excluding own saves remains a proposal.
 - Search over shared recipes; 0 results empty state (screen pending).
 - Only recipes I generated with Remake can be shared, not recipes saved from others. Fully anonymous: no nickname or author info.
 - Write: detail ⋮ "공유 하기" → 1 photo (required, "탭해서 이미지 수정"), title (required, maximum 100 UTF-16 code units before trimming, matching Java `@Size` and HTML `maxlength`), recipe content (read only) → "레시피 공유 하기". Enabled only with title and photo. No confirm modal.
@@ -283,7 +284,7 @@ Apply #57, the [ERD](../erd.md#19-cart_items-cart), and the subsequently approve
 - Sanctions after an operator confirms a report as a violation: 1st 7-day recipe sharing ban, 2nd 30-day recipe sharing ban, 3rd 30-day account suspension, 4th permanent account suspension (11/24 terms decision). How sanctions are stored, checked, and returned (API, error codes): (open).
 - Authors can delete their own shared posts at any time (11/24 terms decision). This is separate from ⋮ "삭제 하기", which only removes a recipe from my saved list. Screen and API for deleting my shared post: (open).
 - **Reward**: members who posted last week's top 1–3 recipes by saves. Per recipe rank, so one member can receive more than once. 1st +10, 2nd +6, 3rd +3 recipe generations, usable for one month from the grant.
-- Week = Monday 00:00 to Sunday 24:00 KST. The Monday 00:00 job records last week's TOP 100 and grants rewards, counting only saves that still exist then. Never grant the same week twice. Own saves do not count; 0 saves get no reward (proposal). No reward screen or notification; only the remaining count changes.
+- Week = Monday 00:00 to Sunday 24:00 KST. The Monday 00:00 job records last week's TOP 100 and grants rewards, counting only saves that still exist then. Apply the same eligibility rule in #92: zero valid saves for the counted week means no finalized rank or reward (confirmed). Never grant the same week twice. Own saves do not count (proposal). No reward screen or notification; only the remaining count changes.
 
 ### Cooking photo storage (#64)
 
