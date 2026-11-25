@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.recipe.application.port.in.GetRecipeIngredientSummariesUseCase;
 import com.remake.recipe.application.port.in.GetRecipeListItemsUseCase;
 import com.remake.recipe.application.port.in.GetRecipeUseCase;
 import com.remake.recipe.application.port.in.RecipeListItem;
@@ -22,10 +23,10 @@ import com.remake.share.application.port.in.CheckRecipeSharedThisWeekUseCase;
 
 import lombok.RequiredArgsConstructor;
 
-/** 레시피 상세(API 30)와 다른 영역용 목록 한 줄 읽기. 볼 수 있는 레시피 = 내가 만들었거나 내 저장 목록에 있는 것. */
+/** 레시피 상세(API 30)와 다른 영역용 목록 한 줄 읽기·재료 요약 일괄 읽기. 상세·목록 한 줄은 내가 만들었거나 내 저장 목록에 있는 레시피만 읽는다. */
 @Service
 @RequiredArgsConstructor
-class RecipeQueryService implements GetRecipeUseCase, GetRecipeListItemsUseCase {
+class RecipeQueryService implements GetRecipeUseCase, GetRecipeListItemsUseCase, GetRecipeIngredientSummariesUseCase {
 
 	private final LoadRecipePort loadRecipePort;
 	private final SavedRecipePort savedRecipePort;
@@ -56,6 +57,19 @@ class RecipeQueryService implements GetRecipeUseCase, GetRecipeListItemsUseCase 
 				.filter(h -> userId.equals(h.userId()) || favorites.containsKey(h.recipeId()))
 				.forEach(h -> items.put(h.recipeId(), toListItem(h, favorites.getOrDefault(h.recipeId(), false))));
 		return items;
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Map<Long, IngredientSummary> getIngredientSummaries(Collection<Long> recipeIds) {
+		if (recipeIds.isEmpty()) {
+			return Map.of();
+		}
+		// 레시피 행 1번 + 재료 줄 1번. 공개 여부는 부르는 쪽(공유)이 확인했다
+		Map<Long, IngredientSummary> summaries = new LinkedHashMap<>();
+		loadRecipePort.loadHeaders(recipeIds).values()
+				.forEach(h -> summaries.put(h.recipeId(), IngredientSummary.of(h.ingredientNames())));
+		return summaries;
 	}
 
 	static RecipeListItem toListItem(RecipeHeader header, boolean favorite) {
