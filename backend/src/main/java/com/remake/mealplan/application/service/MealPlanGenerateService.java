@@ -71,7 +71,7 @@ public class MealPlanGenerateService implements GenerateMealPlanUseCase {
 
 	/**
 	 * 시작일부터 최대 일수 안에 내 식단 칸이 있는 날(날짜 순, 중복 없음).
-	 * 칸은 완성된 식단표에만 있으므로 생성 중·실패 식단표는 겹침에 들어가지 않는다(#144 제안 A와 같은 결과).
+	 * 칸은 완성된 식단표에만 있으므로 생성 중·실패 식단표는 겹침에 들어가지 않는다(#144 확정 내용과 같은 결과).
 	 */
 	private List<LocalDate> overlappingDates(Long userId, LocalDate startDate, int maxDays) {
 		return loadMealPlanSlotPort.loadUserSlotsBetween(userId, startDate, startDate.plusDays(maxDays - 1L))
