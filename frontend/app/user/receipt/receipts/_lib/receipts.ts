@@ -93,8 +93,8 @@ export const SAMPLE_RECEIPT_MONTH: ReceiptMonth = {
   weeks: [
     {
       label: "11월 4주차",
-      startDate: "2026-11-22",
-      endDate: "2026-11-29",
+      startDate: "2026-11-16",
+      endDate: "2026-11-22",
       totalAmount: 149500,
       receipts: [
         {
@@ -117,8 +117,8 @@ export const SAMPLE_RECEIPT_MONTH: ReceiptMonth = {
     },
     {
       label: "11월 3주차",
-      startDate: "2026-11-15",
-      endDate: "2026-11-21",
+      startDate: "2026-11-09",
+      endDate: "2026-11-15",
       totalAmount: 65000,
       receipts: [
         {
