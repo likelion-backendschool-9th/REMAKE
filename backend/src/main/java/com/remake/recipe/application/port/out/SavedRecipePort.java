@@ -18,6 +18,8 @@ public interface SavedRecipePort {
 	/** 아직 저장하지 않았으면 넣고 true. 이미 있으면(동시에 두 번 눌러도) 아무것도 바꾸지 않고 false. */
 	boolean insertIfAbsent(Long userId, Long recipeId, LocalDateTime savedAt);
 
+	boolean insertSharedIfAbsent(Long userId, Long recipeId, Long sharedRecipeId, LocalDateTime savedAt);
+
 	void delete(Long userId, Long recipeId);
 
 	void updateFavorite(Long userId, Long recipeId, boolean favorite);
