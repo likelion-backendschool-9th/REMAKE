@@ -1,9 +1,9 @@
-/* 피그마 p4.1.4-이번 주 레시피 랭킹: 서브 헤더(←만) 아래 19에 주차·제목, 그 아래 15에 검색창, 아래 20에 목록 */
+/* 피그마 p4.1.4-이번 주 레시피 랭킹: 서브 헤더(←만) 바로 아래 주차·제목, 그 아래 15에 검색창, 아래 13에 목록 */
 .main {
   display: flex;
   flex-direction: column;
   width: 100%;
-  padding: 1.1875rem var(--layout-gutter) calc(var(--space-30) + env(safe-area-inset-bottom));
+  padding: 0 var(--layout-gutter) calc(var(--space-30) + env(safe-area-inset-bottom));
 }
 
 .heading {
@@ -42,12 +42,12 @@
   margin-top: 0.9375rem;
 }
 
-/* 목록: 검색창 아래 20, 줄 사이 5 */
+/* 목록: 검색창 아래 13, 줄 사이 5 */
 .rows {
   display: flex;
   flex-direction: column;
   gap: 0.3125rem;
-  margin: 1.25rem 0 0;
+  margin: 0.8125rem 0 0;
   padding: 0;
   list-style: none;
 }
@@ -133,9 +133,12 @@
   margin-left: var(--space-8);
 }
 
-/* 지난주 순위가 없거나 같음 "—": Remake/title·text/assist */
+/* 지난주 순위가 없거나 같음 "—": Remake/title·text/assist. 순위 변동(아이콘 16 + 간격 2 + 숫자 두 자리)과 같은 폭으로
+   두고 가운데에 놓아, 줄마다 글 영역 폭이 같게 한다 */
 .noChange {
   flex: none;
+  width: calc(1rem + var(--space-2) + 2ch);
+  text-align: center;
   margin-left: var(--space-8);
   color: var(--color-text-assist);
   font: var(--font-title);

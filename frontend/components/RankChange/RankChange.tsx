@@ -17,7 +17,9 @@ export function RankChange({ direction, amount, className }: RankChangeProps) {
   return (
     <span className={cx(styles.change, className)} data-direction={direction}>
       <Icon className={styles.icon} aria-hidden="true" />
-      <span aria-hidden="true">{amount}</span>
+      <span className={styles.amount} aria-hidden="true">
+        {amount}
+      </span>
       <span className={styles.srOnly}>
         {amount}계단 {direction === "up" ? "상승" : "하락"}
       </span>
