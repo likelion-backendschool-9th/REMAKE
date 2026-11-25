@@ -1,6 +1,6 @@
 /* 피그마 스플래쉬 start(5782-4629)·end(5782-4666), 360×800 기준.
    흰 원 278과 로고 그림 216×128은 같은 중심(위에서 317, 약 39.6%). "리메이크"(GmarketSans Bold 36)와 슬로건
-   (Remake/content)은 아래쪽에 간격 15로 둔다. start: 바탕 brand/primary, 글자 text/on-color.
+   (Remake/content)은 아래쪽에 간격 6으로 둔다(피그마는 15, 사용자 결정으로 6). start: 바탕 brand/primary, 글자 text/on-color.
    end: 흰 원이 화면을 덮고 글자 text/strong, 슬로건 끝 "!" */
 .splash {
   --splash-center: 39.6%;
@@ -40,7 +40,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.9375rem;
+  gap: var(--space-6);
   padding: 0 var(--layout-gutter);
   color: var(--color-text-on-color);
   text-align: center;
@@ -61,22 +61,22 @@
   opacity: 0;
 }
 
-/* 움직임: 0.4초 start 장면 → 0.6초 동안 흰 원이 커짐(지름 278 × 6, 480×1300 화면까지 덮음) →
+/* 움직임: 0.8초 start 장면 → 1초 동안 흰 원이 커짐(1.8초에 다 덮음, 지름 278 × 6으로 480×1300 화면까지) →
    원 가장자리가 글자에 닿을 무렵 글자 색이 바뀜 → 끝에 "!"와 흰 바탕(아주 긴 화면에서 원이 못 덮은 구석까지) */
 .splash[data-phase="play"] {
-  animation: splash-surface 0s linear 1s forwards;
+  animation: splash-surface 0s linear 1.8s forwards;
 }
 
 .splash[data-phase="play"] .circle {
-  animation: splash-grow 0.6s cubic-bezier(0.65, 0, 0.35, 1) 0.4s forwards;
+  animation: splash-grow 1s cubic-bezier(0.65, 0, 0.35, 1) 0.8s forwards;
 }
 
 .splash[data-phase="play"] .brand {
-  animation: splash-ink 0.25s ease 0.65s forwards;
+  animation: splash-ink 0.4s ease 1.2s forwards;
 }
 
 .splash[data-phase="play"] .bang {
-  animation: splash-bang 0.2s ease 1s forwards;
+  animation: splash-bang 0.2s ease 1.8s forwards;
 }
 
 @keyframes splash-surface {
