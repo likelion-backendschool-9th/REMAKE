@@ -57,6 +57,16 @@ class RecipePersistenceAdapter implements SaveRecipePort, LoadRecipePort {
 	}
 
 	@Override
+	public Map<Long, List<RecipeIngredient>> loadIngredientsByRecipeIds(Collection<Long> recipeIds, Long userId) {
+		if (recipeIds.isEmpty()) {
+			return Map.of();
+		}
+		return ingredientRepository.findAllOfUserRecipes(recipeIds, userId).stream()
+				.collect(Collectors.groupingBy(RecipeIngredientJpaEntity::getRecipeId, LinkedHashMap::new,
+						Collectors.mapping(RecipeIngredientJpaEntity::toDomain, Collectors.toList())));
+	}
+
+	@Override
 	public Optional<Recipe> loadById(Long recipeId) {
 		return recipeRepository.findById(recipeId)
 				.map(entity -> toDomain(entity, ingredientRepository.findByRecipeIdOrderBySortOrderAsc(recipeId),

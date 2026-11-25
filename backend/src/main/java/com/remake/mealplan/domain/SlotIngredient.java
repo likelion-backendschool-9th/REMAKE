@@ -12,6 +12,13 @@ import com.remake.recipe.domain.RecipeUnit;
  */
 public record SlotIngredient(Long fridgeIngredientId, String name, BigDecimal amount, RecipeUnit unit) {
 
+	/**
+	 * 냉장고에 없어도 부족 재료로 세지 않는(장바구니에 담지 않는) 유일한 재료. 물은 냉장고에 등록하는 품목이 아니다.
+	 * 레시피 생성의 GeneratedRecipeValidator.WATER(레시피 영역 결정, 가이드 04)와 같게 둔다.
+	 * 소금·식용유 같은 양념은 예외가 아니다(#158).
+	 */
+	static final String WATER = "물";
+
 	public SlotIngredient {
 		if (name == null || name.isBlank()) {
 			throw new IllegalArgumentException("재료 이름이 필요합니다.");
@@ -32,5 +39,10 @@ public record SlotIngredient(Long fridgeIngredientId, String name, BigDecimal am
 	/** 냉장고 재료와 이어진 재료인지. */
 	public boolean usesFridge() {
 		return fridgeIngredientId != null;
+	}
+
+	/** 물인지(앞뒤 공백은 무시하고 이름이 정확히 "물"). 물은 부족 재료로 세지 않는다. */
+	public boolean isWater() {
+		return WATER.equals(name.strip());
 	}
 }
