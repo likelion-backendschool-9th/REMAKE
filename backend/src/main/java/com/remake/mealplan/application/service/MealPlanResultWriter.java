@@ -9,6 +9,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -21,11 +23,13 @@ import com.remake.event.domain.Screen;
 import com.remake.mealplan.application.port.in.MealPlanGenerationJob;
 import com.remake.mealplan.application.port.out.GeneratedMealSlot;
 import com.remake.mealplan.application.port.out.LoadMealPlanPort;
+import com.remake.mealplan.application.port.out.LoadMealPlanSlotPort;
 import com.remake.mealplan.application.port.out.SaveMealPlanPort;
 import com.remake.mealplan.application.port.out.SaveMealPlanSlotPort;
 import com.remake.mealplan.domain.MealPlan;
 import com.remake.mealplan.domain.MealPlanSlot;
 import com.remake.mealplan.domain.MealPlanStatus;
+import com.remake.mealplan.domain.MealSlotKey;
 import com.remake.mealplan.domain.SlotIngredient;
 import com.remake.notification.application.port.in.CreateMealPlanNotificationUseCase;
 import com.remake.notification.domain.MealPlanFailReason;
@@ -46,6 +50,7 @@ import lombok.extern.slf4j.Slf4j;
 class MealPlanResultWriter {
 
 	private final LoadMealPlanPort loadMealPlanPort;
+	private final LoadMealPlanSlotPort loadMealPlanSlotPort;
 	private final SaveMealPlanPort saveMealPlanPort;
 	private final SaveMealPlanSlotPort saveMealPlanSlotPort;
 	private final SaveMealPlanRecipesUseCase saveMealPlanRecipesUseCase;
@@ -55,10 +60,15 @@ class MealPlanResultWriter {
 	private final Clock clock;
 
 	/**
-	 * 완성: 덮어쓸 칸 삭제 → 레시피 저장 → 칸 저장 → COMPLETED → 월 차감 → 완성 알림.
+	 * 완성: 덮어쓸 칸 다시 확인·삭제 → 레시피 저장 → 칸 저장 → COMPLETED → 월 차감 → 완성 알림.
+	 *
+	 * <p>덮어쓸 칸은 AI를 부르기 전에 정했으므로, AI를 기다리는 사이 사용자가 그 칸을 요리했을 수 있다.
+	 * 그래서 칸을 잠그고 다시 읽어, 그 사이 요리한 칸은 지우지 않고 그 날짜·끼니에는 새 칸(과 레시피)을 넣지 않는다
+	 * (domain-rules: 요리한 칸은 덮어써도 남긴다). 요리 완료(MealSlotCookService)도 칸을 잠그고 읽어 둘이 겹치지 않는다.
+	 * 생성 일수(generatedDays)는 그대로 둔다. 그날은 요리한 칸으로 채워져 있다.
 	 *
 	 * @param slots           새로 채울 칸(날짜·끼니 순)
-	 * @param replacedSlotIds 지울 기존 칸(요청 기간 안의 요리 안 한 칸 전부. 못 만든 뒤쪽 날도 지워 빈 날이 된다)
+	 * @param replacedSlotIds 지울 기존 칸(AI 호출 전 기준, 요청 기간 안의 요리 안 한 칸 전부. 못 만든 뒤쪽 날도 지워 빈 날이 된다)
 	 */
 	@Transactional
 	public void complete(MealPlanGenerationJob job, List<GeneratedMealSlot> slots, int generatedDays,
@@ -67,12 +77,28 @@ class MealPlanResultWriter {
 				() -> new IllegalStateException("생성 중인 식단표가 아닙니다: " + job.mealPlanId()));
 		plan.complete(generatedDays);
 
-		saveMealPlanSlotPort.deleteAllById(replacedSlotIds);
+		List<MealPlanSlot> replacedNow = loadMealPlanSlotPort.loadByIdsForUpdate(replacedSlotIds);
+		Set<MealSlotKey> cookedMeanwhile = replacedNow.stream()
+				.filter(MealPlanSlot::isCooked)
+				.map(slot -> new MealSlotKey(slot.slotDate(), slot.mealType()))
+				.collect(Collectors.toSet());
+		List<Long> deletedSlotIds = replacedNow.stream()
+				.filter(slot -> !slot.isCooked())
+				.map(MealPlanSlot::id)
+				.toList();
+		List<GeneratedMealSlot> slotsToSave = slots.stream()
+				.filter(slot -> !cookedMeanwhile.contains(slot.key()))
+				.toList();
+		if (!cookedMeanwhile.isEmpty()) {
+			log.info("생성 중 요리한 칸을 남김 mealPlanId={} count={}", plan.id(), cookedMeanwhile.size());
+		}
+
+		saveMealPlanSlotPort.deleteAllById(deletedSlotIds);
 		List<Long> recipeIds = saveMealPlanRecipesUseCase.saveMealPlanRecipes(plan.userId(),
-				slots.stream().map(slot -> toRecipeCommand(slot, plan.servings())).toList());
+				slotsToSave.stream().map(slot -> toRecipeCommand(slot, plan.servings())).toList());
 		List<MealPlanSlot> newSlots = new ArrayList<>();
-		for (int i = 0; i < slots.size(); i++) {
-			GeneratedMealSlot slot = slots.get(i);
+		for (int i = 0; i < slotsToSave.size(); i++) {
+			GeneratedMealSlot slot = slotsToSave.get(i);
 			newSlots.add(MealPlanSlot.create(plan.id(), slot.date(), slot.mealType(), recipeIds.get(i)));
 		}
 		saveMealPlanSlotPort.saveAll(newSlots);
@@ -91,7 +117,7 @@ class MealPlanResultWriter {
 				"shortage_count", shortageCount,
 				"cart_added_count", cartAddedCount,
 				// 기존 식단표의 칸을 지우고 바꿨는지(겹침 모달에서 덮어쓰기를 골랐어도 지운 칸이 없으면 false)
-				"was_overwritten", !replacedSlotIds.isEmpty(),
+				"was_overwritten", !deletedSlotIds.isEmpty(),
 				"duration_ms", durationMillis(job.acceptedAt()),
 				"remaining_quota", remaining),
 				EventTrackCommand.ofUser(plan.userId()));
@@ -150,7 +176,7 @@ class MealPlanResultWriter {
 		return Math.max(Duration.between(acceptedAt, clock.instant()).toMillis(), 0);
 	}
 
-	private static MealPlanRecipeCommand toRecipeCommand(GeneratedMealSlot slot, int servings) {
+	static MealPlanRecipeCommand toRecipeCommand(GeneratedMealSlot slot, int servings) {
 		return new MealPlanRecipeCommand(slot.title(), servings, slot.cookMinutes(), slot.tips(),
 				slot.ingredients().stream().map(MealPlanResultWriter::toRecipeIngredient).toList(), slot.steps());
 	}

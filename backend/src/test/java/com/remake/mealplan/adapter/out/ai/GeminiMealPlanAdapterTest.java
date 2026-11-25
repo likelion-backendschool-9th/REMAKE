@@ -68,7 +68,7 @@ class GeminiMealPlanAdapterTest {
 		RestClient.Builder builder = RestClient.builder();
 		server = MockRestServiceServer.bindTo(builder).build();
 		RestClient restClient = builder.baseUrl(BASE_URL).build();
-		return new GeminiMealPlanAdapter(restClient,
+		return new GeminiMealPlanAdapter(restClient, restClient,
 				new GeminiProperties(apiKey, "test-model", BASE_URL, Duration.ofSeconds(25)), JSON);
 	}
 
@@ -163,7 +163,7 @@ class GeminiMealPlanAdapterTest {
 
 	@Test
 	void 보내는_데이터는_채울_칸과_며칠째까지_쓸_수_있는지와_제외_재료_코드다() {
-		Map<String, Object> data = GeminiMealPlanAdapter.promptData(request());
+		Map<String, Object> data = GeminiMealPlanAdapter.promptData(request(), false);
 
 		assertThat(data).containsEntry("purpose", "SAVING").containsEntry("servings", 2)
 				.containsEntry("excludedAllergenCodes", List.of("SHRIMP"));
@@ -287,6 +287,88 @@ class GeminiMealPlanAdapterTest {
 		assertThatThrownBy(() -> noKey.generate(request()))
 				.isInstanceOfSatisfying(BusinessException.class,
 						e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.AI_UPSTREAM_ERROR));
+		server.verify();
+	}
+
+	// ---- 칸 교체(API 42) ----
+
+	/** 균형, 1인분, 그 칸(3월 6일 점심) 하나. 버섯은 3일 뒤까지. */
+	private static MealPlanAiRequest replaceRequest() {
+		LocalDate slotDate = START.plusDays(2);
+		MealSchedule schedule = new MealSchedule(slotDate, 1, Set.of(MealType.LUNCH), Set.of());
+		return new MealPlanAiRequest(MealPurpose.BALANCED, 1, schedule,
+				List.of(new FridgeStock(31L, "버섯", new BigDecimal("200"), IngredientUnit.G, slotDate.plusDays(3))),
+				List.of(), List.of("김치볶음밥", "계란국"), List.of(31L));
+	}
+
+	@Test
+	void 칸_교체는_교체_규칙을_붙인_지시문과_피할_요리_이름을_보낸다() {
+		server.expect(requestTo(ENDPOINT))
+				.andExpect(content().string(allOf(
+						containsString("7. 레시피 교체"),
+						containsString("균형 잡힌 한국 가정식"),
+						containsString("avoidTitles"),
+						containsString("김치볶음밥"))))
+				.andRespond(withSuccess(geminiResponse("""
+						{"slots": [{"day": 1, "mealType": "LUNCH", "skipped": false, "title": "버섯덮밥", "cookMinutes": 15,
+						  "ingredients": [{"fridgeIngredientId": 31, "name": "버섯", "amount": 100, "unit": "G"}],
+						  "steps": ["버섯을 썬다", "볶는다", "밥에 올린다"]}]}""", "STOP"), MediaType.APPLICATION_JSON));
+
+		List<GeneratedMealSlot> slots = adapter.replace(replaceRequest());
+
+		assertThat(slots).singleElement().satisfies(slot -> {
+			assertThat(slot.date()).isEqualTo(START.plusDays(2));
+			assertThat(slot.mealType()).isEqualTo(MealType.LUNCH);
+			assertThat(slot.title()).isEqualTo("버섯덮밥");
+		});
+		server.verify();
+	}
+
+	@Test
+	void 칸_교체_데이터는_그_칸_날짜가_1일째다() {
+		Map<String, Object> data = GeminiMealPlanAdapter.promptData(replaceRequest(), true);
+
+		assertThat(data).containsEntry("avoidTitles", List.of("김치볶음밥", "계란국"))
+				.containsEntry("avoidMainIngredientIds", List.of(31L));
+		assertThat(data.get("slots")).isEqualTo(List.of(Map.of("day", 1L, "date", "2026-03-06", "mealType", "LUNCH")));
+		assertThat(data.get("fridgeIngredients")).isEqualTo(List.of(
+				Map.of("ingredientId", 31L, "name", "버섯", "amount", new BigDecimal("200"), "unit", "G",
+						"usableUntilDay", 4L)));
+	}
+
+	@Test
+	void 생성_요청에는_교체_규칙과_피할_요리_이름이_없다() {
+		assertThat(GeminiMealPlanAdapter.promptData(request(), false)).doesNotContainKeys("avoidTitles",
+				"avoidMainIngredientIds");
+		for (MealPurpose purpose : MealPurpose.values()) {
+			assertThat(MealPlanPrompt.systemInstruction(purpose)).doesNotContain("레시피 교체", "avoidTitles",
+					"avoidMainIngredientIds");
+			assertThat(MealPlanPrompt.replaceInstruction(purpose))
+					.startsWith(MealPlanPrompt.systemInstruction(purpose))
+					.contains("avoidTitles", "avoidMainIngredientIds");
+		}
+	}
+
+	@Test
+	void 칸_교체의_과부하_503은_쉬며_다시_부르지_않는_공급자_오류다() {
+		server.expect(requestTo(ENDPOINT)).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE)
+				.body("{\"error\":{\"status\":\"UNAVAILABLE\"}}"));
+
+		assertThatThrownBy(() -> adapter.replace(replaceRequest()))
+				.isInstanceOfSatisfying(BusinessException.class, e -> {
+					assertThat(e).isNotInstanceOf(MealPlanAiBusyException.class);
+					assertThat(e.getErrorCode()).isEqualTo(ErrorCode.AI_UPSTREAM_ERROR);
+				});
+		server.verify();
+	}
+
+	@Test
+	void 칸_교체의_시간_초과는_AI_TIMEOUT이다() {
+		server.expect(requestTo(ENDPOINT)).andRespond(withException(new SocketTimeoutException("Read timed out")));
+
+		assertThatThrownBy(() -> adapter.replace(replaceRequest()))
+				.isInstanceOfSatisfying(BusinessException.class,
+						e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.AI_TIMEOUT));
 		server.verify();
 	}
 

@@ -102,10 +102,10 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 | 42 | AI recipes (김종수) | `COOK_ITEM_INVALID` | 400 | 32 | A deduction item is not my ingredient, or amount <= 0 | 차감할 재료를 확인해 주세요 | Re-check items on p4.1.1.2 | No change |
 | 43 | AI recipes (김종수) | `SAVED_RECIPE_NOT_FOUND` | 404 | 35, 36, 37 | Unsave or favorite on a recipe that is not saved | 저장된 레시피가 아니에요 | Reload the saved list | - |
 | 44 | AI recipes (김종수) | `AI_UPSTREAM_ERROR` | 502 | 28, 29, 42 (38: failure notification "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요") | AI service error or refusal | 레시피를 만들지 못했어요. 횟수는 차감되지 않았어요 | Keep the input and retry. Generation failure screen, different text | Not charged; nothing in `usage_logs` |
-| 45 | AI recipes (김종수) | `AI_TIMEOUT` | 504 | 28, 29, 42 (38: failure notification "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요") | No AI response within 60 s (recipes). Meal plan: the server job's limit is (open, #144) | 생성이 오래 걸리고 있어요. 횟수는 차감되지 않았어요 | Same as above | Not charged |
+| 45 | AI recipes (김종수) | `AI_TIMEOUT` | 504 | 28, 29, 42 (38: failure notification "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요") | No AI response within 60 s (recipes). Meal plan: the server job's limit is (open, #122) | 생성이 오래 걸리고 있어요. 횟수는 차감되지 않았어요 | Same as above | Not charged |
 | 46 | AI recipes (김종수) | `AI_INVALID_RESPONSE` | 502 | 28, 29, 42 (38: failure notification "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요") | AI output failed validation (missing fields, unusable unit) | 레시피를 만들지 못했어요. 횟수는 차감되지 않았어요 | Same as above | Not charged |
 | 47 | meal plan (한윤수) | `MEAL_PLAN_LIMIT_EXCEEDED` | 429 | 38 | Monthly meal-plan count used up (basic 1, premium 4) | 이번 달 식단표 생성 횟수를 모두 사용했어요 | Quota exhausted screen | Not charged |
-| 48 | meal plan (한윤수) | `MEAL_PLAN_NO_INGREDIENTS` | - (not a response) | 38 (failure notification) | Ingredients cannot fill even one day, found by the server job after 202 | 냉장고 재료가 부족해 식단표를 만들지 못했어요. 생성 횟수는 차감되지 않았어요 | In-app failure notification (`MEAL_PLAN_FAILED`), no screen | Plan `FAILED`, not charged |
+| 48 | meal plan (한윤수) | `MEAL_PLAN_NO_INGREDIENTS` | 422 (42); - (38, not a response) | 38 (failure notification), 42 | 38: ingredients cannot fill even one day, found by the server job after 202. 42: no usable fridge ingredient for that slot (other slots' allocation subtracted, the slot's own returned, ingredients expiring before the slot date left out); checked before calling AI (proposed 11/25, #176) | 38: 냉장고 재료가 부족해 식단표를 만들지 못했어요. 생성 횟수는 차감되지 않았어요 / 42: 냉장고 재료가 부족해 레시피를 바꾸지 못했어요. 횟수는 차감되지 않았어요 | 38: in-app failure notification (`MEAL_PLAN_FAILED`), no screen. 42: common toast | 38: plan `FAILED`, not charged. 42: slot unchanged, not charged |
 | 49 | meal plan (한윤수) | `MEAL_PLAN_OVERLAP` | 409 | 38 | Without `overwrite`, the period overlaps an existing plan. `details.overlappingDates` | 이미 식단이 있는 날짜가 있어요. 덮어쓸까요? | Warning modal; on "overwrite" resend with `overwrite: true` | Not saved or charged |
 | 50 | meal plan (한윤수) | `PAST_DATE_NOT_ALLOWED` | 400 | 38, 41, 42 | Start date before today, or deleting/replacing a past slot | 지난 날짜는 바꿀 수 없어요 | The start-date sheet blocks past dates. Past meals keep the ⋮ menu; delete/replace shows this text. Common toast | No change |
 | 51 | meal plan (한윤수) | `SLOT_NOT_FOUND` | 404 | 41, 42 | Missing or not owned slot (including slots removed by overwrite) | 식단을 찾을 수 없어요 | Reload the calendar (p5) | - |
@@ -165,7 +165,7 @@ Every `user` API can also return the common codes (`UNAUTHORIZED`, `TOKEN_EXPIRE
 | 39 | `GET /user/meal-plans/calendar` | INVALID_INPUT |
 | 40 | `GET /user/meal-plans/days/{date}` | INVALID_INPUT |
 | 41 | `DELETE /user/meal-plan-slots/{slotId}` | PAST_DATE_NOT_ALLOWED, SLOT_NOT_FOUND |
-| 42 | `POST /user/meal-plan-slots/{slotId}/replace` | GENERATION_LIMIT_EXCEEDED, AI_UPSTREAM_ERROR, AI_TIMEOUT, AI_INVALID_RESPONSE, PAST_DATE_NOT_ALLOWED, SLOT_NOT_FOUND |
+| 42 | `POST /user/meal-plan-slots/{slotId}/replace` | GENERATION_LIMIT_EXCEEDED, MEAL_PLAN_NO_INGREDIENTS, AI_UPSTREAM_ERROR, AI_TIMEOUT, AI_INVALID_RESPONSE, PAST_DATE_NOT_ALLOWED, SLOT_NOT_FOUND |
 | 43 | `GET /user/notifications/summary` | common only |
 | 44 | `GET /user/notifications` | INVALID_INPUT |
 | 45 | `GET /user/cart-items` | common only |
@@ -191,7 +191,7 @@ Every `user` API can also return the common codes (`UNAUTHORIZED`, `TOKEN_EXPIRE
 | --- | --- | --- | --- |
 | Recipe generation (quick, custom) | Per day basic 2, premium 4, + rewards | Right after the validated result is saved | AI error, timeout, validation failure, `NO_INGREDIENTS`: not charged |
 | Regenerate | Same count as generation | Same | Same |
-| Meal-slot replace | Same count as generation | Same | Same. Past slots -> `PAST_DATE_NOT_ALLOWED` |
+| Meal-slot replace | Same count as generation | Same | Same. Past slots -> `PAST_DATE_NOT_ALLOWED`. No usable fridge ingredient -> `MEAL_PLAN_NO_INGREDIENTS` (422, AI not called) |
 | Meal-plan generation | This month basic 1, premium 4 | Right after the server job saves the plan | Too few ingredients (`MEAL_PLAN_NO_INGREDIENTS`), AI error, timeout: failure notification, not charged. Overlap (409) and quota used up (429) are rejected before generation: not charged |
 | Receipt scan | No limit | Never | Retake after OCR failure or non-receipt |
 
@@ -231,7 +231,7 @@ No data returns 200 with empty values; the screen draws its empty state.
 | Case | Server | Frontend |
 | --- | --- | --- |
 | Error or refusal | AI: one automatic retry, then fail. OCR: no retry. Not charged | Keep the input and retry |
-| Timeout | Cut at AI recipe 60 s / OCR 30 s and return 504. Meal plan: the server job ends with a failure notification (limit (open, #144)) | Same for recipes and OCR. Meal plan: nothing on screen; the notification tells the user |
+| Timeout | Cut at AI recipe 60 s / OCR 30 s and return 504. Meal plan: the server job ends with a failure notification (limit (open, #122)) | Same for recipes and OCR. Meal plan: nothing on screen; the notification tells the user |
 | Validation failure | AI output with missing fields or unusable units: ask once more, then 502 | Same |
 | Repeated failures | Watch the failure rate ("20% in 10 minutes" is an earlier draft). Dashboard display waits for admin screens | After 3 failures in a row show "잠시 후 다시 시도해 주세요" (do not block the feature) |
 

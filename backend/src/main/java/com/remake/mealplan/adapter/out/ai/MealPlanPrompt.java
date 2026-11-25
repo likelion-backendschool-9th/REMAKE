@@ -137,9 +137,35 @@ final class MealPlanPrompt {
 	private MealPlanPrompt() {
 	}
 
+	/**
+	 * 식단 칸 교체(API 42)에서만 공통 지시문 뒤에 붙인다. 칸 하나만 보내 AI가 식단표의 다른 칸을 모르므로,
+	 * 바꾸기 전 레시피(첫 번째)와 같은 날 다른 끼니의 이름(avoidTitles), 바꾸기 전 레시피가 쓰던 냉장고 재료
+	 * (avoidMainIngredientIds)를 보내 같은 요리가 다시 나오지 않게 한다.
+	 * 11-25 실측: 이름만 보내면 10번 중 9번, 이름에서 주재료를 짐작하게 해도 10번 중 5번이 바꾸기 전(돼지고기 김치찌개)과
+	 * 같은 돼지고기 찌개였다. 가벼운 모델이 이름에서 주재료를 잘 짐작하지 못해, 서버가 아는 재료 id를 직접 보낸다.
+	 * 번호가 가장 커서 안전·재료 규칙보다 뒤다(냉장고 재료가 적으면 비슷한 요리가 나올 수 있다).
+	 */
+	private static final String REPLACE = """
+
+			7. 레시피 교체
+			- 이미 있던 칸의 레시피를 다른 요리로 바꾸는 요청이다. slots에는 칸이 하나뿐이다.
+			- avoidMainIngredientIds는 바꾸기 전 요리가 쓰던 냉장고 재료의 ingredientId다.
+			  이 재료는 주재료(가장 많이 쓰는 재료)로 쓰지 않는다. 조금 곁들이는 것은 된다.
+			  menuPlan의 mainIngredient도 이 재료가 아닌 냉장고 재료로 고른다.
+			- fridgeIngredients에 avoidMainIngredientIds가 아닌 재료가 없으면 이 재료를 주재료로 써도 되지만,
+			  바꾸기 전 요리와 조리법을 바꾼다(예: 찌개 → 구이·볶음).
+			- avoidTitles의 첫 번째는 바꾸기 전 요리이고, 나머지는 같은 날 다른 끼니의 요리다.
+			  이 이름들과 같은 요리는 만들지 않고, 같은 날 다른 끼니와도 되도록 주재료가 겹치지 않게 한다.
+			""";
+
 	static String systemInstruction(MealPurpose purpose) {
 		return COMMON.formatted(BREAKFAST_COOK_MINUTES, purposeBlock(purpose), Arrays.toString(RecipeUnit.values()),
 				MIN_STEPS, MAX_STEPS, LONG_DISH_MIN_STEPS);
+	}
+
+	/** 식단 칸 교체: 생성과 같은 지시문 + 교체 규칙. */
+	static String replaceInstruction(MealPurpose purpose) {
+		return systemInstruction(purpose) + REPLACE;
 	}
 
 	static String purposeBlock(MealPurpose purpose) {

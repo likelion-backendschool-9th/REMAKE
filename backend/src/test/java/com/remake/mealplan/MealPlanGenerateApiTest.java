@@ -21,12 +21,14 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.stubbing.Answer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.global.web.LoginUserIdArgumentResolver;
+import com.remake.mealplan.application.port.in.MarkMealSlotCookedUseCase;
 import com.remake.mealplan.application.port.out.GeneratedMealSlot;
 import com.remake.mealplan.application.port.out.MealPlanAiBusyException;
 import com.remake.mealplan.application.port.out.MealPlanAiRequest;
@@ -42,6 +44,9 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 
 	private static final String URL = "/api/v1/user/meal-plans/generate";
 	private static final LocalDate TODAY = LocalDate.of(2026, 3, 4);
+
+	@Autowired
+	private MarkMealSlotCookedUseCase markMealSlotCookedUseCase;
 
 	// ---- 요청·준비 ----
 
@@ -526,6 +531,38 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", cookedToday)).isEqualTo(1);
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", tomorrow)).isZero();
 		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", outside)).isEqualTo(1);
+		assertThat(eventProperty("meal_plan_generated", "was_overwritten")).isEqualTo("true");
+	}
+
+	@Test
+	void 덮어쓰는_동안_오늘_칸을_요리하면_그_칸은_남기고_그_끼니는_새로_채우지_않는다() throws Exception {
+		// 덮어쓸 칸은 AI를 부르기 전에 정한다. AI를 기다리는 사이 오늘 칸을 요리하면 완성 때 다시 확인해 남겨야 한다
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		Long oldPlan = completedPlan(userId, TODAY, 5);
+		Long today = slot(userId, oldPlan, TODAY, fridgeId, 100, false);
+		Long tomorrow = slot(userId, oldPlan, TODAY.plusDays(1), fridgeId, 100, false);
+		Long todayRecipe = jdbcTemplate.queryForObject("SELECT recipe_id FROM meal_plan_slots WHERE id = ?",
+				Long.class, today);
+		Answer<List<GeneratedMealSlot>> ai = everySlotUses(fridgeId, 100);
+		given(mealPlanAiAdapter.generate(any())).willAnswer(invocation -> {
+			markMealSlotCookedUseCase.markCooked(userId, today, todayRecipe);
+			return ai.answer(invocation);
+		});
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", true)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		Long newPlan = newestPlanId(userId);
+		assertThat(mealPlan(newPlan)).containsEntry("status", "COMPLETED").containsEntry("generated_days", 5);
+		assertThat(slotDates(newPlan)).containsExactly(TODAY.plusDays(1), TODAY.plusDays(2), TODAY.plusDays(3),
+				TODAY.plusDays(4));
+		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ? AND cooked_at IS NOT NULL", today))
+				.isEqualTo(1);
+		assertThat(count("SELECT COUNT(*) FROM meal_plan_slots WHERE id = ?", tomorrow)).isZero();
+		// 남긴 끼니의 레시피도 만들지 않는다
+		assertThat(count("SELECT COUNT(*) FROM recipes WHERE user_id = ? AND source = 'MEAL_PLAN'", userId))
+				.isEqualTo(4);
 		assertThat(eventProperty("meal_plan_generated", "was_overwritten")).isEqualTo("true");
 	}
 

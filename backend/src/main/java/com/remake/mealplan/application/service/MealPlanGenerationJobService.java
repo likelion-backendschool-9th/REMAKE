@@ -17,9 +17,6 @@ import org.springframework.stereotype.Service;
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
-import com.remake.ingredient.application.port.in.GetFridgeUseCase;
-import com.remake.ingredient.domain.FridgeIngredient;
-import com.remake.ingredient.domain.Ingredient;
 import com.remake.mealplan.application.port.in.MealPlanGenerationJob;
 import com.remake.mealplan.application.port.in.RunMealPlanGenerationUseCase;
 import com.remake.mealplan.application.port.out.GenerateMealPlanAiPort;
@@ -28,7 +25,6 @@ import com.remake.mealplan.application.port.out.LoadMealPlanPort;
 import com.remake.mealplan.application.port.out.MealPlanAiBusyException;
 import com.remake.mealplan.application.port.out.LoadMealPlanSlotPort;
 import com.remake.mealplan.application.port.out.MealPlanAiRequest;
-import com.remake.mealplan.domain.AllocatedSlot;
 import com.remake.mealplan.domain.FridgeStock;
 import com.remake.mealplan.domain.MealPlan;
 import com.remake.mealplan.domain.MealPlanSlot;
@@ -37,12 +33,9 @@ import com.remake.mealplan.domain.MealPlanTrimmer;
 import com.remake.mealplan.domain.MealSchedule;
 import com.remake.mealplan.domain.MealSlotKey;
 import com.remake.mealplan.domain.MealType;
-import com.remake.mealplan.domain.SlotIngredient;
 import com.remake.mealplan.domain.StockLedger;
 import com.remake.mealplan.domain.TrimResult;
 import com.remake.notification.domain.MealPlanFailReason;
-import com.remake.recipe.application.port.in.GetRecipeIngredientsUseCase;
-import com.remake.recipe.application.port.in.RecipeIngredientLine;
 import com.remake.user.application.port.in.GetUserGenerationPreferencesUseCase;
 import com.remake.user.domain.AllergenCode;
 
@@ -70,8 +63,7 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 
 	private final LoadMealPlanPort loadMealPlanPort;
 	private final LoadMealPlanSlotPort loadMealPlanSlotPort;
-	private final GetFridgeUseCase getFridgeUseCase;
-	private final GetRecipeIngredientsUseCase getRecipeIngredientsUseCase;
+	private final MealPlanStockReader stockReader;
 	private final GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase;
 	private final GenerateMealPlanAiPort generateMealPlanAiPort;
 	private final MealPlanResultWriter resultWriter;
@@ -80,15 +72,13 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 	private final List<Duration> busyRetryDelays;
 
 	public MealPlanGenerationJobService(LoadMealPlanPort loadMealPlanPort, LoadMealPlanSlotPort loadMealPlanSlotPort,
-			GetFridgeUseCase getFridgeUseCase, GetRecipeIngredientsUseCase getRecipeIngredientsUseCase,
-			GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase,
+			MealPlanStockReader stockReader, GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase,
 			GenerateMealPlanAiPort generateMealPlanAiPort, MealPlanResultWriter resultWriter, Clock clock,
 			@Value("${remake.meal-plan.ai-retry-delay:1500ms}") Duration retryDelay,
 			@Value("${remake.meal-plan.ai-busy-retry-delays:3s,5s,7s,9s,10s,10s,10s,10s,10s}") String busyRetryDelays) {
 		this.loadMealPlanPort = loadMealPlanPort;
 		this.loadMealPlanSlotPort = loadMealPlanSlotPort;
-		this.getFridgeUseCase = getFridgeUseCase;
-		this.getRecipeIngredientsUseCase = getRecipeIngredientsUseCase;
+		this.stockReader = stockReader;
 		this.getUserGenerationPreferencesUseCase = getUserGenerationPreferencesUseCase;
 		this.generateMealPlanAiPort = generateMealPlanAiPort;
 		this.resultWriter = resultWriter;
@@ -149,12 +139,12 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 				.toList();
 		MealSchedule schedule = new MealSchedule(plan.startDate(), job.maxDays(), plan.mealTypes(), keptSlots);
 
-		List<FridgeStock> fridge = loadFridge(plan.userId());
+		List<FridgeStock> fridge = stockReader.loadFridge(plan.userId());
 		Set<Long> replaced = Set.copyOf(replacedSlotIds);
 		List<MealPlanSlot> remainingSlots = futureSlots.stream()
 				.filter(slot -> !replaced.contains(slot.id()))
 				.toList();
-		StockLedger ledger = StockLedger.of(fridge, allocatedSlots(plan.userId(), remainingSlots), today);
+		StockLedger ledger = stockReader.ledger(plan.userId(), fridge, remainingSlots, today);
 		// 시작일 전에 소비기한이 끝나는 재료는 식단표 어느 날에도 쓸 수 없어 보내지 않는다(usableUntilDay가 1 미만)
 		List<FridgeStock> available = ledger.available().stream()
 				.filter(stock -> !stock.expirationDate().isBefore(plan.startDate()))
@@ -169,7 +159,7 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 		MealPlanAiRequest aiRequest = new MealPlanAiRequest(plan.purpose(), plan.servings(), schedule, available,
 				excludedAllergens);
 		List<GeneratedMealSlot> generated = generateWithRetry(plan.id(), schedule, aiRequest).stream()
-				.map(slot -> keepOwnFridgeIds(slot, fridge))
+				.map(slot -> MealPlanStockReader.keepOwnFridgeIds(slot, fridge))
 				.toList();
 		TrimResult trim = MealPlanTrimmer.trim(schedule,
 				// "못 만듦" 칸은 빠진 칸으로 넘겨 그날에서 자르기가 멈추게 한다
@@ -235,49 +225,6 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 			}
 		}
 		return result;
-	}
-
-	/** 냉장고 재료(ACTIVE). 양·소비기한이 없는 재료는 계산할 수 없어 뺀다. */
-	private List<FridgeStock> loadFridge(Long userId) {
-		return getFridgeUseCase.getFridgeIngredients(userId, null, null, null).stream()
-				.map(FridgeIngredient::ingredient)
-				.filter(ingredient -> ingredient.amount() != null && ingredient.expirationDate() != null)
-				.map(MealPlanGenerationJobService::toFridgeStock)
-				.toList();
-	}
-
-	private static FridgeStock toFridgeStock(Ingredient ingredient) {
-		return new FridgeStock(ingredient.id(), ingredient.name(), ingredient.amount(), ingredient.unit(),
-				ingredient.expirationDate());
-	}
-
-	/** 요리하지 않은 칸들이 쓰기로 한 재료(그 칸 레시피의 재료 줄). */
-	private List<AllocatedSlot> allocatedSlots(Long userId, List<MealPlanSlot> futureSlots) {
-		List<MealPlanSlot> uncooked = futureSlots.stream().filter(slot -> !slot.isCooked()).toList();
-		Map<Long, List<RecipeIngredientLine>> ingredients = getRecipeIngredientsUseCase.getIngredients(userId,
-				uncooked.stream().map(MealPlanSlot::recipeId).distinct().toList());
-		return uncooked.stream()
-				.map(slot -> new AllocatedSlot(slot.slotDate(),
-						ingredients.getOrDefault(slot.recipeId(), List.of()).stream()
-								.map(MealPlanGenerationJobService::toSlotIngredient)
-								.toList()))
-				.toList();
-	}
-
-	private static SlotIngredient toSlotIngredient(RecipeIngredientLine line) {
-		return new SlotIngredient(line.ingredientId(), line.name(), line.amount(), line.unit());
-	}
-
-	/** 내 냉장고에 없는 재료 id는 지운다(냉장고에 없는 재료로 본다). 다른 회원의 재료 id가 레시피에 저장되지 않게 한다. */
-	private static GeneratedMealSlot keepOwnFridgeIds(GeneratedMealSlot slot, List<FridgeStock> fridge) {
-		Set<Long> ownIds = fridge.stream().map(FridgeStock::ingredientId).collect(Collectors.toSet());
-		List<SlotIngredient> ingredients = slot.ingredients().stream()
-				.map(ingredient -> ingredient.usesFridge() && !ownIds.contains(ingredient.fridgeIngredientId())
-						? new SlotIngredient(null, ingredient.name(), ingredient.amount(), ingredient.unit())
-						: ingredient)
-				.toList();
-		return new GeneratedMealSlot(slot.date(), slot.mealType(), slot.title(), slot.cookMinutes(), slot.tips(),
-				ingredients, slot.steps(), slot.skipped());
 	}
 
 	private void fail(MealPlanGenerationJob job, MealPlanFailReason reason, String errorCode) {
