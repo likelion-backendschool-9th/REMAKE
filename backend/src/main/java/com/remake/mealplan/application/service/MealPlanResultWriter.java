@@ -78,8 +78,10 @@ class MealPlanResultWriter {
 		saveMealPlanSlotPort.saveAll(newSlots);
 		saveMealPlanPort.update(plan);
 		int remaining = consumeMealPlanQuotaUseCase.consumeMealPlanQuota(plan.userId()).remaining();
+		// 부족 재료 장바구니 담기(#91)가 아직 없어 0. 연결하면 AddCartItemsUseCase가 넣은 행 수로 바꾼다
+		int cartAddedCount = 0;
 		createMealPlanNotificationUseCase.notifyMealPlanCompleted(plan.userId(), plan.id(), plan.startDate(),
-				generatedDays);
+				generatedDays, job.maxDays(), cartAddedCount);
 
 		eventTracker.track(EventName.MEAL_PLAN_GENERATED, Screen.UNKNOWN, Map.of(
 				"meal_plan_id", plan.id(),
@@ -87,8 +89,7 @@ class MealPlanResultWriter {
 				"meal_type_count", plan.mealTypes().size(),
 				"generated_days", generatedDays,
 				"shortage_count", shortageCount,
-				// 부족 재료 장바구니 담기(#91)가 아직 없어 0. 연결하면 AddCartItemsUseCase가 넣은 행 수로 바꾼다
-				"cart_added_count", 0,
+				"cart_added_count", cartAddedCount,
 				// 기존 식단표의 칸을 지우고 바꿨는지(겹침 모달에서 덮어쓰기를 골랐어도 지운 칸이 없으면 false)
 				"was_overwritten", !replacedSlotIds.isEmpty(),
 				"duration_ms", durationMillis(job.acceptedAt()),
