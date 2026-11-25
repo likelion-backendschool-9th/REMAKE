@@ -31,7 +31,7 @@ final class EventPropertyValues {
 			Map.entry("scan_method", Set.of("CAMERA", "GALLERY")),
 			Map.entry("recipe_mode", Set.of("QUICK", "CUSTOM")),
 			Map.entry("detail_origin", Set.of("LIST", "MEAL_PLAN", "SHARED", "GENERATE", "SAVED")),
-			Map.entry("save_source", Set.of("RECIPE", "SHARED_RECIPE")),
+			Map.entry("save_source", Set.of("own", "shared")),
 			Map.entry("feedback_value", Set.of("LIKE", "DISLIKE")),
 			Map.entry("meal_purpose", Set.of("BALANCED", "DIET", "HIGH_PROTEIN", "SIMPLE", "SAVING")),
 			Map.entry("meal_type", Set.of("BREAKFAST", "LUNCH", "DINNER")),

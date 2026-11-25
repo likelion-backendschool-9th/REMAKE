@@ -72,7 +72,7 @@ public enum EventName {
 	COOK_FEEDBACK_ANSWERED("cook_feedback_answered", EventSource.CLIENT, Set.of("feedback_value")), // E50
 	MEAL_PLAN_SETUP_VIEWED("meal_plan_setup_viewed", EventSource.CLIENT, Set.of("remaining_quota")), // E51
 	MEAL_PLAN_GENERATE_STARTED("meal_plan_generate_started", EventSource.CLIENT, Set.of("meal_purpose", "meal_type_count", "servings", "start_offset_days")), // E52
-	MEAL_PLAN_GENERATED("meal_plan_generated", EventSource.SERVER, Set.of("meal_plan_id", "meal_purpose", "meal_type_count", "generated_days", "shortage_count", "duration_ms", "remaining_quota")), // E53
+	MEAL_PLAN_GENERATED("meal_plan_generated", EventSource.SERVER, Set.of("meal_plan_id", "meal_purpose", "meal_type_count", "generated_days", "shortage_count", "cart_added_count", "was_overwritten", "duration_ms", "remaining_quota")), // E53
 	MEAL_PLAN_GENERATE_FAILED("meal_plan_generate_failed", EventSource.SERVER, Set.of("error_code", "duration_ms")), // E54
 	MEAL_PLAN_SHORTAGE_SHOWN("meal_plan_shortage_shown", EventSource.CLIENT, Set.of("shortage_count", "generated_days")), // E55
 	MEAL_CALENDAR_VIEWED("meal_calendar_viewed", EventSource.CLIENT, Set.of("month_offset", "has_plan")), // E56
@@ -93,7 +93,6 @@ public enum EventName {
 	SHARED_RECIPE_VIEWED("shared_recipe_viewed", EventSource.CLIENT, Set.of("shared_recipe_id", "view_from", "rank_bucket")), // E70
 	SHARED_WRITE_STARTED("shared_write_started", EventSource.CLIENT, Set.of("recipe_id")), // E71
 	SHARED_RECIPE_PUBLISHED("shared_recipe_published", EventSource.SERVER, Set.of("shared_recipe_id")), // E72
-	SHARED_RECIPE_SAVED("shared_recipe_saved", EventSource.SERVER, Set.of("shared_recipe_id", "cart_added_count")), // E73
 	SHARED_RECIPE_REPORTED("shared_recipe_reported", EventSource.SERVER, Set.of("shared_recipe_id", "report_reason")), // E74
 	WEEKLY_REWARD_GRANTED("weekly_reward_granted", EventSource.SERVER, Set.of("reward_rank", "reward_amount")); // E75
 

@@ -68,6 +68,15 @@ public record User(
 				lastMealPurpose, deletedAt);
 	}
 
+	/** 식단표 생성에서 고른 식단 목적을 다음 기본값으로 기억한다. */
+	public User rememberMealPurpose(String mealPurpose) {
+		if (mealPurpose == null || mealPurpose.isBlank()) {
+			throw new IllegalArgumentException("식단 목적이 필요합니다.");
+		}
+		return new User(id, provider, providerUserId, email, role, status, plan, householdSize, onboardingCompleted,
+				recipeSupplementEnabled, notificationEnabled, mealPurpose, deletedAt);
+	}
+
 	private static void validateHouseholdSize(int householdSize) {
 		if (householdSize < 1 || householdSize > MAX_HOUSEHOLD_SIZE) {
 			throw new IllegalArgumentException("가구원 수는 1명 이상 " + MAX_HOUSEHOLD_SIZE + "명 이하여야 합니다.");
