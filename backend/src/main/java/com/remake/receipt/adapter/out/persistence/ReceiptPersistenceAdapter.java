@@ -3,6 +3,8 @@ package com.remake.receipt.adapter.out.persistence;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Repository;
 
@@ -10,6 +12,8 @@ import com.remake.receipt.application.port.in.RegisterReceiptUseCase.Command;
 import com.remake.receipt.application.port.in.RegisterReceiptUseCase.Item;
 import com.remake.receipt.application.port.out.FindDuplicateReceiptPort;
 import com.remake.receipt.application.port.out.SaveReceiptPort;
+import com.remake.receipt.application.port.out.ReceiptHistoryPort;
+import com.remake.receipt.application.port.in.ReceiptHistoryUseCase.Row;
 import com.remake.receipt.domain.ReceiptStoreCode;
 
 import jakarta.persistence.EntityManager;
@@ -17,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
-class ReceiptPersistenceAdapter implements SaveReceiptPort, FindDuplicateReceiptPort {
+class ReceiptPersistenceAdapter implements SaveReceiptPort, FindDuplicateReceiptPort, ReceiptHistoryPort {
 
 	private final EntityManager entityManager;
 
@@ -87,5 +91,55 @@ class ReceiptPersistenceAdapter implements SaveReceiptPort, FindDuplicateReceipt
 		var receiptItem = new ReceiptItemJpaEntity(receiptId, categoryId, item);
 		entityManager.persist(receiptItem);
 		return receiptItem.getId();
+	}
+
+	@Override
+	public List<Row> list(Long userId, LocalDate from, LocalDate until) {
+		return entityManager.createQuery("""
+				SELECT r.id, r.storeCode, r.storeName, r.purchasedOn, COUNT(i.id), COALESCE(SUM(i.price), 0L)
+				FROM ReceiptJpaEntity r LEFT JOIN ReceiptItemJpaEntity i ON i.receiptId = r.id
+				WHERE r.userId = :userId AND r.purchasedOn >= :from AND r.purchasedOn < :until
+				GROUP BY r.id, r.storeCode, r.storeName, r.purchasedOn
+				ORDER BY r.purchasedOn DESC, r.id DESC
+				""", Object[].class)
+				.setParameter("userId", userId)
+				.setParameter("from", from)
+				.setParameter("until", until)
+				.getResultList().stream()
+				.map(row -> new Row((Long) row[0], (ReceiptStoreCode) row[1], (String) row[2],
+						(LocalDate) row[3], (Long) row[4], ((Number) row[5]).longValue()))
+				.toList();
+	}
+
+	@Override
+	public Optional<StoredReceipt> find(Long userId, Long id) {
+		return entityManager.createQuery("""
+				SELECT r FROM ReceiptJpaEntity r WHERE r.userId = :userId AND r.id = :id
+				""", ReceiptJpaEntity.class)
+				.setParameter("userId", userId)
+				.setParameter("id", id)
+				.getResultList().stream().findFirst()
+				.map(r -> new StoredReceipt(r.getId(), r.getStoreCode(), r.getStoreName(), r.getPurchasedOn(),
+						r.getImageKey()));
+	}
+
+	@Override
+	public List<StoredItem> items(Long receiptId) {
+		return entityManager.createQuery("""
+				SELECT i FROM ReceiptItemJpaEntity i WHERE i.receiptId = :receiptId ORDER BY i.id
+				""", ReceiptItemJpaEntity.class)
+				.setParameter("receiptId", receiptId)
+				.getResultList().stream()
+				.map(i -> new StoredItem(i.getName(), i.getCategoryId(), i.getStorage(), i.getAmount(),
+						i.getUnit(), i.getPrice()))
+				.toList();
+	}
+
+	@Override
+	public boolean delete(Long userId, Long id) {
+		return entityManager.createQuery("DELETE FROM ReceiptJpaEntity r WHERE r.userId = :userId AND r.id = :id")
+				.setParameter("userId", userId)
+				.setParameter("id", id)
+				.executeUpdate() == 1;
 	}
 }

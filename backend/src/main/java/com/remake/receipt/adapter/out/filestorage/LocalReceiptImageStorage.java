@@ -51,11 +51,19 @@ public class LocalReceiptImageStorage implements ReceiptImageStoragePort {
 	}
 
 	@Override
+	public byte[] read(String imageKey) throws IOException {
+		return Files.readAllBytes(imagePath(imageKey));
+	}
+
+	@Override
 	public void delete(String imageKey) throws IOException {
-		// 서버가 발급한 키만 허용해 사진 폴더 밖의 파일을 삭제하지 않게 한다.
+		Files.deleteIfExists(imagePath(imageKey));
+	}
+
+	private Path imagePath(String imageKey) {
 		if (!IMAGE_KEY.matcher(imageKey).matches()) {
 			throw new IllegalArgumentException("Invalid receipt image key");
 		}
-		Files.deleteIfExists(directory.resolve(imageKey));
+		return directory.resolve(imageKey);
 	}
 }
