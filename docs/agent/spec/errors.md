@@ -102,7 +102,7 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 | 42 | AI recipes (김종수) | `COOK_ITEM_INVALID` | 400 | 32 | A deduction item is not my ingredient, or amount <= 0 | 차감할 재료를 확인해 주세요 | Re-check items on p4.1.1.2 | No change |
 | 43 | AI recipes (김종수) | `SAVED_RECIPE_NOT_FOUND` | 404 | 35, 36, 37 | Unsave or favorite on a recipe that is not saved | 저장된 레시피가 아니에요 | Reload the saved list | - |
 | 44 | AI recipes (김종수) | `AI_UPSTREAM_ERROR` | 502 | 28, 29, 42 (38: failure notification "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요") | AI service error or refusal | 레시피를 만들지 못했어요. 횟수는 차감되지 않았어요 | Keep the input and retry. Generation failure screen, different text | Not charged; nothing in `usage_logs` |
-| 45 | AI recipes (김종수) | `AI_TIMEOUT` | 504 | 28, 29, 42 (38: failure notification "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요") | No AI response within 60 s (recipes). Meal plan: the server job's limit is (open, #144) | 생성이 오래 걸리고 있어요. 횟수는 차감되지 않았어요 | Same as above | Not charged |
+| 45 | AI recipes (김종수) | `AI_TIMEOUT` | 504 | 28, 29, 42 (38: failure notification "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요") | No AI response within 60 s (recipes). Meal plan: the server job's limit is (open, #122) | 생성이 오래 걸리고 있어요. 횟수는 차감되지 않았어요 | Same as above | Not charged |
 | 46 | AI recipes (김종수) | `AI_INVALID_RESPONSE` | 502 | 28, 29, 42 (38: failure notification "식단표를 만들지 못했어요. 잠시 후 다시 만들어 주세요. 생성 횟수는 차감되지 않았어요") | AI output failed validation (missing fields, unusable unit) | 레시피를 만들지 못했어요. 횟수는 차감되지 않았어요 | Same as above | Not charged |
 | 47 | meal plan (한윤수) | `MEAL_PLAN_LIMIT_EXCEEDED` | 429 | 38 | Monthly meal-plan count used up (basic 1, premium 4) | 이번 달 식단표 생성 횟수를 모두 사용했어요 | Quota exhausted screen | Not charged |
 | 48 | meal plan (한윤수) | `MEAL_PLAN_NO_INGREDIENTS` | - (not a response) | 38 (failure notification) | Ingredients cannot fill even one day, found by the server job after 202 | 냉장고 재료가 부족해 식단표를 만들지 못했어요. 생성 횟수는 차감되지 않았어요 | In-app failure notification (`MEAL_PLAN_FAILED`), no screen | Plan `FAILED`, not charged |
@@ -231,7 +231,7 @@ No data returns 200 with empty values; the screen draws its empty state.
 | Case | Server | Frontend |
 | --- | --- | --- |
 | Error or refusal | AI: one automatic retry, then fail. OCR: no retry. Not charged | Keep the input and retry |
-| Timeout | Cut at AI recipe 60 s / OCR 30 s and return 504. Meal plan: the server job ends with a failure notification (limit (open, #144)) | Same for recipes and OCR. Meal plan: nothing on screen; the notification tells the user |
+| Timeout | Cut at AI recipe 60 s / OCR 30 s and return 504. Meal plan: the server job ends with a failure notification (limit (open, #122)) | Same for recipes and OCR. Meal plan: nothing on screen; the notification tells the user |
 | Validation failure | AI output with missing fields or unusable units: ask once more, then 502 | Same |
 | Repeated failures | Watch the failure rate ("20% in 10 minutes" is an earlier draft). Dashboard display waits for admin screens | After 3 failures in a row show "잠시 후 다시 시도해 주세요" (do not block the feature) |
 

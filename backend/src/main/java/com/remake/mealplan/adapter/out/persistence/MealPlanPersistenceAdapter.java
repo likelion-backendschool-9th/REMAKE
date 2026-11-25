@@ -45,8 +45,23 @@ class MealPlanPersistenceAdapter implements LoadMealPlanPort, SaveMealPlanPort, 
 	}
 
 	@Override
+	public boolean existsWithStatus(Long userId, MealPlanStatus status) {
+		return mealPlanRepository.existsByUserIdAndStatus(userId, status);
+	}
+
+	@Override
 	public Optional<MealPlan> loadById(Long mealPlanId) {
 		return mealPlanRepository.findById(mealPlanId).map(MealPlanJpaEntity::toDomain);
+	}
+
+	@Override
+	public List<MealPlan> loadByStatusStartingBetween(Long userId, MealPlanStatus status, LocalDate from,
+			LocalDate to) {
+		return mealPlanRepository
+				.findByUserIdAndStatusAndStartDateBetweenOrderByStartDateAscIdAsc(userId, status, from, to)
+				.stream()
+				.map(MealPlanJpaEntity::toDomain)
+				.toList();
 	}
 
 	@Override
