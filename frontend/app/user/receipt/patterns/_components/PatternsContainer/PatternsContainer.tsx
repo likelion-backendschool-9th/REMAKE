@@ -8,7 +8,7 @@ import { IngredientRow } from "@/components/IngredientRow/IngredientRow";
 import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
 import { useIsClient } from "@/hooks/useIsClient";
-import { dayjs } from "@/lib/dayjs";
+import { todayInKst } from "@/lib/dayjs";
 import { formatFullDate, formatWon } from "@/lib/format";
 import { formatAmount, getCategoryImage, getStorage } from "@/lib/ingredients";
 
@@ -40,11 +40,11 @@ type PatternsContainerProps = {
  * p3.4 나의 소비. 지난 6개월 월 탭, 버린 식비(→ p3.4.1), 그 달 지출·평균 차이, 카테고리 비율 막대 + 범례,
  * 월~일 한 주(고른 날 아래 그 날 금액), 고른 날의 "총 N원"과 품목 목록(domain-rules 3).
  * 상태: 기본(p3.4-소비 패턴) / 그 날 소비 없음(p3.4-소비 패턴-빈 리스트) / 불러오는 중(p3.4-소비 패턴-스켈레톤).
- * 오늘 날짜는 브라우저에서만 읽는다(미리 그리는 화면에서 시계를 읽지 않음, cacheComponents).
+ * 오늘 날짜는 서버와 같은 KST 날짜(todayInKst)로, 브라우저에서만 읽는다(미리 그리는 화면에서 시계를 읽지 않음, cacheComponents).
  */
 export function PatternsContainer({ pattern, dayItems, today: todayProp }: PatternsContainerProps) {
   const isClient = useIsClient();
-  const today = todayProp ?? (isClient ? dayjs().format("YYYY-MM-DD") : null);
+  const today = todayProp ?? (isClient ? todayInKst() : null);
 
   return (
     <>

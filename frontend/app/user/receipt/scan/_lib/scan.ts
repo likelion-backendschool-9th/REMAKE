@@ -87,14 +87,8 @@ export const EXPIRY_NOTICE =
 /**
  * 소비기한 날짜 → 상태와 문구(D-N, D-DAY, 폐기-N). 기준은 domain-rules 2(지남·당일=위험, 1~3일=임박, 그 외=여유).
  * 냉장고(저장된 재료)는 서버가 준 status·dDay를 그대로 쓴다. 등록 전 OCR 결과는 저장 전이고 사용자가 소비기한을 고치므로
- * 이 화면에서만 계산한다(11/25 결정, blueprint §10 예외). 오늘은 서버와 같게 KST 날짜(todayInKst)를 넘긴다.
+ * 이 화면에서만 계산한다(11/25 결정, blueprint §10 예외). 오늘은 서버와 같게 KST 날짜(lib/dayjs todayInKst)를 넘긴다.
  */
-/** 오늘 날짜 "2026-11-25"를 KST로. 기기 시간대가 달라도 서버(KST)와 같은 날로 센다 */
-export function todayInKst(now: Date = new Date()): string {
-  // en-CA 형식이 YYYY-MM-DD
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(now);
-}
-
 export function getExpiry(
   expirationDate: string,
   today: string,

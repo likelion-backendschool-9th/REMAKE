@@ -9,7 +9,7 @@ import { AltArrowDownIcon } from "@solar-icons/react/linear";
 import { EmptyState } from "@/components/EmptyState/EmptyState";
 import { MainHeader } from "@/components/MainHeader/MainHeader";
 import { Skeleton } from "@/components/Skeleton/Skeleton";
-import { dayjs } from "@/lib/dayjs";
+import { todayInKst } from "@/lib/dayjs";
 import { formatDateRange, formatNumber, formatWon, formatYearMonth } from "@/lib/format";
 import { MAIN_TABS, NOTIFICATIONS_HREF, SETTINGS_HREF } from "@/lib/navigation";
 
@@ -144,7 +144,7 @@ function ReceiptMonthView({
   today?: string;
   initialMonthSheetOpen: boolean;
 }) {
-  const [today] = useState(() => todayProp ?? dayjs().format("YYYY-MM-DD"));
+  const [today] = useState(() => todayProp ?? todayInKst());
   const [month, setMonth] = useState(receiptMonth.month);
   const [isMonthSheetOpen, setIsMonthSheetOpen] = useState(initialMonthSheetOpen);
   const months = recentMonths(today);

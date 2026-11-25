@@ -13,6 +13,7 @@ import { IngredientRow } from "@/components/IngredientRow/IngredientRow";
 import { SegmentedControl } from "@/components/SegmentedControl/SegmentedControl";
 import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
+import { todayInKst } from "@/lib/dayjs";
 import { formatNumber, formatWon } from "@/lib/format";
 import { formatAmount, getCategoryImage, getStorage } from "@/lib/ingredients";
 
@@ -26,7 +27,6 @@ import {
   scanItemEditHref,
   type ScanResult,
   sumScanPrice,
-  todayInKst,
 } from "../../../_lib/scan";
 
 import styles from "./ReceiptResultContainer.module.css";
