@@ -9,8 +9,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import jakarta.servlet.http.Cookie;
 
@@ -23,7 +25,12 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 
 import com.remake.auth.application.port.out.JwtTokenPort;
-import com.remake.ingredient.application.port.in.DeleteIngredientsForUserUseCase;
+import com.remake.ingredient.application.port.in.RegisterCartIngredientsUseCase;
+import com.remake.ingredient.application.port.in.RegisterIngredientCommand;
+import com.remake.ingredient.domain.IngredientCategoryCode;
+import com.remake.ingredient.domain.IngredientUnit;
+import com.remake.ingredient.domain.StorageLocation;
+import com.remake.receipt.application.port.in.DeleteReceiptsForUserUseCase;
 import com.remake.support.IntegrationTestSupport;
 import com.remake.user.domain.UserRole;
 
@@ -42,7 +49,10 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 	private JsonMapper json;
 
 	@Autowired
-	private DeleteIngredientsForUserUseCase deleteIngredientsForUser;
+	private DeleteReceiptsForUserUseCase deleteReceiptsForUser;
+
+	@Autowired
+	private RegisterCartIngredientsUseCase registerCartIngredients;
 
 	private Long owner;
 
@@ -110,6 +120,28 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 가격_없는_직접_등록과_장바구니_이동은_출처만_남기고_식비에서_제외한다() throws Exception {
+		long directId = registerIngredient(owner, "null");
+		long cartId = registerCartIngredients.registerCartIngredients(List.of(new RegisterIngredientCommand(
+				owner, "우유", IngredientCategoryCode.DAIRY_EGG, StorageLocation.FRIDGE,
+				null, null, BigDecimal.ONE, IngredientUnit.EA, null, null))).getFirst();
+		long receiptId = registerReceipt(owner, "2026-03-03", 3000);
+		mockMvc.perform(delete(RECEIPTS + "/" + receiptId).cookie(cookie(owner)))
+				.andExpect(status().isNoContent());
+
+		assertThat(jdbcTemplate.queryForList("""
+				SELECT ingredient_id FROM manual_ingredient_expenses WHERE user_id = ? AND price IS NULL
+				""", Long.class, owner)).containsExactlyInAnyOrder(directId, cartId);
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT count(*) FROM manual_ingredient_expenses WHERE user_id = ?", Long.class, owner)).isEqualTo(2);
+		mockMvc.perform(get(EXPENSES + "/patterns").cookie(cookie(owner)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalAmount").value(0))
+				.andExpect(jsonPath("$.categories").isEmpty())
+				.andExpect(jsonPath("$.dailyTotals").isEmpty());
+	}
+
+	@Test
 	void 회원_탈퇴_정리에서는_이미_삭제한_재료의_지출도_제거한다() throws Exception {
 		long deleted = registerIngredient(owner, "1000");
 		Long other = createUser();
@@ -117,7 +149,7 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 		mockMvc.perform(delete(INGREDIENTS + "/" + deleted).cookie(cookie(owner)))
 				.andExpect(status().isNoContent());
 
-		deleteIngredientsForUser.deleteIngredientsForUser(owner);
+		deleteReceiptsForUser.deleteReceiptsForUser(owner);
 
 		assertThat(jdbcTemplate.queryForList("SELECT user_id FROM manual_ingredient_expenses", Long.class))
 				.containsExactly(other);

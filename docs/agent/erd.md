@@ -26,7 +26,7 @@
 | 5 | `subscriptions` | Subscriptions | Premium subscription (Toss Payments card auto-billing). One row per subscription; at most one unfinished subscription per member | 1 login/settings | 이준호 | 12 |
 | 6 | `subscription_payments` | Subscription payments | One row per first payment and per monthly auto-payment (success or failure) | 1 login/settings | 이준호 | 12 |
 | 7 | `ingredient_categories` | Ingredient categories | 12 categories (image, default storage, default shelf life) | 2 fridge | 김재연 | 7 |
-| 8 | `ingredients` | Fridge ingredients | One fridge ingredient. Deleted when the amount reaches 0 | 2 fridge | 김재연 | 13 |
+| 8 | `ingredients` | Fridge ingredients | One fridge ingredient. Deleted when the amount reaches 0. Registrations without a receipt also record their origin | 2 fridge | 김재연 | 13 |
 | 9 | `ingredient_logs` | Ingredient use and discard logs | "Used / discarded" and cook deductions. Source of the discarded cost | 2 fridge | 김재연 | 9 |
 | 10 | `receipts` | Receipts | One registered receipt. Kept 6 months. Deleting removes it from spending and patterns (fridge ingredients stay) | 3 receipts | 이동준 | 9 |
 | 11 | `receipt_items` | Receipt items | One food line of a receipt | 3 receipts | 이동준 | 9 |
@@ -45,7 +45,7 @@
 | 24 | `notifications` | Notifications | One notification for a member | 6 notifications | 이상호 | 8 |
 | 25 | `events` | Events | Raw behavior events (frontend and server). Names and properties in `spec/events.md` | common (events) | 이준호 | 12 |
 | 26 | `ingredient_catalog` | Ingredient unit dictionary | Ingredient name -> unit, category, shelf life. Used only inside the server to pick units (API 14, 15, 16, 21). Never exposed by screens or APIs | 2 fridge | 김재연 | 6 |
-| 27 | `manual_ingredient_expenses` | Manual ingredient expenses | Snapshot of a priced manual registration for expense history | 3 receipts | 이동준 | 9 |
+| 27 | `manual_ingredient_expenses` | Manual ingredient expenses | Registration snapshots for ingredients added without a receipt | 3 receipts | 이동준 | 9 |
 
 ## ERD diagram
 
@@ -67,6 +67,8 @@ erDiagram
   users ||--o{ receipts : "user_id"
   receipts ||--o{ receipt_items : "receipt_id"
   ingredient_categories ||--o{ receipt_items : "category_id"
+  users ||--o{ manual_ingredient_expenses : "user_id"
+  ingredient_categories ||--o{ manual_ingredient_expenses : "category_id"
   users ||--o{ recipes : "user_id"
   recipes ||--o{ recipe_ingredients : "recipe_id"
   ingredients |o--o{ recipe_ingredients : "ingredient_id"
@@ -767,17 +769,21 @@ Internal reference data that maps an ingredient name to a unit, category and she
 
 ### 27. `manual_ingredient_expenses` (Manual ingredient expenses)
 
-| Column | Type | Constraints / use |
-| --- | --- | --- |
-| `ingredient_id` | bigint | PK, original ingredient ID kept after deletion |
-| `user_id` | bigint | Required, FK to users |
-| `category_id` | bigint | Required, FK to ingredient_categories |
-| `name`, `storage`, `unit` | varchar | Required, registration values |
-| `amount` | numeric(10,3) | Required, quantity at registration |
-| `price` | bigint | Required, registration price in KRW |
-| `created_at` | timestamp | Required, ingredient registration time (KST) |
+Direct registration and cart-to-fridge moves record the original values in the same transaction, even without a price. Only priced records contribute to expenses. The record survives inventory deletion and the receipt module removes it on withdrawal. Existing rows are not imported.
 
-Record a priced registration on insert when it has no receipt item. Keep the record after inventory edits, use, discard and deletion, and remove it on account withdrawal. An index on `(user_id, created_at)` supports period queries. Earlier rows without provable origin are not imported.
+| Column | Type | Key | Ref | Null | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `ingredient_id` | bigint | PK | - | no | - | Original ingredient ID, retained after inventory deletion |
+| `user_id` | bigint | FK | users | no | - | Member |
+| `category_id` | bigint | FK | ingredient_categories | no | - | Category at registration |
+| `name` | varchar(50) | | | no | - | Name at registration |
+| `storage` | varchar(10) | | | no | - | Storage at registration |
+| `amount` | numeric(10,3) | | | no | - | Quantity at registration |
+| `unit` | varchar(10) | | | no | - | Unit at registration |
+| `price` | bigint | | | yes | - | Price at registration (KRW), if supplied |
+| `created_at` | timestamp | | | no | - | Registration time (KST) |
+
+An index on `(user_id, created_at)` supports period queries.
 
 ## Relationships
 
@@ -795,6 +801,8 @@ Record a priced registration on insert when it has no receipt item. Keep the rec
 | `users` | `ingredient_logs` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `ingredients` | `ingredient_logs` | ingredient_id | 1:N | yes | SET NULL |
 | `users` | `receipts` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `users` | `manual_ingredient_expenses` | user_id | 1:N | no | CASCADE (the app deletes on withdrawal) |
+| `ingredient_categories` | `manual_ingredient_expenses` | category_id | 1:N | no | RESTRICT |
 | `receipts` | `receipt_items` | receipt_id | 1:N | no | CASCADE (deleted together by the 6-month cleanup) |
 | `ingredient_categories` | `receipt_items` | category_id | 1:N | no | RESTRICT |
 | `users` | `recipes` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
