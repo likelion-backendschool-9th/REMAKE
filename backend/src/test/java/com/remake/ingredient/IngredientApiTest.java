@@ -79,13 +79,22 @@ class IngredientApiTest extends IntegrationTestSupport {
 				// 시험용 시계의 오늘(2026-03-04)부터 8일 남아 여유다
 				.andExpect(jsonPath("$.dDay").value(8))
 				.andExpect(jsonPath("$.status").value("OK"))
+				// 사전 단위로 등록했으니 이름을 고치면 단위도 다시 정해지는 재료다(#233)
+				.andExpect(jsonPath("$.unitFollowsName").value(true))
 				.andExpect(jsonPath("$.isExpirationEstimated").doesNotExist());
 
 		Long id = jdbcTemplate.queryForObject("SELECT id FROM ingredients", Long.class);
 		mockMvc.perform(as(me, get(URL + "/" + id)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.id").value(id))
-				.andExpect(jsonPath("$.amount").value(2));
+				.andExpect(jsonPath("$.amount").value(2))
+				.andExpect(jsonPath("$.unitFollowsName").value(true));
+
+		// 사전과 다른 단위(장바구니·영수증 예외)로 바꿔 두면 false가 된다
+		jdbcTemplate.update("UPDATE ingredients SET unit = 'G' WHERE id = ?", id);
+		mockMvc.perform(as(me, get(URL + "/" + id)))
+				.andExpect(jsonPath("$.unit").value("G"))
+				.andExpect(jsonPath("$.unitFollowsName").value(false));
 	}
 
 	@Test
