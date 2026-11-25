@@ -8,7 +8,8 @@ import { OptionItem } from "@/components/OptionItem/OptionItem";
 
 import styles from "./SelectSheet.module.css";
 
-type Option<T extends string> = { value: T; label: string };
+/** disabled: 지금 고를 수 없는 항목(예: 이번 주에 이미 공유한 레시피의 "공유하기") */
+type Option<T extends string> = { value: T; label: string; disabled?: boolean };
 
 type SelectSheetProps<T extends string> = {
   isOpen: boolean;
@@ -99,6 +100,7 @@ function SelectSheetBody<T extends string>({
             name={name}
             value={option.value}
             checked={selected.includes(option.value)}
+            disabled={option.disabled}
             onChange={() => toggle(option.value)}
           >
             {option.label}
