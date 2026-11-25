@@ -42,6 +42,16 @@ interface MealPlanSlotJpaRepository extends JpaRepository<MealPlanSlotJpaEntity,
 			""")
 	Optional<MealPlanSlotJpaEntity> findByIdAndUserId(@Param("slotId") Long slotId, @Param("userId") Long userId);
 
+	/** findByIdAndUserId와 같지만 행을 잠그고 읽는다(요리 완료 표시가 식단표 덮어쓰기 저장과 겹치지 않게). */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("""
+			select s from MealPlanSlotJpaEntity s
+			where s.id = :slotId
+			  and exists (select p.id from MealPlanJpaEntity p where p.id = s.mealPlanId and p.userId = :userId)
+			""")
+	Optional<MealPlanSlotJpaEntity> findByIdAndUserIdForUpdate(@Param("slotId") Long slotId,
+			@Param("userId") Long userId);
+
 	/** 칸들을 잠그고 읽는다. 여러 칸을 잠글 때 순서가 엇갈리지 않게 id 순. 이미 지워진 칸은 빠진다. */
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select s from MealPlanSlotJpaEntity s where s.id in :ids order by s.id")

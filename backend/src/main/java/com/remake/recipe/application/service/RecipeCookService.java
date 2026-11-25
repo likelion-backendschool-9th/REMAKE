@@ -88,14 +88,15 @@ class RecipeCookService implements CookRecipeUseCase {
 						|| suggested.get(i.ingredientId()).compareTo(i.amount()) != 0)
 				.count();
 
+		// 식단 칸을 재료보다 먼저 잠근다. 식단표 덮어쓰기 저장은 칸을 잠근 뒤 새 레시피 재료로 냉장고 재료 행을 참조하므로,
+		// 재료를 먼저 잠그면 두 트랜잭션이 서로를 기다릴 수 있다(교착)
+		if (mealPlanSlotId != null) {
+			markMealSlotCookedUseCase.markCooked(userId, mealPlanSlotId, recipe.id());
+		}
 		// 여러 요청이 같은 재료를 잠글 때 순서가 엇갈리지 않게 id 순으로 뺀다
 		items.stream().sorted(Comparator.comparing(CookItem::ingredientId)).forEach(item ->
 				consumeIngredientUseCase.consumeIngredient(new ConsumeIngredientCommand(userId, item.ingredientId(),
 						IngredientLogType.USED, item.amount(), ConsumeVia.COOK)));
-
-		if (mealPlanSlotId != null) {
-			markMealSlotCookedUseCase.markCooked(userId, mealPlanSlotId, recipe.id());
-		}
 		eventTracker.track(EventName.COOK_COMPLETED, Screen.COOK_DEDUCT, Map.of(
 				"recipe_id", recipe.id(),
 				"deducted_count", items.size(),
