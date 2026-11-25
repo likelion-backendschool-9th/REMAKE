@@ -31,6 +31,7 @@ function sample(
   category: CategoryCode,
   amount: number,
   unit: FridgeUnit,
+  remainingAmount: number,
 ): CookItem {
   return {
     ingredientId,
@@ -38,15 +39,15 @@ function sample(
     imageUrl: getCategoryImage(category),
     amount,
     unit,
-    remainingAmount: amount,
+    remainingAmount,
   };
 }
 
-/** 미리보기용(피그마 p4.1.1.2 문구) */
+/** 미리보기용(피그마 p4.1.1.2 문구). 냉장고에 남은 양은 피그마 수량 수정 시트(쪽파 1단 빼면 2단 남음)에 맞춤 */
 export const SAMPLE_COOK_PREVIEW: CookPreview = {
   items: [
-    sample(11, "목살", "MEAT", 600, "G"),
-    sample(12, "쪽파", "VEGETABLE", 1, "BUNCH"),
-    sample(13, "굴소스", "SEASONING", 50, "ML"),
+    sample(11, "목살", "MEAT", 600, "G", 900),
+    sample(12, "쪽파", "VEGETABLE", 1, "BUNCH", 3),
+    sample(13, "굴소스", "SEASONING", 50, "ML", 300),
   ],
 };

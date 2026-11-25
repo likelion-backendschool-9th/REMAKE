@@ -298,15 +298,21 @@ export const P4_STATES: PreviewState[] = [
   },
   {
     slug: "cook",
-    label: "p4.1.1.2-레시피 사용 후 재료 차감",
+    label: "p4.1.1.2-레시피 사용 후 재료 차감 (처음 모두 체크)",
     route: COOK_ROUTE,
     render: () => <CookContainer preview={SAMPLE_COOK_PREVIEW} />,
   },
   {
     slug: "cook-checked",
-    label: "p4.1.1.2-레시피 사용 후 재료 차감-레시피 수량 변경",
+    label: "p4.1.1.2-레시피 사용 후 재료 차감-일부 해제 (쪽파를 쓰지 않음)",
     route: COOK_ROUTE,
-    render: () => <CookContainer preview={SAMPLE_COOK_PREVIEW} initialCheckedIds={[11, 12, 13]} />,
+    render: () => <CookContainer preview={SAMPLE_COOK_PREVIEW} initialCheckedIds={[11, 13]} />,
+  },
+  {
+    slug: "cook-amount",
+    label: "p4.1.1.2-레시피 사용 후 재료 차감-사용 재료 수량 수정 (쪽파 뺄 양 시트)",
+    route: COOK_ROUTE,
+    render: () => <CookContainer preview={SAMPLE_COOK_PREVIEW} initialEditingId={12} />,
   },
   {
     slug: "cook-skeleton",
