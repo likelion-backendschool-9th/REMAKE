@@ -1,0 +1,209 @@
+/* 피그마 p4.1.1-레시피 상세 > 재료 준비·만드는 방법·Tips. 영역 여백 15/16 */
+.ingredients,
+.steps {
+  display: flex;
+  flex-direction: column;
+  padding: 0.9375rem var(--layout-gutter);
+}
+
+/* 제목 줄: 제목 Remake/title·text/title, 옆 안내·버튼 사이 6 */
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 1.375rem;
+}
+
+.title {
+  color: var(--color-text-title);
+  font: var(--font-title);
+}
+
+/* "· 2인분 · 30분 이내": Remake/content·text/assist, 점 2(text/assist) 앞뒤 5 */
+.meta {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-assist);
+  font: var(--font-content);
+}
+
+.metaItem::before {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 2px;
+  margin: 0 0.3125rem;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
+}
+
+.metaItem:first-child::before {
+  margin-left: 0.0625rem;
+}
+
+/* 재료 칩: 제목 아래 27, 칩 사이 5. 칩은 여백 6/14, 흰 바탕, 파랑 60% 테두리(피그마 값), radius 50.
+   이름 Remake/content·text/body, 양 text/assist, 이름·양 사이 5 */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3125rem;
+  margin: 1.6875rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: var(--space-6) var(--space-14);
+  border: 1px solid rgba(49, 130, 246, 0.6);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-surface);
+  font: var(--font-content);
+  white-space: nowrap;
+}
+
+/* 공유 상세: 내 냉장고에 없는 재료는 빨간 테두리(domain-rules 7) */
+.chip[data-missing] {
+  border-color: var(--color-text-danger);
+}
+
+.chipName {
+  color: var(--color-text-body);
+}
+
+.chipAmount {
+  color: var(--color-text-assist);
+}
+
+/* "재생하기 ▷": Remake/content·text/assist, 아이콘 16, 사이 2. 재생 중 "중단하기 ■"는 text/danger. 터치 영역 44 */
+.play {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  min-height: 2.75rem;
+  margin-block: -0.6875rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-assist);
+  font: var(--font-content);
+}
+
+.play[data-playing] {
+  color: var(--color-text-danger);
+}
+
+.play:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+.playIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* 단계: 제목 아래 27, 단계 사이 12. 번호 20 동그라미(파랑 10%) + 글(왼쪽 30) */
+.stepList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1.6875rem 0 0;
+  padding: 0 0 0 1px;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+
+/* 번호: Remake/assist-strong·text/primary(피그마). 읽는 중인 단계는 파랑 테두리 1 */
+.stepNo {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  background: rgba(49, 130, 246, 0.1);
+  color: var(--color-text-primary);
+  font: var(--font-assist-strong);
+}
+
+/* 단계 글: Remake/content·text/body, 여러 줄이라 줄 높이 150% */
+.stepText {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-body);
+  font: var(--font-content);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* 피그마 p4.1.1-레시피 상세-레시피 재생: 읽는 중인 단계 글·번호 테두리 text/primary */
+.step[aria-current="step"] .stepNo {
+  border-color: var(--color-text-primary);
+}
+
+.step[aria-current="step"] .stepText {
+  color: var(--color-text-primary);
+}
+
+/* Tips!: 단계 영역 아래 19, 바탕 bg/subtle, radius 12, 여백 13, 제목·목록 사이 12 */
+.tips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1.1875rem var(--layout-gutter) 0;
+  padding: 0.8125rem;
+  border-radius: 0.75rem;
+  background: var(--color-bg-subtle);
+}
+
+/* "Tips!": Remake/content·text/warning */
+.tipsTitle {
+  color: var(--color-text-warning);
+  font: var(--font-content);
+}
+
+/* 목록: 점 3(text/assist) + Remake/content-regular·text/assist, 여러 줄이라 줄 높이 150% */
+.tipsList {
+  margin: 0;
+  padding: 0 0 0 0.5rem;
+  color: var(--color-text-assist);
+  font: var(--font-content-regular);
+  line-height: 1.5;
+  list-style: none;
+}
+
+.tipsList li {
+  position: relative;
+  overflow-wrap: anywhere;
+}
+
+.tipsList li::before {
+  content: "";
+  position: absolute;
+  top: 0.5rem;
+  left: -0.5rem;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

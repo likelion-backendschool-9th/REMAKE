@@ -1,0 +1,9 @@
+/* 피그마 p4.1.1-레시피 상세: 서브 헤더 아래 17, 아래 고정 버튼(요리 완료) 자리만큼 여백 */
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  padding: 1.0625rem 0 calc(8rem + env(safe-area-inset-bottom));
+  background: var(--color-bg-surface);
+}
