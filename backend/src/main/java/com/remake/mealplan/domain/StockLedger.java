@@ -20,6 +20,8 @@ import com.remake.mealplan.domain.StockUnits.BaseAmount;
  * <li>양이 없거나 꼬집·약간인 재료는 빼지 않는다.</li>
  * </ul>
  * 소비기한이 지난 재료는 처음부터 넣지 않는다(오늘까지인 재료는 쓴다).
+ * 칸을 배정할 때는 그 칸 날짜까지 소비기한이 남은 재료만 쓴다(기한 날 칸까지 된다). AI에도 usableUntilDay로 알려 주지만
+ * 지키지 않으면 그 칸은 배정할 수 없다(그날에서 자르기가 멈춘다). 양이 없는 줄(꼬집·약간)도 기한은 본다.
  * 장부는 바꾸지 않고, 칸을 더할 때마다 새 장부를 돌려준다.
  *
  * <p>덮어쓰기는 장부가 모른다. 덮어써서 지울 칸은 부르는 쪽이 처음부터 배정 목록에서 빼고 넘긴다
@@ -78,7 +80,7 @@ public final class StockLedger {
 	Optional<StockLedger> reserveDay(List<PlannedSlot> slots) {
 		StockLedger next = copy();
 		for (PlannedSlot slot : slots) {
-			if (!next.tryClaim(slot.ingredients())) {
+			if (!next.tryClaim(slot.date(), slot.ingredients())) {
 				return Optional.empty();
 			}
 		}
@@ -87,16 +89,23 @@ public final class StockLedger {
 
 	/**
 	 * 칸 하나를 배정한다. 냉장고 재료를 1개 이상 써야 하고(양이 있는 것), 쓰는 냉장고 재료마다 남은 양 안이어야 한다.
-	 * 장부에 없는 냉장고 재료(기한 지남, 없는 id)를 쓰면 배정할 수 없다.
+	 * 장부에 없는 냉장고 재료(기한 지남, 없는 id)나 칸 날짜 전에 소비기한이 끝나는 재료를 쓰면 배정할 수 없다.
+	 * 기한은 양이 없거나 꼬집·약간인 줄도 본다(기한 지난 재료는 조금이라도 식단에 넣지 않는다). 양은 양이 있는 줄만 뺀다.
 	 */
-	private boolean tryClaim(List<SlotIngredient> ingredients) {
+	private boolean tryClaim(LocalDate slotDate, List<SlotIngredient> ingredients) {
 		boolean usesFridge = false;
 		for (SlotIngredient ingredient : ingredients) {
-			if (!ingredient.usesFridge() || !ingredient.isMeasured()) {
+			if (!ingredient.usesFridge()) {
 				continue;
 			}
 			Stock stock = stocks.get(ingredient.fridgeIngredientId());
-			if (stock == null || !stock.canClaim(ingredient)) {
+			if (stock == null || stock.expiresBefore(slotDate)) {
+				return false;
+			}
+			if (!ingredient.isMeasured()) {
+				continue;
+			}
+			if (!stock.canClaim(ingredient)) {
 				return false;
 			}
 			stock.claim(ingredient);
@@ -155,6 +164,11 @@ public final class StockLedger {
 				return BigDecimal.ZERO;
 			}
 			return base.amount().subtract(claimed).max(BigDecimal.ZERO);
+		}
+
+		/** 칸 날짜 전에 소비기한이 끝나는지(기한 날 칸은 쓸 수 있다). */
+		boolean expiresBefore(LocalDate slotDate) {
+			return source.expirationDate().isBefore(slotDate);
 		}
 
 		boolean canClaim(SlotIngredient ingredient) {
