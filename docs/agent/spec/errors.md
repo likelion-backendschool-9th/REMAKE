@@ -1,6 +1,6 @@
 # Error contract
 
-Source: error and exception definition v2 (Figma-based, Korean, kept in Notion; not in the repo). 59 codes. Codes are fixed UPPER_SNAKE_CASE; never rename. Clients branch on `code`; `message` is Korean user-facing text (the texts below are proposals; screens may change wording, codes do not change). API numbers refer to `api-summary.md`. Admin codes are on hold (no admin screens in Figma).
+Source: error and exception definition v2 (Figma-based, Korean, kept in Notion; not in the repo). Codes are fixed UPPER_SNAKE_CASE; never rename. Clients branch on `code`; `message` is Korean user-facing text (the texts below are proposals; screens may change wording, codes do not change). API numbers refer to `api-summary.md`. 11/26: 5 admin codes (60-64) were added from the Figma "운영자 페이지" (operator page); of the 7 codes on hold, 4 were restored and 2 removed, and only `ACCOUNT_SUSPENDED` stays on hold. 64 codes. The planning definition numbers the admin codes 59-63 (63 codes, vs the previous version: 38 kept, 11 changed, 14 added, 10 removed, 1 on hold); the repo keeps `MEAL_PLAN_IN_PROGRESS` (added 11/22) as 59, so the admin codes are 60-64 here (the repo numbering is the reference).
 
 ## Response body
 
@@ -32,9 +32,9 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 | 400 | Input or rule violation (the user can fix it) |
 | 401 | No or expired auth |
 | 402 | Payment declined (`PAYMENT_FAILED`) |
-| 403 | Re-authenticated with a different account (`REAUTH_ACCOUNT_MISMATCH`). Admin `FORBIDDEN` is on hold |
+| 403 | Re-authenticated with a different account (`REAUTH_ACCOUNT_MISMATCH`), no admin permission (`FORBIDDEN`) |
 | 404 | Missing **or not owned** (never reveal that someone else's resource exists) |
-| 409 | Conflict with the current state (already shared this week, meal-plan overlap, duplicate receipt, already subscribed) |
+| 409 | Conflict with the current state (already shared this week, meal-plan overlap, duplicate receipt, already subscribed, report already handled) |
 | 413, 415 | File size, type |
 | 422 | Well-formed but cannot be processed (not a receipt, too few ingredients, no email) |
 | 429 | Limits, too many requests, too many code attempts |
@@ -117,10 +117,15 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 | 57 | sharing/cart (최유리) | `REPORT_ALREADY_EXISTS` | 409 | 55 | Already reported (UK reporter_id + shared_recipe_id) | 이미 신고한 레시피예요 | Common toast | Not saved |
 | 58 | events (이준호) | `EVENT_BATCH_TOO_LARGE` | 413 | 56 | More than 50 events in one batch | (not shown) | Split and resend. Never affects the screen | - |
 | 59 | meal plan (한윤수) | `MEAL_PLAN_IN_PROGRESS` | 409 | 38 | A new generate request while one of my plans is `GENERATING` (11/22; numbered last so other codes keep their numbers) | 식단표를 만들고 있어요. 완성되면 알림을 보내드려요 (proposal) | Error toast | Not saved or charged |
+| 60 | admin operations (이상호) | `FORBIDDEN` | 403 | 61-71 | A non-ADMIN account calls `/api/v1/admin/**` | 운영자만 들어올 수 있어요 | a0 no-permission screen "ADMIN 권한이 있는 계정으로 로그인해 주세요" + "서비스로 돌아가기" | - |
+| 61 | admin operations (이상호) | `ADMIN_REASON_REQUIRED` | 400 | 70 | Generation count adjustment without a reason | 조정 사유를 입력해 주세요 | Red text under the reason field "사유를 입력해야 조정할 수 있어요" | Not saved |
+| 62 | admin operations (이상호) | `REPORT_ALREADY_HANDLED` | 409 | 67 | Another operator handled it first; the post has no pending report | 다른 운영자가 이미 처리한 신고예요 | Toast "다른 운영자가 이미 처리한 신고예요. 목록을 새로 불러올게요", then reload the list | Not handled |
+| 63 | admin operations (이상호) | `USER_NOT_FOUND` | 404 | 69, 70 | Unknown member number | 회원을 찾을 수 없어요 | Same display as the a0 load failure. The list search (68) returns an empty result, not an error | - |
+| 64 | admin operations (이상호) | `REPORT_NOT_FOUND` | 404 | 66, 67 | Shared recipe id with no report at all | 신고를 찾을 수 없어요 | Back to the report list (a4) | - |
 
 ## Codes per API
 
-Every `user` API can also return the common codes (`UNAUTHORIZED`, `TOKEN_EXPIRED`, `RATE_LIMITED`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`); they are not repeated.
+Every `user` and `admin` API can also return the common codes (`UNAUTHORIZED`, `TOKEN_EXPIRED`, `RATE_LIMITED`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`); they are not repeated.
 
 | No. | API | Codes |
 | --- | --- | --- |
@@ -184,6 +189,17 @@ Every `user` API can also return the common codes (`UNAUTHORIZED`, `TOKEN_EXPIRE
 | 58 | `POST /user/subscription/billing-auth` | ALREADY_SUBSCRIBED |
 | 59 | `POST /user/subscription` | INVALID_INPUT, ALREADY_SUBSCRIBED, BILLING_AUTH_FAILED, PAYMENT_FAILED, PAYMENT_UPSTREAM_ERROR |
 | 60 | `POST /user/subscription/cancel` | SUBSCRIPTION_NOT_FOUND |
+| 61 | `GET /admin/dashboard` | INVALID_INPUT, FORBIDDEN |
+| 62 | `GET /admin/funnels` | INVALID_INPUT, FORBIDDEN |
+| 63 | `GET /admin/metrics/{tab}` | INVALID_INPUT (unknown `tab`), FORBIDDEN |
+| 64 | `GET /admin/events` | INVALID_INPUT, FORBIDDEN |
+| 65 | `GET /admin/reports` | INVALID_INPUT, FORBIDDEN |
+| 66 | `GET /admin/reports/{sharedRecipeId}` | FORBIDDEN, REPORT_NOT_FOUND |
+| 67 | `PATCH /admin/reports/{sharedRecipeId}` | INVALID_INPUT, FORBIDDEN, REPORT_NOT_FOUND, REPORT_ALREADY_HANDLED |
+| 68 | `GET /admin/users` | INVALID_INPUT, FORBIDDEN |
+| 69 | `GET /admin/users/{userId}` | FORBIDDEN, USER_NOT_FOUND |
+| 70 | `POST /admin/users/{userId}/generation-quota-adjustments` | INVALID_INPUT (delta 0, decreasing more than the remaining reward), FORBIDDEN, USER_NOT_FOUND, ADMIN_REASON_REQUIRED |
+| 71 | `GET /admin/weekly-rewards` | INVALID_INPUT, FORBIDDEN |
 
 ## Quota charging and failures
 
@@ -233,7 +249,7 @@ No data returns 200 with empty values; the screen draws its empty state.
 | Error or refusal | AI: one automatic retry, then fail. OCR: no retry. Not charged | Keep the input and retry |
 | Timeout | Cut at AI recipe 60 s / OCR 30 s and return 504. Meal plan: the server job ends with a failure notification (limit (open, #122)) | Same for recipes and OCR. Meal plan: nothing on screen; the notification tells the user |
 | Validation failure | AI output with missing fields or unusable units: ask once more, then 502 | Same |
-| Repeated failures | Watch the failure rate ("20% in 10 minutes" is an earlier draft). Dashboard display waits for admin screens | After 3 failures in a row show "잠시 후 다시 시도해 주세요" (do not block the feature) |
+| Repeated failures | Failure-rate monitoring is the admin dashboard anomaly (API 61: the OCR failure rate in the last hour is at least twice the average of the same hour over the past 7 days) | After 3 failures in a row show "잠시 후 다시 시도해 주세요" (do not block the feature) |
 
 - The server checks receipt photos (20, 21: 10 MB, jpg/png/heic) and cooking photos (51: 5 MiB, JPEG/PNG/WebP, #64) first and returns 413/415 on invalid size/type without calling OCR.
 - The frontend runs the same checks before upload (the server check is final).
@@ -256,7 +272,9 @@ Errors are also recorded as events (see `events.md`).
 
 ## Codes on hold and removed
 
-On hold (admin screens are not in Figma): `FORBIDDEN`, `ACCOUNT_SUSPENDED`, `USER_NOT_FOUND`, `REPORT_NOT_FOUND`, `FUNNEL_NOT_FOUND`, `ADMIN_REASON_REQUIRED`, `QUOTA_ADJUST_INVALID`. `FORBIDDEN` and `ACCOUNT_SUSPENDED` already exist in `global/error/ErrorCode`; keep them in code but do not return them from new APIs (others' resources return 404).
+On hold: `ACCOUNT_SUSPENDED` only. The app screen a suspended member sees is not in Figma; it is "added page 15" (11/26). It already exists in `global/error/ErrorCode`; keep it in code but do not return it from new APIs.
+
+Restored on 11/26 for the operator page: `FORBIDDEN` (a0 no permission), `USER_NOT_FOUND` (a5), `REPORT_NOT_FOUND` (a4.1), `ADMIN_REASON_REQUIRED` (a5 empty reason). `FORBIDDEN` is returned only by admin APIs (61-71); for others' resources in `user` APIs keep returning 404. `REPORT_ALREADY_HANDLED` was added (a4.1 already handled).
 
 Removed (do not use in new code; remove from `ErrorCode` when the related code is changed):
 
@@ -270,5 +288,7 @@ Removed (do not use in new code; remove from `ErrorCode` when the related code i
 | `SLOT_ALREADY_EXISTS` | No manual meal add |
 | `NOTIFICATION_NOT_FOUND` | No API takes a notification id |
 | `PUSH_SUBSCRIPTION_INVALID` | No device push |
+| `FUNNEL_NOT_FOUND` | The funnel API has no `funnelCode`; one API returns both funnels (API 62, 11/26) |
+| `QUOTA_ADJUST_INVALID` | Invalid adjustment values are `INVALID_INPUT` (the screen has no separate text, 11/26) |
 
 Withdrawal codes from the previous version (`OAUTH_STATE_INVALID`, `ACCOUNT_PROVIDER_MISMATCH`, `DELETION_CODE_RESEND_TOO_SOON`) are not in v2: Naver re-auth mismatch is `REAUTH_ACCOUNT_MISMATCH`, and there is no resend interval code.
