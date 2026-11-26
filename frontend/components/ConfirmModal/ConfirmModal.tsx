@@ -23,6 +23,8 @@ type ConfirmModalProps = {
   tone?: "primary" | "danger";
   /** 확인 요청 중이면 버튼을 막는다. */
   isPending?: boolean;
+  /** 어두운 배경을 화면 전체에 깐다. 기본은 휴대폰 화면 폭(최대 480) 안쪽만. 넓은 화면(운영자 페이지)에서 쓴다 */
+  isFullScreen?: boolean;
 };
 
 /**
@@ -40,6 +42,7 @@ export function ConfirmModal({
   cancelLabel = "취소하기",
   tone = "primary",
   isPending = false,
+  isFullScreen = false,
 }: ConfirmModalProps) {
   const layerRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -51,7 +54,7 @@ export function ConfirmModal({
   if (!isOpen || !isClient) return null;
 
   return createPortal(
-    <div ref={layerRef} className={styles.layer}>
+    <div ref={layerRef} className={styles.layer} data-fullscreen={isFullScreen || undefined}>
       <div className={styles.dim} onClick={onClose} aria-hidden="true" />
       <div
         role={tone === "danger" ? "alertdialog" : "dialog"}

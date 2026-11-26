@@ -1,12 +1,21 @@
-/* 피그마 a4.1 신고 상세: 왼쪽 글 내용(넓게), 오른쪽 신고 내역·작성자 400 */
+/* 피그마 a4.1 신고 상세: 왼쪽 글 내용(남는 폭), 오른쪽 신고 내역·작성자 400. 두 열은 본문 높이를 채운다 */
+
+/* 뒤로 가기·제목·카드 묶음 사이 간격 16. 본문 높이를 모두 쓴다 */
+.page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
 
 .back {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   gap: var(--space-4);
-  margin-bottom: var(--space-12);
   color: var(--color-text-sub);
-  font: var(--font-assist);
+  font: var(--font-content);
 }
 
 .back:hover {
@@ -24,53 +33,70 @@
   height: 1rem;
 }
 
-/* 왼쪽·오른쪽 열과 오른쪽 카드 사이 간격 16 */
 .body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 25rem;
-  align-items: start;
+  display: flex;
+  flex: 1;
+  align-items: stretch;
   gap: var(--space-16);
+  min-height: 0;
 }
 
 .side {
   display: flex;
+  flex: none;
   flex-direction: column;
   gap: var(--space-16);
+  width: 25rem;
 }
 
 @media (max-width: 960px) {
   .body {
-    grid-template-columns: minmax(0, 1fr);
+    flex-direction: column;
+  }
+
+  .side {
+    width: 100%;
   }
 }
 
-/* 카드 안 내용은 간격 16 */
-.recipe,
-.side > section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-16);
+/* 왼쪽 카드: 안쪽 간격 14 */
+.body .recipe {
+  flex: 1;
+  gap: var(--space-14);
 }
 
-/* 사진 자리: 300×200, bg/skeleton */
+/* 오른쪽 카드: 안쪽 간격 12 */
+.side > section {
+  gap: var(--space-12);
+}
+
+/* 작성자 카드는 남는 높이를 차지한다 */
+.author {
+  flex: 1;
+}
+
+/* 사진 자리: 300×200, bg/skeleton, radius/lg, 가운데에 이미지 아이콘 24 */
 .photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 18.75rem;
   max-width: 100%;
   height: 12.5rem;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: var(--color-bg-skeleton);
 }
 
-/* 제목 16 medium, 재료 준비·인분·시간 12 */
-.recipeInfo {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+.photoIcon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--color-text-sub);
 }
 
+/* 글 제목 Remake/title·text/strong, 재료 준비·인분·시간 Remake/assist·text/sub */
 .recipeTitle {
-  color: var(--color-text-title);
-  font: var(--font-content-strong);
+  color: var(--color-text-strong);
+  font: var(--font-title);
 }
 
 .recipeMeta {
@@ -78,36 +104,20 @@
   font: var(--font-assist);
 }
 
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
-
 .sectionTitle {
   color: var(--color-text-title);
   font: var(--font-content-strong);
 }
 
-/* 재료는 쉼표로 이은 한 줄 */
-.ingredients {
-  margin: 0;
-  color: var(--color-text-body);
-  font: var(--font-content);
-}
-
+/* 재료는 쉼표로 이은 한 줄, 만드는 방법은 번호를 붙인 줄 */
+.ingredients,
 .steps {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
+  max-width: 35rem;
   margin: 0;
-  padding-left: var(--space-20);
+  padding: 0;
   color: var(--color-text-body);
-  font: var(--font-content);
-}
-
-.step {
-  padding-left: var(--space-4);
+  font: var(--font-content-regular);
+  list-style: none;
 }
 
 /* 신고 사유 요약 배지 */
@@ -117,27 +127,22 @@
   gap: var(--space-6);
 }
 
-/* 신고 한 건씩: 사유 배지와 시각·회원 번호를 한 줄에 */
+/* 신고 한 건씩: 왼쪽 시각·사유, 오른쪽 회원 번호. 줄 사이 간격 12, 줄 안 위아래 4 */
 .reportList {
   display: flex;
   flex-direction: column;
+  gap: var(--space-12);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* 한 줄: 왼쪽 시각·사유, 오른쪽 회원 번호 */
 .reportRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-8);
-  padding: var(--space-10) 0;
-  border-bottom: 1px solid var(--color-border-default);
-}
-
-.reportRow:last-child {
-  border-bottom: 0;
+  padding: var(--space-4) 0;
 }
 
 .reportText {
@@ -152,42 +157,51 @@
   white-space: nowrap;
 }
 
-/* 작성자 정보: 이름 칸 6.5rem, 값 칸은 남은 폭 */
+/* 작성자 정보: 이름은 왼쪽, 값은 오른쪽 끝 */
 .facts {
-  display: grid;
-  grid-template-columns: 6.5rem minmax(0, 1fr);
-  gap: var(--space-8) var(--space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
   margin: 0;
 }
 
 .fact {
-  display: contents;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+  font: var(--font-content);
 }
 
 .fact dt {
   color: var(--color-text-sub);
-  font: var(--font-assist);
 }
 
 .fact dd {
   margin: 0;
   color: var(--color-text-body);
-  font: var(--font-content);
+  text-align: right;
 }
 
-/* 처리 끝남: 처리 결과 박스(bg/section, radius/sm, 간격 6) */
+.fact dd.factStrong {
+  color: var(--color-text-strong);
+}
+
+/* 처리 끝남: 처리 결과 박스(bg/section, radius/sm, 여백 16, 간격 6). 카드 아래에 붙는다 */
 .result {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+  margin-top: auto;
   padding: var(--space-16);
   border-radius: var(--radius-sm);
   background: var(--color-bg-section);
 }
 
-.resultText {
-  color: var(--color-text-body);
-  font: var(--font-content);
+.resultHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
 }
 
 .resultMeta {
@@ -195,24 +209,41 @@
   font: var(--font-assist);
 }
 
-/* 문제 없음·글 삭제 글 버튼: 가운데, 간격 24 */
+.resultText {
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+/* 처리 버튼 묶음: 카드 아래에 붙고, 버튼과 글 버튼 줄 사이 간격 12 */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin-top: auto;
+}
+
+/* 문제 없음·글 삭제 글 버튼: 가운데, 간격 24, 위 여백 4 */
 .secondary {
   display: flex;
   justify-content: center;
   gap: var(--space-24);
+  padding-top: var(--space-4);
 }
 
+/* 토스트: 폭 400, 아래에서 40, 본문(사이드 메뉴 14.5rem 오른쪽) 가운데 */
 .toastArea {
   position: fixed;
-  bottom: var(--space-24);
-  left: 50%;
+  bottom: 2.5rem;
+  left: calc(50% + 7.25rem);
   z-index: var(--z-toast);
+  width: min(25rem, calc(100% - 2rem));
   transform: translateX(-50%);
 }
 
 /* 불러오는 중 자리 */
 .skeletonCard {
-  height: 20rem;
+  flex: 1;
+  min-height: 20rem;
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-lg);
   background: var(--color-bg-surface);
