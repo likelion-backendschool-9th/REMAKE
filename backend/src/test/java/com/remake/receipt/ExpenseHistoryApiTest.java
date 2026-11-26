@@ -1,6 +1,7 @@
 package com.remake.receipt;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -24,6 +25,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.IllegalTransactionStateException;
 
 import com.remake.auth.application.port.out.JwtTokenPort;
 import com.remake.ingredient.application.port.in.RegisterCartIngredientsUseCase;
@@ -154,6 +156,17 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 		mockMvc.perform(get(EXPENSES + "/patterns").cookie(cookie(owner)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.totalAmount").value(11500));
+	}
+
+	@Test
+	void 트랜잭션_밖에서_가격_갱신을_부르면_실패한다() throws Exception {
+		long priced = registerIngredient(owner, "3000");
+
+		assertThatThrownBy(() -> updateManualExpensePrice.updatePrice(priced, 3500L))
+				.isInstanceOf(IllegalTransactionStateException.class);
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT price FROM manual_ingredient_expenses WHERE ingredient_id = ?", Long.class, priced))
+				.isEqualTo(3000L);
 	}
 
 	@Test
