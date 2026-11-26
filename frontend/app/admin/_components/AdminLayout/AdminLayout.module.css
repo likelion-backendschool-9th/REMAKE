@@ -75,11 +75,11 @@
   font: var(--font-content-strong);
 }
 
-a.item:hover:not([aria-current="page"]) {
+.item:hover:not([aria-current="page"]) {
   background: var(--color-bg-section);
 }
 
-a.item:focus-visible {
+.item:focus-visible {
   outline: 2px solid var(--color-brand-primary);
   outline-offset: -2px;
 }

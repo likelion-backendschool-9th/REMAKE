@@ -1,17 +1,7 @@
-// a2 퍼널 화면 값(M17). 어드민 집계 API(#93)가 보류라 모양은 피그마 기준으로 잡았고, API가 정해지면 맞춘다.
-// 전환율·이탈 큼 판단은 서버가 정한다(blueprint §1)
+// a2 퍼널 화면 값(M17). API 62 `GET /api/v1/admin/funnels` 응답에 맞춰 연동할 때 이름을 맞춘다.
+// 전환율·이탈 큼(이전 단계 대비 70% 미만) 판단은 서버가 정한다(blueprint §1)
 
-export type FunnelStep = {
-  /** 예: "로그인 성공" */
-  label: string;
-  /** 단계를 세는 이벤트 이름. 예: "login_succeeded" */
-  eventName: string;
-  users: number;
-  /** 이전 단계 대비 %. 첫 단계는 null → "-" */
-  conversionRate: number | null;
-  /** 이탈이 크면 빨간 글과 "이탈 큼" */
-  isLargeDrop: boolean;
-};
+import type { FunnelStep } from "../../../_components/FunnelChart/FunnelChart";
 
 export type FunnelData = {
   /** 핵심 흐름: 로그인 → 요리 완료 */

@@ -8,13 +8,14 @@ import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { TextButton } from "@/components/TextButton/TextButton";
 import { formatWon } from "@/lib/format";
 
+import { AdminCard } from "../../../../_components/AdminCard/AdminCard";
+import { AdminLoadError } from "../../../../_components/AdminLoadError/AdminLoadError";
+import { AdminPageHeader } from "../../../../_components/AdminPageHeader/AdminPageHeader";
+import { AdminPeriodFilter } from "../../../../_components/AdminPeriodFilter/AdminPeriodFilter";
+import { BarChart } from "../../../../_components/BarChart/BarChart";
+import { ADMIN_PATHS } from "../../../../_lib/admin-menu";
+import { type AdminPeriod, DEFAULT_ADMIN_PERIOD, getPeriodLabel } from "../../../../_lib/period";
 import type { DashboardAnomaly, DashboardData, DashboardKpi } from "../../_lib/dashboard";
-import { type AdminPeriod, getPeriodLabel } from "../../_lib/period";
-import { AdminCard } from "../AdminCard/AdminCard";
-import { AdminLoadError } from "../AdminLoadError/AdminLoadError";
-import { AdminPageHeader } from "../AdminPageHeader/AdminPageHeader";
-import { AdminPeriodFilter } from "../AdminPeriodFilter/AdminPeriodFilter";
-import { BarChart } from "../BarChart/BarChart";
 
 import styles from "./DashboardContainer.module.css";
 
@@ -36,10 +37,10 @@ type DashboardContainerProps = {
 export function DashboardContainer({
   dashboard,
   hasError = false,
-  initialPeriod = "last7days",
+  initialPeriod = DEFAULT_ADMIN_PERIOD,
 }: DashboardContainerProps) {
   const [period, setPeriod] = useState<AdminPeriod>(initialPeriod);
-  const [isRealOnly, setIsRealOnly] = useState(true);
+  const [excludeSeed, setExcludeSeed] = useState(true);
 
   return (
     <>
@@ -50,8 +51,8 @@ export function DashboardContainer({
           <AdminPeriodFilter
             period={period}
             onPeriodChange={setPeriod}
-            isRealOnly={isRealOnly}
-            onRealOnlyChange={setIsRealOnly}
+            excludeSeed={excludeSeed}
+            onExcludeSeedChange={setExcludeSeed}
           />
         }
       />
@@ -74,8 +75,7 @@ export function DashboardContainer({
                   {dashboard.pendingReportCount}건
                 </p>
                 <p className={styles.assist}>자동으로 숨기지 않아요. 운영자가 확인해 처리해요.</p>
-                {/* 운영자 URL이 정해지면 신고 관리로 이동을 연결한다 */}
-                <TextButton withArrow className={styles.link}>
+                <TextButton withArrow href={ADMIN_PATHS.reports} className={styles.link}>
                   신고 관리로 가기
                 </TextButton>
               </AdminCard>
@@ -113,8 +113,9 @@ function AnomalyBanner({ anomaly }: { anomaly: DashboardAnomaly }) {
       <Badge tone="danger">이상 징후</Badge>
       <p className={styles.anomalyMessage}>{anomaly.message}</p>
       {anomaly.detail && <p className={styles.anomalyDetail}>{anomaly.detail}</p>}
-      {/* 운영자 URL이 정해지면 기능별 지표로 이동을 연결한다 */}
-      <TextButton withArrow>기능별 지표 보기</TextButton>
+      <TextButton withArrow href={ADMIN_PATHS.metrics(anomaly.metricsTab)}>
+        기능별 지표 보기
+      </TextButton>
     </div>
   );
 }

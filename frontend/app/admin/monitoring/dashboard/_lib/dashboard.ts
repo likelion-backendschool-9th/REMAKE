@@ -1,7 +1,8 @@
-// a1 대시보드 화면 값. 어드민 집계 API(#93)가 보류라 모양은 피그마 기준으로 잡았고, API가 정해지면 맞춘다.
+// a1 대시보드 화면 값. 모양은 피그마 기준이고, API 61 `GET /api/v1/admin/dashboard` 응답에 맞춰 연동할 때 이름을 맞춘다.
 // 지표 계산·목표 달성 여부는 서버가 정한다(blueprint §1). 화면은 받은 값을 그대로 보인다
 
-import type { BarChartItem } from "../_components/BarChart/BarChart";
+import type { BarChartItem } from "../../../_components/BarChart/BarChart";
+import type { MetricsTab } from "../../../_lib/admin-menu";
 
 export type KpiStatus = "achieved" | "missed";
 
@@ -21,6 +22,8 @@ export type DashboardAnomaly = {
   message: string;
   /** 오른쪽 보조 글. 예: "신고 1시간 6건(평소 1건)" */
   detail?: string;
+  /** "기능별 지표 보기"가 여는 a3 탭. API 61 `anomalies[].metric`을 탭으로 바꾸는 것은 연동 때 정한다 */
+  metricsTab: MetricsTab;
 };
 
 export type DashboardData = {
@@ -111,6 +114,7 @@ export const SAMPLE_DASHBOARD: DashboardData = {
 export const SAMPLE_ANOMALY: DashboardAnomaly = {
   message: "영수증 OCR 실패율이 최근 1시간 18%예요(평소 8%).",
   detail: "신고 1시간 6건(평소 1건)",
+  metricsTab: "registration",
 };
 
 export const EMPTY_DASHBOARD: DashboardData = {

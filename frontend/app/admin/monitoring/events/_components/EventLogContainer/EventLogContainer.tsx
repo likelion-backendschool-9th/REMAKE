@@ -10,9 +10,9 @@ import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { dayjs } from "@/lib/dayjs";
 import { formatMonthDay } from "@/lib/format";
 
+import { AdminLoadError } from "../../../../_components/AdminLoadError/AdminLoadError";
+import { AdminPageHeader } from "../../../../_components/AdminPageHeader/AdminPageHeader";
 import { type EventLogItem, type EventSource, formatPropertySummary } from "../../_lib/event-log";
-import { AdminLoadError } from "../AdminLoadError/AdminLoadError";
-import { AdminPageHeader } from "../AdminPageHeader/AdminPageHeader";
 
 import styles from "./EventLogContainer.module.css";
 
@@ -40,7 +40,8 @@ export function EventLogContainer({
   const [eventName, setEventName] = useState(initialEventName);
   const [userId, setUserId] = useState("");
   const [sources, setSources] = useState<EventSource[]>(EVENT_SOURCES);
-  const [isRealOnly, setIsRealOnly] = useState(true);
+  // "실제 데이터만" = API 64 `excludeSeed`
+  const [excludeSeed, setExcludeSeed] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const toggleSource = (source: EventSource) =>
@@ -84,7 +85,7 @@ export function EventLogContainer({
               {source}
             </Chip>
           ))}
-          <Chip isSelected={isRealOnly} onClick={() => setIsRealOnly(!isRealOnly)}>
+          <Chip isSelected={excludeSeed} onClick={() => setExcludeSeed(!excludeSeed)}>
             실제 데이터만
           </Chip>
         </div>

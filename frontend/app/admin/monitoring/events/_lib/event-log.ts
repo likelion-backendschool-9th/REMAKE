@@ -1,5 +1,5 @@
-// a6 이벤트 로그 화면 값. 어드민 조회 API(#93)가 보류라 모양은 피그마와 이벤트 정의서(events 테이블) 기준으로 잡았고,
-// API가 정해지면 맞춘다. 회원은 내부 번호(user_id)만 보이고 개인 정보는 기록하지 않는다(AGENTS.md 제품 규칙 3)
+// a6 이벤트 로그 화면 값. 모양은 피그마와 이벤트 정의서(events 테이블) 기준이고,
+// API 64 `GET /api/v1/admin/events` 응답에 맞춰 연동할 때 이름을 맞춘다. 회원은 내부 번호(user_id)만 보이고 개인 정보는 기록하지 않는다(AGENTS.md 제품 규칙 3)
 
 export type EventSource = "CLIENT" | "SERVER";
 

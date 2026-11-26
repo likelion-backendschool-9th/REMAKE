@@ -4,13 +4,13 @@ import { useState } from "react";
 
 import { Skeleton } from "@/components/Skeleton/Skeleton";
 
+import { AdminCard } from "../../../../_components/AdminCard/AdminCard";
+import { AdminLoadError } from "../../../../_components/AdminLoadError/AdminLoadError";
+import { AdminPageHeader } from "../../../../_components/AdminPageHeader/AdminPageHeader";
+import { AdminPeriodFilter } from "../../../../_components/AdminPeriodFilter/AdminPeriodFilter";
+import { FunnelChart } from "../../../../_components/FunnelChart/FunnelChart";
+import { type AdminPeriod, DEFAULT_ADMIN_PERIOD } from "../../../../_lib/period";
 import type { FunnelData } from "../../_lib/funnel";
-import type { AdminPeriod } from "../../_lib/period";
-import { AdminCard } from "../AdminCard/AdminCard";
-import { AdminLoadError } from "../AdminLoadError/AdminLoadError";
-import { AdminPageHeader } from "../AdminPageHeader/AdminPageHeader";
-import { AdminPeriodFilter } from "../AdminPeriodFilter/AdminPeriodFilter";
-import { FunnelChart } from "../FunnelChart/FunnelChart";
 
 import styles from "./FunnelContainer.module.css";
 
@@ -29,10 +29,10 @@ type FunnelContainerProps = {
 export function FunnelContainer({
   funnel,
   hasError = false,
-  initialPeriod = "last7days",
+  initialPeriod = DEFAULT_ADMIN_PERIOD,
 }: FunnelContainerProps) {
   const [period, setPeriod] = useState<AdminPeriod>(initialPeriod);
-  const [isRealOnly, setIsRealOnly] = useState(true);
+  const [excludeSeed, setExcludeSeed] = useState(true);
 
   return (
     <>
@@ -43,8 +43,8 @@ export function FunnelContainer({
           <AdminPeriodFilter
             period={period}
             onPeriodChange={setPeriod}
-            isRealOnly={isRealOnly}
-            onRealOnlyChange={setIsRealOnly}
+            excludeSeed={excludeSeed}
+            onExcludeSeedChange={setExcludeSeed}
           />
         }
       />

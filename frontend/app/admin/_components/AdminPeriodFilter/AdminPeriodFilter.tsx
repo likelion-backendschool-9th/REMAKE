@@ -9,17 +9,17 @@ import styles from "./AdminPeriodFilter.module.css";
 type AdminPeriodFilterProps = {
   period: AdminPeriod;
   onPeriodChange: (period: AdminPeriod) => void;
-  /** "실제 데이터만": 켜면 시드(시연용) 이벤트를 빼고 센다 */
-  isRealOnly: boolean;
-  onRealOnlyChange: (isRealOnly: boolean) => void;
+  /** "실제 데이터만": 켜면 시드(시연용) 이벤트를 빼고 센다(API `excludeSeed`) */
+  excludeSeed: boolean;
+  onExcludeSeedChange: (excludeSeed: boolean) => void;
 };
 
 /** 운영자 지표 화면의 기간 칩(오늘·최근 7일·최근 30일, 하나만 고름)과 "실제 데이터만" 켜고 끄기 */
 export function AdminPeriodFilter({
   period,
   onPeriodChange,
-  isRealOnly,
-  onRealOnlyChange,
+  excludeSeed,
+  onExcludeSeedChange,
 }: AdminPeriodFilterProps) {
   return (
     <div className={styles.filter}>
@@ -34,7 +34,7 @@ export function AdminPeriodFilter({
           </Chip>
         ))}
       </div>
-      <Chip isSelected={isRealOnly} onClick={() => onRealOnlyChange(!isRealOnly)}>
+      <Chip isSelected={excludeSeed} onClick={() => onExcludeSeedChange(!excludeSeed)}>
         실제 데이터만
       </Chip>
     </div>

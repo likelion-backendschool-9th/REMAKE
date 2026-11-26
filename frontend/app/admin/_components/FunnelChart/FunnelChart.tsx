@@ -2,9 +2,19 @@ import type { CSSProperties } from "react";
 
 import { formatNumber } from "@/lib/format";
 
-import type { FunnelStep } from "../../_lib/funnel";
-
 import styles from "./FunnelChart.module.css";
+
+export type FunnelStep = {
+  /** 예: "로그인 성공" */
+  label: string;
+  /** 단계를 세는 이벤트 이름. 예: "login_succeeded" */
+  eventName: string;
+  users: number;
+  /** 이전 단계 대비 %. 첫 단계는 null → "-" */
+  conversionRate: number | null;
+  /** 이전 단계 대비 70% 미만이면 서버가 true(빨간 글과 "이탈 큼") */
+  isLargeDrop: boolean;
+};
 
 type FunnelChartProps = {
   steps: FunnelStep[];
