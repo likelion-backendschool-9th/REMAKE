@@ -96,7 +96,7 @@ public class MealPlanGenerateService implements GenerateMealPlanUseCase {
 
 	private void trackQuotaExceeded(Long userId, MealPlanQuota quota) {
 		eventTracker.track(EventName.QUOTA_EXCEEDED, Screen.MEAL_PLAN_SETUP, Map.of(
-				"limit_feature", "MEAL_PLAN",
+				"limit_feature", "meal_plan",
 				"limit_total", quota.limit(),
 				"used_count", quota.used()),
 				EventTrackCommand.ofUser(userId));
