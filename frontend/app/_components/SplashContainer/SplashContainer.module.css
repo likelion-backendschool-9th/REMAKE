@@ -1,0 +1,123 @@
+/* 피그마 스플래쉬 start(5782-4629)·end(5782-4666), 360×800 기준.
+   흰 원 278과 로고 그림 216×128은 같은 중심(위에서 317, 약 39.6%). "리메이크"(GmarketSans Bold 36)와 슬로건
+   (Remake/content)은 아래쪽에 간격 6으로 둔다(피그마는 15, 사용자 결정으로 6). start: 바탕 brand/primary, 글자 text/on-color.
+   end: 흰 원이 화면을 덮고 글자 text/strong. 슬로건 끝 "!"는 두 장면 모두 보인다(피그마 start에는 없음, 사용자 결정) */
+.splash {
+  --splash-center: 39.6%;
+  position: relative;
+  flex: 1;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--color-brand-primary);
+}
+
+.circle {
+  position: absolute;
+  top: var(--splash-center);
+  left: 50%;
+  width: 17.375rem;
+  height: 17.375rem;
+  border-radius: 50%;
+  background: var(--color-bg-surface);
+  transform: translate(-50%, -50%);
+}
+
+.mark {
+  position: absolute;
+  top: var(--splash-center);
+  left: 50%;
+  width: 13.5rem;
+  height: 8rem;
+  transform: translate(-50%, -50%);
+}
+
+/* 글자 묶음: 피그마는 위에서 684(아래 홈 바 위로 약 38). 화면 높이가 달라도 아래에 붙게 아래를 기준으로 둔다 */
+.brand {
+  position: absolute;
+  right: 0;
+  bottom: calc(2.375rem + env(safe-area-inset-bottom));
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  padding: 0 var(--layout-gutter);
+  color: var(--color-text-on-color);
+  text-align: center;
+}
+
+.name {
+  font-family: var(--font-family-logo);
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.slogan {
+  font: var(--font-content);
+}
+
+/* 움직임: 0.8초 start 장면 → 1초 동안 흰 원이 커짐(1.8초에 다 덮음, 지름 278 × 6으로 480×1300 화면까지) →
+   원 가장자리가 글자에 닿을 무렵 글자 색이 바뀜 → 끝에 흰 바탕(아주 긴 화면에서 원이 못 덮은 구석까지) */
+.splash[data-phase="play"] {
+  animation: splash-surface 0s linear 1.8s forwards;
+}
+
+.splash[data-phase="play"] .circle {
+  animation: splash-grow 1s cubic-bezier(0.65, 0, 0.35, 1) 0.8s forwards;
+}
+
+.splash[data-phase="play"] .brand {
+  animation: splash-ink 0.4s ease 1.2s forwards;
+}
+
+@keyframes splash-surface {
+  to {
+    background: var(--color-bg-surface);
+  }
+}
+
+@keyframes splash-grow {
+  to {
+    transform: translate(-50%, -50%) scale(6);
+  }
+}
+
+@keyframes splash-ink {
+  to {
+    color: var(--color-text-strong);
+  }
+}
+
+/* end 장면(미리보기, 움직임 줄이기) */
+.splash[data-phase="end"] {
+  background: var(--color-bg-surface);
+}
+
+.splash[data-phase="end"] .circle {
+  transform: translate(-50%, -50%) scale(6);
+}
+
+.splash[data-phase="end"] .brand {
+  color: var(--color-text-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash[data-phase="play"],
+  .splash[data-phase="play"] .circle,
+  .splash[data-phase="play"] .brand {
+    animation: none;
+  }
+
+  .splash[data-phase="play"] {
+    background: var(--color-bg-surface);
+  }
+
+  .splash[data-phase="play"] .circle {
+    transform: translate(-50%, -50%) scale(6);
+  }
+
+  .splash[data-phase="play"] .brand {
+    color: var(--color-text-strong);
+  }
+}
