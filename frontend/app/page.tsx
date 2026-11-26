@@ -1,10 +1,6 @@
-import styles from "./page.module.css";
+import { SplashContainer } from "./_components/SplashContainer/SplashContainer";
 
-export default function Home() {
-  return (
-    <main className={styles.main}>
-      <h1 className={styles.title}>REMAKE</h1>
-      <p className={styles.description}>냉장고 식재료 관리 서비스</p>
-    </main>
-  );
+/** 스플래시(/). 로그인 여부에 따라 로그인·냉장고로 보내는 첫 화면(blueprint §4) */
+export default function SplashPage() {
+  return <SplashContainer />;
 }
