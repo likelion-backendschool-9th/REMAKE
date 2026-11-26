@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import { Badge } from "@/components/Badge/Badge";
 import { EmptyState } from "@/components/EmptyState/EmptyState";
 import { Skeleton } from "@/components/Skeleton/Skeleton";
@@ -13,6 +11,7 @@ import { AdminLoadError } from "../../../../_components/AdminLoadError/AdminLoad
 import { AdminPageHeader } from "../../../../_components/AdminPageHeader/AdminPageHeader";
 import { AdminPeriodFilter } from "../../../../_components/AdminPeriodFilter/AdminPeriodFilter";
 import { BarChart } from "../../../../_components/BarChart/BarChart";
+import { useAdminPeriodQuery } from "../../../../_hooks/useAdminPeriodQuery";
 import { ADMIN_PATHS } from "../../../../_lib/admin-menu";
 import { type AdminPeriod, DEFAULT_ADMIN_PERIOD, getPeriodLabel } from "../../../../_lib/period";
 import type { DashboardAnomaly, DashboardData, DashboardKpi } from "../../_lib/dashboard";
@@ -32,15 +31,15 @@ type DashboardContainerProps = {
  * a1 대시보드. 이벤트로 모은 핵심 지표(북극성 지표 M00, 처리 대기 신고, 버린 식재료 금액 M18, KPI 8개)를 보인다.
  * 상태: 기본(a1-대시보드) / 이상 징후(a1-대시보드-이상 징후) / 데이터 없음(a1-대시보드-데이터 없음)
  * / 불러오는 중(a0-로딩) / 불러오기 실패(a0-불러오기 실패).
- * 기간·실제 데이터만 칩은 API가 붙으면 조회 조건으로 쓴다
+ * 기간·실제 데이터만 칩 값은 주소에 두고, API가 붙으면 그대로 조회 조건으로 쓴다
  */
 export function DashboardContainer({
   dashboard,
   hasError = false,
   initialPeriod = DEFAULT_ADMIN_PERIOD,
 }: DashboardContainerProps) {
-  const [period, setPeriod] = useState<AdminPeriod>(initialPeriod);
-  const [excludeSeed, setExcludeSeed] = useState(true);
+  // 기간·"실제 데이터만"은 주소에 둔다(새로고침·주소 공유해도 유지). 미리보기는 initialPeriod로 기본값만 바꾼다
+  const { period, excludeSeed, setPeriod, setExcludeSeed } = useAdminPeriodQuery(initialPeriod);
 
   return (
     <>

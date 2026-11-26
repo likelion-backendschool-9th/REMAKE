@@ -12,11 +12,10 @@ import { formatMonthDay } from "@/lib/format";
 
 import { AdminLoadError } from "../../../../_components/AdminLoadError/AdminLoadError";
 import { AdminPageHeader } from "../../../../_components/AdminPageHeader/AdminPageHeader";
-import { type EventLogItem, type EventSource, formatPropertySummary } from "../../_lib/event-log";
+import { useEventLogQuery } from "../../_hooks/useEventLogQuery";
+import { EVENT_SOURCES, type EventLogItem, formatPropertySummary } from "../../_lib/event-log";
 
 import styles from "./EventLogContainer.module.css";
-
-const EVENT_SOURCES: EventSource[] = ["CLIENT", "SERVER"];
 
 type EventLogContainerProps = {
   /** 이벤트 목록(최근 순). 없으면 불러오는 중. 마크업 확인용 값은 미리보기(app/dev)에서만 넘긴다 */
@@ -30,24 +29,25 @@ type EventLogContainerProps = {
 /**
  * a6 이벤트 로그. 쌓인 원본 이벤트를 이벤트 이름·회원 번호·발생 위치로 찾고, 줄을 누르면 오른쪽에 자세히 보인다.
  * 상태: 목록(a6-이벤트 로그) / 검색 결과 없음(a6-이벤트 로그-검색 결과 없음) / 불러오는 중(피그마 없음) / 불러오기 실패.
- * 검색·칩은 API가 붙으면 조회 조건으로 쓴다
+ * 검색·칩 값은 주소에 두고, API가 붙으면 그대로 조회 조건으로 쓴다
  */
 export function EventLogContainer({
   events,
   hasError = false,
   initialEventName = "",
 }: EventLogContainerProps) {
-  const [eventName, setEventName] = useState(initialEventName);
-  const [userId, setUserId] = useState("");
-  const [sources, setSources] = useState<EventSource[]>(EVENT_SOURCES);
-  // "실제 데이터만" = API 64 `excludeSeed`
-  const [excludeSeed, setExcludeSeed] = useState(true);
+  // 검색 조건은 주소에 두고(새로고침·주소 공유해도 유지), 고른 줄만 화면 상태로 둔다
+  const {
+    eventName,
+    userId,
+    sources,
+    excludeSeed,
+    setEventName,
+    setUserId,
+    toggleSource,
+    setExcludeSeed,
+  } = useEventLogQuery(initialEventName);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-
-  const toggleSource = (source: EventSource) =>
-    setSources((current) =>
-      current.includes(source) ? current.filter((item) => item !== source) : [...current, source],
-    );
 
   // 고른 줄이 없으면 맨 위(가장 최근) 이벤트를 자세히 보인다
   const selected = events?.find((item) => item.id === selectedId) ?? events?.[0];

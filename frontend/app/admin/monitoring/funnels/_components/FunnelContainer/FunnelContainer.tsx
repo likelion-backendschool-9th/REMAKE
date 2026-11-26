@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import { Skeleton } from "@/components/Skeleton/Skeleton";
 
 import { AdminCard } from "../../../../_components/AdminCard/AdminCard";
@@ -9,6 +7,7 @@ import { AdminLoadError } from "../../../../_components/AdminLoadError/AdminLoad
 import { AdminPageHeader } from "../../../../_components/AdminPageHeader/AdminPageHeader";
 import { AdminPeriodFilter } from "../../../../_components/AdminPeriodFilter/AdminPeriodFilter";
 import { FunnelChart } from "../../../../_components/FunnelChart/FunnelChart";
+import { useAdminPeriodQuery } from "../../../../_hooks/useAdminPeriodQuery";
 import { type AdminPeriod, DEFAULT_ADMIN_PERIOD } from "../../../../_lib/period";
 import type { FunnelData } from "../../_lib/funnel";
 
@@ -31,8 +30,8 @@ export function FunnelContainer({
   hasError = false,
   initialPeriod = DEFAULT_ADMIN_PERIOD,
 }: FunnelContainerProps) {
-  const [period, setPeriod] = useState<AdminPeriod>(initialPeriod);
-  const [excludeSeed, setExcludeSeed] = useState(true);
+  // 기간·"실제 데이터만"은 주소에 둔다(새로고침·주소 공유해도 유지). 미리보기는 initialPeriod로 기본값만 바꾼다
+  const { period, excludeSeed, setPeriod, setExcludeSeed } = useAdminPeriodQuery(initialPeriod);
 
   return (
     <>

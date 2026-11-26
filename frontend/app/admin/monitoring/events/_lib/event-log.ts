@@ -1,7 +1,10 @@
 // a6 이벤트 로그 화면 값. 모양은 피그마와 이벤트 정의서(events 테이블) 기준이고,
 // API 64 `GET /api/v1/admin/events` 응답에 맞춰 연동할 때 이름을 맞춘다. 회원은 내부 번호(user_id)만 보이고 개인 정보는 기록하지 않는다(AGENTS.md 제품 규칙 3)
 
-export type EventSource = "CLIENT" | "SERVER";
+/** 발생 위치(API 64 `source`) */
+export const EVENT_SOURCES = ["CLIENT", "SERVER"] as const;
+
+export type EventSource = (typeof EVENT_SOURCES)[number];
 
 export type EventLogItem = {
   id: number;
