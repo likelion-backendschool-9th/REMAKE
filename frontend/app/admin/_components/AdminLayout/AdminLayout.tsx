@@ -17,6 +17,8 @@ import {
 
 import styles from "./AdminLayout.module.css";
 
+const MAIN_ID = "admin-main";
+
 type AdminLayoutProps = {
   /** 지금 보고 있는 메뉴(파랑 배경). 없으면 지금 주소로 정한다. 미리보기(app/dev)처럼 주소가 다를 때만 넘긴다 */
   activeMenu?: AdminMenuKey;
@@ -34,7 +36,11 @@ export function AdminLayout({ activeMenu, pendingReportCount = 0, children }: Ad
   const currentMenu = activeMenu ?? findActiveMenu(pathname);
 
   return (
-    <div className={styles.layout} data-layout="admin">
+    <div className={styles.layout}>
+      {/* 키보드 사용자가 반복되는 사이드 메뉴를 건너뛰고 본문으로 가는 링크(blueprint §6.2). 포커스를 받을 때만 보인다 */}
+      <a href={`#${MAIN_ID}`} className={styles.skipLink}>
+        본문 바로가기
+      </a>
       <nav className={styles.side} aria-label="운영자 메뉴">
         <div className={styles.brand}>
           <Logo />
@@ -83,7 +89,9 @@ export function AdminLayout({ activeMenu, pendingReportCount = 0, children }: Ad
         </div>
       </nav>
 
-      <main className={styles.main}>{children}</main>
+      <main id={MAIN_ID} className={styles.main} tabIndex={-1}>
+        {children}
+      </main>
     </div>
   );
 }

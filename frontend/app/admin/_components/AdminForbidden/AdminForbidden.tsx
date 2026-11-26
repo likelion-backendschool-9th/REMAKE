@@ -18,7 +18,7 @@ export function AdminForbidden() {
   const router = useRouter();
 
   return (
-    <main className={styles.page} data-layout="admin">
+    <main className={styles.page}>
       <Logo className={styles.logo} />
       <div className={styles.content}>
         <ResultState

@@ -1,13 +1,16 @@
-/* 피그마 운영자 페이지 > 화면 틀: 배경 bg/subtle, 사이드 메뉴 232 + 본문(여백 32, 묶음 간격 24) */
+/* 피그마 운영자 페이지 > 화면 틀: 배경 bg/subtle, 사이드 메뉴 232 + 본문(여백 32, 묶음 간격 24)
+   운영자 화면은 데스크톱(1440) 기준이라 루트 셸(모바일 480px) 폭을 바꾸지 않고 화면 전체를 fixed로 덮는다.
+   다른 화면으로 가면 이 화면은 사라지거나 숨겨져(display: none) 일반 화면 폭에 영향을 주지 않는다 */
 .layout {
   /* 운영자 화면은 배경(bg/subtle)과 입력 칸(bg/input) 색이 거의 같아 입력 칸을 흰색으로 바꾼다.
      검색창 등 bg/input을 쓰는 입력 칸이 운영자 화면 안에서만 흰 바탕이 된다 */
   --color-bg-input: var(--color-bg-surface);
 
+  position: fixed;
+  inset: 0;
   display: flex;
   align-items: flex-start;
-  width: 100%;
-  min-height: 100dvh;
+  overflow-y: auto;
   background: var(--color-bg-subtle);
 }
 
@@ -118,6 +121,31 @@
   min-width: 0;
   min-height: 100dvh;
   padding: 2rem;
+}
+
+/* 본문 바로가기: 평소에는 화면 밖에 두고 키보드 포커스를 받으면 왼쪽 위에 보인다 */
+.skipLink {
+  position: absolute;
+  top: var(--space-8);
+  left: var(--space-8);
+  z-index: 10;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-primary);
+  color: var(--color-text-on-color);
+  font: var(--font-content-strong);
+  transform: translateY(-200%);
+}
+
+.skipLink:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  transform: none;
+}
+
+/* 바로가기로 본문에 포커스가 와도 테두리는 그리지 않는다(본문 전체라 의미 없음) */
+.main:focus {
+  outline: none;
 }
 
 .srOnly {

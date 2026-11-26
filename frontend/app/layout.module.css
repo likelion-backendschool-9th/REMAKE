@@ -13,9 +13,3 @@
      hidden 대신 clip: 스크롤 영역을 만들지 않아 헤더의 position: sticky가 그대로 동작한다 */
   overflow: clip;
 }
-
-/* 운영자 화면은 데스크톱(피그마 1440) 기준이라 모바일 폭 제한을 풀어 화면 전체를 쓴다.
-   운영자 공통 레이아웃(app/admin/_components)이 data-layout="admin"을 단다 */
-.shell:has([data-layout="admin"]) {
-  max-width: none;
-}
