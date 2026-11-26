@@ -78,6 +78,49 @@ class IngredientSchemaMigrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void V26은_남은_NULL_카테고리를_채우고_NOT_NULL을_건다() {
+		flyway("25").migrate();
+		JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+		jdbc.update("""
+				INSERT INTO %1$s.users (id, provider, provider_user_id, email, role, status, plan, onboarding_completed,
+				                        recipe_supplement_enabled, notification_enabled, created_at, updated_at)
+				OVERRIDING SYSTEM VALUE
+				VALUES (1, 'KAKAO', 'migration-1', NULL, 'USER', 'ACTIVE', 'BASIC', false, false, true, now(), now())
+				""".formatted(SCHEMA));
+		Long ingredientId = jdbc.queryForObject("""
+				INSERT INTO %s.ingredients (user_id, category_id, name, storage, expiration_date, amount, initial_amount,
+				                            unit, created_at, updated_at)
+				VALUES (1, 5, '우유', 'FRIDGE', current_date, 1, 1, 'EA', now(), now())
+				RETURNING id
+				""".formatted(SCHEMA), Long.class);
+		// 배포 중 구버전이 category_id 없이 쓴 기록 2건(재료가 남은 것 / 이미 지워진 것)과 이미 값이 있는 기록 1건
+		jdbc.update("""
+				INSERT INTO %s.ingredient_logs (user_id, ingredient_id, type, name, amount, unit, created_at)
+				VALUES (1, ?, 'USED', '남은재료', 1, 'EA', now()), (1, NULL, 'DISCARDED', '지운재료', 1, 'EA', now())
+				""".formatted(SCHEMA), ingredientId);
+		jdbc.update("""
+				INSERT INTO %s.ingredient_logs (user_id, ingredient_id, category_id, type, name, amount, unit, created_at)
+				VALUES (1, NULL, 3, 'DISCARDED', '값있음', 1, 'EA', now())
+				""".formatted(SCHEMA));
+
+		flyway("latest").migrate();
+
+		assertThat(categoryOf(jdbc, "남은재료")).isEqualTo(5L);
+		assertThat(jdbc.queryForObject("SELECT c.code FROM " + SCHEMA + ".ingredient_logs l JOIN " + SCHEMA
+				+ ".ingredient_categories c ON c.id = l.category_id WHERE l.name = '지운재료'", String.class))
+				.isEqualTo("ETC");
+		assertThat(categoryOf(jdbc, "값있음")).isEqualTo(3L);
+		assertThat(jdbc.queryForObject("SELECT is_nullable FROM information_schema.columns WHERE table_schema = ? "
+				+ "AND table_name = 'ingredient_logs' AND column_name = 'category_id'", String.class, SCHEMA))
+				.isEqualTo("NO");
+	}
+
+	private Long categoryOf(JdbcTemplate jdbc, String name) {
+		return jdbc.queryForObject("SELECT category_id FROM " + SCHEMA + ".ingredient_logs WHERE name = ?", Long.class,
+				name);
+	}
+
+	@Test
 	void 빈_DB에도_적용되고_카테고리_순서와_이름이_ERD_부록_A와_같다() {
 		flyway("latest").migrate();
 		JdbcTemplate jdbc = new JdbcTemplate(dataSource);
