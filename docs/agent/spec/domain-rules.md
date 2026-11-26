@@ -138,7 +138,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Amount reaches 0: delete the ingredient row; logs keep the name.
 - Discarded cost = price × discarded amount ÷ original amount. No price, no cost. This month's discarded cost shows on "나의 소비" as "N월 버린 식비", which opens p3.4.1 "버린 식재료" (decided 11/25; API 25 `discardedAmount` and API 61 `/user/expenses/discarded-items`, #248).
 - Delete: delete icon on the edit screen (screen pending). Allowed even with logs; logs keep the name.
-- Price is optional on manual add too ("가격을 정확히 작성할수록 소비 패턴 분석률이 올라가요"). Priced ingredients count in spending patterns.
+- Price is optional on manual add too ("가격을 정확히 작성할수록 소비 패턴 분석률이 올라가요"). Priced ingredients count in spending patterns. Editing the price later also updates that spending (the date stays the registration date); once an ingredient is used up and its row deleted, it can no longer be edited, so the last price stays (#278). Editing the name, category, storage, amount or unit does not change the spending record yet.
 - Default expiry: ingredients from receipts and the cart get the category default shelf life. No "estimated" flag (only a notice on the OCR result screen). Estimation base date, frozen/room values, and recalculation are up to the developer.
 - Expired ingredients are not deleted automatically; they stay as `폐기-N` for the user (proposal).
 - No repurchase marker (release 2).

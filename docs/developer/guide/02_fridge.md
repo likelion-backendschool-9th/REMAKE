@@ -43,7 +43,7 @@
 | 버린 금액 | 버린 금액 = 가격 × 버린 수량 ÷ 처음 수량. 가격이 없으면 금액 없음 | 확정 |
 | 버린 금액 화면 | 나의 소비 화면의 "N월 버린 식비"를 누르면 이번 달 버린 식재료 화면(p3.4.1)으로 감. 조회 API는 #248에서 제안 | 확정(11/25) / API는 제안 |
 | 재료 삭제 | 재료 수정 화면 삭제 아이콘으로 지움. 사용·버림 기록이 있어도 지울 수 있고 기록은 이름과 함께 남음 | 확정 / 아이콘은 화면 대기 |
-| 가격 | 직접 추가에도 가격(선택). "가격을 정확히 작성할수록 소비 패턴 분석률이 올라가요". 가격을 넣은 재료는 소비 패턴에 들어감 | 확정 |
+| 가격 | 직접 추가에도 가격(선택). "가격을 정확히 작성할수록 소비 패턴 분석률이 올라가요". 가격을 넣은 재료는 소비 패턴에 들어감. 나중에 가격을 고치면 지출에도 반영(날짜는 등록일 그대로). 다 써서 재료가 지워진 뒤에는 고칠 수 없어 마지막 가격이 남음. 이름·카테고리·수량 등을 고친 것은 아직 지출에 반영하지 않음 | 확정 |
 | 소비기한 기본값 | 영수증·장바구니에서 들어온 재료는 카테고리 기본 보관 일수로 소비기한을 채움. 별도 "추정" 표시는 두지 않음(OCR 결과 화면 안내 문구만) | 확정 / 일수는 개발하면서 바꿈 |
 | 소비기한 세부 규칙 | 추정 기준일, 냉동·실온 값, 다시 계산하는 조건은 개발자가 정함 | 확정 |
 | 기한 지난 재료 | 자동으로 지우지 않고 "폐기-N"으로 남겨 사용자가 처리 | 제안 |
@@ -60,7 +60,7 @@
 | 13 | GET | `/user/ingredients/{id}` | 재료 하나. `unitFollowsName`은 지금 단위가 지금 이름·카테고리의 사전 단위와 같을 때 `true`(이름·카테고리를 고치면 단위도 다시 정해지니 API 14로 미리 봄). 장바구니·영수증 `PACK` 예외로 사전과 다른 단위를 가진 재료는 `false`(수정 화면은 지금 단위를 그대로 보여 주고 API 14를 부르지 않음). API 15·16도 같은 모양과 필드 | `-` | `200 { id, name, categoryCode, imageUrl, storage, amount, unit, expirationDate, dDay, status, price, unitFollowsName }` | ingredients |
 | 14 | GET | `/user/ingredient-units` | 재료명에 맞는 단위를 백엔드가 정해 줌(ERD 답 5). 재료명을 정하기 전에는 수량 칸 비활성, 재료명을 정하면 호출해 단위를 받고 수량 칸을 켬. 재료명이나 카테고리를 바꾸면 다시 호출(API 답 1). 등록 전인 OCR 재료 수정(p3.3.1)에서 바꿀 때도 호출(API 답 8). `categoryCode`는 선택이고, 넣으면 저장될 단위와 같음 | `?name=대파&categoryCode=VEGETABLE` | `200 { unit }` | - |
 | 15 | POST | `/user/ingredients` | 직접 추가. 카테고리 필수("전체" 없음, ERD 답 4). 요청에 `unit`이 없고 서버가 재료명·카테고리로 정해 응답에 줌(API 14와 같은 규칙). 가격은 선택(넣으면 소비 패턴에 들어감, ERD 답 3) | `{ name, categoryCode, storage, expirationDate, amount, price? }` | `201 (재료 하나 모양)` | ingredients |
-| 16 | PATCH | `/user/ingredients/{id}` | 바꾼 값만 보냄. 재료명이나 카테고리를 바꾸면 서버가 새 값에 맞게 단위를 다시 정해 응답에 줌(예: 대파 1단 → 양파 1개, API 답 8. API 14와 같은 결과). 단, 수정 전 `unitFollowsName`이 `true`일 때만. `false`(장바구니·영수증 예외 단위, 예: 양파 200 G, 삼겹살 2 PACK)면 단위와 수량이 그대로(#233). 같은 값을 다시 보내면 그대로. 기록이 있어도 같음. `amount`를 바꾸면 `initial_amount`도 같이 바뀌고, 사용·버림 기록이 있으면 `INVALID_INPUT`(#128) | `{ name?, categoryCode?, storage?, expirationDate?, price?, amount? }` | `200 (재료 하나 모양)` | ingredients |
+| 16 | PATCH | `/user/ingredients/{id}` | 바꾼 값만 보냄. 재료명이나 카테고리를 바꾸면 서버가 새 값에 맞게 단위를 다시 정해 응답에 줌(예: 대파 1단 → 양파 1개, API 답 8. API 14와 같은 결과). 단, 수정 전 `unitFollowsName`이 `true`일 때만. `false`(장바구니·영수증 예외 단위, 예: 양파 200 G, 삼겹살 2 PACK)면 단위와 수량이 그대로(#233). 같은 값을 다시 보내면 그대로. 기록이 있어도 같음. `amount`를 바꾸면 `initial_amount`도 같이 바뀌고, 사용·버림 기록이 있으면 `INVALID_INPUT`(#128). `price`가 실제로 바뀌면(새 값 또는 `null`) 같은 트랜잭션에서 그 재료의 직접 등록 지출(`manual_ingredient_expenses`) 가격도 바꿈. 날짜는 등록일 그대로, 영수증 재료는 지출 행이 없어 변화 없음. 같은 가격을 다시 보내거나 `price`가 없으면 건드리지 않음(#278) | `{ name?, categoryCode?, storage?, expirationDate?, price?, amount? }` | `200 (재료 하나 모양)` | ingredients |
 | 17 | DELETE | `/user/ingredients/{id}` | 재료 삭제. 사용·버림 기록은 이름과 함께 남음 | `-` | `204` | ingredients, ingredient_logs |
 | 18 | POST | `/user/ingredients/{id}/consume` | 사용·버림 기록. 버리면 버린 금액 계산(가격이 있을 때). 0이 되면 재료 삭제 | `{ type: "USED"\|"DISCARDED", amount }` | `200 { remainingAmount, deleted, costAmount? }` | ingredients, ingredient_logs |
 | 19 | GET | `/user/ingredient-categories` | 카테고리 12개 | `-` | `200 { items: [{ code, name, imageUrl }] }` | ingredient_categories |

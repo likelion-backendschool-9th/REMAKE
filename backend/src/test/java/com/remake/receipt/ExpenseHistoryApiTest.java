@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -157,6 +158,70 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 		mockMvc.perform(get(EXPENSES + "/patterns").cookie(cookie(owner)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.totalAmount").value(11500));
+	}
+
+	@Test
+	void 재료_수정에서_가격을_바꾸면_직접_등록_지출에_반영되고_날짜는_등록일_그대로다() throws Exception {
+		long noPrice = registerIngredient(owner, "null");
+		long priced = registerIngredient(owner, "3000");
+		long cartId = registerCartIngredients.registerCartIngredients(List.of(new RegisterIngredientCommand(
+				owner, "우유", IngredientCategoryCode.DAIRY_EGG, StorageLocation.FRIDGE,
+				null, null, BigDecimal.ONE, IngredientUnit.EA, null, null))).getFirst();
+
+		patchIngredient(noPrice, "{\"price\":3000}");
+		patchIngredient(priced, "{\"price\":3500}");
+		patchIngredient(cartId, "{\"price\":2000}");
+
+		assertThat(manualPrice(noPrice)).isEqualTo(3000L);
+		assertThat(manualPrice(priced)).isEqualTo(3500L);
+		assertThat(manualPrice(cartId)).isEqualTo(2000L);
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT CAST(created_at AS date) FROM manual_ingredient_expenses WHERE ingredient_id = ?",
+				LocalDate.class, noPrice)).isEqualTo(LocalDate.of(2026, 3, 4));
+		mockMvc.perform(get(EXPENSES + "/patterns").cookie(cookie(owner)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalAmount").value(8500));
+
+		patchIngredient(priced, "{\"price\":null}");
+		assertThat(manualPrice(priced)).isNull();
+		mockMvc.perform(get(EXPENSES + "/patterns").cookie(cookie(owner)))
+				.andExpect(jsonPath("$.totalAmount").value(5000));
+	}
+
+	@Test
+	void 같은_가격이거나_가격_없는_수정과_영수증_재료의_수정은_지출을_바꾸지_않는다() throws Exception {
+		long priced = registerIngredient(owner, "3000");
+		registerReceipt(owner, "2026-03-03", 5000);
+		long receiptIngredientId = jdbcTemplate.queryForObject(
+				"SELECT id FROM ingredients WHERE user_id = ? AND receipt_item_id IS NOT NULL", Long.class, owner);
+		// 지출 행을 직접 바꿔 두면, 호출되지 않았다는 것을 값으로 알 수 있다.
+		jdbcTemplate.update("UPDATE manual_ingredient_expenses SET price = 111 WHERE ingredient_id = ?", priced);
+
+		patchIngredient(priced, "{\"price\":3000}");
+		patchIngredient(priced, "{\"storage\":\"FREEZER\"}");
+		patchIngredient(receiptIngredientId, "{\"price\":999}");
+
+		assertThat(manualPrice(priced)).isEqualTo(111L);
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT count(*) FROM manual_ingredient_expenses WHERE ingredient_id = ?", Long.class,
+				receiptIngredientId)).isZero();
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT price FROM receipt_items WHERE receipt_id IN (SELECT id FROM receipts WHERE user_id = ?)",
+				Long.class, owner)).isEqualTo(5000L);
+		mockMvc.perform(get(EXPENSES + "/patterns").cookie(cookie(owner)))
+				.andExpect(jsonPath("$.totalAmount").value(5111));
+	}
+
+	@Test
+	void 다_쓴_뒤_가격을_고칠_수_없어_마지막_지출이_남는다() throws Exception {
+		long id = registerIngredient(owner, "1500");
+		discardIngredient(owner, id);
+
+		mockMvc.perform(patch(INGREDIENTS + "/" + id).cookie(cookie(owner))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"price\":999}"))
+				.andExpect(status().isNotFound());
+
+		assertThat(manualPrice(id)).isEqualTo(1500L);
 	}
 
 	@Test
@@ -342,6 +407,17 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 								""".formatted(price)))
 				.andExpect(status().isCreated()).andReturn().getResponse();
 		return json.readTree(response.getContentAsByteArray()).get("id").asLong();
+	}
+
+	private void patchIngredient(long ingredientId, String body) throws Exception {
+		mockMvc.perform(patch(INGREDIENTS + "/" + ingredientId).cookie(cookie(owner))
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isOk());
+	}
+
+	private Long manualPrice(long ingredientId) {
+		return jdbcTemplate.queryForObject(
+				"SELECT price FROM manual_ingredient_expenses WHERE ingredient_id = ?", Long.class, ingredientId);
 	}
 
 	private void discardIngredient(Long userId, long ingredientId) throws Exception {

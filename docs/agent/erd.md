@@ -790,7 +790,7 @@ Direct registration and cart-to-fridge moves record the original values in the s
 | `storage` | varchar(10) | | | no | - | Storage at registration |
 | `amount` | numeric(10,3) | | | no | - | Quantity at registration |
 | `unit` | varchar(10) | | | no | - | Unit at registration |
-| `price` | bigint | | | yes | - | Price at registration (KRW), if supplied |
+| `price` | bigint | | | yes | - | Price (KRW), if supplied. Updated when the price is edited on the ingredient while the ingredient exists (#278); the other columns stay as at registration |
 | `created_at` | timestamp | | | no | - | Registration time (KST) |
 
 An index on `(user_id, created_at)` supports period queries.
