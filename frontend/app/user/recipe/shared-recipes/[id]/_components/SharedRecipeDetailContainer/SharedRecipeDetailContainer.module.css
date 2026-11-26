@@ -1,0 +1,82 @@
+/* 피그마 p4.1.4.1-공유 레시피 상세: 서브 헤더 바로 아래 사진(360×240), 그 아래 본문.
+   아래 고정 영역(레시피 저장 + 안내)에 가리지 않게 아래 여백 */
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  padding-bottom: calc(9.5rem + env(safe-area-inset-bottom));
+  background: var(--color-bg-surface);
+}
+
+/* 사진: 폭 가득, 3:2(360×240) */
+.photo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  background: var(--color-bg-skeleton);
+}
+
+.image {
+  object-fit: cover;
+}
+
+.body {
+  padding-top: 0.3125rem;
+}
+
+/* 하트 + 저장 수: Tips 아래 21, 80 동그라미(bg/subtle), 여백 11/20, 숫자 Remake/content·text/body, 하트 40.
+   저장 전 text/disabled, 저장 후 text/danger(빨강) */
+.heart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: center;
+  width: 5rem;
+  height: 5rem;
+  margin-top: 1.3125rem;
+  padding: 0.6875rem 1.25rem;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-disabled);
+}
+
+.heart[aria-pressed="true"] {
+  color: var(--color-text-danger);
+}
+
+.heart:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+.saveCount {
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+.heartIcon {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-top: -0.25rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 아래 고정 영역: 피그마 p4.1.4.1 하단 영역(5778-3394). 위로 그림자(0 -2 10, 10%, 맞는 토큰이 없어 피그마 값),
+   여백 위 20·옆 15·아래 28, 버튼과 안내 사이 10 */
+.bottom {
+  gap: 0.625rem;
+  padding: 1.25rem 0.9375rem calc(1.75rem + env(safe-area-inset-bottom));
+  box-shadow: 0 -2px 10px 0 rgba(0, 0, 0, 0.1);
+}

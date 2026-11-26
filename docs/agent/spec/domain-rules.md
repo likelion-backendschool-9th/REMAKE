@@ -136,7 +136,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Used/discarded: choose "사용 했어요" or "버렸어요" + amount + confirm. Discarded shows "이번 달 버린 식재료 금액에 더해져요".
 - More than available: `INSUFFICIENT_QUANTITY` (400). The sheet caps the amount at what remains (capping method is a proposal).
 - Amount reaches 0: delete the ingredient row; logs keep the name.
-- Discarded cost = price × discarded amount ÷ original amount. No price, no cost. This month's discarded cost shows on "나의 소비" as "N월 버린 식비", which opens p3.4.1 "버린 식재료" (decided 11/25; API proposed in #248).
+- Discarded cost = price × discarded amount ÷ original amount. No price, no cost. This month's discarded cost shows on "나의 소비" as "N월 버린 식비", which opens p3.4.1 "버린 식재료" (decided 11/25; API 25 `discardedAmount` and API 72 `/user/expenses/discarded-items`, #248).
 - Delete: delete icon on the edit screen (screen pending). Allowed even with logs; logs keep the name.
 - Price is optional on manual add too ("가격을 정확히 작성할수록 소비 패턴 분석률이 올라가요"). Priced ingredients count in spending patterns.
 - Default expiry: ingredients from receipts and the cart get the category default shelf life. No "estimated" flag (only a notice on the OCR result screen). Estimation base date, frozen/room values, and recalculation are up to the developer.
@@ -173,7 +173,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Day selection: default today (or the last purchase day if not this month, proposal). No spending: "해당 날짜에는 소비가 없습니다".
 - Week row: swipe left/right (carousel) to the previous/next week of the selected month (decided 11/25). Days outside the selected month and days after today cannot be chosen (proposal).
 - Average difference: "평균보다 N만원 더 지출" / "덜 지출". From 10,000 원, round to 만원; below that, show 원 (decided 11/25). A difference of 0 shows "평균과 같게 지출" (proposal).
-- Discarded food (p3.4.1): "N월 버린 식비 N원" link at the top of 나의 소비 → "N월에 버린 식재료" total (priced items only), "가격을 넣은 재료만 금액에 더해져요", rows (category image, name, "M월 D일 버림", amount or "가격 없음"), newest first. API: API 25 `discardedAmount` and API 72 (proposal, #248).
+- Discarded food (p3.4.1): "N월 버린 식비 N원" link at the top of 나의 소비 → "N월에 버린 식재료" total (priced items only), "가격을 넣은 재료만 금액에 더해져요", rows (category image, name, "M월 D일 버림", amount or "가격 없음"), newest first. API: API 25 `discardedAmount` and API 72 `/user/expenses/discarded-items` (#248).
 - No frequent items or purchase cycles.
 
 ## 4. AI recipes (김종수)

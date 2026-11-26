@@ -81,6 +81,7 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.month").value("2026-03"))
 				.andExpect(jsonPath("$.totalAmount").value(4000))
 				.andExpect(jsonPath("$.averageDiffAmount").doesNotExist())
+				.andExpect(jsonPath("$.discardedAmount").value(0))
 				.andExpect(jsonPath("$.categories.length()").value(2))
 				.andExpect(jsonPath("$.categories[?(@.categoryCode == 'VEGETABLE')].ratio").value(contains(0.25)))
 				.andExpect(jsonPath("$.categories[?(@.categoryCode == 'MEAT')].ratio").value(contains(0.75)))
@@ -250,18 +251,80 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 		mockMvc.perform(get(EXPENSES + "/patterns").param("month", "2025-10").cookie(cookie(owner)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.totalAmount").value(0))
+				.andExpect(jsonPath("$.discardedAmount").value(0))
 				.andExpect(jsonPath("$.categories").isEmpty())
 				.andExpect(jsonPath("$.dailyTotals").isEmpty());
 		mockMvc.perform(get(EXPENSES + "/daily-items").param("date", "2025-10-01").cookie(cookie(owner)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.totalAmount").value(0))
 				.andExpect(jsonPath("$.items").isEmpty());
+		mockMvc.perform(get(EXPENSES + "/discarded-items").param("month", "2025-10").cookie(cookie(owner)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.month").value("2025-10"))
+				.andExpect(jsonPath("$.totalAmount").value(0))
+				.andExpect(jsonPath("$.items").isEmpty());
+	}
+
+	@Test
+	void 버린_식비와_목록은_가격_없는_기록을_합계에서_빼고_최근순이다() throws Exception {
+		long priced = registerIngredient(owner, "4000");
+		long unpriced = registerIngredient(owner, "null");
+		Long otherUser = createUser();
+		long other = registerIngredient(otherUser, "9000");
+		discardIngredient(owner, priced);
+		discardIngredient(owner, unpriced);
+		discardIngredient(otherUser, other);
+
+		mockMvc.perform(get(EXPENSES + "/patterns").cookie(cookie(owner)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.discardedAmount").value(4000));
+		mockMvc.perform(get(EXPENSES + "/discarded-items").cookie(cookie(owner)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.month").value("2026-03"))
+				.andExpect(jsonPath("$.totalAmount").value(4000))
+				.andExpect(jsonPath("$.items.length()").value(2))
+				.andExpect(jsonPath("$.items[0].name").value("양파"))
+				.andExpect(jsonPath("$.items[0].categoryCode").value("VEGETABLE"))
+				.andExpect(jsonPath("$.items[0].discardedOn").value("2026-03-04"))
+				.andExpect(jsonPath("$.items[0].amount").doesNotExist())
+				.andExpect(jsonPath("$.items[1].amount").value(4000));
+	}
+
+	@Test
+	void 전부_버린_뒤에도_목록에_이름과_카테고리가_남고_월_경계를_지킨다() throws Exception {
+		long february = registerIngredient(owner, "1500");
+		clock.setNow(ZonedDateTime.parse("2026-02-28T23:59:59+09:00[Asia/Seoul]"));
+		discardIngredient(owner, february);
+
+		clock.setNow(ZonedDateTime.parse("2026-03-01T00:00:00+09:00[Asia/Seoul]"));
+		long march = registerIngredient(owner, "2500");
+		discardIngredient(owner, march);
+
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredients WHERE id in (?, ?)", Long.class,
+				february, march)).isZero();
+
+		mockMvc.perform(get(EXPENSES + "/discarded-items").param("month", "2026-02").cookie(cookie(owner)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalAmount").value(1500))
+				.andExpect(jsonPath("$.items.length()").value(1))
+				.andExpect(jsonPath("$.items[0].name").value("양파"))
+				.andExpect(jsonPath("$.items[0].categoryCode").value("VEGETABLE"))
+				.andExpect(jsonPath("$.items[0].discardedOn").value("2026-02-28"));
+		mockMvc.perform(get(EXPENSES + "/patterns").param("month", "2026-03").cookie(cookie(owner)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.discardedAmount").value(2500));
+		mockMvc.perform(get(EXPENSES + "/discarded-items").param("month", "2026-03").cookie(cookie(owner)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalAmount").value(2500))
+				.andExpect(jsonPath("$.items[0].discardedOn").value("2026-03-01"));
 	}
 
 	@ParameterizedTest
 	@ValueSource(strings = {"2025-09", "2026-04", "2026-13", "invalid"})
 	void 잘못된_월은_400을_준다(String month) throws Exception {
 		mockMvc.perform(get(EXPENSES + "/patterns").param("month", month).cookie(cookie(owner)))
+				.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+		mockMvc.perform(get(EXPENSES + "/discarded-items").param("month", month).cookie(cookie(owner)))
 				.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_INPUT"));
 	}
 
@@ -279,6 +342,13 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 								""".formatted(price)))
 				.andExpect(status().isCreated()).andReturn().getResponse();
 		return json.readTree(response.getContentAsByteArray()).get("id").asLong();
+	}
+
+	private void discardIngredient(Long userId, long ingredientId) throws Exception {
+		mockMvc.perform(post(INGREDIENTS + "/" + ingredientId + "/consume").cookie(cookie(userId))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"type\":\"DISCARDED\",\"amount\":1}"))
+				.andExpect(status().isOk());
 	}
 
 	private long registerReceipt(Long userId, String date, long price) throws Exception {

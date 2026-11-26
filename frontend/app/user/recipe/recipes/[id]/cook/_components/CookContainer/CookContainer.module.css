@@ -1,0 +1,75 @@
+/* 피그마 p4.1.1.2-레시피 사용 후 재료 차감: 서브 헤더(←만) 아래 10에 제목·설명, 그 아래 15에 재료 목록.
+   아래 고정 버튼에 가리지 않게 아래 여백 */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9375rem;
+  width: 100%;
+  padding: 0.625rem var(--layout-gutter) calc(7.5rem + env(safe-area-inset-bottom));
+}
+
+/* 제목·설명 사이 8 */
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* "총 N개의 재료를 차감해 주세요": Medium 18·줄 높이 normal·text/strong(피그마 값) */
+.title {
+  color: var(--color-text-strong);
+  font: 500 1.125rem / normal var(--font-family-base);
+}
+
+/* 설명: Remake/content·text/assist */
+.description {
+  color: var(--color-text-assist);
+  font: var(--font-content);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 한 줄: [체크박스 22 + 10 + 재료(그림 44×29 + 5 + 이름) … 양] + ">" 44 */
+.item {
+  display: flex;
+  align-items: center;
+}
+
+.check {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.row {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 양: Remake/content·text/body */
+.amount {
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+/* ">": 아이콘 20·text/assist(피그마 값), 오른쪽 끝에 붙인다 */
+.item .edit {
+  margin-right: -0.75rem;
+  color: var(--color-text-assist);
+}
+
+/* 피그마 스켈레톤: 줄 자리 2개(높이 28, 사이 16) */
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}

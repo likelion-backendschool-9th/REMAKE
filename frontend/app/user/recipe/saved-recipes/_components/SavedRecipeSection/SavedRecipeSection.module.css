@@ -1,0 +1,116 @@
+/* 피그마 p4.1 > 레시피: 흰 바탕, 제목 위 30, 칩 줄 위 63, 목록 위 110, 아래 여백 50 */
+.section {
+  display: flex;
+  flex-direction: column;
+  padding: 1.875rem var(--layout-gutter) 3.125rem;
+}
+
+/* "저장한 레시피 N": Medium 18·줄 높이 normal·text/title. 숫자는 피그마 text/primary지만 누를 수 없는 숫자라
+   상호작용 색 대신 text/body(blueprint §6) */
+.title {
+  color: var(--color-text-title);
+  font: 500 1.125rem / normal var(--font-family-base);
+}
+
+.count {
+  margin-left: 0.3em;
+  color: var(--color-text-body);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin-top: 0.6875rem;
+}
+
+.filters {
+  display: flex;
+  gap: 0.3125rem;
+}
+
+/* 피그마 p4.1 칩: 여백 4/8, 아님=border/default(공용 필터 칩보다 작음).
+   선택=공용 칩 soft(파랑 20% 바탕·brand/primary 테두리·text/primary, 피그마 5782-4121). 줄 높이는 Remake/content 그대로 1.4.
+   공용 칩 규칙보다 먼저 적용되도록 부모 클래스를 붙인다 */
+.filters .chip[data-variant="soft"] {
+  padding: var(--space-4) var(--space-8);
+  line-height: 1.4;
+}
+
+.filters .chip[aria-pressed="false"] {
+  border-color: var(--color-border-default);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 1.0625rem 0 0;
+  padding: 0 0 0 0.125rem;
+  list-style: none;
+}
+
+/* 줄: 위아래 12, 제목·재료 사이 8, 오른쪽 별 24(터치 영역 44) */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.rowLink {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-width: 0;
+  padding: var(--space-12) 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.rowLink:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+/* 메뉴명: Remake/content·text/title */
+.name {
+  overflow: hidden;
+  color: var(--color-text-title);
+  font: var(--font-content);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 재료 요약: Remake/assist·text/sub */
+.ingredients {
+  overflow: hidden;
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 별 24: 켜짐 icon/favorite, 꺼짐 #EAEAEA(피그마 값). 터치 영역이 줄 오른쪽 끝에 맞도록 안쪽으로 10 당긴다.
+   공용 아이콘 버튼 색보다 먼저 적용되도록 부모 클래스를 붙인다 */
+.row .star {
+  margin-right: -0.625rem;
+  color: #eaeaea;
+}
+
+.row .star[aria-pressed="true"] {
+  color: var(--color-icon-favorite);
+}
+
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin-top: 1.0625rem;
+}
+
+/* 피그마 p4.1-레시피-빈 리스트: 목록 자리 높이 207, 문구 위 60 */
+.empty {
+  min-height: 12.9375rem;
+  padding: 3.75rem 0 0;
+}

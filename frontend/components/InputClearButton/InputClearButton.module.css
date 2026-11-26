@@ -1,0 +1,26 @@
+/* 피그마 검색창·입력 필드의 지우기: solar close-circle bold 24, #B9B9B9(맞는 토큰이 없어 피그마 값).
+   누르는 영역은 44×44(blueprint §5). 입력칸 오른쪽 끝에서 아이콘까지 11이 되도록 넣는 쪽이 오른쪽 여백만큼 당긴다 */
+.clear {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: none;
+  color: #b9b9b9;
+  cursor: pointer;
+}
+
+.clear:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -2px;
+}
+
+.icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
