@@ -39,7 +39,7 @@ docs/
       ├─ 03_receipt-ocr-spending.md  영역 3: 영수증·OCR·소비 패턴
       ├─ 04_ai-recipe.md        영역 4: AI 레시피
       ├─ 05_meal-plan.md        영역 5: 식단표
-      ├─ 06_notification-admin.md    영역 6: 알림 (어드민은 보류)
+      ├─ 06_notification-admin.md    영역 6: 알림·어드민 운영
       ├─ 07_shared-cart.md      영역 7: 공유 공간·장바구니
       └─ 08_event-tracking.md   전원: 이벤트 트래킹
    └─ qa/                       QA 시나리오 (한글만 있음)

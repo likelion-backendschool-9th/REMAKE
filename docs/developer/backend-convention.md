@@ -50,7 +50,7 @@ com.remake
 | `quota` | usage_logs, generation_quota_grants |
 | `notification` | notifications |
 | `event` | events |
-| `admin` | 보류: 어드민 화면이 피그마에 없어 어드민 테이블이 없습니다. 디자인되면 어드민 기능은 각 기능의 UseCase를 부릅니다 |
+| `admin` | user_sanctions(11/26 운영자 페이지). 어드민 API 61~71은 나머지 테이블(신고·보상 횟수·이벤트)을 각 기능의 UseCase로 부릅니다 |
 
 지킬 것:
 
@@ -257,4 +257,4 @@ com.remake
 
 - 비즈니스 규칙 단위 테스트: 횟수 계산(성공만 차감, 같은 회원 동시 요청), 단위 환산(같은 종류끼리만; 큰술 15ml, 작은술 5ml, 컵 200ml; 꼬집·약간은 차감 안 함), 소비기한 상태, 식단표 재료 배정과 부족 계산, 랭킹과 `rankChange`, 중복 영수증, 영수증 보관.
 - OCR·LLM 어댑터는 가짜로 바꾸고 시간 초과·잘못된 응답 경우를 테스트합니다.
-- 어드민 API(어드민 화면이 나올 때까지 보류): 어드민이 아니면 403인지 테스트합니다.
+- 어드민 API(61~71): 어드민이 아니면 403 `FORBIDDEN`인지 테스트합니다.
