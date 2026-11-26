@@ -267,6 +267,8 @@ class Rules:
                 self.groups[member] = group
         self.skipped = set(raw['skippedNames'])
         self.dishes = set(raw['dishNames'])
+        self.title_only = list(raw['titleOnlyTerms'])
+        self.staples = set(raw['stapleGroups'])
         c = raw['caution']
         caution_names = ({n for n, (cat, _) in self.catalog.items() if cat in c['categories']}
                          - set(c['exceptNames']) | set(c['names']))
@@ -328,7 +330,7 @@ class Rules:
             i = 0
             while i < len(word):
                 best = None
-                for c in self.catalog:
+                for c in list(self.catalog) + self.title_only:
                     if c in self.dishes or not word.startswith(c, i):
                         continue
                     if (len(c) >= MIN_CONTAINED_NAME_LENGTH or word == c) and (best is None or len(c) > len(best)):
@@ -344,6 +346,34 @@ class Rules:
         """요리 이름에 들었지만 재료 목록에 없는 재료(서버 MealPlanCombinationRules.missingTitleIngredients와 같다)."""
         return [t for t in self.title_terms(title) if not self.title_term_used(t, names)]
 
+    def fixed_title(self, title, names):
+        """이름에 든 재료가 재료 목록에 없으면 고친 이름(서버 MealPlanCombinationRules.fixedTitle과 같다).
+        1) 없는 재료를 지운다(바로 앞뒤의 띄어 쓴 이음말 와·과·및·&·, 도 함께) 2) 이름에 재료가 하나도 안 남으면
+        쌀·빵·면이 아닌 첫 재료를 앞에 붙인다 3) 그런 재료가 없고 쌀·빵·면이 있으면 남은 이름 4) 그것도 아니면 원래 이름."""
+        missing = self.title_missing(title, names)
+        if not missing:
+            return title
+        new = title
+        for term in missing:
+            new = remove_title_term(new, term)
+        new = re.sub(r'\s+', ' ', new).strip()
+        if self.title_terms(new):
+            return new
+        main = self.main_ingredient(names)
+        if main is None:
+            staple = any(k and k[0] in self.staples for k in (self.key(n) for n in names))
+            return new if (staple and new) else title
+        return f'{main} {new}'.strip() if (' ' in title and new) else main + new
+
+    def main_ingredient(self, names):
+        """쌀·빵·면이 아닌 첫 재료의 사전 기준 이름(양념·물·사전에 없는 이름 뺌)."""
+        for name in names:
+            key = self.key(name)
+            if not key or key[0] in self.staples:
+                continue
+            return canonical(self.match(name.strip())[0], self.synonyms)
+        return None
+
     def title_term_used(self, term, names):
         term_name = canonical(term, self.synonyms)
         term_key = self.groups.get(term_name, term_name)
@@ -356,6 +386,17 @@ class Rules:
                     or term in compact or (term_key != term_name and term_key in compact)):
                 return True
         return False
+
+
+def remove_title_term(text, term):
+    """요리 이름에서 재료 이름 하나를 처음 나온 곳에서 지운다. 바로 앞뒤에 띄어 쓴 이음말(와·과·및)이나 &·, 가 있으면 함께
+    (식빵 토스트와 사과 → 식빵 토스트). 붙여 쓴 글자는 건드리지 않는다(사과버섯볶음에서 버섯 → 사과볶음)."""
+    t = re.escape(term)
+    for pattern in (rf'(?:와|과|및)\s+{t}', rf'\s*[&,]\s*{t}', rf'{t}(?:와|과)\s+', rf'{t}\s+및\s+', rf'{t}\s*[&,]\s*', t):
+        new, count = re.subn(pattern, '', text, count=1)
+        if count:
+            return new
+    return text
 
 
 def unseen_caution_pairs(data, names, rules):
@@ -403,6 +444,8 @@ def build(csv_path, rules):
     data['groups'] = rules.groups
     data['skippedNames'] = sorted(rules.skipped)
     data['dishNames'] = sorted(rules.dishes)
+    data['titleOnlyTerms'] = rules.title_only
+    data['stapleGroups'] = sorted(rules.staples)
     data['breakfast'] = rules.breakfast
     data['excludedFromAi'] = rules.excluded
     data['partners'] = OrderedDict((n, sorted(partners[n])) for n in rules.caution)
@@ -434,7 +477,8 @@ def expected(csv_path, rules, data):
     out['recipes'] = [OrderedDict([('name', title), ('ingredients', recipe),
                                    ('unseenCautionPairs', unseen_caution_pairs(data, recipe, rules)),
                                    ('title', titles.get(title)),
-                                   ('missingTitleIngredients', rules.title_missing(titles[title], recipe) if title in titles else [])])
+                                   ('missingTitleIngredients', rules.title_missing(titles[title], recipe) if title in titles else []),
+                                   ('fixedTitle', rules.fixed_title(titles[title], recipe) if title in titles else None)])
                       for title, recipe in recipes.items()]
     return out
 
@@ -462,7 +506,7 @@ def main():
     print(f'판정 비교: 이름 {len(check["keys"])}개, 레시피 {len(check["recipes"])}개(걸림 {hit}개) → {args.expected}')
     for r in check['recipes']:
         if r['name'].startswith(('absurd:', 'normal:', 'titleMismatch:')):
-            print(f'  {r["name"]}: 짝 {r["unseenCautionPairs"]}, 이름에 없는 재료 {r["missingTitleIngredients"]}')
+            print(f'  {r["name"]}: 짝 {r["unseenCautionPairs"]}, 이름에 없는 재료 {r["missingTitleIngredients"]} → {r["fixedTitle"]}')
 
 
 if __name__ == '__main__':

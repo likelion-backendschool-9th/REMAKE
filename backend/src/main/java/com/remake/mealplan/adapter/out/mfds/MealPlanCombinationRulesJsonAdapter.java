@@ -59,13 +59,14 @@ class MealPlanCombinationRulesJsonAdapter implements LoadMealPlanCombinationRule
 		Map<String, Set<String>> partners = new LinkedHashMap<>();
 		json.partners().forEach((name, list) -> partners.put(name, Set.copyOf(list)));
 		return new MealPlanCombinationRules(catalog, json.synonyms(), aliases, json.groups(),
-				Set.copyOf(json.skippedNames()), Set.copyOf(json.dishNames()), Set.copyOf(json.breakfast()),
-				Set.copyOf(json.excludedFromAi()), partners);
+				Set.copyOf(json.skippedNames()), Set.copyOf(json.dishNames()), json.titleOnlyTerms(),
+				Set.copyOf(json.stapleGroups()), Set.copyOf(json.breakfast()), Set.copyOf(json.excludedFromAi()), partners);
 	}
 
 	record RulesJson(String source, int recipeCount, LinkedHashMap<String, String> catalog,
 			Map<String, String> synonyms, Map<String, AliasJson> aliases, Map<String, String> groups,
-			List<String> skippedNames, List<String> dishNames, List<String> breakfast, List<String> excludedFromAi,
+			List<String> skippedNames, List<String> dishNames, List<String> titleOnlyTerms, List<String> stapleGroups,
+			List<String> breakfast, List<String> excludedFromAi,
 			Map<String, List<String>> partners) {
 	}
 

@@ -629,6 +629,25 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		assertThat(eventProperty("meal_plan_generate_failed", "error_code")).isEqualTo("AI_INVALID_RESPONSE");
 	}
 
+	@Test
+	void AI가_쓰지_않은_재료를_요리_이름에_넣으면_서버가_이름을_고쳐_저장한다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		// 이름은 "양파대파볶음"인데 양파는 재료에 없다
+		given(mealPlanAiAdapter.generate(any())).willAnswer(invocation -> everySlotUses(fridgeId, 100).answer(invocation)
+				.stream()
+				.map(slot -> slot.withTitle("양파대파볶음"))
+				.toList());
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(1)).generate(any());
+		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "COMPLETED");
+		assertThat(jdbcTemplate.queryForList("SELECT DISTINCT title FROM recipes WHERE user_id = ?", String.class, userId))
+				.containsExactly("대파볶음");
+	}
+
 	/** AI 가짜: 칸마다 대파 100g에 냉장고에 없는 초콜릿을 더 쓰는 레시피(엉터리 조합). */
 	private static Answer<List<GeneratedMealSlot>> withChocolate(Long fridgeId) {
 		return invocation -> everySlotUses(fridgeId, 100).answer(invocation).stream()

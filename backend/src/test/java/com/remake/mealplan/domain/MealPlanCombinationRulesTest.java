@@ -36,7 +36,7 @@ class MealPlanCombinationRulesTest {
 		return new MealPlanCombinationRules(catalog, Map.of("계란", "달걀"),
 				Map.of("콜라비", new MealPlanCombinationRules.Alias(null, IngredientCategoryCode.VEGETABLE),
 						"간장소스", new MealPlanCombinationRules.Alias("간장", null)),
-				Map.of("대파", "파", "쪽파", "파", "식빵", "빵"), Set.of("생수"), Set.of("두부조림"),
+				Map.of("대파", "파", "쪽파", "파", "식빵", "빵"), Set.of("생수"), Set.of("두부조림"), List.of("새우젓"), Set.of("쌀", "빵"),
 				Set.of("딸기", "바나나", "우유", "빵", "버터"), Set.of("콜라"),
 				Map.of("딸기", Set.of("우유", "빵"), "바나나", Set.of(), "콜라", Set.of("파")));
 	}
@@ -130,6 +130,22 @@ class MealPlanCombinationRulesTest {
 		assertThat(rules().missingTitleIngredients("감자두부조림", List.of("감자", "두부"))).isEmpty();
 		assertThat(rules().missingTitleIngredients("감자두부조림", List.of("감자"))).containsExactly("두부");
 		assertThat(rules().missingTitleIngredients("", List.of("감자"))).isEmpty();
+	}
+
+	@Test
+	void 이름에_없는_재료를_지우고_재료가_안_남으면_주재료를_붙인다() {
+		assertThat(rules().fixedTitle("두부계란국", List.of("두부", "물"))).isEqualTo("두부국");
+		assertThat(rules().fixedTitle("두부계란국", List.of("두부", "달걀"))).isEqualTo("두부계란국");
+		// 이름에 재료가 안 남으면 쌀·빵이 아닌 첫 재료를 앞에 붙인다
+		assertThat(rules().fixedTitle("두부볶음", List.of("쌀", "감자", "간장"))).isEqualTo("감자볶음");
+		// 쌀·빵밖에 없으면 남은 이름, 주재료가 아예 없으면 원래 이름
+		assertThat(rules().fixedTitle("감자볶음밥", List.of("쌀", "간장"))).isEqualTo("볶음밥");
+		assertThat(rules().fixedTitle("감자구이", List.of("간장"))).isEqualTo("감자구이");
+		// 띄어 쓴 이음말은 함께 지우고, 붙여 쓴 글자는 건드리지 않는다
+		assertThat(rules().fixedTitle("식빵 토스트와 딸기", List.of("식빵", "버터"))).isEqualTo("식빵 토스트");
+		assertThat(rules().fixedTitle("딸기두부볶음", List.of("딸기", "감자"))).isEqualTo("딸기볶음");
+		// 사전에 없는 새우젓도 이름의 재료 낱말로 읽는다
+		assertThat(rules().fixedTitle("감자새우젓볶음", List.of("감자", "간장"))).isEqualTo("감자볶음");
 	}
 
 	@Test
