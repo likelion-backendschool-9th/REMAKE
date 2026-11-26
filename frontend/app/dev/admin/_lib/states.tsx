@@ -29,10 +29,14 @@ import {
 import { ReportDetailContainer } from "../../../admin/operation/reports/[sharedRecipeId]/_components/ReportDetailContainer/ReportDetailContainer";
 import type { PreviewState } from "../../_lib/preview";
 
-/** 미리보기 주소(/dev/admin/...)로는 지금 메뉴를 알 수 없어 넘긴다. 피그마처럼 "신고 관리" 옆에 처리 대기 12건을 보인다 */
-function withLayout(activeMenu: AdminMenuKey, content: ReactNode) {
+/** 미리보기 주소(/dev/admin/...)로는 지금 메뉴를 알 수 없어 넘긴다. 피그마처럼 "신고 관리" 옆에 처리 대기 건수를 보이고, 0건이면 배지를 보이지 않는다 */
+function withLayout(
+  activeMenu: AdminMenuKey,
+  content: ReactNode,
+  pendingReportCount: number = SAMPLE_DASHBOARD.pendingReportCount,
+) {
   return (
-    <AdminLayout activeMenu={activeMenu} pendingReportCount={SAMPLE_DASHBOARD.pendingReportCount}>
+    <AdminLayout activeMenu={activeMenu} pendingReportCount={pendingReportCount}>
       {content}
     </AdminLayout>
   );
@@ -136,7 +140,7 @@ export const ADMIN_STATES: PreviewState[] = [
     slug: "a4-reports-empty",
     label: "a4-신고 관리-처리할 신고 없음",
     route: ADMIN_PATHS.reports,
-    render: () => withLayout("reports", <ReportListContainer pending={[]} pendingCount={0} />),
+    render: () => withLayout("reports", <ReportListContainer pending={[]} pendingCount={0} />, 0),
   },
   {
     slug: "a4.1-detail",
@@ -187,7 +191,7 @@ export const ADMIN_STATES: PreviewState[] = [
     render: () =>
       withLayout(
         "reports",
-        <ReportDetailContainer report={SAMPLE_REPORT_DETAIL} initialToast="handled" />,
+        <ReportDetailContainer report={SAMPLE_HANDLED_DETAIL} initialToast="handled" />,
       ),
   },
   {

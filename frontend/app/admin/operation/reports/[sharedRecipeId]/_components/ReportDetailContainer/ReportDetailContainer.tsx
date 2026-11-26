@@ -19,6 +19,7 @@ import { AdminPageHeader } from "../../../../../_components/AdminPageHeader/Admi
 import { ADMIN_PATHS } from "../../../../../_lib/admin-menu";
 import {
   getActionCopy,
+  getDetailMeta,
   getHandledDescription,
   getNextSanctionNotice,
   getReasonTone,
@@ -95,7 +96,7 @@ export function ReportDetailContainer({
         <DetailSkeleton />
       ) : (
         <>
-          <AdminPageHeader title="신고 상세" />
+          <AdminPageHeader title={report.title} description={getDetailMeta(report)} />
 
           <div className={styles.body}>
             <RecipeCard report={report} />
@@ -129,35 +130,32 @@ export function ReportDetailContainer({
   );
 }
 
-/** 왼쪽 카드: 글 제목, 사진 자리, 2인분·30분 이내, 재료, 조리 순서 */
+/** 왼쪽 카드: 사용자에게 보이는 레시피 그대로. 사진 자리, 제목, 재료 준비·인분·시간, 재료, 만드는 방법 */
 function RecipeCard({ report }: { report: ReportDetail }) {
   const { recipe } = report;
 
   return (
-    <AdminCard
-      title={report.title}
-      meta={`공유 ${report.sharedAt} · 저장 ${report.saveCount}`}
-      className={styles.recipe}
-    >
+    <AdminCard title="공유 레시피" meta="사용자에게 보이는 그대로" className={styles.recipe}>
       <div className={styles.photo} aria-hidden="true" />
 
-      <p className={styles.servings}>
-        {recipe.servings} · {recipe.cookingTime}
-      </p>
-
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>재료</h3>
-        <ul className={styles.ingredients}>
-          {recipe.ingredients.map((ingredient) => (
-            <li key={ingredient.name} className={styles.ingredient}>
-              {ingredient.name} <span className={styles.amount}>{ingredient.amount}</span>
-            </li>
-          ))}
-        </ul>
+      <section className={styles.recipeInfo}>
+        <h3 className={styles.recipeTitle}>{report.title}</h3>
+        <p className={styles.recipeMeta}>
+          {recipe.readiness} · {recipe.servings} · {recipe.cookingTime}
+        </p>
       </section>
 
       <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>조리 순서</h3>
+        <h3 className={styles.sectionTitle}>재료</h3>
+        <p className={styles.ingredients}>
+          {recipe.ingredients
+            .map((ingredient) => `${ingredient.name} ${ingredient.amount}`)
+            .join(", ")}
+        </p>
+      </section>
+
+      <section className={styles.section}>
+        <h3 className={styles.sectionTitle}>만드는 방법</h3>
         <ol className={styles.steps}>
           {recipe.steps.map((step) => (
             <li key={step} className={styles.step}>
@@ -187,10 +185,10 @@ function ReportListCard({ report }: { report: ReportDetail }) {
       <ul className={styles.reportList}>
         {report.reports.map((entry) => (
           <li key={`${entry.reportedAt}-${entry.reporterId}`} className={styles.reportRow}>
-            <Badge tone={getReasonTone(entry.reason)}>{entry.reason}</Badge>
-            <span className={styles.reportMeta}>
-              {entry.reportedAt} · 회원 #{entry.reporterId}
+            <span className={styles.reportText}>
+              {entry.reportedAt} · {entry.reason}
             </span>
+            <span className={styles.reportMeta}>회원 #{entry.reporterId}</span>
           </li>
         ))}
       </ul>
@@ -237,7 +235,7 @@ function AuthorCard({ report, onChoose }: AuthorCardProps) {
         <>
           <InfoBox variant="gray">{getNextSanctionNotice(author.violationCount)}</InfoBox>
 
-          <Button tone="danger" size="md" onClick={() => onChoose("VIOLATION")}>
+          <Button tone="danger" size="lg" onClick={() => onChoose("VIOLATION")}>
             위반으로 처리하기
           </Button>
 

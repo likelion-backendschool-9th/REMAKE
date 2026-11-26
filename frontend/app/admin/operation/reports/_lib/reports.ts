@@ -45,6 +45,8 @@ export type ReportEntry = {
 };
 
 export type ReportRecipe = {
+  /** 재료 준비 현황. 예: "재료 준비 3/4" */
+  readiness: string;
   servings: string;
   cookingTime: string;
   ingredients: { name: string; amount: string }[];
@@ -169,6 +171,12 @@ export function getActionCopy(action: ReportAction, violationCount: number) {
   };
 }
 
+/** 상세 페이지 제목 아래 한 줄. 처리 상태는 처리 여부에 따라 바뀐다 */
+export function getDetailMeta(report: ReportDetail): string {
+  const status = report.handled ? "처리 완료" : "처리 대기";
+  return `${report.sharedAt} 공유 · 저장 ${report.saveCount} · ${status}`;
+}
+
 /** 처리한 뒤 처리 결과 박스에 보이는 설명 */
 export function getHandledDescription(handled: HandledInfo): string {
   const applied = handled.appliedLevel
@@ -255,7 +263,6 @@ export const SAMPLE_PENDING_REPORTS: PendingReportItem[] = [
   },
 ];
 
-// 처리 완료 샘플은 피그마 프레임을 확인하지 못해 임시 값이다(열 구성 포함). 디자인 확인 후 맞춘다
 export const SAMPLE_HANDLED_REPORTS: HandledReportItem[] = [
   {
     sharedRecipeId: 201,
@@ -293,24 +300,32 @@ export const SAMPLE_HANDLED_REPORTS: HandledReportItem[] = [
     handledAt: "11월 7일 11:31",
     operator: "운영자 계정",
   },
+  {
+    sharedRecipeId: 205,
+    title: "양배추 스테이크",
+    reportCount: 2,
+    result: "VIOLATION",
+    appliedSanction: "1차 · 7일 공유 정지",
+    handledAt: "11월 6일 20:16",
+    operator: "운영자 계정",
+  },
 ];
 
 const SAMPLE_RECIPE: ReportRecipe = {
+  readiness: "재료 준비 3/4",
   servings: "2인분",
-  cookingTime: "30분 이내",
+  cookingTime: "20분",
   ingredients: [
-    { name: "양상추", amount: "1줌" },
-    { name: "찬밥", amount: "1공기" },
-    { name: "계란", amount: "1개" },
-    { name: "베이컨", amount: "2줄" },
-    { name: "토마토", amount: "1개" },
+    { name: "계란", amount: "2개" },
+    { name: "대파", amount: "1/2대" },
+    { name: "밥", amount: "1공기" },
+    { name: "간장", amount: "1큰술" },
+    { name: "참기름", amount: "약간" },
   ],
   steps: [
-    "재료 썰기: 베이컨은 1cm 두께로 썰고, 양상추는 볶음밥에 잘 섞이도록 듬성듬성 한 입 크기로 썰어줍니다. 달걀은 그릇에 미리 풀어둡니다.",
-    "기름 내기: 중불로 달군 팬에 베이컨을 올려 굽습니다. 베이컨에서 기름이 충분히 나오면 한쪽으로 몰아둡니다.",
-    "스크램블 에그: 팬의 빈 공간에 풀어둔 달걀을 붓고 젓가락으로 빠르게 저어 부드러운 스크램블을 만듭니다.",
-    "밥 볶기: 달걀이 반쯤 익으면 찬밥을 넣고 주걱을 세워 밥알을 가르듯이 볶아줍니다.",
-    "양상추 섞기 (핵심): 가스레인지 불을 끄고, 썰어둔 양상추를 넣습니다. 잔열을 이용해 가볍게 두세 번만 뒤적입니다.",
+    "대파를 송송 썰어 기름에 볶아요.",
+    "계란을 풀어 넣고 반쯤 익으면 밥을 넣어요.",
+    "간장과 참기름으로 간을 맞춰요.",
   ],
 };
 

@@ -24,17 +24,18 @@
   height: 1rem;
 }
 
+/* 왼쪽·오른쪽 열과 오른쪽 카드 사이 간격 16 */
 .body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 25rem;
   align-items: start;
-  gap: var(--space-24);
+  gap: var(--space-16);
 }
 
 .side {
   display: flex;
   flex-direction: column;
-  gap: var(--space-24);
+  gap: var(--space-16);
 }
 
 @media (max-width: 960px) {
@@ -60,7 +61,19 @@
   background: var(--color-bg-skeleton);
 }
 
-.servings {
+/* 제목 16 medium, 재료 준비·인분·시간 12 */
+.recipeInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.recipeTitle {
+  color: var(--color-text-title);
+  font: var(--font-content-strong);
+}
+
+.recipeMeta {
   color: var(--color-text-sub);
   font: var(--font-assist);
 }
@@ -76,26 +89,11 @@
   font: var(--font-content-strong);
 }
 
-/* 재료 태그: bg/section 바탕, radius/sm */
+/* 재료는 쉼표로 이은 한 줄 */
 .ingredients {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-6);
   margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ingredient {
-  padding: var(--space-4) var(--space-10);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-section);
   color: var(--color-text-body);
-  font: var(--font-assist);
-}
-
-.amount {
-  color: var(--color-text-sub);
+  font: var(--font-content);
 }
 
 .steps {
@@ -128,6 +126,7 @@
   list-style: none;
 }
 
+/* 한 줄: 왼쪽 시각·사유, 오른쪽 회원 번호 */
 .reportRow {
   display: flex;
   align-items: center;
@@ -139,6 +138,12 @@
 
 .reportRow:last-child {
   border-bottom: 0;
+}
+
+.reportText {
+  min-width: 0;
+  color: var(--color-text-body);
+  font: var(--font-content);
 }
 
 .reportMeta {
@@ -170,13 +175,13 @@
   font: var(--font-content);
 }
 
-/* 처리 끝남: 처리 결과 박스(bg/section) */
+/* 처리 끝남: 처리 결과 박스(bg/section, radius/sm, 간격 6) */
 .result {
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
+  gap: var(--space-6);
   padding: var(--space-16);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--color-bg-section);
 }
 
@@ -190,11 +195,11 @@
   font: var(--font-assist);
 }
 
-/* 문제 없음·글 삭제 글 버튼: 가운데 간격 16 */
+/* 문제 없음·글 삭제 글 버튼: 가운데, 간격 24 */
 .secondary {
   display: flex;
   justify-content: center;
-  gap: var(--space-16);
+  gap: var(--space-24);
 }
 
 .toastArea {
