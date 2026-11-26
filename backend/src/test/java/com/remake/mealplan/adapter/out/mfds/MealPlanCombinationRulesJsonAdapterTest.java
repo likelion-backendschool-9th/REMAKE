@@ -20,7 +20,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 실제 combination-check.json으로 판정한다. 기대값은 정리 스크립트를 만들 때 파이썬으로 한 시뮬레이션과 같다
- * (11-24~26 실측 AI 레시피 991개 중 걸림 0개, 엉터리 예시 16개 중 14개 걸림).
+ * (11-24~26 실측 AI 레시피 1,045개 중 걸림 0개, 엉터리 예시 16개 중 14개 걸림).
  */
 class MealPlanCombinationRulesJsonAdapterTest {
 
@@ -82,7 +82,9 @@ class MealPlanCombinationRulesJsonAdapterTest {
 				// 콜라비는 사전 "콜라"로 맞추지 않는다(고침표)
 				Map.entry("콜라비 무침", List.of("콜라비", "오이", "양파")),
 				// 초콜릿은 아침 재료(잼·땅콩버터와 같은 쪽): 빵·바나나와 짝이 처음이어도 허용(11-26 결정)
-				Map.entry("초코 바나나 토스트", List.of("초코시럽", "바나나", "식빵")));
+				Map.entry("초코 바나나 토스트", List.of("초코시럽", "바나나", "식빵")),
+				// 치즈·모짜렐라치즈도 아침 재료(11-26 C3 추가 실측 뒤 결정)
+				Map.entry("블루베리 치즈 토스트", List.of("식빵", "블루베리", "모짜렐라치즈")));
 		normal.forEach((title, names) -> assertThat(rules.unseenCautionPairs(names)).as(title).isZero());
 	}
 
