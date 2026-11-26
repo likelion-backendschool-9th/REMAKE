@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -110,7 +111,7 @@ class MealPlanResultWriter {
 
 		eventTracker.track(EventName.MEAL_PLAN_GENERATED, null, Map.of(
 				"meal_plan_id", plan.id(),
-				"meal_purpose", plan.purpose().name().toLowerCase(java.util.Locale.ROOT),
+				"meal_purpose", plan.purpose().name().toLowerCase(Locale.ROOT),
 				"meal_type_count", plan.mealTypes().size(),
 				"generated_days", generatedDays,
 				"shortage_count", shortageCount,

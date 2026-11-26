@@ -81,8 +81,8 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 				command("두부", IngredientCategoryCode.BEAN_TOFU, null, LocalDate.of(2026, 3, 1), BigDecimal.ONE, createReceiptItem(userId, "두부", "BEAN_TOFU")))));
 		awaitEventWrites();
 
-		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM events WHERE properties::text LIKE '%receipt%'",
-				Long.class)).isEqualTo(2L);
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT count(*) FROM events WHERE properties->>'add_source' = 'receipt'", Long.class)).isEqualTo(2L);
 	}
 
 	@Test

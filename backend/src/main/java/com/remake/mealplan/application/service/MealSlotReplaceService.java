@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -171,7 +172,7 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 		}
 
 		eventTracker.track(EventName.MEAL_SLOT_REPLACED, Screen.MEAL_PLAN_CALENDAR, Map.of(
-				"meal_type", slot.mealType().name().toLowerCase(java.util.Locale.ROOT),
+				"meal_type", slot.mealType().name().toLowerCase(Locale.ROOT),
 				"date_relation", slot.slotDate().equals(today) ? "today" : "future",
 				"duration_ms", elapsedMillis(start),
 				"remaining_quota", saved.quota().remaining()), EventTrackCommand.ofUser(userId));
