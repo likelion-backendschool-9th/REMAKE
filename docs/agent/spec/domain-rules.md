@@ -168,7 +168,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Retention: 6 months from the purchase date; a daily early-morning job deletes older receipts with their images.
 - Image storage type is the backend's choice; the server builds image URLs.
 - "나의 소비" (spending pattern): month tabs for the last 6 months (built by the frontend), month spending (positive), "평균 보다 N원 더 지출", one category ratio bar with legend, Mon–Sun day row (amount under the selected day), "총 N원" and the food list for the selected day.
-- Pattern scope: receipt items + ingredients added without a receipt that have a price (by registration date). Unpriced ones are treated as fridge-only and excluded. Discarded ingredients stay included (already bought).
+- Pattern scope: receipt items + ingredients added without a receipt that have a price (by registration date). Price edits after registration are reflected (set, change, or clear); the date stays the registration date. Unpriced ones are treated as fridge-only and excluded. Discarded ingredients stay included (already bought).
 - Category ratio: 12 categories; categories with 0 spending are left out (proposal).
 - Day selection: default today (or the last purchase day if not this month, proposal). No spending: "해당 날짜에는 소비가 없습니다".
 - Week row: swipe left/right (carousel) to the previous/next week of the selected month (decided 11/25). Days outside the selected month and days after today cannot be chosen (proposal).
