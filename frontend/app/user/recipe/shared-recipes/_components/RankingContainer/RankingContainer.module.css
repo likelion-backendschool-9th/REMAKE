@@ -1,0 +1,175 @@
+/* 피그마 p4.1.4-이번 주 레시피 랭킹: 서브 헤더(←만) 바로 아래 주차·제목, 그 아래 15에 검색창, 아래 13에 목록 */
+.main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0 var(--layout-gutter) calc(var(--space-30) + env(safe-area-inset-bottom));
+}
+
+.heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+/* 주차·제목 사이 5 */
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+}
+
+/* "11월 셋째 주": Remake/assist·text/assist */
+.week {
+  color: var(--color-text-assist);
+  font: var(--font-assist);
+}
+
+/* "금주의 인기 레시피": Remake/header·text/title */
+.title {
+  color: var(--color-text-title);
+  font: var(--font-header);
+}
+
+/* "인기순 ⌄": Remake/content·text/assist(공용 드롭다운 작게보다 큰 글자), 제목 줄 가운데쯤 */
+.heading .sort {
+  margin-bottom: 0.1875rem;
+  font: var(--font-content);
+}
+
+.search {
+  margin-top: 0.9375rem;
+}
+
+/* 목록: 검색창 아래 13, 줄 사이 5 */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3125rem;
+  margin: 0.8125rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 줄: 여백 8/5, 순위 35 + 5 + 사진 40 + 8 + 글, 오른쪽 순위 변동 */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: var(--space-8) 0.3125rem;
+  border-radius: 0.625rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+/* "1위": Remake/title·text/title. 1~3위는 굵게(피그마 text/primary지만 누를 수 없는 글이라 상호작용 색 대신 text/title,
+   blueprint §6) */
+.rank {
+  flex: none;
+  width: 2.1875rem;
+  color: var(--color-text-title);
+  font: var(--font-title);
+}
+
+.rank[data-top] {
+  font: var(--font-subheader);
+}
+
+/* 최신순 "—": text/assist */
+.rank[data-empty] {
+  color: var(--color-text-assist);
+}
+
+/* 사진: 40 동그라미 */
+.photo {
+  position: relative;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-right: 0.1875rem;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-skeleton);
+}
+
+.image {
+  object-fit: cover;
+}
+
+/* 제목 Remake/content·text/title, 재료 Remake/content-regular·text/sub. 피그마는 사이 5지만 글 영역 높이를 36으로
+   고정해 줄 간격이 61이 되므로, 사이 없이 두 줄을 붙여 같은 높이로 맞춘다 */
+.text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name,
+.ingredients {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name {
+  color: var(--color-text-title);
+  font: var(--font-content);
+}
+
+.ingredients {
+  color: var(--color-text-sub);
+  font: var(--font-content-regular);
+}
+
+/* 순위 변동: 공용 순위 변동(아이콘 + 숫자) */
+.change {
+  margin-left: var(--space-8);
+}
+
+/* 지난주 순위가 없거나 같음 "—": Remake/title·text/assist. 순위 변동(아이콘 16 + 간격 2 + 숫자 두 자리)과 같은 폭으로
+   두고 가운데에 놓아, 줄마다 글 영역 폭이 같게 한다 */
+.noChange {
+  flex: none;
+  width: calc(1rem + var(--space-2) + 2ch);
+  text-align: center;
+  margin-left: var(--space-8);
+  color: var(--color-text-assist);
+  font: var(--font-title);
+}
+
+/* 최신순 공유한 시간: Remake/assist·text/assist */
+.ago {
+  flex: none;
+  margin-left: var(--space-8);
+  color: var(--color-text-assist);
+  font: var(--font-assist);
+}
+
+/* 피그마 스켈레톤: 줄 자리 2개(높이 40, 사이 21) */
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 1.3125rem;
+  margin-top: 1.75rem;
+}
+
+/* 피그마 검색 결과 없음: 검색창 아래 60쯤 문구 */
+.empty {
+  padding-top: 3.25rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

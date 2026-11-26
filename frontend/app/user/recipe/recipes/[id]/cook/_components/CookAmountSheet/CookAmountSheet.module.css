@@ -1,0 +1,34 @@
+/* 피그마 바텀시트/재료 사용(차감 화면, 5992-7325): 내용 간격 space/10, 내용-버튼 간격 space/20.
+   남는 수량 줄 여백 0/4(Remake/content-strong·text/assist),
+   뺄 수량 상자 bg/surface·border/default·radius/md·여백 10/14/10/12(냉장고 재료 사용 시트와 같은 모양) */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+.remaining {
+  padding: 0 var(--space-4);
+  color: var(--color-text-assist);
+  font: var(--font-content-strong);
+}
+
+.amount {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-10) var(--space-14) var(--space-10) var(--space-12);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+}
+
+.amountLabel {
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+/* 내용과 버튼 사이는 20(내용 간격 10 + 10) */
+.confirm {
+  margin-top: var(--space-10);
+}

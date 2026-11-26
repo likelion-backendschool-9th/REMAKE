@@ -34,17 +34,19 @@ final class EventPropertyValues {
 			Map.entry("recipe_mode", Set.of("QUICK", "CUSTOM")),
 			Map.entry("detail_origin", Set.of("LIST", "MEAL_PLAN", "SHARED", "GENERATE", "SAVED")),
 			Map.entry("save_source", Set.of("own", "shared")),
-			Map.entry("feedback_value", Set.of("LIKE", "DISLIKE")),
 			Map.entry("meal_purpose", Set.of("BALANCED", "DIET", "HIGH_PROTEIN", "SIMPLE", "SAVING")),
 			Map.entry("meal_type", Set.of("BREAKFAST", "LUNCH", "DINNER")),
 			Map.entry("date_relation", Set.of("TODAY", "PAST", "FUTURE")),
-			Map.entry("slot_source", Set.of("AI", "MANUAL")),
 			Map.entry("cart_source", Set.of("meal_plan", "own_recipe", "shared_recipe")),
 			Map.entry("notification_type", Set.of(
 					"expiry_soon", "expired", "meal_plan_completed", "meal_plan_failed")),
 			Map.entry("ranking_view", Set.of("WEEKLY", "ALL")),
 			Map.entry("view_from", Set.of("RANKING", "SHARE_LINK", "SAVED")),
 			Map.entry("rank_bucket", Set.of("TOP10", "TOP30", "OTHER")),
+			Map.entry("overlap_choice", Set.of("overwrite", "cancel")),
+			Map.entry("ranking_sort", Set.of("popular", "latest")),
+			Map.entry("list_filter", Set.of("all", "favorite", "available")),
+			Map.entry("list_sort", Set.of("saved_desc", "saved_asc")),
 			Map.entry("report_reason", Set.of("offensive_image", "ad_title", "dangerous_recipe", "other")));
 
 	private static final Set<String> CODE_PROPERTIES = Set.of("error_code", "category_code");

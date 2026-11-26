@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@solar-icons/react/linear";
 
 import { IconButton } from "@/components/IconButton/IconButton";
+import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { cx } from "@/lib/cx";
 
 import styles from "./SubHeader.module.css";
@@ -25,6 +26,8 @@ type SubHeaderProps = {
   titleAs?: "h1" | "h2";
   /** 제목 id. 드로워의 aria-labelledby에 쓴다 */
   titleId?: string;
+  /** 제목을 불러오는 중이면 제목 자리에 스켈레톤(피그마 p4.1.1-레시피 상세-스켈레톤) */
+  isTitleLoading?: boolean;
   className?: string;
 };
 
@@ -35,6 +38,7 @@ export function SubHeader({
   right,
   titleAs: Title = "h1",
   titleId,
+  isTitleLoading = false,
   className,
 }: SubHeaderProps) {
   const router = useRouter();
@@ -52,6 +56,10 @@ export function SubHeader({
         <Title id={titleId} className={styles.title}>
           {title}
         </Title>
+      ) : isTitleLoading ? (
+        <span className={styles.title} aria-busy="true">
+          <Skeleton width="8.375rem" height="1rem" />
+        </span>
       ) : (
         <span className={styles.title} />
       )}

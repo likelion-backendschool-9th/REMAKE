@@ -58,7 +58,7 @@
 | 날짜 선택 | 기본은 오늘(이번 달이 아니면 그 달 마지막 구매일). 소비가 없으면 "해당 날짜에는 소비가 없습니다" | 확정(피그마) / 기본 날짜는 제안 |
 | 주 넘기기 | 월~일 날짜 줄을 좌우로 밀어(캐러셀) 고른 달의 앞·뒤 주로 넘김. 고른 달 밖의 날과 오늘 뒤의 날은 고를 수 없음 | 확정(11/25) / 고를 수 없는 날은 제안 |
 | 평균 차이 표기 | "평균보다 N만원 더(덜) 지출": 1만원 이상은 만원 단위로 반올림, 그 밑은 원 단위. 차이가 0이면 "평균과 같게 지출" | 확정(11/25) / 0일 때 문구는 제안 |
-| 버린 식비 | 나의 소비 위쪽 "N월 버린 식비 N원"을 누르면 버린 식재료(p3.4.1): "N월에 버린 식재료" 금액(가격 있는 재료만), "가격을 넣은 재료만 금액에 더해져요", 버린 재료 행(카테고리 이미지·이름·"M월 D일 버림"·금액 또는 "가격 없음"), 최근에 버린 것부터 | 확정(11/25) / API는 제안(#248) |
+| 버린 식비 | 나의 소비 위쪽 "N월 버린 식비 N원"을 누르면 버린 식재료(p3.4.1): "N월에 버린 식재료" 금액(가격 있는 재료만), "가격을 넣은 재료만 금액에 더해져요", 버린 재료 행(카테고리 이미지·이름·"M월 D일 버림"·금액 또는 "가격 없음"), 최근에 버린 것부터. API 25 `discardedAmount`와 API 61 `/user/expenses/discarded-items`(#248) | 확정 |
 | 자주 산 품목·구매 주기 | 없음 | 확정 |
 
 ## API
@@ -72,11 +72,11 @@
 | 22 | GET | `/user/receipts` | 그 달 영수증. 월 합계는 영수증 품목만, 평균은 최근 6개월 월 합계 평균 | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, weeks: [{ label, startDate, endDate, totalAmount, receipts: [{ id, storeCode, storeName, purchasedOn, itemCount, totalAmount }] }] }` | receipts, receipt_items |
 | 23 | GET | `/user/receipts/{id}` | 영수증 하나 | `-` | `200 { id, storeCode, storeName, purchasedOn, imageUrl, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }], totalAmount }` | receipts, receipt_items |
 | 24 | DELETE | `/user/receipts/{id}` | 영수증·품목·이미지 삭제. 식비·소비 패턴에서도 빠지고 냉장고 재료는 남음(ERD 답 1) | `-` | `204` | receipts, receipt_items, ingredients |
-| 25 | GET | `/user/expenses/patterns` | 그 달 소비. 영수증 품목 + 영수증 없이 가격을 넣은 재료(등록일 기준, ERD 답 3). `discardedAmount`는 그 달 버린 금액(`ingredient_logs.cost_amount` 합계, 11/25 제안, #248) | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, discardedAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | receipt_items, manual_ingredient_expenses |
+| 25 | GET | `/user/expenses/patterns` | 그 달 소비. 영수증 품목 + 영수증 없이 가격을 넣은 재료(등록일 기준, ERD 답 3). `discardedAmount`는 그 달 버린 금액(가격 있는 `cost_amount` 합계, #248) | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, discardedAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | receipt_items, manual_ingredient_expenses |
 | 26 | GET | `/user/expenses/daily-items` | 고른 날의 품목 | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | receipt_items, manual_ingredient_expenses |
-| 61 | GET | `/user/expenses/discarded` | (11/25 제안, #248) p3.4.1 버린 식재료. 그 달 `DISCARDED` 기록 하나당 한 줄, 최근에 버린 것부터. `discardedOn`은 버린 날(KST), `amount`는 `cost_amount`(가격이 없으면 null), `totalAmount`는 null이 아닌 금액의 합으로 API 25 `discardedAmount`와 같음. 기록이 없는 달은 200 + 빈 목록 | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, items: [{ name, categoryCode, discardedOn, amount }] }` | ingredient_logs |
+| 61 | GET | `/user/expenses/discarded-items` | p3.4.1 버린 식재료(#248). 그 달 `DISCARDED` 기록 하나당 한 줄(냉장고 UseCase), 최근에 버린 것부터. `discardedOn`은 버린 날(KST), `amount`는 `cost_amount`(가격이 없으면 null), `totalAmount`는 null이 아닌 금액의 합으로 API 25 `discardedAmount`와 같음. 기록이 없는 달은 200 + 빈 목록. 월 생략 시 이번 달 | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, items: [{ name, categoryCode, discardedOn, amount }] }` | ingredient_logs |
 
-API 25의 월을 생략하면 한국 시간 기준 이번 달을 조회해요. API 25·26은 이번 달을 포함한 최근 6개 달을 조회하고, 기록 없는 날은 합계 0과 빈 품목 목록을 돌려줘요. 카테고리 비율은 0~1이에요. API 22와 같이 평균에서는 이번 달과 기록이 없는 달을 제외해요. 버린 식비 필드는 #248에서 제안한 내용이에요.
+API 25의 월을 생략하면 한국 시간 기준 이번 달을 조회해요. API 25·26·61은 이번 달을 포함한 최근 6개 달을 조회하고, 기록 없는 날은 합계 0과 빈 품목 목록을 돌려줘요. 카테고리 비율은 0~1이에요. API 22와 같이 평균에서는 이번 달과 기록이 없는 달을 제외해요.
 
 API 20 응답의 `purchaseQuantity`와 `volume`은 #72에서 반영 예정이며, #101에서 프론트 연동을 확인해요.
 

@@ -150,6 +150,7 @@ Every `user` API can also return the common codes (`UNAUTHORIZED`, `TOKEN_EXPIRE
 | 24 | `DELETE /user/receipts/{id}` | RECEIPT_NOT_FOUND |
 | 25 | `GET /user/expenses/patterns` | INVALID_INPUT |
 | 26 | `GET /user/expenses/daily-items` | INVALID_INPUT |
+| 61 | `GET /user/expenses/discarded-items` | INVALID_INPUT |
 | 27 | `GET /user/usage-quotas` | common only |
 | 28 | `POST /user/recipes/generate` | INVALID_INPUT, INGREDIENT_NOT_FOUND, GENERATION_LIMIT_EXCEEDED, NO_INGREDIENTS, AI_UPSTREAM_ERROR, AI_TIMEOUT, AI_INVALID_RESPONSE |
 | 29 | `POST /user/recipes/{id}/regenerate` | GENERATION_LIMIT_EXCEEDED, RECIPE_NOT_FOUND, AI_UPSTREAM_ERROR, AI_TIMEOUT, AI_INVALID_RESPONSE |
@@ -209,6 +210,7 @@ No data returns 200 with empty values; the screen draws its empty state.
 | 22 `GET /user/receipts` | 0 receipts that month | `totalAmount` 0, `weeks: []` |
 | 25 `GET /user/expenses/patterns` | No spending that month | `totalAmount` 0, `categories: []`, `dailyTotals: []` |
 | 26 `GET /user/expenses/daily-items` | No spending that day | `totalAmount` 0, `items: []` |
+| 61 `GET /user/expenses/discarded-items` | No discarded food that month | `totalAmount` 0, `items: []` |
 | 33 `GET /user/saved-recipes` | 0 saved or 0 after filter | `content: []` |
 | 49 `GET /user/shared-recipes/weekly-top` | Fewer than 3 saved shared recipes this week | 0-2 items |
 | 50 `GET /user/shared-recipes/ranking` | 0 search results | `content: []` |
