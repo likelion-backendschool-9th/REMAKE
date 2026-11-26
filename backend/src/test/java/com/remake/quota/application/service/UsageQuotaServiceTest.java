@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.quota.application.port.out.UsageLogPort;
+import com.remake.quota.application.port.out.RecipeRewardPort;
 import com.remake.quota.domain.UsageType;
 import com.remake.user.application.port.in.GetUserUseCase;
 import com.remake.user.domain.AuthProvider;
@@ -37,6 +38,8 @@ class UsageQuotaServiceTest {
 	@Mock
 	private UsageLogPort usageLogPort;
 	@Mock
+	private RecipeRewardPort rewards;
+	@Mock
 	private GetUserUseCase getUserUseCase;
 
 	@BeforeEach
@@ -46,7 +49,7 @@ class UsageQuotaServiceTest {
 	}
 
 	private UsageQuotaService service(boolean enforced) {
-		return new UsageQuotaService(usageLogPort, getUserUseCase, CLOCK, enforced);
+		return new UsageQuotaService(usageLogPort, getUserUseCase, rewards, CLOCK, enforced);
 	}
 
 	@Test

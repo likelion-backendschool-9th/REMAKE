@@ -91,7 +91,7 @@
 
 ## 테이블
 
-`cart_items`, `shared_recipes`, `shared_recipe_reports`, `shared_recipe_weekly_ranks`, `generation_quota_grants`. 저장은 `saved_recipes`(04)를 같이 써요. 컬럼은 [`../erd.md`](../erd.md)를 보세요.
+`cart_items`, `shared_recipes`, `shared_recipe_reports`, `shared_recipe_weekly_ranks`, `generation_quota_grants`, 내부 완료 기록 `shared_recipe_weekly_settlements`. 저장은 `saved_recipes`(04)를 같이 써요. 컬럼은 [`../erd.md`](../erd.md)를 보세요.
 
 ## 구현 메모
 
@@ -216,3 +216,13 @@ int added = addCartItemsUseCase.add(userId, source, commands);
 - 이름은 앞뒤 공백을 정리한 뒤 정확히 비교하고, 단위가 다르면 합치지 않아요. null 수량·PINCH·TO_TASTE·물은 담지 않아요. 카테고리는 사전 정확 일치가 우선이며 없으면 호출자가 넘긴 서버 확정 categoryCode가 필요해요.
 - 반환값과 E62 `item_count`는 실제 추가한 행 수예요. 0행은 이벤트를 발행하지 않아요. E62 `cart_source`는 `own_recipe`·`shared_recipe`·`meal_plan`으로 발행해요.
 - `V18__prevent_duplicate_cart_additions.sql`이 원본 recipeId가 있는 행에 사용자·레시피·이름·단위 유니크 인덱스를 추가해요. 이미 병합된 마이그레이션은 수정하지 않아요. #224의 영수증 테이블 V17과 겹치지 않도록 이 PR에서 V18로 조정했어요. #224(V17)을 먼저 병합·적용하는 순서가 기준이에요. 순서가 바뀌거나 다른 PR이 번호를 먼저 쓰면 후순위 PR의 번호를 다시 조정해요.
+
+### #92 주간 확정·보상 구현
+
+- `FinalizeWeeklyRankingUseCase.finalizePreviousWeek()`가 직전 KST 주를 확정해요. 스케줄러는 월요일 00:00에 호출하며 테스트·시연도 같은 내부 UseCase를 사용해요. 관리자 실행 API는 추가하지 않아요.
+- 공개 글에 대해 지난주 월요일 00:00 이상·이번 월요일 00:00 미만에 저장했고 현재 남아 있는 행만 세요. 저장 0건 제외는 확정이고, 본인 저장 제외·동점은 먼저 공유한 글 우선(ID로 최종 정렬)은 #88과 같은 제안이에요.
+- 주별 완료 기록·최대 100위·보상을 한 트랜잭션으로 저장해요. 빈 주도 완료 기록이 남고, 동시 실행·재실행은 중복 지급하지 않아요. 중간 실패는 모두 롤백하여 다시 시도할 수 있어요.
+- 상위 3개 레시피마다 +10/+6/+3회를 주고 같은 작성자의 중복 수상도 허용해요. 탈퇴자는 순위에 남기되 보상을 건너뛰고 차순위에 넘기지 않는 것은 제안이에요.
+- 만료는 실제 지급 시각 + 1개월(해당 일이 없으면 월말)이에요. 남은 횟수 조회와 생성 차감에 연결하며, 기본 횟수를 먼저 쓰고 보상은 만료가 가까운 것부터 사용해요. 만료 시각부터 사용할 수 없어요.
+- E75는 실제 보상 건마다 커밋 후 EventTracker로 발행해요. 이벤트 적재 실패는 보상 지급을 취소하지 않으며 재실행으로 재전송하지 않아요.
+- 한계: 저장 취소 이력이 없어 첫 실행이 늦으면 주 경계 이후 취소된 저장을 복원할 수 없어요. 실행 시점의 남은 저장을 세며 누락 주 자동 소급 실행은 제공하지 않아요. #230의 작성자 삭제·확정 후 보상 정책은 미결로 남겨요.

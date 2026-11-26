@@ -18,5 +18,6 @@ import com.remake.event.domain.Screen;
  */
 public interface EventTracker {
 
+	/** screen은 스케줄 작업처럼 화면이 없는 경우 null이다. */
 	void track(EventName name, Screen screen, Map<String, Object> properties, EventTrackCommand command);
 }
