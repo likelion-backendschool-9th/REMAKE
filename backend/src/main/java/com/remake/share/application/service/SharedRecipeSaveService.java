@@ -48,7 +48,7 @@ class SharedRecipeSaveService implements SaveSharedRecipeUseCase {
 					.filter(i -> i.dDay() >= 0).map(i -> i.ingredient().name()).collect(Collectors.toSet());
 			// 타인의 ingredientId·필요량 대신 공유 상세와 같은 이름 비교로 부족 재료를 판정한다.
 			var missing = recipe.ingredients().stream().filter(i -> !owned.contains(i.name()))
-					.map(i -> new CartAdditionCommand(recipe.id(), null, i.name(), i.amount(), i.unit(), null))
+					.map(i -> new CartAdditionCommand(recipe.id(), null, i.name(), i.amount(), i.unit(), i.categoryCode()))
 					.toList();
 			// 서버 확정 카테고리가 없는 사전 미등록 재료는 공통 UseCase가 INVALID_INPUT으로 거절한다.
 			added = cart.add(userId, CartSource.SHARED_RECIPE, missing);
