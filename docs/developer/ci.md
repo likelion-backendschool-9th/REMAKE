@@ -8,7 +8,7 @@
 
 | 워크플로 | 검사하는 PR | 하는 일 | 필수 검사 |
 | --- | --- | --- | --- |
-| Backend CI | `backend/`(`README.md` 같은 마크다운 파일만 바뀐 경우는 제외), `compose.prod.yml`, `deploy/prod.env.example`, `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, `scripts/check_migrations.py`가 바뀐 PR | `./gradlew build`(컴파일, 테스트, jar. 테스트가 PostgreSQL 컨테이너를 직접 띄움), 테스트 요약, Flyway 마이그레이션 파일 검사, 백엔드 Docker 이미지 빌드와 운영 설정으로 띄워 보기 | `Backend CI required` |
+| Backend CI | `backend/`(`README.md` 같은 마크다운 파일만 바뀐 경우는 제외), `compose.prod.yml`, `deploy/prod.env.example`, `.github/workflows/backend-ci.yml`, `scripts/backend_test_summary.py`, `scripts/check_migrations.py`, `docs/agent/spec/events.md`(`EventContractTest`가 읽음)가 바뀐 PR | `./gradlew build`(컴파일, 테스트, jar. 테스트가 PostgreSQL 컨테이너를 직접 띄움), 테스트 요약, Flyway 마이그레이션 파일 검사, 백엔드 Docker 이미지 빌드와 운영 설정으로 띄워 보기 | `Backend CI required` |
 | Frontend CI | `frontend/`(`AGENTS.md`, `blueprint.md` 같은 마크다운 파일만 바뀐 경우는 제외), `.github/workflows/frontend-ci.yml`이 바뀐 PR | `pnpm lint`, `pnpm typecheck`, `pnpm build`, 프론트 Docker 이미지 빌드 | `Frontend CI required` |
 | Deploy CI | 배포 파일(`compose.prod.yml`, `deploy/`) 또는 워크플로 파일(`.github/workflows/`)이 바뀐 PR | 배포 파일: 셸 스크립트, Compose, 프록시 Nginx 설정 검사. 워크플로 파일: actionlint | `Deploy CI required` |
 | PR Attribution Check | 모든 PR | 커밋과 PR 본문의 AI 자동 표기 검사 | — |
