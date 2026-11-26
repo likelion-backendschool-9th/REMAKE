@@ -22,9 +22,6 @@ public enum EventName {
 	APP_OPENED("app_opened", EventSource.CLIENT, Set.of("entry_source", "is_standalone")), // E01
 	SCREEN_VIEWED("screen_viewed", EventSource.CLIENT, Set.of("screen_name", "previous_screen")), // E02
 	ERROR_SHOWN("error_shown", EventSource.CLIENT, Set.of("error_code", "http_status", "screen_name")), // E03
-	PWA_INSTALL_PROMPTED("pwa_install_prompted", EventSource.CLIENT, Set.of()), // E04
-	PWA_INSTALLED("pwa_installed", EventSource.CLIENT, Set.of()), // E05
-	PUSH_PERMISSION_RESULT("push_permission_result", EventSource.CLIENT, Set.of("permission_result")), // E06
 	QUOTA_EXCEEDED("quota_exceeded", EventSource.SERVER, Set.of("limit_feature", "limit_total", "used_count")), // E07
 	LOGIN_STARTED("login_started", EventSource.CLIENT, Set.of("provider", "is_recent_provider")), // E08
 	LOGIN_SUCCEEDED("login_succeeded", EventSource.SERVER, Set.of("provider", "is_new_user")), // E09
@@ -53,13 +50,12 @@ public enum EventName {
 	INGREDIENT_DISCARDED("ingredient_discarded", EventSource.SERVER, Set.of("category_code", "expiry_status", "used_ratio", "has_price", "cost_amount")), // E26
 	INGREDIENT_EXPIRED("ingredient_expired", EventSource.SERVER, Set.of("category_code", "has_price")), // E27
 	RECEIPT_SCAN_STARTED("receipt_scan_started", EventSource.CLIENT, Set.of("scan_method")), // E28
-	CAMERA_UNAVAILABLE("camera_unavailable", EventSource.CLIENT, Set.of()), // E29
-	RECEIPT_SCAN_SUCCEEDED("receipt_scan_succeeded", EventSource.SERVER, Set.of("item_count", "food_item_count", "duration_ms", "duplicate_suspected")), // E30
+	RECEIPT_SCAN_SUCCEEDED("receipt_scan_succeeded", EventSource.SERVER, Set.of("item_count", "food_item_count", "duration_ms")), // E30
 	RECEIPT_SCAN_FAILED("receipt_scan_failed", EventSource.SERVER, Set.of("error_code", "duration_ms")), // E31
 	RECEIPT_ITEM_EDITED("receipt_item_edited", EventSource.CLIENT, Set.of("item_index", "edit_field")), // E32
 	RECEIPT_ITEM_ADDED_MANUALLY("receipt_item_added_manually", EventSource.CLIENT, Set.of()), // E33
 	RECEIPT_SAVED("receipt_saved", EventSource.SERVER, Set.of("receipt_id", "registered_count", "ocr_item_count", "edited_item_count", "deleted_item_count", "added_item_count", "duration_sec", "food_total_amount", "cart_removed_count")), // E34
-	RECEIPT_RESULT_ABANDONED("receipt_result_abandoned", EventSource.CLIENT, Set.of("ocr_item_count", "edited_item_count", "deleted_item_count", "added_item_count", "duration_sec")), // E76
+	RECEIPT_RESULT_ABANDONED("receipt_result_abandoned", EventSource.CLIENT, Set.of("ocr_item_count", "edited_item_count", "deleted_item_count", "added_item_count")), // E76
 	RECEIPT_LIST_VIEWED("receipt_list_viewed", EventSource.CLIENT, Set.of("month_offset", "has_comparison")), // E35
 	RECEIPT_DETAIL_VIEWED("receipt_detail_viewed", EventSource.CLIENT, Set.of()), // E36
 	RECEIPT_DELETED("receipt_deleted", EventSource.CLIENT, Set.of()), // E37
@@ -71,34 +67,32 @@ public enum EventName {
 	RECIPE_DETAIL_VIEWED("recipe_detail_viewed", EventSource.CLIENT, Set.of("recipe_id", "detail_origin")), // E43
 	RECIPE_SAVED("recipe_saved", EventSource.SERVER, Set.of("recipe_id", "save_source", "cart_added_count")), // E44
 	RECIPE_UNSAVED("recipe_unsaved", EventSource.CLIENT, Set.of("save_source")), // E45
-	RECIPE_SAVED_LIST_VIEWED("recipe_saved_list_viewed", EventSource.CLIENT, Set.of("saved_count")), // E46
+	RECIPE_FAVORITED("recipe_favorited", EventSource.CLIENT, Set.of("is_favorite")), // E77
+	RECIPE_SAVED_LIST_VIEWED("recipe_saved_list_viewed", EventSource.CLIENT, Set.of("saved_count", "list_filter", "list_sort")), // E46
 	STEP_PLAY_STARTED("step_play_started", EventSource.CLIENT, Set.of("recipe_id")), // E47
-	COOK_DEDUCT_VIEWED("cook_deduct_viewed", EventSource.CLIENT, Set.of("recipe_id", "deduct_item_count", "needs_check_count")), // E48
+	COOK_DEDUCT_VIEWED("cook_deduct_viewed", EventSource.CLIENT, Set.of("recipe_id", "deduct_item_count")), // E48
 	COOK_COMPLETED("cook_completed", EventSource.SERVER, Set.of("recipe_id", "deducted_count", "adjusted_count", "from_meal_plan")), // E49
-	COOK_FEEDBACK_ANSWERED("cook_feedback_answered", EventSource.CLIENT, Set.of("feedback_value")), // E50
+	COOK_FEEDBACK_ANSWERED("cook_feedback_answered", EventSource.CLIENT, Set.of("recipe_id", "recommended")), // E50
 	MEAL_PLAN_SETUP_VIEWED("meal_plan_setup_viewed", EventSource.CLIENT, Set.of("remaining_quota")), // E51
 	MEAL_PLAN_GENERATE_STARTED("meal_plan_generate_started", EventSource.CLIENT, Set.of("meal_purpose", "meal_type_count", "servings", "start_offset_days")), // E52
 	MEAL_PLAN_GENERATED("meal_plan_generated", EventSource.SERVER, Set.of("meal_plan_id", "meal_purpose", "meal_type_count", "generated_days", "shortage_count", "cart_added_count", "was_overwritten", "duration_ms", "remaining_quota")), // E53
 	MEAL_PLAN_GENERATE_FAILED("meal_plan_generate_failed", EventSource.SERVER, Set.of("error_code", "duration_ms")), // E54
-	MEAL_PLAN_SHORTAGE_SHOWN("meal_plan_shortage_shown", EventSource.CLIENT, Set.of("shortage_count", "generated_days")), // E55
 	MEAL_CALENDAR_VIEWED("meal_calendar_viewed", EventSource.CLIENT, Set.of("month_offset", "has_plan")), // E56
-	MEAL_DAY_VIEWED("meal_day_viewed", EventSource.CLIENT, Set.of("date_relation")), // E57
-	MEAL_SLOT_OPENED("meal_slot_opened", EventSource.CLIENT, Set.of("meal_type", "slot_source", "has_recipe")), // E58
-	MEAL_SLOT_DETAIL_GENERATED("meal_slot_detail_generated", EventSource.SERVER, Set.of("recipe_id", "duration_ms")), // E59
-	MEAL_SLOT_DETAIL_FAILED("meal_slot_detail_failed", EventSource.SERVER, Set.of("error_code", "duration_ms")), // E60
-	MEAL_ADDED("meal_added", EventSource.SERVER, Set.of("meal_type", "date_relation", "recipe_id")), // E61
+	MEAL_DAY_VIEWED("meal_day_viewed", EventSource.CLIENT, Set.of("date_relation", "slot_count")), // E57
+	MEAL_SLOT_OPENED("meal_slot_opened", EventSource.CLIENT, Set.of("meal_type", "date_relation")), // E58
+	MEAL_PLAN_OVERLAP_ANSWERED("meal_plan_overlap_answered", EventSource.CLIENT, Set.of("overlap_day_count", "overlap_choice")), // E78
 	MEAL_SLOT_DELETED("meal_slot_deleted", EventSource.SERVER, Set.of("meal_type", "date_relation")), // E79
 	MEAL_SLOT_REPLACED("meal_slot_replaced", EventSource.SERVER, Set.of("meal_type", "date_relation", "duration_ms", "remaining_quota")), // E80
 	MEAL_SLOT_REPLACE_FAILED("meal_slot_replace_failed", EventSource.SERVER, Set.of("error_code", "duration_ms")), // E81
 	CART_MOVED_TO_FRIDGE("cart_moved_to_fridge", EventSource.SERVER, Set.of("moved_count", "was_select_all")), // E82
 	CART_ITEM_ADDED("cart_item_added", EventSource.SERVER, Set.of("cart_source", "item_count")), // E62
-	CART_VIEWED("cart_viewed", EventSource.CLIENT, Set.of("group_count", "item_count")), // E63
+	CART_VIEWED("cart_viewed", EventSource.CLIENT, Set.of("item_count")), // E63
 	CART_AMOUNT_CHANGED("cart_amount_changed", EventSource.CLIENT, Set.of()), // E64
 	CART_ITEMS_DELETED("cart_items_deleted", EventSource.CLIENT, Set.of("deleted_count", "was_select_all")), // E65
 	NOTIFICATION_SENT("notification_sent", EventSource.SERVER, Set.of("notification_type", "batch_count")), // E66
 	NOTIFICATION_BANNER_CLICKED("notification_banner_clicked", EventSource.CLIENT, Set.of("unread_count")), // E67
 	NOTIFICATION_LIST_VIEWED("notification_list_viewed", EventSource.CLIENT, Set.of("unread_count")), // E68
-	RANKING_VIEWED("ranking_viewed", EventSource.CLIENT, Set.of("ranking_view", "query_used")), // E69
+	RANKING_VIEWED("ranking_viewed", EventSource.CLIENT, Set.of("ranking_view", "ranking_sort", "query_used")), // E69
 	SHARED_RECIPE_VIEWED("shared_recipe_viewed", EventSource.CLIENT, Set.of("shared_recipe_id", "view_from", "rank_bucket")), // E70
 	SHARED_WRITE_STARTED("shared_write_started", EventSource.CLIENT, Set.of("recipe_id")), // E71
 	SHARED_RECIPE_PUBLISHED("shared_recipe_published", EventSource.SERVER, Set.of("shared_recipe_id")), // E72
