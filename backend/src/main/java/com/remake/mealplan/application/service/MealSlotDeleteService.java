@@ -3,6 +3,7 @@ package com.remake.mealplan.application.service;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
@@ -46,10 +47,9 @@ class MealSlotDeleteService implements DeleteMealSlotUseCase {
 		}
 		saveMealPlanSlotPort.deleteAllById(List.of(slot.id()));
 
-		// 값은 지금 검증기에 맞춰 대문자. 이벤트 값 소문자 통일은 #172에서 같이 바꾼다
-		eventTracker.track(EventName.MEAL_SLOT_DELETED, Screen.MEAL_DAY, Map.of(
-				"meal_type", slot.mealType().name(),
-				"date_relation", slot.slotDate().equals(today) ? "TODAY" : "FUTURE"),
+		eventTracker.track(EventName.MEAL_SLOT_DELETED, Screen.MEAL_PLAN_CALENDAR, Map.of(
+				"meal_type", slot.mealType().name().toLowerCase(Locale.ROOT),
+				"date_relation", slot.slotDate().equals(today) ? "today" : "future"),
 				EventTrackCommand.ofUser(userId));
 	}
 }

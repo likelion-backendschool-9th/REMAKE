@@ -171,7 +171,7 @@ public class AccountDeletionService
 		User toDelete = requireActiveUser(user.id());
 		saveUserPort.save(toDelete.withdraw(now));
 
-		eventTracker.track(EventName.ACCOUNT_DELETED, Screen.SETTINGS,
+		eventTracker.track(EventName.ACCOUNT_DELETED, Screen.ACCOUNT_DELETE_MODAL,
 				Map.of("tenure_days", tenureDays, "deletion_method", method.eventValue()),
 				EventTrackCommand.ofUser(user.id()));
 	}
@@ -236,7 +236,7 @@ public class AccountDeletionService
 	}
 
 	private void trackRequested(User user, DeletionMethod method) {
-		eventTracker.track(EventName.ACCOUNT_DELETION_REQUESTED, Screen.SETTINGS,
+		eventTracker.track(EventName.ACCOUNT_DELETION_REQUESTED, Screen.ACCOUNT_DELETE_CODE,
 				Map.of("provider", user.provider().wireName(), "deletion_method", method.eventValue()),
 				EventTrackCommand.ofUser(user.id()));
 	}

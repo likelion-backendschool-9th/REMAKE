@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -19,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.remake.event.application.port.in.EventTrackCommand;
 import com.remake.event.application.port.in.EventTracker;
 import com.remake.event.domain.EventName;
-import com.remake.event.domain.Screen;
 import com.remake.mealplan.application.port.in.MealPlanGenerationJob;
 import com.remake.mealplan.application.port.out.GeneratedMealSlot;
 import com.remake.mealplan.application.port.out.LoadMealPlanPort;
@@ -109,9 +109,9 @@ class MealPlanResultWriter {
 		createMealPlanNotificationUseCase.notifyMealPlanCompleted(plan.userId(), plan.id(), plan.startDate(),
 				generatedDays, job.maxDays(), cartAddedCount);
 
-		eventTracker.track(EventName.MEAL_PLAN_GENERATED, Screen.UNKNOWN, Map.of(
+		eventTracker.track(EventName.MEAL_PLAN_GENERATED, null, Map.of(
 				"meal_plan_id", plan.id(),
-				"meal_purpose", plan.purpose().name(),
+				"meal_purpose", plan.purpose().name().toLowerCase(Locale.ROOT),
 				"meal_type_count", plan.mealTypes().size(),
 				"generated_days", generatedDays,
 				"shortage_count", shortageCount,
@@ -156,7 +156,7 @@ class MealPlanResultWriter {
 		plan.fail();
 		saveMealPlanPort.update(plan);
 		createMealPlanNotificationUseCase.notifyMealPlanFailed(plan.userId(), reason);
-		eventTracker.track(EventName.MEAL_PLAN_GENERATE_FAILED, Screen.UNKNOWN, Map.of(
+		eventTracker.track(EventName.MEAL_PLAN_GENERATE_FAILED, null, Map.of(
 				"error_code", errorCode,
 				"duration_ms", durationMillis(acceptedAt)),
 				EventTrackCommand.ofUser(plan.userId()));

@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.remake.event.application.port.in.EventTrackCommand;
 import com.remake.event.application.port.in.EventTracker;
 import com.remake.event.domain.EventName;
-import com.remake.event.domain.Screen;
 import com.remake.ingredient.application.port.in.GetExpiryAlertIngredientsUseCase;
 import com.remake.ingredient.domain.ExpiredIngredient;
 import com.remake.ingredient.domain.ExpiredIngredientCount;
@@ -167,7 +166,7 @@ public class NotificationService implements GetNotificationSummaryUseCase, GetNo
 		saveNotificationPort.save(notification);
 		eventTracker.track(
 				EventName.NOTIFICATION_SENT,
-				Screen.UNKNOWN,
+				null,
 				Map.of(
 						"notification_type", type.eventValue(),
 						"batch_count", batchCount),
@@ -177,7 +176,7 @@ public class NotificationService implements GetNotificationSummaryUseCase, GetNo
 	private void trackIngredientExpired(ExpiredIngredient item) {
 		eventTracker.track(
 				EventName.INGREDIENT_EXPIRED,
-				Screen.UNKNOWN,
+				null,
 				Map.of(
 						"category_code", item.categoryCode().name(),
 						"has_price", item.hasPrice()),

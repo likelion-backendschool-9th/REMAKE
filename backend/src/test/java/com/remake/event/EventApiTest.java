@@ -28,7 +28,7 @@ class EventApiTest extends IntegrationTestSupport {
 				      "screen": "login",
 				      "sessionId": "s-1",
 				      "occurredAt": "2026-03-04T10:00:00+09:00",
-				      "properties": { "entry_source": "icon", "is_standalone": true, "email": "x@y.com" }
+				      "properties": { "entry_source": "direct", "is_standalone": true, "email": "x@y.com" }
 				    },
 				    { "name": "not_a_real_event", "screen": "login", "properties": {} },
 				    { "name": "login_succeeded", "screen": "login", "properties": { "provider": "kakao" } }
@@ -70,7 +70,7 @@ class EventApiTest extends IntegrationTestSupport {
 				    {
 				      "name": "app_opened",
 				      "screen": "login",
-				      "properties": { "entry_source": "icon", "is_standalone": false }
+				      "properties": { "entry_source": "direct", "is_standalone": false }
 				    }
 				  ]
 				}
@@ -86,7 +86,7 @@ class EventApiTest extends IntegrationTestSupport {
 
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM events", Integer.class)).isEqualTo(1);
 		assertThat(jdbcTemplate.queryForObject("SELECT properties->>'entry_source' FROM events", String.class))
-				.isEqualTo("icon");
+				.isEqualTo("direct");
 	}
 
 	@Test
@@ -102,7 +102,7 @@ class EventApiTest extends IntegrationTestSupport {
 				    {
 				      "name": "app_opened",
 				      "screen": "login",
-				      "properties": { "entry_source": "icon", "is_standalone": true }
+				      "properties": { "entry_source": "direct", "is_standalone": true }
 				    }
 				  ]
 				}
@@ -121,7 +121,7 @@ class EventApiTest extends IntegrationTestSupport {
 	void 배치가_50개를_넘으면_EVENT_BATCH_TOO_LARGE() throws Exception {
 		String events = IntStream.range(0, 51)
 				.mapToObj(i -> """
-						{"name":"app_opened","screen":"login","properties":{"entry_source":"icon","is_standalone":false}}
+						{"name":"app_opened","screen":"login","properties":{"entry_source":"direct","is_standalone":false}}
 						""")
 				.collect(Collectors.joining(","));
 
