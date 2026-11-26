@@ -51,6 +51,7 @@ frontend/
 │  ├─ page.tsx           # 스플래시 (/)
 │  ├─ public/            # /public/... 라우트 (로그인 전, §4)
 │  ├─ user/              # /user/... 라우트 (로그인 후, §4). 예: user/fridge/ingredients/ — 3.1 참고
+│  ├─ admin/             # /admin/... 라우트 (운영자, ADMIN만, §4 "어드민 화면")
 │  ├─ sw.ts              # 서비스 워커 (캐싱)
 │  ├─ serwist/[path]/    # 서비스 워커 서빙 라우트
 │  ├─ ~offline/          # 오프라인 대체 화면
@@ -131,7 +132,7 @@ components/Button/
 
 ## 4. 화면 / 라우트
 
-출처: WBS v2 3장 "프론트 URL"(2026-11-22). 형식은 `/{역할자}/{기능}/{자원}`입니다. 역할자는 `public`(로그인 전)과 `user`(로그인 후) 둘입니다. 예외는 스플래시 `/` 하나뿐입니다.
+출처: WBS v2 3장 "프론트 URL"(2026-11-22). 형식은 `/{역할자}/{기능}/{자원}`입니다. 역할자는 `public`(로그인 전), `user`(로그인 후), `admin`(운영자, ADMIN role만. 11/26 추가, 아래 "어드민 화면") 셋입니다. 예외는 스플래시 `/` 하나뿐입니다.
 
 - 시트·모달·드로워·로딩·실패는 따로 주소가 없고, 그 화면 안의 상태입니다.
 - 로그인하지 않았으면 모든 `/user/...` 라우트에서 `/public/auth/login`으로 보냅니다. 로그인했으면 `/`와 로그인 화면에서 `/user/fridge/ingredients`(인덱스)로 보냅니다.
@@ -177,6 +178,26 @@ components/Button/
 
 아직 위치가 정해지지 않은 화면(화면 대기): 이번 달 버린 식재료 금액, 레시피 추천 여부.
 
+### 어드민 화면(11/26 운영자 페이지)
+
+출처: 피그마 '운영자 페이지'(노드 2005:4)와 11/26 기획 WBS. 데스크톱 1440. 어드민 프론트 기능 이름은 사이드 메뉴 묶음 `monitoring`·`operation`입니다.
+
+- 모달·토스트·빈 화면·오류는 그 화면 안 상태입니다. a3 탭은 주소에 넣어 대시보드 이상 징후 "기능별 지표 보기"에서 바로 열 수 있게 했습니다.
+- 모든 `/admin/...` 라우트는 공통 레이아웃(사이드 메뉴·처리 대기 신고 숫자(API 65)·운영자 계정·"서비스로 돌아가기"(`/`로))을 씁니다.
+- 프론트는 `GET /user/profile`(API 5)의 `role`로 먼저 판단하고, ADMIN이 아니면 서버가 403 `FORBIDDEN`을 줍니다. 어느 쪽이든 a0 권한 없음 화면을 보여 줍니다. a0 로딩·불러오기 실패는 각 어드민 화면 안 상태입니다.
+
+| 라우트                                      | 화면(피그마)           | 비고                                                                                   |
+| ------------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------- |
+| `/admin`                                    | (화면 없음)            | `/admin/monitoring/dashboard`로 이동                                                   |
+| `/admin/monitoring/dashboard`               | a1 대시보드            | 이상 징후·데이터 없음이 이 화면 안. API 61                                             |
+| `/admin/monitoring/funnels`                 | a2 퍼널                | API 62                                                                                 |
+| `/admin/monitoring/metrics/[tab]`           | a3 기능별 지표(탭 8개) | `tab` = registration·consumption·ai·meal-plan-cart·shared·retention·cost·error. API 63 |
+| `/admin/monitoring/events`                  | a6 이벤트 로그         | 검색 결과 없음이 이 화면 안. API 64                                                    |
+| `/admin/operation/reports`                  | a4 신고 관리           | 처리 대기·처리 완료·빈 화면이 이 화면 안. API 65                                       |
+| `/admin/operation/reports/[sharedRecipeId]` | a4.1 신고 상세         | 확인 모달 3개·처리 끝남·토스트·이미 처리됨·4차 안내가 이 화면 안. API 66, 67           |
+| `/admin/operation/users`                    | a5 사용자 관리         | 상세 패널·횟수 조정 모달·상태 6개가 이 화면 안. API 68, 69, 70                         |
+| `/admin/operation/weekly-rewards`           | a7 랭킹·보상           | 보상 없음·3개 미만이 이 화면 안. API 71                                                |
+
 ## 5. 데이터 흐름
 
 ```
@@ -211,7 +232,7 @@ Spring API ──(OpenAPI 문서)──> pnpm gen:api ──> lib/api/schema.d.t
 - Tailwind나 CSS-in-JS 라이브러리를 쓰지 않습니다. **CSS Modules(`*.module.css`) + `globals.css`의 CSS 변수**만 씁니다.
 - 아이콘은 `@solar-icons/react`의 스타일별 경로에서 import합니다. 예: `import { HomeIcon } from "@solar-icons/react/linear"`. 기본 크기·색·선 두께는 `globals.css`의 `--solar-*` 변수로 정합니다.
 - 디자인 토큰은 [`design-tokens.md`](./design-tokens.md)를 따릅니다. 피그마 디자인 시스템(`0. 기초`)의 변수·스타일을 이름 그대로 옮긴 것이고, CSS 변수 이름은 피그마 Dev Mode의 코드 이름과 같습니다(`var(--color-text-strong)`, `var(--space-16)`, `font: var(--font-content)`). `design/tokens/build_tokens.py`가 만들고, 결과를 `app/tokens.css`로 복사해 `globals.css`에서 불러옵니다. `app/tokens.css`는 손으로 고치지 않습니다. 피그마에서 변수·스타일이 걸린 값은 같은 이름의 토큰을, 걸리지 않은 값은 프레임 값을 그대로 씁니다.
-- 모바일 우선입니다. 기준 폭은 360px입니다. 기본 레이아웃 최대 폭은 `--layout-max-width`(480px), 좌우 여백은 `--layout-gutter`입니다. 480px보다 넓은 화면은 480px 컨테이너를 가운데 정렬해 보여 줍니다. 최상위 `app/layout.tsx`가 모든 화면을 컨테이너 하나(`app/layout.module.css`)로 감싸므로 화면마다 최대 폭을 걸지 않습니다. 컨테이너 배경은 `bg/surface`이고, 그 바깥은 회색(`body`의 `--layout-outside-bg`, #ececec)입니다. 컨테이너는 `overflow: clip`이라 그림자처럼 넘치는 것이 바깥에 보이지 않습니다(`hidden`은 스크롤 영역을 만들어 헤더의 `position: sticky`가 깨지므로 쓰지 않음). 그 컨테이너 밖에 있는 요소 — `position: fixed` 고정 영역과 `body`에 포털로 붙는 요소(하단 고정 영역, 시트, 모달, 드로워) — 는 각자 `max-width: var(--layout-max-width)`를 겁니다. 시트·모달 뒤의 딤도 마찬가지라서, 겹쳐 뜨는 것이 컨테이너 바깥 회색 영역을 덮지 않습니다.
+- 모바일 우선입니다. 기준 폭은 360px입니다. 기본 레이아웃 최대 폭은 `--layout-max-width`(480px), 좌우 여백은 `--layout-gutter`입니다. 480px보다 넓은 화면은 480px 컨테이너를 가운데 정렬해 보여 줍니다. 최상위 `app/layout.tsx`가 모든 화면을 컨테이너 하나(`app/layout.module.css`)로 감싸므로 화면마다 최대 폭을 걸지 않습니다. 운영자 화면(`/admin/...`)은 데스크톱 화면이라 이 컨테이너 폭을 바꾸지 않고 운영자 레이아웃이 `position: fixed`로 화면 전체를 덮습니다. 그래서 다른 화면은 480px 폭을 그대로 씁니다. 컨테이너 배경은 `bg/surface`이고, 그 바깥은 회색(`body`의 `--layout-outside-bg`, #ececec)입니다. 컨테이너는 `overflow: clip`이라 그림자처럼 넘치는 것이 바깥에 보이지 않습니다(`hidden`은 스크롤 영역을 만들어 헤더의 `position: sticky`가 깨지므로 쓰지 않음). 그 컨테이너 밖에 있는 요소 — `position: fixed` 고정 영역과 `body`에 포털로 붙는 요소(하단 고정 영역, 시트, 모달, 드로워) — 는 각자 `max-width: var(--layout-max-width)`를 겁니다. 시트·모달 뒤의 딤도 마찬가지라서, 겹쳐 뜨는 것이 컨테이너 바깥 회색 영역을 덮지 않습니다.
 - 라이트 모드만 있습니다. 다크 모드는 없습니다.
 - 단위는 rem입니다(1rem = 16px, 루트 font-size는 바꾸지 않음). 피그마 px 값은 16으로 나눠 씁니다(10px → 0.625rem). 테두리 같은 선만 px로 씁니다.
 - 폰트: 파일은 woff2만 씁니다.

@@ -57,7 +57,7 @@ public class UserProfileService implements CompleteOnboardingUseCase, GetProfile
 		}
 		User saved = saveUserPort.save(user);
 		saveExcludedIngredientPort.replaceAll(saved.id(), codes);
-		eventTracker.track(EventName.ONBOARDING_COMPLETED, Screen.ONBOARDING,
+		eventTracker.track(EventName.ONBOARDING_COMPLETED, Screen.ONBOARDING_ALLERGY,
 				Map.of("excluded_count", codes.size()),
 				EventTrackCommand.ofUser(saved.id()));
 	}

@@ -108,6 +108,11 @@ class AccountDeletionApiTest extends IntegrationTestSupport {
 				INSERT INTO receipts (user_id, purchased_on, store_name, image_key, created_at)
 				VALUES (?, ?, '동네마트', ?, ?)
 				""", userId, now.toLocalDate(), imageKey, now);
+		jdbcTemplate.update("""
+				INSERT INTO receipt_first_applications
+				(user_id, store_name, purchased_on, receipt_number, created_at)
+				VALUES (?, '동네마트', ?, 'DEL-1', ?)
+				""", userId, now.toLocalDate(), now);
 
 		String code = captureDeletionCode(userId);
 
@@ -127,6 +132,8 @@ class AccountDeletionApiTest extends IntegrationTestSupport {
 				userId)).isZero();
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM receipts WHERE user_id = ?", Integer.class, userId))
 				.isZero();
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM receipt_first_applications WHERE user_id = ?", Integer.class, userId)).isZero();
 		Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> !Files.exists(imageFile));
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM refresh_tokens WHERE user_id = ?", Integer.class,
 				userId)).isZero();

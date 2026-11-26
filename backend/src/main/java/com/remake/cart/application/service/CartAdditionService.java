@@ -87,7 +87,7 @@ class CartAdditionService implements AddCartItemsUseCase {
 		if (added > 0) {
 			Screen screen = switch (source) {
 				case OWN_RECIPE -> Screen.RECIPE_DETAIL;
-				case SHARED_RECIPE -> Screen.SHARED_RECIPE;
+				case SHARED_RECIPE -> Screen.SHARED_DETAIL;
 				case MEAL_PLAN -> Screen.MEAL_PLAN_SETUP;
 			};
 			events.track(EventName.CART_ITEM_ADDED, screen,

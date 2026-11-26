@@ -1,5 +1,5 @@
 // 나의 소비(p3.4)·버린 식재료(p3.4.1) 값. 모양은 API 25(GET /user/expenses/patterns)·26(GET /user/expenses/daily-items)을 따랐다.
-// 버린 식비(API 25 discardedAmount)와 버린 식재료 목록(API 61)은 #248 제안으로 api-summary에 올라 있다(확정 전).
+// 버린 식비(API 25 discardedAmount)와 버린 식재료 목록(API 72)은 #248 제안으로 api-summary에 올라 있다(확정 전).
 // TODO: API를 붙이면 SAMPLE_* 대신 서버 값을 쓴다.
 
 import { dayjs } from "@/lib/dayjs";

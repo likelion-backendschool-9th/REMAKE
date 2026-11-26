@@ -2,6 +2,7 @@ package com.remake.ingredient.application.service;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ import com.remake.ingredient.domain.Ingredient;
 import com.remake.ingredient.domain.IngredientCategory;
 import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.IngredientDetail;
+import com.remake.receipt.application.port.in.UpdateManualIngredientExpensePriceUseCase;
 
 import lombok.RequiredArgsConstructor;
 
@@ -40,6 +42,7 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 	private final DeleteIngredientPort deleteIngredientPort;
 	private final LoadIngredientLogPort loadIngredientLogPort;
 	private final ResolveIngredientUnitUseCase resolveIngredientUnitUseCase;
+	private final UpdateManualIngredientExpensePriceUseCase manualExpensePrices;
 	private final Clock clock;
 
 	@Override
@@ -57,6 +60,7 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 		if (command.amount() != null && loadIngredientLogPort.existsByIngredientId(ingredient.id())) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT, "사용하거나 폐기한 기록이 있는 재료는 수량을 고칠 수 없습니다.");
 		}
+		Long priceBefore = ingredient.price();
 		try {
 			// 단위를 다시 정할지는 수정하기 전 이름·카테고리의 사전 단위와 지금 단위가 같은지로 가른다(아래 참고).
 			boolean followedDictionary = unitFollowsName(ingredient);
@@ -94,7 +98,12 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 		} catch (IllegalArgumentException e) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT, e.getMessage());
 		}
-		return toDetail(saveIngredientPort.save(ingredient));
+		Ingredient saved = saveIngredientPort.save(ingredient);
+		// 직접 등록 재료의 가격이 실제로 바뀐 경우에만 지출에 알린다. 지출 행이 없는 재료(영수증)는 UseCase가 무시한다(#278).
+		if (command.price() != null && !Objects.equals(priceBefore, saved.price())) {
+			manualExpensePrices.updatePrice(saved.id(), saved.price());
+		}
+		return toDetail(saved);
 	}
 
 	@Override

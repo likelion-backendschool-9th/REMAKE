@@ -5,7 +5,7 @@ Source: PRD v4 and policy doc v4 (Figma-based, 2026-11-22; Korean, kept in Notio
 - (proposal): a draft the PO has not confirmed yet. Implement it behind a named constant.
 - (open): not decided. Ask the user before implementing.
 - (screen pending): the rule is decided, but its screen is in "screens to add" and not in Figma yet.
-- Admin rules are on hold because admin screens are not in Figma (see the end).
+- Admin rules were confirmed on 11/26 from the Figma "운영자 페이지" (operator page): the 4 on-hold rules became confirmed and 9 new rules were added (see Admin at the end).
 
 ## Access and common behavior
 
@@ -13,7 +13,7 @@ Source: PRD v4 and policy doc v4 (Figma-based, 2026-11-22; Korean, kept in Notio
 - Entry: splash (`/`) → login, or the fridge if already logged in. Nothing is usable without login. The fridge is the first screen after login.
 - Tokens: access 30 min, refresh 14 days, both HttpOnly cookies (`Secure; SameSite=Lax`). The frontend never keeps tokens in JS. On access expiry the frontend calls refresh once and retries the request. If refresh fails, go to login, then back to the original screen.
 - Roles `USER` and `ADMIN`. The server allows `/api/v1/admin/**` to ADMIN only (403 otherwise).
-- Paths: backend `/api/v1/{role}/{resource}`, frontend `/{role}/{feature}/{resource}`. Role is `public` (before login) or `user`. Sheets, modals, loading and failure screens have no path of their own.
+- Paths: backend `/api/v1/{role}/{resource}`, frontend `/{role}/{feature}/{resource}`. Role is `public` (before login), `user`, or `admin` (operator). Admin frontend features are the side-menu groups `monitoring` and `operation`. Sheets, modals, loading and failure screens have no path of their own.
 - Timeouts: general 10 s, OCR 30 s, AI recipe 60 s (recipes only; meal-plan generation replies 202 and runs as a server job, see section 5). AI retries once automatically; OCR does not retry.
 - Receipt files: <= 10 MB, jpg/png/heic. Shared cooking photos: one required, <= 5 MiB, JPEG/PNG/WebP ([#64 storage agreement](https://github.com/likelion-backendschool-9th/REMAKE/issues/64#issuecomment-7089190543)). The frontend checks first; the server checks last (413, 415).
 - Double clicks: buttons such as register and deduct are disabled until the request ends. No server `Idempotency-Key`.
@@ -136,9 +136,9 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Used/discarded: choose "사용 했어요" or "버렸어요" + amount + confirm. Discarded shows "이번 달 버린 식재료 금액에 더해져요".
 - More than available: `INSUFFICIENT_QUANTITY` (400). The sheet caps the amount at what remains (capping method is a proposal).
 - Amount reaches 0: delete the ingredient row; logs keep the name.
-- Discarded cost = price × discarded amount ÷ original amount. No price, no cost. This month's discarded cost shows on "나의 소비" as "N월 버린 식비", which opens p3.4.1 "버린 식재료" (decided 11/25; API 25 `discardedAmount` and API 61 `/user/expenses/discarded-items`, #248).
+- Discarded cost = price × discarded amount ÷ original amount. No price, no cost. This month's discarded cost shows on "나의 소비" as "N월 버린 식비", which opens p3.4.1 "버린 식재료" (decided 11/25; API 25 `discardedAmount` and API 72 `/user/expenses/discarded-items`, #248).
 - Delete: delete icon on the edit screen (screen pending). Allowed even with logs; logs keep the name.
-- Price is optional on manual add too ("가격을 정확히 작성할수록 소비 패턴 분석률이 올라가요"). Priced ingredients count in spending patterns.
+- Price is optional on manual add too ("가격을 정확히 작성할수록 소비 패턴 분석률이 올라가요"). Priced ingredients count in spending patterns. Editing the price later also updates that spending (the date stays the registration date); once an ingredient is used up and its row deleted, it can no longer be edited, so the last price stays (#278). Editing the name, category, storage, amount or unit does not change the spending record yet.
 - Default expiry: ingredients from receipts and the cart get the category default shelf life. No "estimated" flag (only a notice on the OCR result screen). Estimation base date, frozen/room values, and recalculation are up to the developer.
 - Expired ingredients are not deleted automatically; they stay as `폐기-N` for the user (proposal).
 - No repurchase marker (release 2).
@@ -157,6 +157,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Purchase date and store name: empty if OCR cannot read them; both are required at registration.
 - Receipts older than 6 months cannot be registered (rejected at scan as an OCR failure).
 - **Duplicate receipts are blocked.** Same store + receipt number + purchase time = duplicate (without a number: store + purchase date + food items; without a time: purchase date). Checked right after the scan (OCR failure screen "이미 등록한 영수증이에요", `RECEIPT_DUPLICATE` 409) and again at registration.
+- **Re-register after delete (#266):** When the receipt has a `receiptNumber`, the first successful fridge/cart apply is remembered in `receipt_first_applications` (user + store + purchase date + receipt number). Deleting the receipt does not clear that row. Re-registering the same key restores the receipt and spending but returns `ingredientCount=0` and `cartRemovedCount=0` (no second fridge add or cart deduction). Without a receipt number, re-registration is a normal full register. Rows are kept until the purchase date is older than 6 months (same cutoff as receipts; re-register does not extend) and are deleted on withdrawal. Screen copy when fridge adds are 0 is coordinated with #102.
 - Receipt cart deduction (#57): select a cart row in the bottom sheet immediately before final registration, or skip. Each receipt item can select at most one cart row. Deduct only in the identical unit, within the actual registered amount; sum requests for the same target and validate the cart balance. Delete only rows reaching zero; `cartRemovedCount` counts these deleted rows. Receipt, fridge and cart changes share one transaction. The screen is a separate FE task.
 - List: month picker "2026년 11월 ∨" (last 6 months), monthly total, "내 평균보다 N원 더 썼어요", groups by week (week, range, total), receipt rows (store icon, store, date, "식재료 N개", amount).
 - Monthly total: food item amounts of that month's receipts (by purchase date).
@@ -173,7 +174,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Day selection: default today (or the last purchase day if not this month, proposal). No spending: "해당 날짜에는 소비가 없습니다".
 - Week row: swipe left/right (carousel) to the previous/next week of the selected month (decided 11/25). Days outside the selected month and days after today cannot be chosen (proposal).
 - Average difference: "평균보다 N만원 더 지출" / "덜 지출". From 10,000 원, round to 만원; below that, show 원 (decided 11/25). A difference of 0 shows "평균과 같게 지출" (proposal).
-- Discarded food (p3.4.1): "N월 버린 식비 N원" link at the top of 나의 소비 → "N월에 버린 식재료" total (priced items only), "가격을 넣은 재료만 금액에 더해져요", rows (category image, name, "M월 D일 버림", amount or "가격 없음"), newest first. API: API 25 `discardedAmount` and API 61 `/user/expenses/discarded-items` (#248).
+- Discarded food (p3.4.1): "N월 버린 식비 N원" link at the top of 나의 소비 → "N월에 버린 식재료" total (priced items only), "가격을 넣은 재료만 금액에 더해져요", rows (category image, name, "M월 D일 버림", amount or "가격 없음"), newest first. API: API 25 `discardedAmount` and API 72 `/user/expenses/discarded-items` (#248).
 - No frequent items or purchase cycles.
 
 ## 4. AI recipes (김종수)
@@ -279,14 +280,14 @@ Apply #57, the [ERD](../erd.md#19-cart_items-cart), and the subsequently approve
 - Ranking eligibility (confirmed 2026-11-25, PR #255 review item 3): exclude posts with zero valid saves this week before assigning TOP 3 and popular TOP 100 ranks. Return only eligible posts, up to each limit. Share age is unrestricted; cumulative saves do not determine eligibility.
 - Popular count: saves received from Monday 00:00 KST through the current time that still exist; ties go to the earlier share (proposal). Excluding own saves remains a proposal.
 - Search over shared recipes; 0 results empty state (screen pending).
-- Only recipes I generated with Remake can be shared, not recipes saved from others. Fully anonymous: no nickname or author info.
+- Only recipes I generated with Remake can be shared, not recipes saved from others. Fully anonymous: no nickname or author info in `user` API responses (admin APIs 66 and 71 return only the author member number for report handling and rewards).
 - Write: detail ⋮ "공유 하기" → 1 photo (required, "탭해서 이미지 수정"), title (required, maximum 100 UTF-16 code units before trimming, matching Java `@Size` and HTML `maxlength`), recipe content (read only) → "레시피 공유 하기". Enabled only with title and photo. No confirm modal.
 - The same recipe can be shared once per week (again next week).
 - Shared detail: photo, title, flag (report), "재료 준비 · servings · time", ingredients (missing ones with a red border), steps with read-aloud, Tips!, heart + save count, "레시피 저장", "레시피 저장 시 부족한 재료는 장바구니로 들어가요".
 - Save: the heart and "레시피 저장" are the same action. Puts the original recipe in my saved list (no copy). Save count +1; tapping again cancels (-1). Missing ingredients go to the cart. Removing it from my list leaves the shared post.
 - Shared-save categories (#245, [recipe-owner agreement](https://github.com/likelion-backendschool-9th/REMAKE/issues/245#issuecomment-7182102063), 2026-11-26): pass the persisted ingredient `categoryCode` to the common add UseCase; an exact catalog name match still wins. An eligible shortage with neither category fails the whole save and cart transaction with `INVALID_INPUT`, without success events. Keep water/null amount/PINCH/TO_TASTE exclusions; never silently omit an eligible shortage or invent ETC. Old rows and invalid/missing AI codes can remain null. Existing-data remediation and alignment with my-recipe saves (which currently skip unclassified lines) are separate follow-up work.
-- Report: flag → 4 reasons (`OFFENSIVE_IMAGE` 불쾌한 이미지 사용, `AD_TITLE` 광고성 제목, `DANGEROUS_RECIPE` 위험한 조리법 공유, `OTHER` 기타) → 신고 하기. No text input, even for 기타. Once per person per recipe; again → `REPORT_ALREADY_EXISTS` toast. No auto hide; operators review (handling screen comes with the admin design, on hold).
-- Sanctions after an operator confirms a report as a violation: 1st 7-day recipe sharing ban, 2nd 30-day recipe sharing ban, 3rd 30-day account suspension, 4th permanent account suspension (11/24 terms decision). How sanctions are stored, checked, and returned (API, error codes): (open).
+- Report: flag → 4 reasons (`OFFENSIVE_IMAGE` 불쾌한 이미지 사용, `AD_TITLE` 광고성 제목, `DANGEROUS_RECIPE` 위험한 조리법 공유, `OTHER` 기타) → 신고 하기. No text input, even for 기타. Once per person per recipe; again → `REPORT_ALREADY_EXISTS` toast. No auto hide; operators review and handle reports per post (violation, no issue, delete; sanctions 1-4; see Admin).
+- Sanctions after an operator confirms a report as a violation: 1st 7-day recipe sharing ban, 2nd 30-day recipe sharing ban, 3rd 30-day account suspension, 4th permanent account suspension (11/24 terms decision). Sanctions are stored in `user_sanctions` and applied by report handling (API 67, ERD 11/26; see Admin). What a sanctioned member sees in the app, and the app-side blocking and errors (`ACCOUNT_SUSPENDED`, a sharing-ban code), are (screen pending) as "added page 15".
 - Authors can delete their own shared posts at any time (11/24 terms decision). This is separate from ⋮ "삭제 하기", which only removes a recipe from my saved list. Screen and API for deleting my shared post: (open).
 - **Reward**: members who posted last week's top 1–3 recipes by saves. Per recipe rank, so one member can receive more than once. 1st +10, 2nd +6, 3rd +3 recipe generations, usable for one month from the grant.
 - Week = Monday 00:00 to Sunday 24:00 KST. The Monday 00:00 job records last week's TOP 100 and grants rewards, counting only saves that still exist then. Apply the same eligibility rule in #92: zero valid saves for the counted week means no finalized rank or reward (confirmed). Never grant the same week twice. Own saves do not count (proposal). No reward screen or notification; only the remaining count changes.
@@ -303,10 +304,26 @@ Apply #57, the [ERD](../erd.md#19-cart_items-cart), and the subsequently approve
 - Global Spring multipart limits are 10 MB per file and 30 MB per request, preserving receipts; the photo service applies its stricter 5 MiB limit. The deployment owner sets both Nginx limits to 32m.
 - #86 connects publishing, DB storage and an authenticated image API that checks the shared post's visibility before reading its DB key. Do not expose the volume as a public static directory or accept arbitrary file paths from a request. There is no user post-removal API yet (see the rule above); withdrawal keeps the shared posts the author has not deleted, as anonymous posts, with their photos. Do not delete those files as receipt images. FE resize/compression and authenticated image display belong to #112.
 
-## Admin (on hold)
+## Admin (operator page)
 
-- Access: social login + ADMIN role at `/admin`. No separate login.
-- Metrics, logs, threshold alerts, user management, report handling, account suspension (`SUSPENDED`), per-member quota adjustment, and hidden shared recipes (`HIDDEN`) are on hold until the admin screens are designed.
+Source: Figma "운영자 페이지" (node 2005:4), confirmed 11/26. Screens and APIs: `api-summary.md` APIs 61-71 (monitoring 이준호, operations 이상호).
+
+- Access: social login + ADMIN role at `/admin`. No separate login. `/admin` goes to the dashboard (`/admin/monitoring/dashboard`).
+- No permission: if the member is not ADMIN, the server returns 403 (`FORBIDDEN`) and the screen shows "운영자만 들어올 수 있어요". The frontend decides first from `role` in the profile (API 5).
+- Personal data: admin screens show only member numbers. No email or other personal data.
+- Metrics: periods are today, last 7 days, and last 30 days; "실제 데이터만" excludes seed events (`is_seed = false` only). A metric whose denominator is 0 shows "-" and hides its target badge. Formulas follow `events.md` section 5; the dashboard, funnel, and feature-metric APIs (61-63) query `events` with them.
+- Anomalies: only the OCR failure rate and the report count. When the last hour is at least twice the average of the same hour over the past 7 days, show it at the top of the dashboard.
+- Funnel drop: a step below 70% of the previous step shows "이탈 큼".
+- Report grouping: reports on the same post form one row, most reports first. Handling is per post and covers all of its pending reports at once.
+- Report results: violation = hide the post + next sanction. No issue = post unchanged, no sanction. Delete = remove the post from the shared space (cannot be undone) and count it as a violation (next sanction). Each goes through a confirm modal.
+- Sanction steps: confirmed violations get 1st a 7-day recipe sharing ban, 2nd a 30-day sharing ban, 3rd a 30-day account ban, 4th a permanent account ban (11/24 terms decision). Before the 4th, the report detail shows a warning.
+- Concurrent handling: if another operator handled the post first, show "이미 처리한 신고" and reload the list (409).
+- Overlapping sanctions: a new sanction starts at the handling time (it is not appended after the previous one). The current sanction is the highest level among the rows that have not ended. After the 4th (permanent) ban, further violations only hide or delete the post and add no sanction row (11/26, PR #292 review).
+- Same author handled concurrently: lock the author's `users` row while deciding the level; `UK(user_id + level)` on `user_sanctions` is the last guard (11/26, PR #292 review).
+- Account restriction: operators cannot suspend or restore accounts directly; restrictions come only from sanctions. What a sanctioned member sees in the app is "added page 15" (screen pending); until then the app-side blocking rules are on hold.
+- Quota adjustment: operators increase or decrease a member's reward generation count. A reason is required and kept in the adjustment history. A decrease cannot exceed the remaining reward.
+- Hidden and deleted posts: hidden (`HIDDEN`) and deleted (`DELETED`) shared recipes leave the shared list, ranking, and rewards. Weekly rewards already granted are not taken back. Members who saved the post keep it in their saved list as the original recipe (the shared detail no longer opens) (11/26, PR #292 review).
+- Ranking and rewards: the screen shows only the weekly top 3 and the reward history. Recipes with 0 saves get no reward.
 
 ## Out of scope (release 1)
 

@@ -51,6 +51,7 @@ frontend/
 │  ├─ page.tsx           # splash (/)
 │  ├─ public/            # /public/... routes (before login, §4)
 │  ├─ user/              # /user/... routes (after login, §4). Example: user/fridge/ingredients/ — see §3.1
+│  ├─ admin/             # /admin/... routes (operator, ADMIN only, §4 "Admin screens")
 │  ├─ sw.ts              # service worker (caching)
 │  ├─ serwist/[path]/    # service-worker serving route
 │  ├─ ~offline/          # offline fallback screen
@@ -131,7 +132,7 @@ The folder structure above takes precedence: component folders and files are Pas
 
 ## 4. Screens / routes
 
-Source: WBS v2 §3 "Frontend URL" (2026-11-22). Format `/{role}/{feature}/{resource}`. Roles: `public` (before login) and `user` (after login). The only exception is the splash at `/`.
+Source: WBS v2 §3 "Frontend URL" (2026-11-22). Format `/{role}/{feature}/{resource}`. Roles: `public` (before login), `user` (after login), and `admin` (operator, ADMIN role only; added 11/26, see "Admin screens" below). The only exception is the splash at `/`.
 
 - Sheets, modals, drawers, loading, and failure states have no URL of their own; they are states inside their screen.
 - Not logged in: every `/user/...` route sends the user to `/public/auth/login`. Logged in: `/` and the login screen go to `/user/fridge/ingredients` (the index).
@@ -177,6 +178,26 @@ Source: WBS v2 §3 "Frontend URL" (2026-11-22). Format `/{role}/{feature}/{resou
 
 Not placed yet (screen pending): this month's discarded-food amount, "recommend this recipe?".
 
+### Admin screens (operator page, 11/26)
+
+Source: Figma "운영자 페이지" (node 2005:4) and the 11/26 planning WBS. Desktop 1440. Admin frontend features are the side-menu groups `monitoring` and `operation`.
+
+- Modals, toasts, empty states, and errors are states inside their screen. The a3 tab is in the URL so the dashboard anomaly "기능별 지표 보기" can open it directly.
+- Every `/admin/...` route uses the common layout: side menu (with the pending report count, API 65), operator account, and "서비스로 돌아가기" (to `/`).
+- The frontend checks `role` from `GET /user/profile` (API 5) first; the server returns 403 `FORBIDDEN` to non-ADMIN accounts. Either way, show a0 no permission. a0 loading and load failure are states inside each admin screen.
+
+| Route                                       | Screen (Figma)              | Notes                                                                                           |
+| ------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------- |
+| `/admin`                                    | (no screen)                 | Goes to `/admin/monitoring/dashboard`                                                           |
+| `/admin/monitoring/dashboard`               | a1 Dashboard                | Anomaly and no-data states inside. API 61                                                       |
+| `/admin/monitoring/funnels`                 | a2 Funnel                   | API 62                                                                                          |
+| `/admin/monitoring/metrics/[tab]`           | a3 Feature metrics (8 tabs) | `tab` = registration, consumption, ai, meal-plan-cart, shared, retention, cost, error. API 63   |
+| `/admin/monitoring/events`                  | a6 Event log                | No-search-result state inside. API 64                                                           |
+| `/admin/operation/reports`                  | a4 Report management        | Pending, done, and empty states inside. API 65                                                  |
+| `/admin/operation/reports/[sharedRecipeId]` | a4.1 Report detail          | Three confirm modals, handled, toast, already handled, 4th-sanction warning inside. APIs 66, 67 |
+| `/admin/operation/users`                    | a5 User management          | Detail panel, count-adjust modal, and 6 states inside. APIs 68, 69, 70                          |
+| `/admin/operation/weekly-rewards`           | a7 Ranking and rewards      | No-reward and fewer-than-3 states inside. API 71                                                |
+
 ## 5. Data flow
 
 ```
@@ -211,7 +232,7 @@ Screen (page.tsx) ─> _components ─> _lib/queries.ts or @/lib/queries (useQue
 - No Tailwind or CSS-in-JS libraries. Use only **CSS Modules (`*.module.css`) + CSS variables in `globals.css`**.
 - Import icons from the per-style paths of `@solar-icons/react`. Example: `import { HomeIcon } from "@solar-icons/react/linear"`. Default size, color, and stroke width come from the `--solar-*` variables in `globals.css`.
 - Design tokens follow [`docs/agent/design-tokens.md`](../docs/agent/design-tokens.md): the variables and styles of the Figma design system (`0. 기초`) copied with their names; CSS variable names equal the Figma Dev Mode code names (`var(--color-text-strong)`, `var(--space-16)`, `font: var(--font-content)`). `design/tokens/build_tokens.py` generates them; the result is copied to `app/tokens.css`, which `globals.css` imports. Never edit `app/tokens.css` by hand. If a Figma value has a variable or style, use the token with the same name. If it has none, use the Figma frame value as is.
-- Mobile first. Design for a 360px width. The default max layout width is `--layout-max-width` (480px) and the side gutter is `--layout-gutter`. Wider screens show the 480px container centered: the root `app/layout.tsx` wraps every screen in one container (`app/layout.module.css`), so screens do not set the max width themselves. The container has the `bg/surface` background; the area outside it is gray (`--layout-outside-bg`, #ececec, on `body`). The container uses `overflow: clip` so shadows and other overflow do not show outside it (not `hidden`, which would create a scroll container and break the `position: sticky` headers). Elements outside that container — `position: fixed` bars and portals to `body` (bottom bar, sheets, modals, drawers) — set `max-width: var(--layout-max-width)` themselves, including the dim behind sheets and modals, so overlays never cover the gray area outside the container.
+- Mobile first. Design for a 360px width. The default max layout width is `--layout-max-width` (480px) and the side gutter is `--layout-gutter`. Wider screens show the 480px container centered: the root `app/layout.tsx` wraps every screen in one container (`app/layout.module.css`), so screens do not set the max width themselves. Admin screens (`/admin/...`) are desktop screens: the admin layout covers the viewport with `position: fixed` instead of changing this container, so other screens keep the 480px width. The container has the `bg/surface` background; the area outside it is gray (`--layout-outside-bg`, #ececec, on `body`). The container uses `overflow: clip` so shadows and other overflow do not show outside it (not `hidden`, which would create a scroll container and break the `position: sticky` headers). Elements outside that container — `position: fixed` bars and portals to `body` (bottom bar, sheets, modals, drawers) — set `max-width: var(--layout-max-width)` themselves, including the dim behind sheets and modals, so overlays never cover the gray area outside the container.
 - Light theme only; no dark mode.
 - Units: rem (1rem = 16px; never change the root font size). Convert Figma px by dividing by 16 (10px → 0.625rem). Use px only for lines such as borders.
 - Font: use woff2 files only.

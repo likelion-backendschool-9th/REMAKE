@@ -1,0 +1,244 @@
+/* 피그마 a6-이벤트 로그 */
+
+/* 검색 줄: 이벤트 이름(300) · 회원 번호(160) · 칩, 간격 12 */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.eventNameField {
+  width: 18.75rem;
+}
+
+.userIdField {
+  width: 10rem;
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* 목록(남은 폭) + 상세(320), 간격 16. 상세는 본문 아래까지 늘인다 */
+.content {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  gap: var(--space-16);
+  width: 100%;
+}
+
+.card {
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
+
+.listCard {
+  composes: card;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* 표: 칸 사이 16, 여백 좌우 24. 칸 폭 시각 90 · 이벤트 200 · 회원 60 · 화면 110 · 발생 위치 70 · 주요 속성(남은 폭) */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table th,
+.table td {
+  padding: 0 0 0 var(--space-16);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: var(--space-24);
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-right: var(--space-24);
+}
+
+/* 머리줄: 위아래 10, Remake/assist·text/sub.
+   피그마는 bg/section인데 화면 배경(bg/subtle)과 거의 같아 구분이 안 돼 흰색(bg/surface)으로 둔다 */
+.table thead tr {
+  background: var(--color-bg-surface);
+}
+
+.table th {
+  padding-top: var(--space-10);
+  padding-bottom: var(--space-10);
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+/* 칸 폭(왼쪽 여백 포함) */
+.timeColumn {
+  width: calc(5.625rem + var(--space-24));
+}
+
+.nameColumn {
+  width: calc(12.5rem + var(--space-16));
+}
+
+.userColumn {
+  width: calc(3.75rem + var(--space-16));
+}
+
+.screenColumn {
+  width: calc(6.875rem + var(--space-16));
+}
+
+.sourceColumn {
+  width: calc(4.375rem + var(--space-16));
+}
+
+/* 줄: 위아래 13, 아래 선 border/default, Remake/content·text/body. 고른 줄=bg/primary-tint */
+.row {
+  border-bottom: 1px solid var(--color-border-default);
+  color: var(--color-text-body);
+  font: var(--font-content);
+  cursor: pointer;
+}
+
+.row td {
+  padding-top: 0.8125rem;
+  padding-bottom: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row[data-selected] {
+  background: var(--color-bg-primary-tint);
+}
+
+.row:not([data-selected]):hover {
+  background: var(--color-bg-subtle);
+}
+
+/* 이벤트 이름: Remake/content-strong·text/title */
+.nameButton {
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: var(--color-text-title);
+  font: var(--font-content-strong);
+  text-align: left;
+  text-overflow: ellipsis;
+}
+
+.nameButton:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* 주요 속성: Remake/assist·text/sub, 넘치면 자른다 */
+.properties {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+/* 표 아래 안내: 여백 14/24, Remake/assist·text/sub */
+.footnote {
+  padding: var(--space-14) var(--space-24);
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+/* 상세: 폭 320, 여백 20/24, 간격 12 */
+.detail {
+  composes: card;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-self: stretch;
+  gap: var(--space-12);
+  width: 20rem;
+  padding: var(--space-20) var(--space-24);
+}
+
+/* Remake/subheader·text/strong */
+.detailTitle {
+  color: var(--color-text-strong);
+  font: var(--font-subheader);
+  overflow-wrap: anywhere;
+}
+
+/* Remake/assist·text/sub */
+.detailMeta {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+.fields,
+.propertyList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.propertyList {
+  gap: var(--space-8);
+}
+
+/* 이름·값 한 줄: Remake/content, 이름 text/sub, 값 text/body */
+.field {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-12);
+  font: var(--font-content);
+}
+
+.field dt {
+  color: var(--color-text-sub);
+}
+
+.field dd {
+  color: var(--color-text-body);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* properties 묶음: 위 선 border/default, 위 여백 8, 간격 8 */
+.propertiesBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--color-border-default);
+}
+
+/* Remake/content-strong·text/title */
+.propertiesTitle {
+  color: var(--color-text-title);
+  font: var(--font-content-strong);
+}
+
+/* a6-이벤트 로그-검색 결과 없음: 여백 위 20(+24)·아래 48·좌우 24 */
+.emptyCard {
+  composes: card;
+  width: 100%;
+  padding: 2.75rem var(--space-24) 3rem;
+}
+
+/* 불러오는 중(피그마 없음) */
+.skeletonCard {
+  composes: card;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 100%;
+  padding: var(--space-20) var(--space-24);
+}
