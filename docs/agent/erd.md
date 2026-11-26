@@ -4,8 +4,8 @@
 
 2026-11-22 · 이준호. Source: Notion "ERD v4" (Figma-based, with a screen-evidence column). This file carries the same content for development; see the source for the Figma node evidence.
 
-- Tables documented here: 29 — 26 Figma-based tables (including `user_sanctions`, added 11/26), the unit dictionary `ingredient_catalog`, manual ingredient expense history added in #73, and the internal weekly settlement record added in #92.
-- 11/26, from the Figma "운영자 페이지" (operator page): added `user_sanctions`, report handling results (`result`, `handled_by`, `handled_at`), operator quota adjustments (`grant_type`, `reason`, `admin_id`), and the shared post status `DELETED`. The planning ERD counts 26 tables, 219 columns, and 42 relationships; it numbers `user_sanctions` 26, while this file keeps the repo numbering (29).
+- Tables documented here: 30 — 26 Figma-based tables (including `user_sanctions`, added 11/26), the unit dictionary `ingredient_catalog`, manual ingredient expense history added in #73, the internal weekly settlement record added in #92, and receipt first applications added in #266.
+- 11/26, from the Figma "운영자 페이지" (operator page): added `user_sanctions`, report handling results (`result`, `handled_by`, `handled_at`), operator quota adjustments (`grant_type`, `reason`, `admin_id`), and the shared post status `DELETED`. The planning ERD counts 26 tables, 219 columns, and 42 relationships; it numbers `user_sanctions` 26, while this file keeps the repo numbering (30).
 - Notifications are in-app only (no device push).
 
 ## Common rules
@@ -46,8 +46,9 @@
 | 25 | `events` | Events | Raw behavior events (frontend and server). Names and properties in `spec/events.md` | common (events) | 이준호 | 12 |
 | 26 | `ingredient_catalog` | Ingredient unit dictionary | Ingredient name -> unit, category, shelf life. Used only inside the server to pick units (API 14, 15, 16, 21). Never exposed by screens or APIs | 2 fridge | 김재연 | 6 |
 | 27 | `manual_ingredient_expenses` | Manual ingredient expenses | Registration snapshots for ingredients added without a receipt | 3 receipts | 이동준 | 9 |
-| 28 | `shared_recipe_weekly_settlements` | Weekly settlement completion | One completion record per week, including empty weeks; prevents duplicate rank/reward settlement | 7 sharing/cart | 최유리 | 2 |
-| 29 | `user_sanctions` | Sanctions | One row per violation confirmed by report handling (1st-4th sanction) | admin operations | 이상호 | 9 |
+| 28 | `receipt_first_applications` | Receipt first stock applications | First fridge/cart apply for a numbered purchase; survives receipt delete so re-register skips stock/cart (#266) | 3 receipts | 이동준 | 6 |
+| 29 | `shared_recipe_weekly_settlements` | Weekly settlement completion | One completion record per week, including empty weeks; prevents duplicate rank/reward settlement | 7 sharing/cart | 최유리 | 2 |
+| 30 | `user_sanctions` | Sanctions | One row per violation confirmed by report handling (1st-4th sanction) | admin operations | 이상호 | 9 |
 
 ## ERD diagram
 
@@ -72,6 +73,7 @@ erDiagram
   ingredient_categories ||--o{ receipt_items : "category_id"
   users ||--o{ manual_ingredient_expenses : "user_id"
   ingredient_categories ||--o{ manual_ingredient_expenses : "category_id"
+  users ||--o{ receipt_first_applications : "user_id"
   users ||--o{ recipes : "user_id"
   recipes ||--o{ recipe_ingredients : "recipe_id"
   ingredients |o--o{ recipe_ingredients : "ingredient_id"
@@ -824,7 +826,23 @@ Direct registration and cart-to-fridge moves record the original values in the s
 
 An index on `(user_id, created_at)` supports period queries.
 
-### 28. `shared_recipe_weekly_settlements` (Weekly settlement completion, #92)
+### 28. `receipt_first_applications` (Receipt first stock applications, #266)
+
+Remembers the first fridge and cart apply for a purchase that has a receipt number. Survives receipt delete so re-registration restores spend without adding stock or deducting the cart again. Kept until the purchase date is older than 6 months (same cutoff as receipts; re-register does not extend). Deleted on withdrawal. Purchases without a receipt number are not recorded.
+
+| Column | Type | Key | Ref | Null | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `id` | bigint | PK | | no | | |
+| `user_id` | bigint | FK | users | no | | Member |
+| `store_name` | varchar | | | no | | Store (branch) name |
+| `purchased_on` | date | | | no | | Purchase date (retention cutoff) |
+| `receipt_number` | varchar | | | no | | Receipt number (required for this table) |
+| `purchased_time` | time | | | yes | | Purchase time from the first apply, if any |
+| `created_at` | timestamp | | | no | | First-apply time; not updated on re-register |
+
+Unique on `(user_id, store_name, purchased_on, receipt_number)`. Index on `purchased_on` for the 6-month cleanup.
+
+### 29. `shared_recipe_weekly_settlements` (Weekly settlement completion, #92)
 
 Use one row per completed week, including weeks with no eligible posts. Insert this row, final ranks, and reward grants in the same transaction. A unique week key serializes concurrent executions; rollback removes the claim so a failed run can retry. This is a job completion record, not a public API resource.
 
@@ -838,7 +856,7 @@ Use one row per completed week, including weeks with no eligible posts. Insert t
 - An empty week is final too: use `shared_recipe_weekly_settlements` rather than inferring completion from rank rows. E75 is submitted after commit through EventTracker; tracking remains best effort and is not retried by re-running a settled week.
 - Timing limitation: deleted saves have no historical record. A delayed first execution counts the retained rows at execution time; it cannot reconstruct saves removed after the boundary. There is no automatic missed-week backfill. Do not claim exact historical recovery. Author deletion and post-settlement reward policy remain open in #230.
 
-### 29. `user_sanctions` (Sanctions)
+### 30. `user_sanctions` (Sanctions)
 
 One row per violation confirmed by report handling (1st-4th sanction). Owner 이상호 (admin operations). Source: operator page a4.1 report detail and a5 user management (11/26), sanction steps from the 11/24 terms decision. The planning ERD numbers this table 26.
 
@@ -873,6 +891,7 @@ One row per violation confirmed by report handling (1st-4th sanction). Owner 이
 | `users` | `receipts` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `users` | `manual_ingredient_expenses` | user_id | 1:N | no | CASCADE (the app deletes on withdrawal) |
 | `ingredient_categories` | `manual_ingredient_expenses` | category_id | 1:N | no | RESTRICT |
+| `users` | `receipt_first_applications` | user_id | 1:N | no | CASCADE (the app deletes on withdrawal) |
 | `receipts` | `receipt_items` | receipt_id | 1:N | no | CASCADE (deleted together by the 6-month cleanup) |
 | `ingredient_categories` | `receipt_items` | category_id | 1:N | no | RESTRICT |
 | `users` | `recipes` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
@@ -936,22 +955,23 @@ These values appear on screens but have no column. They are computed from the so
 
 | Case | Rule |
 | --- | --- |
-| Withdrawal | Clear `provider_user_id` and `email`, set `deleted_at`. Delete excluded ingredients, tokens, deletion codes, fridge ingredients, use logs, receipts, meal plans, cart, and notifications. Keep the `users` row, recipes, and the shared recipes the author has not deleted (anonymous) (11/24 terms decision). Events keep only the member number |
+| Withdrawal | Clear `provider_user_id` and `email`, set `deleted_at`. Delete excluded ingredients, tokens, deletion codes, fridge ingredients, use logs, receipts, `receipt_first_applications`, meal plans, cart, and notifications. Keep the `users` row, recipes, and the shared recipes the author has not deleted (anonymous) (11/24 terms decision). Events keep only the member number |
 | Amount reaches 0 | When "used / discarded" or cooking brings the amount to 0, delete the `ingredients` row. The record stays in `ingredient_logs` with the name |
 | Amount edit | Editing the amount (input mistake) sets `amount` and `initial_amount` together. Reject with `INVALID_INPUT` if the ingredient has any `ingredient_logs` row (#128) |
 | Ingredient delete | The delete icon on the edit screen (to be added) deletes the row. Links from logs, recipe ingredients, and notifications are only cleared |
-| Receipt registration | OCR results are not stored before registration. "Register N food items" creates `receipts`, `receipt_items`, and `ingredients` at once |
+| Receipt registration | OCR results are not stored before registration. "Register N food items" creates `receipts`, `receipt_items`, and `ingredients` at once. When `receiptNumber` is present, also record `receipt_first_applications` after the first fridge/cart apply |
 | Duplicate receipt | Block registration if one of my receipts has the same store (branch name), receipt number, and purchase time (if the number is unreadable compare store, purchase date, and the list of food names; if the time is unreadable compare by purchase date). Check at scan and again at registration |
+| Receipt re-register after delete (#266) | If `receipt_first_applications` already has user + store + purchase date + receipt number, save receipt and items again but skip fridge and cart (`ingredientCount`/`cartRemovedCount` 0). No number → full register. Do not extend the row's retention on re-register |
 | Cart -> fridge | Fill storage and expiry from the category's `default_storage` and `default_shelf_life_days`; leave the price empty. The category was set when the item was added. Delete moved items from `cart_items` |
 | Receipt cart deduction (#57) | Only explicitly selected cart rows, using the final registered name and identical unit. Sum deductions per target, reject totals above the remaining amount, subtract and delete only at zero. Skip leaves the cart unchanged. Join the receipt/fridge transaction; failures roll back all changes |
 | Meal delete / replace | Delete removes the `meal_plan_slots` row. Replace generates a new recipe, changes `recipe_id`, and uses one daily recipe generation (one `usage_logs` RECIPE row). Only slots from today on; past slots cannot be changed |
 | Meal-plan generation | API 38 checks the start date, quota, and overlap, creates `meal_plans` as `GENERATING`, and replies 202. A server job fills the slots and the cart, sets `COMPLETED`, charges one `usage_logs` row, and creates a `MEAL_PLAN_COMPLETED` notification. Too few ingredients, AI error, or timeout set `FAILED`, charge nothing, and create `MEAL_PLAN_FAILED`. Meal-plan notifications ignore `notification_enabled`. A new request while one is `GENERATING` → `MEAL_PLAN_IN_PROGRESS` (409). `MEAL_PLAN_COMPLETED` sets `notifications.meal_plan_id` (tap opens p5 at the start date); `MEAL_PLAN_FAILED` opens the setup screen. No failure-reason column. Overwrite deletes the old overlapping slots when the job completes, so a failed job keeps the existing plan. (deferred, #144): whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap |
 | Meal-plan overwrite | The start date can only be today or later, so past days never change. Delete existing slots on dates in the requested period (start date through the maximum days, including days not made for lack of ingredients, #78), except today's meals already cooked (`cooked_at` set): they keep their recipe and the new plan does not fill them. The delete happens when the generation job completes, not at acceptance |
 | Cooked mark | Cooking a recipe opened from today's slot sets that slot's `cooked_at` (never for other days) |
-| Receipt delete | Delete the `receipts` and `receipt_items` rows (image included). It leaves spending and patterns; registered fridge ingredients stay (only `receipt_item_id` is cleared) |
+| Receipt delete | Delete the `receipts` and `receipt_items` rows (image included). It leaves spending and patterns; registered fridge ingredients stay (only `receipt_item_id` is cleared). `receipt_first_applications` stays until the 6-month purchase-date cleanup or withdrawal |
 | Recipe "delete" | Remove only from the saved list (`saved_recipes`). Shared posts and others' saves stay |
 | Withdrawal and subscription | End the subscription immediately on withdrawal (ENDED, clear `billing_key`, no more payments). Keep `subscription_payments` (payment records). No refund for the remaining period (11/24 terms decision; resolves policy ch. 12 item 13) |
-| Cleanup jobs | Every early morning: receipts older than 6 months by purchase date (with images), notifications older than 30 days, deletion codes older than a day |
+| Cleanup jobs | Every early morning: receipts older than 6 months by purchase date (with images), `receipt_first_applications` with purchase date before the same cutoff, notifications older than 30 days, deletion codes older than a day |
 | Subscription start | Toss card registration -> the server issues a billingKey -> on first payment success create `subscriptions` (ACTIVE) and `subscription_payments` (DONE) and set `users.plan` = PREMIUM. If the first payment fails, do not create a subscription and do not insert a `subscription_payments` row (E85 only). Premium limits apply at once (recipes 4 per day, meal plans 4 this month and 7 days) |
 | Subscription renewal | Every early morning, charge ACTIVE subscriptions whose `next_billing_date` is today with the billingKey. On success extend the period by a month. On failure end the subscription at once (ENDED, clear `billing_key`, `users.plan` = BASIC); to subscribe again, register a card again (11/24 terms decision; resolves policy ch. 12 item 11) |
 | Subscription cancel | Cancel request sets `status` = CANCELED and `canceled_at`. PREMIUM stays until the day before the next billing date; on that date's early morning do not charge, set ENDED, clear `billing_key`, set `users.plan` = BASIC. Basic limits apply afterwards (counts already used this month still count) |
@@ -978,7 +998,7 @@ Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged
 
 Summary: 17 changed, 7 kept, 8 removed, 3 added -> 27 tables in the new ERD. The new tables are `subscriptions` and `subscription_payments` (subscription, 11/22) and `user_sanctions` (operator page, 11/26); `admin_audit_logs` moved from on hold to removed (11/26). The planning ERD writes "16 changed, 7 kept, 9 removed, 3 added -> 26" because it does not list `ingredient_catalog`.
 
-Later additions in #73 (`manual_ingredient_expenses`) and #92 (`shared_recipe_weekly_settlements`) bring the table inventory documented above to 29.
+Later additions in #73 (`manual_ingredient_expenses`), #92 (`shared_recipe_weekly_settlements`), #266 (`receipt_first_applications`), and `user_sanctions` (11/26) bring the table inventory documented above to 30.
 
 | Previous table | Status | Added columns | Removed columns | Reason |
 | --- | --- | --- | --- | --- |

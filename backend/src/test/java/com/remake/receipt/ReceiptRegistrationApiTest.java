@@ -3,6 +3,7 @@ package com.remake.receipt;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -25,6 +26,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import com.jayway.jsonpath.JsonPath;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
@@ -384,6 +387,92 @@ class ReceiptRegistrationApiTest extends IntegrationTestSupport {
 		mockMvc.perform(receiptRequest("당근", "우유", "").cookie(accessToken(userId)))
 				.andExpect(status().isCreated());
 		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM receipts", Long.class)).isEqualTo(2);
+	}
+
+	@Test
+	void 번호_있는_영수증은_삭제_후_재등록해도_냉장고와_장바구니를_다시_반영하지_않는다() throws Exception {
+		Long cartId = cartItem(userId, "2");
+		String numberedWithCart = """
+				{
+				  "purchasedOn": "2026-03-04",
+				  "purchasedTime": "14:25:00",
+				  "receiptNumber": "000123",
+				  "storeName": "동네마트",
+				  "items": [%s]
+				}
+				""".formatted(onionDeduction(cartId, 1));
+		var first = mockMvc.perform(multipart("/api/v1/user/receipts")
+				.file(new MockMultipartFile("image", "receipt.png", "image/png", new byte[] {1, 2, 3}))
+				.file(new MockMultipartFile("payload", "", "application/json",
+						numberedWithCart.getBytes(StandardCharsets.UTF_8)))
+				.cookie(accessToken(userId)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.ingredientCount").value(1))
+				.andExpect(jsonPath("$.cartRemovedCount").value(0))
+				.andReturn();
+		Number receiptId = JsonPath.read(first.getResponse().getContentAsString(), "$.receiptId");
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredients", Long.class)).isEqualTo(1);
+		assertThat(cartAmount(cartId)).isEqualByComparingTo("1");
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM receipt_first_applications", Long.class))
+				.isEqualTo(1);
+		LocalDateTime markedAt = jdbcTemplate.queryForObject(
+				"SELECT created_at FROM receipt_first_applications", LocalDateTime.class);
+
+		mockMvc.perform(delete("/api/v1/user/receipts/" + receiptId).cookie(accessToken(userId)))
+				.andExpect(status().isNoContent());
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM receipts", Long.class)).isZero();
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredients", Long.class)).isEqualTo(1);
+
+		Long cartAgain = cartItem(userId, "VEGETABLE", "당근", "EA", "3");
+		String numberedWithOtherCart = """
+				{
+				  "purchasedOn": "2026-03-04",
+				  "purchasedTime": "14:25:00",
+				  "receiptNumber": "000123",
+				  "storeName": "동네마트",
+				  "items": [
+				    {"name":"양파","categoryCode":"VEGETABLE","amount":2,"price":2000,"storage":"PANTRY",
+				     "cartDeductions":[{"cartItemId":%d,"amount":1}]},
+				    {"name":"우유","categoryCode":"DAIRY_EGG","amount":1,"price":2500,"storage":"FRIDGE"}
+				  ]
+				}
+				""".formatted(cartAgain);
+		mockMvc.perform(multipart("/api/v1/user/receipts")
+				.file(new MockMultipartFile("image", "receipt.png", "image/png", new byte[] {1, 2, 3}))
+				.file(new MockMultipartFile("payload", "", "application/json",
+						numberedWithOtherCart.getBytes(StandardCharsets.UTF_8)))
+				.cookie(accessToken(userId)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.ingredientCount").value(0))
+				.andExpect(jsonPath("$.cartRemovedCount").value(0));
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM receipts", Long.class)).isEqualTo(1);
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredients", Long.class)).isEqualTo(1);
+		assertThat(cartAmount(cartAgain)).isEqualByComparingTo("3");
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM receipt_first_applications", Long.class))
+				.isEqualTo(1);
+		assertThat(jdbcTemplate.queryForObject("SELECT created_at FROM receipt_first_applications", LocalDateTime.class))
+				.isEqualTo(markedAt);
+	}
+
+	@Test
+	void 번호_없는_영수증은_삭제_후_재등록하면_냉장고를_다시_반영한다() throws Exception {
+		mockMvc.perform(receiptRequest("양파", "우유", "").cookie(accessToken(userId)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.ingredientCount").value(2));
+		Long receiptId = jdbcTemplate.queryForObject("SELECT id FROM receipts", Long.class);
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredients", Long.class)).isEqualTo(2);
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM receipt_first_applications", Long.class))
+				.isZero();
+
+		mockMvc.perform(delete("/api/v1/user/receipts/" + receiptId).cookie(accessToken(userId)))
+				.andExpect(status().isNoContent());
+
+		mockMvc.perform(receiptRequest("양파", "우유", "").cookie(accessToken(userId)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.ingredientCount").value(2));
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM ingredients", Long.class)).isEqualTo(4);
+		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM receipt_first_applications", Long.class))
+				.isZero();
 	}
 
 	@Test

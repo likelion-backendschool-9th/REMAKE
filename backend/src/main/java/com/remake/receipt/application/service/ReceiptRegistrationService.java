@@ -28,6 +28,7 @@ import com.remake.ingredient.application.port.in.RegisterIngredientCommand;
 import com.remake.ingredient.application.port.in.RegisterIngredientUseCase;
 import com.remake.ingredient.application.port.in.ResolveIngredientUnitUseCase;
 import com.remake.receipt.application.port.in.RegisterReceiptUseCase;
+import com.remake.receipt.application.port.out.ReceiptFirstApplicationPort;
 import com.remake.receipt.application.port.out.ReceiptImageStoragePort;
 import com.remake.receipt.application.port.out.SaveReceiptPort;
 import com.remake.receipt.domain.ReceiptRetention;
@@ -46,6 +47,7 @@ class ReceiptRegistrationService implements RegisterReceiptUseCase {
 	private final RegisterIngredientUseCase ingredients;
 	private final ResolveIngredientUnitUseCase ingredientUnits;
 	private final DeductCartItemsUseCase deductCartItems;
+	private final ReceiptFirstApplicationPort firstApplications;
 	private final EventTracker eventTracker;
 	private final Clock clock;
 
@@ -65,6 +67,10 @@ class ReceiptRegistrationService implements RegisterReceiptUseCase {
 		if (saveReceiptPort.lockOwnerAndCheckDuplicate(userId, command)) {
 			throw new BusinessException(ErrorCode.RECEIPT_DUPLICATE);
 		}
+		// 번호가 있는 구매만 최초 반영을 기억한다. 번호가 없으면 삭제 후 재등록도 일반 등록이다(#266).
+		boolean skipStockAndCart = command.receiptNumber() != null
+				&& firstApplications.exists(userId, command.storeName(), command.purchasedOn(),
+						command.receiptNumber());
 		String imageKey = saveImage(image);
 		Long receiptId = saveReceiptPort.saveReceipt(userId, command.purchasedOn(), command.purchasedTime(),
 				command.receiptNumber(), command.storeName(), command.storeCode(), imageKey);
@@ -83,10 +89,19 @@ class ReceiptRegistrationService implements RegisterReceiptUseCase {
 					item.expirationDate(), command.purchasedOn(), item.amount(),
 					item.unit(), item.price(), itemId));
 		}
-		ingredients.registerIngredients(registrations);
-		int cartRemovedCount = deductions.isEmpty() ? 0 : deductCartItems.deduct(userId, deductions);
-		trackSavedReceipt(userId, receiptId, command, registrations.size(), cartRemovedCount);
-		return new Result(receiptId, registrations.size(), cartRemovedCount);
+		int registeredCount = 0;
+		int cartRemovedCount = 0;
+		if (!skipStockAndCart) {
+			ingredients.registerIngredients(registrations);
+			registeredCount = registrations.size();
+			cartRemovedCount = deductions.isEmpty() ? 0 : deductCartItems.deduct(userId, deductions);
+			if (command.receiptNumber() != null) {
+				firstApplications.markIfAbsent(userId, command.storeName(), command.purchasedOn(),
+						command.receiptNumber(), command.purchasedTime());
+			}
+		}
+		trackSavedReceipt(userId, receiptId, command, registeredCount, cartRemovedCount);
+		return new Result(receiptId, registeredCount, cartRemovedCount);
 	}
 
 	private void trackSavedReceipt(Long userId, Long receiptId, Command command, int registeredCount, int cartRemovedCount) {

@@ -113,6 +113,24 @@ class ReceiptExpirationBatchTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 구매일_6개월이_지난_최초_반영_기록도_지운다() {
+		Long owner = createUser();
+		LocalDate keepOn = LocalDate.of(2025, 9, 4);
+		LocalDate deleteOn = LocalDate.of(2025, 9, 3);
+		LocalDateTime now = LocalDateTime.now(clock);
+		jdbcTemplate.update("""
+				INSERT INTO receipt_first_applications
+				(user_id, store_name, purchased_on, receipt_number, created_at)
+				VALUES (?, '동네마트', ?, 'KEEP-1', ?), (?, '동네마트', ?, 'DROP-1', ?)
+				""", owner, keepOn, now, owner, deleteOn, now);
+
+		expireOldReceipts.expireOldReceipts();
+
+		assertThat(jdbcTemplate.queryForList("SELECT receipt_number FROM receipt_first_applications", String.class))
+				.containsExactly("KEEP-1");
+	}
+
+	@Test
 	void 같은_날_다시_실행해도_오류_없이_추가_삭제가_없다() throws Exception {
 		Long owner = createUser();
 		receipt(owner, LocalDate.of(2025, 9, 3), 1000L);

@@ -4,8 +4,8 @@
 
 2026-11-22 · 이준호. 원본은 노션 "ERD v4"(피그마 기준, 화면 근거 칸 포함)이고, 이 문서는 그 내용을 개발용으로 옮긴 것이에요. 화면 근거(피그마 노드)는 원본에서 보세요.
 
-- 이 문서의 테이블 29개: 피그마 기준 26개(11/26에 추가한 `user_sanctions` 포함), 단위 사전 `ingredient_catalog`, #73의 직접 등록 재료 지출 기록, #92의 내부 주간 확정 완료 기록을 포함해요.
-- 11/26 피그마 '운영자 페이지' 기준으로 `user_sanctions`를 추가하고, 신고 처리 결과(`result`·`handled_by`·`handled_at`), 운영자 횟수 조정(`grant_type`·`reason`·`admin_id`), 공유 글 `DELETED` 상태를 넣었어요. 기획 ERD는 테이블 26개·컬럼 219개·관계 42개로 세고 `user_sanctions`를 26번으로 매기지만, 이 문서는 레포 번호(29번)를 유지해요.
+- 이 문서의 테이블 30개: 피그마 기준 26개(11/26에 추가한 `user_sanctions` 포함), 단위 사전 `ingredient_catalog`, #73의 직접 등록 재료 지출 기록, #92의 내부 주간 확정 완료 기록, #266의 영수증 최초 반영 기록을 포함해요.
+- 11/26 피그마 '운영자 페이지' 기준으로 `user_sanctions`를 추가하고, 신고 처리 결과(`result`·`handled_by`·`handled_at`), 운영자 횟수 조정(`grant_type`·`reason`·`admin_id`), 공유 글 `DELETED` 상태를 넣었어요. 기획 ERD는 테이블 26개·컬럼 219개·관계 42개로 세고 `user_sanctions`를 26번으로 매기지만, 이 문서는 레포 번호(30번)를 유지해요.
 - 알림은 앱 안에서만 보여요(휴대폰 푸시 없음).
 
 ## 공통 규칙
@@ -46,8 +46,9 @@
 | 25 | `events` | 이벤트 | 사용자 행동 이벤트 원본(프론트·서버). 이름·속성은 이벤트 정의서 | 공통(이벤트) | 이준호 | 12 |
 | 26 | `ingredient_catalog` | 재료 단위 사전 | 재료명 → 단위·카테고리·보관 일수. 재료명으로 단위를 정할 때(API 14·15·16·21) 서버 안에서만 씀. 화면·API로 노출하지 않음 | 2 냉장고 | 김재연 | 6 |
 | 27 | `manual_ingredient_expenses` | 직접 등록 재료 지출 | 영수증 없이 등록한 재료의 출처와 지출 기록 | 3 영수증 | 이동준 | 9 |
-| 28 | `shared_recipe_weekly_settlements` | 주간 확정 완료 기록 | 대상이 없는 주도 포함한 주별 완료 기록. 순위·보상 중복 확정 방지 | 7 공유 공간·장바구니 | 최유리 | 2 |
-| 29 | `user_sanctions` | 제재 | 신고 처리로 확정된 위반 한 번마다 한 행(1~4차 제재) | 어드민 운영 | 이상호 | 9 |
+| 28 | `receipt_first_applications` | 영수증 최초 반영 | 번호 있는 구매의 최초 냉장고·장바구니 반영. 영수증 삭제 후에도 남아 재등록 시 재고·장바구니를 건너뜀(#266) | 3 영수증 | 이동준 | 6 |
+| 29 | `shared_recipe_weekly_settlements` | 주간 확정 완료 기록 | 대상이 없는 주도 포함한 주별 완료 기록. 순위·보상 중복 확정 방지 | 7 공유 공간·장바구니 | 최유리 | 2 |
+| 30 | `user_sanctions` | 제재 | 신고 처리로 확정된 위반 한 번마다 한 행(1~4차 제재) | 어드민 운영 | 이상호 | 9 |
 
 ## 관계도
 
@@ -72,6 +73,7 @@ erDiagram
   ingredient_categories ||--o{ receipt_items : "category_id"
   users ||--o{ manual_ingredient_expenses : "user_id"
   ingredient_categories ||--o{ manual_ingredient_expenses : "category_id"
+  users ||--o{ receipt_first_applications : "user_id"
   users ||--o{ recipes : "user_id"
   recipes ||--o{ recipe_ingredients : "recipe_id"
   ingredients |o--o{ recipe_ingredients : "ingredient_id"
@@ -824,7 +826,23 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 
 `(user_id, created_at)` 인덱스로 기간을 조회합니다.
 
-### 28. `shared_recipe_weekly_settlements` (주간 확정 완료 기록, #92)
+### 28. `receipt_first_applications` 영수증 최초 반영 (#266)
+
+영수증 번호가 있는 구매의 최초 냉장고·장바구니 반영을 남깁니다. 영수증을 삭제해도 남아, 같은 키로 다시 등록하면 식비만 복구하고 재고·장바구니는 건너뜁니다. 구매일 기준 6개월이 지나면 지우고(재등록으로 연장하지 않음), 탈퇴 시 삭제합니다. 번호가 없는 구매는 기록하지 않습니다.
+
+| 컬럼 | 타입 | 키 | 참조 | Null | 기본값 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `id` | bigint | PK | | 아니오 | | |
+| `user_id` | bigint | FK | users | 아니오 | | 회원 |
+| `store_name` | varchar | | | 아니오 | | 판매처(지점명) |
+| `purchased_on` | date | | | 아니오 | | 구매일(보관 기준) |
+| `receipt_number` | varchar | | | 아니오 | | 영수증 번호 |
+| `purchased_time` | time | | | 예 | | 최초 반영 때 구매 시각(있으면) |
+| `created_at` | timestamp | | | 아니오 | | 최초 반영 시각. 재등록으로 바꾸지 않음 |
+
+고유 키 `(user_id, store_name, purchased_on, receipt_number)`. 6개월 정리용으로 `purchased_on` 인덱스.
+
+### 29. `shared_recipe_weekly_settlements` (주간 확정 완료 기록, #92)
 
 대상 글이 없는 주도 포함하여 확정한 주마다 한 행을 저장해요. 이 행·확정 순위·보상을 같은 트랜잭션에서 넣어요. 주별 고유 키로 동시 실행을 직렬화하고, 실패하면 완료 기록까지 롤백되어 다시 실행할 수 있어요. 공개 API 리소스가 아닌 작업 완료 기록이에요.
 
@@ -838,7 +856,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 - 대상이 없는 주도 확정 완료예요. 순위 행 유무 대신 `shared_recipe_weekly_settlements`를 사용해요. E75는 EventTracker로 커밋 후 제출하며, 이벤트 적재는 최선 노력 방식이라 확정한 주를 재실행해도 재전송하지 않아요.
 - 시점 관련 한계: 취소된 저장 이력이 없어서 첫 실행이 늦으면 실행 시점까지 남은 행을 세며, 주 경계 이후 취소된 저장을 과거 상태로 복원할 수 없어요. 누락 주 자동 소급 실행은 제공하지 않아요. 정확한 과거 복구를 보장한다고 설명하면 안 돼요. 작성자 삭제·확정 후 보상 처리는 #230 미결로 남겨요.
 
-### 29. `user_sanctions` 제재
+### 30. `user_sanctions` 제재
 
 신고 처리로 확정된 위반 한 번마다 한 행(1~4차 제재). 담당 이상호(어드민 운영). 근거: 운영자 페이지 a4.1 신고 상세·a5 사용자 관리(11/26), 11/24 약관 답(제재 단계). 기획 ERD에서는 26번이에요.
 
@@ -872,6 +890,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `ingredient_categories` | `ingredient_logs` | category_id | 1:N | 아니오 | RESTRICT(기준 데이터라 지우지 않음) |
 | `users` | `receipts` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `users` | `manual_ingredient_expenses` | user_id | 1:N | 아니오 | CASCADE(회원 탈퇴 시에는 앱이 삭제) |
+| `users` | `receipt_first_applications` | user_id | 1:N | 아니오 | CASCADE(회원 탈퇴 시에는 앱이 삭제) |
 | `ingredient_categories` | `manual_ingredient_expenses` | category_id | 1:N | 아니오 | RESTRICT |
 | `receipts` | `receipt_items` | receipt_id | 1:N | 아니오 | CASCADE(6개월 정리 때 같이 삭제) |
 | `ingredient_categories` | `receipt_items` | category_id | 1:N | 아니오 | RESTRICT |
@@ -936,22 +955,23 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 
 | 상황 | 규칙 |
 | --- | --- |
-| 탈퇴 | provider_user_id·email을 비우고 deleted_at 기록. 제외 재료·토큰·인증번호·냉장고 재료·사용 기록·영수증·식단표·장바구니·알림은 삭제. users 행과 레시피, 작성자가 지우지 않은 공유 레시피(익명)는 남김(11/24 약관 결정). events는 회원 번호만 남김 |
+| 탈퇴 | provider_user_id·email을 비우고 deleted_at 기록. 제외 재료·토큰·인증번호·냉장고 재료·사용 기록·영수증·`receipt_first_applications`·식단표·장바구니·알림은 삭제. users 행과 레시피, 작성자가 지우지 않은 공유 레시피(익명)는 남김(11/24 약관 결정). events는 회원 번호만 남김 |
 | 재료 수량 0 | "사용 했어요/버렸어요"나 요리 완료로 0이 되면 ingredients 행 삭제. 기록은 ingredient_logs에 이름과 함께 남음 |
 | 수량 수정 | 입력 실수를 고치는 용도라 `amount`와 `initial_amount`를 같이 바꿈. `ingredient_logs`에 기록이 하나라도 있으면 `INVALID_INPUT`으로 거절(#128) |
 | 재료 삭제 | 재료 수정 화면의 삭제 아이콘(추가 예정)은 행 삭제. 기록·레시피 재료·알림의 연결만 비움 |
-| 영수증 등록 | OCR 결과는 등록 전에는 저장하지 않음. "식재료 N개 등록 하기" 때 receipts·receipt_items·ingredients를 한 번에 만듦 |
+| 영수증 등록 | OCR 결과는 등록 전에는 저장하지 않음. "식재료 N개 등록 하기" 때 receipts·receipt_items·ingredients를 한 번에 만듦. 영수증 번호가 있으면 최초 냉장고·장바구니 반영 뒤 `receipt_first_applications`에도 남김 |
 | 중복 영수증 | 내 영수증 중 판매처(지점명)·영수증 번호·구매 시각이 모두 같은 영수증(번호를 못 읽었으면 판매처·구매일·식재료 이름 목록, 시각을 못 읽었으면 구매일로 비교)이 있으면 등록을 막음. 스캔 때 확인하고 등록 때 한 번 더 확인 |
+| 삭제 후 재등록(#266) | `receipt_first_applications`에 사용자·매장·구매일·번호가 이미 있으면 영수증·품목만 다시 저장하고 냉장고·장바구니는 건너뜀(`ingredientCount`·`cartRemovedCount` 0). 번호 없으면 일반 등록. 재등록으로 보관 기간을 늘리지 않음 |
 | 장바구니 → 냉장고 | 카테고리의 default_storage·default_shelf_life_days로 보관 위치·소비기한을 채우고 가격은 비움. 카테고리는 장바구니에 담을 때 이미 정해짐. 냉장고로 넘긴 항목은 cart_items에서 지움 |
 | 영수증 장바구니 차감(#57) | 명시적으로 선택한 행만 최종 등록 재료명·동일 단위로 차감. 대상별 차감량을 합산하고 잔량 초과 시 거절하며, 0이 된 행만 삭제. 건너뛰면 유지. 영수증·냉장고 트랜잭션에 참여해 실패하면 모두 롤백 |
 | 식단 삭제·교체 | 삭제는 meal_plan_slots 행 삭제, 교체는 새 레시피를 만들어 recipe_id를 바꾸고 하루 레시피 생성 횟수 1회 차감(usage_logs RECIPE 한 줄). 오늘부터의 칸만, 지난 날짜 칸은 안 됨 |
 | 식단표 생성 | API 38이 시작일·횟수·겹침을 확인하고 `meal_plans`를 `GENERATING`으로 만든 뒤 202로 응답. 서버 작업이 칸과 장바구니를 채우고 `COMPLETED`로 바꾼 뒤 `usage_logs` 한 줄 차감, `MEAL_PLAN_COMPLETED` 알림을 만듦. 재료 부족·AI 오류·시간 초과면 `FAILED`, 차감 없음, `MEAL_PLAN_FAILED` 알림. 식단표 알림은 `notification_enabled`와 관계없이 만듦. 생성 중(`GENERATING`)에 다시 요청하면 `MEAL_PLAN_IN_PROGRESS`(409). `MEAL_PLAN_COMPLETED`는 `notifications.meal_plan_id`에 식단표를 연결(누르면 p5에서 시작일), `MEAL_PLAN_FAILED`는 생성 설정 화면으로. 실패 사유 칸은 두지 않음. 덮어쓸 때 겹치는 기존 칸은 작업이 완성될 때 지움(실패하면 기존 식단 유지). 보류(#144): 생성 중·실패 식단표를 달력(39)·겹침 검사에 넣을지 |
 | 식단표 덮어쓰기 | 시작일은 오늘부터만 고를 수 있어서 지난 날 식단은 바뀌지 않음. 요청 기간(시작일부터 최대 일수, 재료가 모자라 못 만든 날 포함, #78) 안의 기존 칸은 지움. 단 오늘 칸 중 이미 요리한 끼니(cooked_at 있음)는 그 레시피로 남기고 새 식단표가 채우지 않음. 지우는 시점은 접수가 아니라 생성 작업이 완성될 때 |
 | 요리 완료 표시 | 오늘 식단 칸에서 연 레시피로 요리 완료하면 그 칸 cooked_at 기록(다른 날 칸에는 기록 안 함) |
-| 영수증 삭제 | receipts·receipt_items 행 삭제(이미지 포함). 식비·소비 패턴에서 빠지고, 등록된 냉장고 재료는 남음(receipt_item_id만 비움) |
+| 영수증 삭제 | receipts·receipt_items 행 삭제(이미지 포함). 식비·소비 패턴에서 빠지고, 등록된 냉장고 재료는 남음(receipt_item_id만 비움). `receipt_first_applications`는 구매일 6개월 정리나 탈퇴 때까지 남음 |
 | 레시피 삭제 하기 | 저장 목록(saved_recipes)에서만 지움. 공유 글과 남이 저장한 것은 그대로 |
 | 탈퇴와 구독 | 탈퇴하면 구독을 바로 끝냄(ENDED, billing_key 비움, 더 결제하지 않음). subscription_payments는 결제 기록이라 지우지 않음. 남은 기간은 환불하지 않음(11/24 약관 결정, 정책 12장 13 해결) |
-| 정리 작업 | 매일 새벽: 구매일 6개월 지난 영수증(이미지 포함), 30일 지난 알림, 하루 지난 인증번호 삭제 |
+| 정리 작업 | 매일 새벽: 구매일 6개월 지난 영수증(이미지 포함), 같은 경계의 `receipt_first_applications`, 30일 지난 알림, 하루 지난 인증번호 삭제 |
 | 구독 시작 | 토스 카드 등록 → 서버가 billingKey 발급 → 첫 결제 성공하면 subscriptions(ACTIVE)·subscription_payments(DONE) 만들고 users.plan = PREMIUM. 첫 결제가 실패하면 구독을 만들지 않고 subscription_payments 행도 남기지 않음(E85로만 기록). 한도는 바로 구독 한도(레시피 하루 4회, 식단표 이번 달 4회·7일치) |
 | 구독 자동 연장 | 매일 새벽, next_billing_date가 오늘인 ACTIVE 구독을 billingKey로 결제. 성공하면 기간을 한 달 늘림. 실패하면 구독을 바로 끝냄(ENDED, billing_key 비움, users.plan = BASIC). 다시 구독하려면 카드를 새로 등록(11/24 약관 결정, 정책 12장 11 해결) |
 | 구독 해지 | 해지 예약은 status = CANCELED, canceled_at 기록. 다음 결제일 전날까지 PREMIUM 유지, 다음 결제일 새벽에 결제하지 않고 ENDED·billing_key 비움·users.plan = BASIC. 그 뒤 한도는 일반 한도(이번 달 이미 쓴 횟수는 그대로 셈) |
@@ -978,7 +998,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 
 요약: 변경 17개, 유지 7개, 삭제 8개, 추가 3개 → 새 ERD 27개. 새로 생긴 테이블은 11/22 구독 추가로 생긴 subscriptions, subscription_payments와 11/26 운영자 페이지로 생긴 user_sanctions예요. admin_audit_logs는 보류에서 삭제로 바뀌었어요(11/26). 기획 ERD는 `ingredient_catalog`를 목록에 넣지 않아 "변경 16, 유지 7, 삭제 9, 추가 3 → 26개"로 적어요.
 
-이후 #73의 `manual_ingredient_expenses`와 #92의 `shared_recipe_weekly_settlements`가 추가되어 위 목록에 문서화한 테이블은 29개예요.
+이후 #73의 `manual_ingredient_expenses`, #92의 `shared_recipe_weekly_settlements`, #266의 `receipt_first_applications`, 11/26 `user_sanctions`가 추가되어 위 목록에 문서화한 테이블은 30개예요.
 
 | 이전 테이블 | 상태 | 추가 컬럼 | 뺀 컬럼 | 이유 |
 | --- | --- | --- | --- | --- |

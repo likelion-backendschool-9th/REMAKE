@@ -42,6 +42,7 @@
 | 6개월 지난 영수증 | 구매일이 6개월 지난 영수증은 등록할 수 없음(스캔 단계에서 OCR 실패로) | 확정 |
 | 중복 등록 | 등록 버튼은 요청이 끝날 때까지 비활성 | 확정 |
 | 중복 영수증 | 판매처·영수증 번호·구매 시각이 모두 같으면 이미 등록한 영수증으로 보고 등록을 막음(번호를 못 읽었으면 판매처·구매일·식재료, 시각을 못 읽었으면 구매일로 비교). 스캔 직후 확인해 OCR 실패 화면에 "이미 등록한 영수증이에요"(RECEIPT_DUPLICATE 409), 등록 때 한 번 더 확인 | 확정 / 화면 대기 |
+| 삭제 후 재등록 | 영수증 번호가 있으면 최초 냉장고·장바구니 반영을 `receipt_first_applications`에 남김(사용자·매장·구매일·번호). 삭제해도 이 기록은 남고, 같은 키로 다시 등록하면 영수증·식비만 복구하고 `ingredientCount`·`cartRemovedCount`는 0. 번호가 없으면 일반 등록(다시 반영). 구매일 기준 6개월 보관·재등록 연장 없음·탈퇴 시 삭제. 냉장고 추가 0개 안내는 #102와 협의 | 확정(#266) |
 | 장바구니 선택 차감 | 최종 등록 직전 바텀시트에서 품목당 0~1개 행 선택. 건너뛰면 유지. 실제 등록량 이내·동일 단위로 차감하고 0이 된 행만 삭제 | #57 합의 / 화면 구현은 별도 |
 | 영수증 목록 | 월 선택 "2026년 11월 ∨"(최근 6개월), 월 합계, "내 평균보다 N원 더 썼어요", 주차 묶음(주차·기간·합계), 영수증 행(마트 아이콘·판매처·날짜·식재료 N개·금액) | 확정(피그마) |
 | 월 합계 | 그 달 영수증의 식재료 품목 금액 합계(구매일 기준) | 확정 |
@@ -68,7 +69,7 @@
 | 번호 | 메서드 | 경로 | 설명 | 요청 | 응답 | 관련 테이블 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 20 | POST | `/user/receipts/scan` | OCR 분석만 하고 저장하지 않음(11/20 결정). 동기 처리. 식재료만 돌려줌. 식재료가 하나도 없거나 구매일이 6개월 지난 영수증은 실패로 돌려주고 OCR 실패 화면(추가될 페이지 4번)에서 보여줌(에러 정의서 답 4). 이미 등록한 영수증(판매처(지점명)·영수증 번호·구매 시각이 모두 같은 영수증(번호를 못 읽었으면 판매처·구매일·식재료 이름 목록, 시각을 못 읽었으면 구매일로 비교))도 같은 화면에서 실패로 보여줌(정책 답 8·10). `dDay`·`status`는 주지 않음. 저장 전이고 사용자가 소비기한을 고치는 값이라 프론트가 `expirationDate`와 KST 오늘 날짜로 계산함(11/25) | `multipart image(jpg·png·heic, 10MB)` | `200 { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount, unit, price, expirationDate, purchaseQuantity?, volume?: { amount, unit, scope } }] }` | receipts(중복 확인만) |
-| 21 | POST | `/user/receipts` | 영수증·품목·냉장고 재료를 한 번에 저장. 단위는 서버가 재료명으로 정함(ERD 답 5). 선택한 장바구니 행만 실제 등록량 이내·동일 단위로 차감(#57). 건너뛰면 유지하며 0이 된 행만 삭제. 6개월 지난 영수증은 등록 불가(11/20 결정). 이미 등록한 영수증이면 한 번 더 막음(정책 답 8·10) | `multipart image + payload { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount?, purchaseQuantity?, volume?: { amount, unit, scope }, price, expirationDate, cartDeductions?: [{ cartItemId, amount }] }] }` | `201 { receiptId, ingredientCount, cartRemovedCount }` | receipts, receipt_items, ingredients, cart_items |
+| 21 | POST | `/user/receipts` | 영수증·품목·냉장고 재료를 한 번에 저장. 단위는 서버가 재료명으로 정함(ERD 답 5). 선택한 장바구니 행만 실제 등록량 이내·동일 단위로 차감(#57). 건너뛰면 유지하며 0이 된 행만 삭제. 6개월 지난 영수증은 등록 불가(11/20 결정). 이미 등록한 영수증이면 한 번 더 막음(정책 답 8·10). 삭제 뒤 같은 번호 구매를 다시 등록하면 영수증·식비만 복구하고 냉장고·장바구니는 건너뜀(`ingredientCount`·`cartRemovedCount` 0, #266). 번호 없으면 일반 등록 | `multipart image + payload { storeName, storeCode, purchasedOn, purchasedTime, receiptNumber, items: [{ name, categoryCode, storage, amount?, purchaseQuantity?, volume?: { amount, unit, scope }, price, expirationDate, cartDeductions?: [{ cartItemId, amount }] }] }` | `201 { receiptId, ingredientCount, cartRemovedCount }` | receipts, receipt_items, ingredients, cart_items, receipt_first_applications |
 | 22 | GET | `/user/receipts` | 그 달 영수증. 월 합계는 영수증 품목만, 평균은 최근 6개월 월 합계 평균 | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, weeks: [{ label, startDate, endDate, totalAmount, receipts: [{ id, storeCode, storeName, purchasedOn, itemCount, totalAmount }] }] }` | receipts, receipt_items |
 | 23 | GET | `/user/receipts/{id}` | 영수증 하나 | `-` | `200 { id, storeCode, storeName, purchasedOn, imageUrl, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }], totalAmount }` | receipts, receipt_items |
 | 24 | DELETE | `/user/receipts/{id}` | 영수증·품목·이미지 삭제. 식비·소비 패턴에서도 빠지고 냉장고 재료는 남음(ERD 답 1) | `-` | `204` | receipts, receipt_items, ingredients |
@@ -102,6 +103,7 @@ API 20 응답의 `purchaseQuantity`와 `volume`은 #72에서 반영 예정이며
 - 단위는 서버가 재료명으로 정해요(02의 재료 사전).
 - OCR 실패 화면 하나에 문구만 달라요: `RECEIPT_NOT_RECOGNIZED`·`OCR_UPSTREAM_ERROR`·`OCR_TIMEOUT`, `RECEIPT_NO_FOOD_ITEMS`, `RECEIPT_TOO_OLD`, `RECEIPT_DUPLICATE`. OCR은 재시도하지 않아요.
 - 중복 영수증: 판매처(지점명)·영수증 번호·구매 시각이 모두 같으면 중복. 번호를 못 읽었으면 판매처·구매일·식재료 이름 목록, 시각을 못 읽었으면 구매일로 비교해요. 스캔 때 확인하고 등록 때 한 번 더 확인해요(409).
+- 삭제 후 재등록(#266): 영수증 번호가 있으면 최초 반영을 `receipt_first_applications`에 남기고, 같은 키로 다시 등록하면 냉장고·장바구니는 건너뛰어요. 번호가 없으면 일반 등록이에요. 보관은 구매일 기준 6개월이고 탈퇴 때 지워요.
 - 구매일·판매처를 못 읽으면 비워서 주고, 등록 때 둘 다 필수예요. 구매일이 6개월 지났으면 스캔 단계에서 실패로 돌려줘요.
 - 영수증 품목별 `cartDeductions`는 생략·빈 배열 또는 1개만 허용해요. 영수증 쪽은 양수 수량과 품목별 실제 냉장고 등록량 이내인지를 검증한 뒤, 최종 재료명·서버 결정 단위로 07의 `DeductCartItemsUseCase`를 같은 트랜잭션에서 호출해요. 반환값 `cartRemovedCount`는 0이 되어 실제 삭제된 행 수예요. 상세 계약은 [공유·장바구니 가이드](07_shared-cart.md#영수증-연동-계약57)를 보세요.
 - 월 합계는 그 달 영수증의 식재료 품목 금액(구매일 기준). 평균은 최근 6개월 월 합계 평균과의 차이예요(이번 달 제외 등 세부는 제안).

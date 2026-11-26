@@ -11,6 +11,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.receipt.application.port.out.ManualIngredientExpensePort;
+import com.remake.receipt.application.port.out.ReceiptFirstApplicationPort;
 import com.remake.receipt.application.port.out.ReceiptHistoryPort;
 import com.remake.receipt.application.port.out.ReceiptHistoryPort.StoredReceipt;
 import com.remake.receipt.application.port.out.ReceiptImageDeletionPort;
@@ -29,6 +30,7 @@ class ReceiptDeletionService {
 
 	private final ReceiptHistoryPort receipts;
 	private final ManualIngredientExpensePort manualExpenses;
+	private final ReceiptFirstApplicationPort firstApplications;
 	private final ReceiptImageDeletionPort pendingImages;
 	private final ReceiptImageDeletionService imageDeletion;
 
@@ -58,6 +60,7 @@ class ReceiptDeletionService {
 	@Transactional
 	public void deleteAllForUser(Long userId) {
 		manualExpenses.deleteAllForUser(userId);
+		firstApplications.deleteAllForUser(userId);
 		List<String> imageKeys = receipts.deleteAllForUser(userId);
 		for (String imageKey : imageKeys) {
 			if (imageKey == null || imageKey.isBlank()) {
