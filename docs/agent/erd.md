@@ -580,7 +580,7 @@ Ingredients and amounts of a recipe. Owner 김종수 (4 AI recipes).
 | `name` | varchar |  |  | no |  | Ingredient name |
 | `amount` | numeric(10,3) |  |  | yes |  | Amount. Empty means "to taste" |
 | `unit` | varchar |  |  | no |  | Unit |
-| `category_code` | varchar |  |  | yes |  | Ingredient category (12 codes) for adding missing ingredients to the cart (#76). Decided at generation: catalog name match, else the fridge ingredient's category, else the AI's pick. Empty for rows made before this column or when the AI gave no valid code |
+| `category_code` | varchar |  |  | yes |  | Ingredient category (12 codes) for adding missing ingredients to the cart (#76). Decided at generation (recipes #76, meal-plan slot recipes #91): catalog name match, else the fridge ingredient's category, else the AI's pick. Empty for rows made before this column or when the AI gave no valid code |
 | `sort_order` | int |  |  | no |  | Order |
 | `created_at` | timestamp |  |  | no |  | Created time |
 
@@ -662,7 +662,7 @@ Missing-ingredient list (added automatically when saving a shared recipe, saving
 | `id` | bigint | PK |  | no |  | ID |
 | `user_id` | bigint | FK | users | no |  | Member |
 | `recipe_id` | bigint | FK | recipes | yes |  | Source recipe |
-| `meal_plan_slot_id` | bigint | FK | meal_plan_slots | yes |  | Initial meal-slot source (#57). SET NULL on slot deletion; keep recipe and cart quantity. Reusing an existing cart row does not replace its source |
+| `meal_plan_slot_id` | bigint | FK | meal_plan_slots | yes |  | Initial meal-slot source (#57). SET NULL on slot deletion; keep recipe and cart quantity. Reusing an existing cart row does not replace its source. Before slot delete/replace/overwrite, rows from that slot and recipe are deleted if unchanged (`updated_at = created_at`) or else unlinked here; replace must do it in code because updating the slot's `recipe_id` does not fire SET NULL (#91) |
 | `category_id` | bigint | FK | ingredient_categories | no |  | Category estimated when added (used when moving to the fridge) |
 | `name` | varchar |  |  | no |  | Ingredient name |
 | `amount` | numeric(10,3) |  |  | no |  | Amount |
