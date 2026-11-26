@@ -1,10 +1,10 @@
-# 06. 알림 (이상호)
+# 06. 알림·어드민 운영 (이상호)
 
-기준: PRD v4·정책정의서 v4·ERD v4·API 정의서 v4·에러 정의서 v2·이벤트 정의서 v2(모두 피그마 기준, 2026-11-22, 노션). 표는 원본에서 그대로 옮겼고 피그마 노드 근거 칸만 뺐어요.
+기준: PRD v4·정책정의서 v4·ERD v4·API 정의서 v4·에러 정의서 v2·이벤트 정의서 v2(모두 피그마 기준, 2026-11-22, 노션). 어드민은 11/26 피그마 '운영자 페이지'(2005:4) 기준 반영. 표는 원본에서 그대로 옮겼고 피그마 노드 근거 칸만 뺐어요.
 
 ## 범위
 
-소비기한 알림(앱 안 알림 띠·알림 화면)과 알림 정기 작업. 어드민(신고·사용자·호출 관리)은 피그마에 화면이 없어 보류예요. 파일 이름은 그대로 두었어요.
+소비기한 알림(앱 안 알림 띠·알림 화면)과 알림 정기 작업, 어드민 운영(신고 관리·사용자 관리·랭킹·보상, API 65~71) 백엔드. 어드민 권한(ADMIN만 `/api/v1/admin/**`)도 이 영역이에요. 어드민 모니터링(대시보드·퍼널·기능별 지표·이벤트 로그, API 61~64) 백엔드는 이준호 담당이라 [`docs/agent/spec/api-summary.md`](../../agent/spec/api-summary.md) "Admin: monitoring"을 보세요.
 
 ## 화면
 
@@ -40,11 +40,24 @@
 
 | 항목 | 규칙 | 상태 |
 | --- | --- | --- |
-| 접근 | 소셜 로그인 + ADMIN role로 /admin. 별도 로그인 없음 | 확정 |
-| 지표 갱신·기준·로그 조회·임계치 알림·사용자 관리·신고 관리 | v3.2 어드민 정책 7줄 | 보류 |
-| 계정 제한(SUSPENDED) | 제한 계정 차단 | 보류 |
-| 횟수 조정 | 어드민이 회원별 생성 횟수 증감 | 보류 |
-| 숨김 | 운영자가 숨긴 공유 레시피(HIDDEN)는 목록·랭킹에서 빠짐 | 보류 |
+피그마 '운영자 페이지'(etTm84sh 2005:4)가 기준이에요(11/26). 화면과 API는 API 정의서 61~71에 있어요.
+
+| 항목 | 규칙 | 상태 |
+| --- | --- | --- |
+| 접근 | 소셜 로그인 + ADMIN role로 /admin. 별도 로그인 없음. /admin은 대시보드(/admin/monitoring/dashboard)로 이동 | 확정 |
+| 권한 없음 | ADMIN이 아니면 서버가 403(FORBIDDEN), 화면은 "운영자만 들어올 수 있어요". 프론트는 프로필 role로 먼저 판단 | 확정 |
+| 개인 정보 | 어드민 화면은 회원 번호만 보여 줌. 이메일 등은 보이지 않음 | 확정 |
+| 지표 기준 | 기간은 오늘·최근 7일·최근 30일, "실제 데이터만"이면 시드(is_seed) 제외. 분모가 0이면 "-"로 보이고 목표 배지 숨김. 계산식은 이벤트 정의서 5장 | 확정 |
+| 이상 징후 | OCR 실패율과 신고 수만 봄. 최근 1시간 값이 지난 7일 같은 시간대 평균의 2배 이상이면 대시보드 맨 위에 띄움 | 확정 |
+| 퍼널 이탈 | 이전 단계 대비 70% 미만이면 "이탈 큼" | 확정 |
+| 신고 묶음 | 같은 글 신고는 한 줄로 묶고 신고 수가 많은 순. 처리는 글 단위로 그 글의 대기 신고를 한 번에 | 확정 |
+| 신고 처리 결과 | 위반으로 처리 = 글 숨김 + 다음 제재. 문제 없음 = 글 그대로, 제재 없음. 글 삭제 = 공유 공간에서 지우고(되돌릴 수 없음) 위반으로 세어 다음 제재. 모두 확인 모달 후 처리 | 확정 |
+| 제재 단계 | 확정된 위반 1차 7일 레시피 공유 정지, 2차 30일 공유 정지, 3차 30일 계정 정지, 4차 영구 계정 정지. 4차 직전에는 상세에 경고 | 확정 |
+| 동시 처리 | 다른 운영자가 먼저 처리했으면 "이미 처리한 신고" 안내 후 목록을 새로 불러옴(409) | 확정 |
+| 계정 제한 | 운영자가 직접 정지·해제하는 기능은 없고 제재로만 걸림. 제재 중인 사용자가 앱에서 보는 화면은 추가될 페이지 15번(그전까지 앱 쪽 차단 규칙은 보류) | 확정 / 앱 화면은 보류 |
+| 횟수 조정 | 운영자가 회원별 보상 생성 횟수를 늘리거나 줄임. 사유 필수, 조정 이력에 남음. 남은 보상보다 많이 줄일 수 없음 | 확정 |
+| 숨김·삭제 | 숨긴(HIDDEN)·삭제한(DELETED) 공유 레시피는 공유 목록·랭킹·보상에서 빠짐 | 확정 |
+| 랭킹·보상 조회 | 주간 TOP 3와 지급 이력만 보여 줌. 저장 수 0인 레시피는 보상 없음 | 확정 |
 
 ## API
 
@@ -55,11 +68,25 @@
 | 43 | GET | `/user/notifications/summary` | 가장 최근 알림 문구와 안 읽은 수(11/21 답 30) | `-` | `200 { latestMessage, unreadCount }` | notifications |
 | 44 | GET | `/user/notifications` | 알림 목록(최근 것부터). 종류 EXPIRY_SOON·EXPIRED·MEAL_PLAN_COMPLETED·MEAL_PLAN_FAILED. 소비기한 알림은 누르는 동작 없음, 식단표 완성은 p5 시작일(`mealPlanId`), 실패는 생성 설정 화면. 이 목록을 불러오면 안 읽은 알림이 모두 읽음이 됨(따로 읽음 처리 API 없음, API 답 4) | `?page=0&size=20` | `200 { content: [{ id, type, message, mealPlanId, createdAt }], page, size, totalElements, hasNext }`(`mealPlanId`는 MEAL_PLAN_COMPLETED만, 나머지는 null) | notifications |
 
-기기 푸시가 없어 푸시 구독 API는 없어요. 어드민 API도 이번 버전에 없어요.
+기기 푸시가 없어 푸시 구독 API는 없어요.
+
+### 어드민 운영 API (11/26)
+
+모든 `/api/v1/admin/**`는 ADMIN만(아니면 403 `FORBIDDEN`). 회원은 회원 번호만 내려줘요.
+
+| 번호 | 메서드 | 경로 | 설명 | 요청 | 응답 | 관련 테이블 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 65 | GET | `/admin/reports` | 신고 목록. 같은 글 신고는 한 줄(글 단위), 신고 수 많은 순. `pendingCount`는 사이드 메뉴 숫자 | `?status=PENDING\|DONE&page=0&size=20` | `200 { pendingCount, content: [{ sharedRecipeId, title, reportCount, reasonCounts: [{ reason, count }], lastReportedAt, authorViolationCount, status, result?, sanction?: { level, type, days }, handledAt?, handledBy? }], page, size, totalElements, hasNext }` | shared_recipe_reports, shared_recipes, user_sanctions |
+| 66 | GET | `/admin/reports/{sharedRecipeId}` | 신고 상세. 공유 레시피를 사용자에게 보이는 그대로, 신고 목록, 작성자 위반·제재, 위반 처리 때 적용될 다음 제재 | `-` | `200 { sharedRecipe: { id, title, imageUrl, createdAt, saveCount, recipe(재료·단계·인분·시간) }, status, reports: [{ reportedAt, reason, reporterId }], author: { userId, violationCount, currentSanction? }, nextSanction: { level, type, days(영구면 null) }, handled?: { result, handledAt, handledBy, sanction? } }` | shared_recipes, shared_recipe_reports, recipes, user_sanctions |
+| 67 | PATCH | `/admin/reports/{sharedRecipeId}` | 신고 처리(글 단위). VIOLATION = 글 숨김 + 다음 제재, NO_ISSUE = 그대로, DELETED = 글 삭제 + 위반으로 세어 다음 제재. 대기 신고가 없으면 409 | `{ result: VIOLATION\|NO_ISSUE\|DELETED }` | `200 { result, sanction?: { level, type, endsAt } }` | shared_recipe_reports, shared_recipes, user_sanctions |
+| 68 | GET | `/admin/users` | 사용자 목록·회원 번호 검색 | `?filter=ALL\|SANCTIONED&userId=&page=0&size=20` | `200 { content: [{ userId, provider, joinedAt, plan, violationCount, sanction?: { type, endsAt }, deletedAt? }], page, size, totalElements, hasNext }` | users, user_sanctions |
+| 69 | GET | `/admin/users/{userId}` | 사용자 상세 패널 | `-` | `200 { userId, provider, joinedAt, deletedAt?, quota: { todayRemaining, rewardRemaining, blocked }, currentSanction?, sanctions: [{ level, type, startsAt, endsAt, sharedRecipeTitle }] }` | users, user_sanctions, usage_logs, generation_quota_grants |
+| 70 | POST | `/admin/users/{userId}/generation-quota-adjustments` | 보상 생성 횟수 늘리기·줄이기. 사유 필수. 줄일 때는 남은 보상보다 많이 줄일 수 없음 | `{ delta, reason }` | `201 { rewardRemaining }` | generation_quota_grants |
+| 71 | GET | `/admin/weekly-rewards` | 주간 TOP 3와 보상 지급 이력. week를 비우면 지난주 | `?week=2026-11-17` | `200 { weeks: [weekStart], week: { weekStart, weekEnd, grantedAt?, top: [{ rank, sharedRecipeId, title, saveCount, authorId, reward, granted }] }, history: [{ weekStart, winners: [{ rank, userId }], totalReward }] }` | shared_recipe_weekly_ranks, generation_quota_grants |
 
 ## 테이블
 
-`notifications`. 재료 조회는 02 UseCase로 해요. 컬럼은 [`../erd.md`](../erd.md)를 보세요.
+`notifications`. 재료 조회는 02 UseCase로 해요. 어드민 운영은 `shared_recipe_reports`(처리 결과 `result`·`handled_by`·`handled_at`), `user_sanctions`(제재), `generation_quota_grants`(`grant_type`·`reason`·`admin_id`)를 써요. 컬럼은 [`../erd.md`](../erd.md)를 보세요.
 
 ## 구현 메모
 
@@ -69,15 +96,18 @@
 - `ingredient_expired` 이벤트는 기한 지난 재료를 처음 찾았을 때 한 번만 발행해요. `notification_sent`도 이 작업이 발행해요.
 - 알림 목록(API 44)을 불러오면 안 읽은 알림을 모두 읽음으로 바꿔요. 따로 읽음 API는 없어요. 소비기한 알림 항목은 누르는 동작이 없고, 식단표 알림만 이동해요.
 - 30일 지난 알림은 매일 새벽 정리 작업이 지워요.
-- 어드민은 보류예요. 화면이 디자인되면 신고 처리, 계정 제한(SUSPENDED), 횟수 조정, 공유 레시피 숨김(HIDDEN)을 다시 정해요. 그 전에는 어드민 코드를 만들지 않아요.
+- 신고 처리(API 67)는 글 단위예요. 그 글의 PENDING 신고를 모두 DONE으로 하고 `result`·`handled_by`·`handled_at`을 기록해요. VIOLATION이면 `shared_recipes.status = HIDDEN`, DELETED면 `DELETED`이고 둘 다 `user_sanctions`에 다음 단계 한 행(1차 SHARE_BAN 7일·2차 SHARE_BAN 30일·3차 ACCOUNT_BAN 30일·4차 ACCOUNT_BAN 영구)을 넣어요. NO_ISSUE면 글·제재 그대로예요. 대기 신고가 없으면 409 `REPORT_ALREADY_HANDLED`예요.
+- 생성 횟수 조정(API 70)은 늘리면 ADMIN_ADJUST 행(`remaining` = `amount`, 한 달 유효)을 만들어요. 줄이면 `amount` 음수·`remaining` 0 행을 남기고, 남은 보상 행에서 기한 가까운 것부터 빼요(남은 보상보다 많이 줄일 수 없음).
+- 운영자가 계정을 직접 정지·해제하는 API는 없어요. 제재 중인 사용자가 앱에서 보는 화면과 앱 API 차단(`ACCOUNT_SUSPENDED`, 공유 정지 오류)은 추가될 페이지 15로 보류라 지금은 만들지 않아요.
 
 ## 지금 코드와 다른 점
 
-- 아직 이 영역 코드는 없어요. 이전 가이드의 웹 푸시(`push_subscriptions`), 영수증 완료 알림, 어드민 API·`admin_audit_logs`는 없어졌어요.
+- 아직 이 영역 코드는 없어요. 이전 가이드의 웹 푸시(`push_subscriptions`), 영수증 완료 알림은 없어졌어요. 이전 어드민 API 중 감사 로그(`admin_audit_logs`)·공유 글 직접 관리·계정 직접 정지는 11/26에 없앴어요(api-summary "Admin: changes from the previous admin APIs").
+- 기존 어드민 보류 이슈(#84·#85·#87·#94)는 이번 API 번호·범위로 정리가 필요해요.
 
 ## 에러 코드
 
-`INVALID_INPUT`. 공통 코드(`UNAUTHORIZED`, `TOKEN_EXPIRED`, `RATE_LIMITED`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`)는 모든 API에 나올 수 있어요. API별 코드와 화면 표시는 [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)에 있어요.
+`INVALID_INPUT`. 어드민 운영: `FORBIDDEN`(403, 61~71), `REPORT_NOT_FOUND`(404, 66·67), `REPORT_ALREADY_HANDLED`(409, 67), `USER_NOT_FOUND`(404, 69·70), `ADMIN_REASON_REQUIRED`(400, 70). 공통 코드(`UNAUTHORIZED`, `TOKEN_EXPIRED`, `RATE_LIMITED`, `INTERNAL_ERROR`, `SERVICE_UNAVAILABLE`)는 모든 API에 나올 수 있어요. API별 코드와 화면 표시는 [`docs/agent/spec/errors.md`](../../agent/spec/errors.md)에 있어요.
 
 ## 발행 이벤트
 
@@ -96,3 +126,7 @@
 - [ ] 목록 조회로 모두 읽음, 알림 띠 안 읽은 수
 - [ ] 30일 지난 알림 정리
 - [ ] 식단표 완성·실패 알림(05 생성 작업이 만듦, 알림 끔과 관계없음)
+- [ ] 어드민 권한: `/api/v1/admin/**`는 ADMIN만, 아니면 403 `FORBIDDEN`
+- [ ] 신고 목록(글 단위)·상세·처리(위반·문제 없음·글 삭제, 제재 1~4차 자동, 이미 처리됨 409)
+- [ ] 사용자 목록·상세·보상 생성 횟수 조정(사유 필수, 남은 보상보다 많이 줄이지 않음)
+- [ ] 랭킹·보상 조회(주간 TOP 3·지급 이력)
