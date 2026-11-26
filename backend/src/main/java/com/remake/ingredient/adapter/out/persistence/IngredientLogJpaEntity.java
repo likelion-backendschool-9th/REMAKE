@@ -41,7 +41,6 @@ class IngredientLogJpaEntity extends BaseCreatedEntity {
 	private Long ingredientId;
 
 	// 기록한 때의 재료 카테고리. 재료를 지우거나 카테고리를 고쳐도 바뀌지 않는다.
-	// 새 코드는 항상 채운다. DB는 V25에서 NULL을 허용(배포 중 구버전 쓰기)하고 후속 마이그레이션에서 NOT NULL을 건다
 	@Column(nullable = false)
 	private Long categoryId;
 

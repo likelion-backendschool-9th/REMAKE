@@ -318,9 +318,9 @@ class IngredientServiceTest extends IntegrationTestSupport {
 	void 단위를_유지하는_재료도_사용_기록이_있으면_같은_규칙이다() {
 		Long id = createExceptionIngredient(owner, "VEGETABLE", "양파", "G");
 		jdbcTemplate.update("""
-				INSERT INTO ingredient_logs (user_id, ingredient_id, type, name, amount, unit, created_at)
-				VALUES (?, ?, 'USED', '양파', 50, 'G', ?)
-				""", owner, id, java.time.LocalDateTime.now(clock));
+				INSERT INTO ingredient_logs (user_id, ingredient_id, category_id, type, name, amount, unit, created_at)
+				VALUES (?, ?, (SELECT category_id FROM ingredients WHERE id = ?), 'USED', '양파', 50, 'G', ?)
+				""", owner, id, id, java.time.LocalDateTime.now(clock));
 
 		IngredientDetail updated = updateUseCase.updateIngredient(
 				new UpdateIngredientCommand(owner, id, "햇양파", null, null, null, null));

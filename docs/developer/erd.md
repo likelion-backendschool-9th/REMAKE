@@ -512,7 +512,7 @@ erDiagram
 | `id` | bigint | PK |  | 아니오 |  | 고유 번호 |
 | `user_id` | bigint | FK | users | 아니오 |  | 회원(재료가 지워져도 월별로 셈) |
 | `ingredient_id` | bigint | FK | ingredients | 예 |  | 재료. 재료가 지워지면 비움 |
-| `category_id` | bigint | FK | ingredient_categories | 예(후속에서 NOT NULL) |  | 기록할 때의 카테고리. 새 코드는 항상 채움. 배포 중이나 롤백 뒤 구버전이 기록을 쓸 수 있도록 V25에서는 NULL을 허용하고, 후속 마이그레이션에서 남은 NULL을 채운 뒤 NOT NULL을 검. 재료를 지우거나 카테고리를 고쳐도 바뀌지 않음(버린 식재료 조회에서 읽음) |
+| `category_id` | bigint | FK | ingredient_categories | 아니오 |  | 기록할 때의 카테고리. V25에서 배포 중 구버전이 기록을 쓸 수 있도록 NULL을 허용해 추가했고, V29에서 남은 NULL(재료의 카테고리, 없으면 `ETC`)을 채운 뒤 NOT NULL을 걺. 재료를 지우거나 카테고리를 고쳐도 바뀌지 않음(버린 식재료 조회에서 읽음) |
 | `type` | varchar |  |  | 아니오 |  | USED/DISCARDED |
 | `name` | varchar |  |  | 아니오 |  | 기록할 때의 재료명 |
 | `amount` | numeric(10,3) |  |  | 아니오 |  | 뺀 수량 |
@@ -824,7 +824,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `receipt_items` | `ingredients` | receipt_item_id | 1:1 | 예 | SET NULL |
 | `users` | `ingredient_logs` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `ingredients` | `ingredient_logs` | ingredient_id | 1:N | 예 | SET NULL |
-| `ingredient_categories` | `ingredient_logs` | category_id | 1:N | 예(후속에서 NOT NULL) | RESTRICT(기준 데이터라 지우지 않음) |
+| `ingredient_categories` | `ingredient_logs` | category_id | 1:N | 아니오 | RESTRICT(기준 데이터라 지우지 않음) |
 | `users` | `receipts` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `users` | `manual_ingredient_expenses` | user_id | 1:N | 아니오 | CASCADE(회원 탈퇴 시에는 앱이 삭제) |
 | `ingredient_categories` | `manual_ingredient_expenses` | category_id | 1:N | 아니오 | RESTRICT |
