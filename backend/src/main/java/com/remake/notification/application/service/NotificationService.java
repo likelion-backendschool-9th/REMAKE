@@ -138,11 +138,12 @@ public class NotificationService implements GetNotificationSummaryUseCase, GetNo
 
 	@Override
 	@Transactional
-	public void notifyMealPlanCompleted(Long userId, Long mealPlanId, LocalDate startDate, int generatedDays) {
+	public void notifyMealPlanCompleted(Long userId, Long mealPlanId, LocalDate startDate, int generatedDays,
+			int maxDays, int cartAddedCount) {
 		Notification created = Notification.createMealPlanCompleted(
 				userId,
 				mealPlanId,
-				NotificationMessages.mealPlanCompleted(startDate, generatedDays));
+				NotificationMessages.mealPlanCompleted(startDate, generatedDays, maxDays, cartAddedCount));
 		saveAndTrack(created, NotificationType.MEAL_PLAN_COMPLETED, 1);
 	}
 

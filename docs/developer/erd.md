@@ -27,7 +27,7 @@
 | 6 | `subscription_payments` | 구독 결제 기록 | 첫 결제와 매달 자동 결제 한 번마다 한 행(성공·실패 모두) | 1 로그인·설정 | 이준호 | 12 |
 | 7 | `ingredient_categories` | 재료 카테고리 | 12개 카테고리 기준 데이터(이미지·기본 보관 위치·기본 보관 일수) | 2 냉장고 | 김재연 | 7 |
 | 8 | `ingredients` | 냉장고 재료 | 냉장고 재료 한 줄. 수량이 0이 되면 행을 지움. 영수증 없이 등록하면 출처 기록도 함께 저장 | 2 냉장고 | 김재연 | 13 |
-| 9 | `ingredient_logs` | 재료 사용·버림 기록 | "사용 했어요/버렸어요"와 요리 완료 차감 기록. 버린 금액의 원본 | 2 냉장고 | 김재연 | 9 |
+| 9 | `ingredient_logs` | 재료 사용·버림 기록 | "사용 했어요/버렸어요"와 요리 완료 차감 기록. 버린 금액의 원본 | 2 냉장고 | 김재연 | 10 |
 | 10 | `receipts` | 영수증 | 등록한 영수증 한 장. 6개월 보관. 삭제하면 식비·소비 패턴에서도 빠짐(냉장고 재료는 남음) | 3 영수증 | 이동준 | 9 |
 | 11 | `receipt_items` | 영수증 품목 | 영수증의 식재료 품목 한 줄 | 3 영수증 | 이동준 | 9 |
 | 12 | `recipes` | 레시피 | AI가 만든 레시피 본체. 만든 뒤 수정하지 않음 | 4 AI 레시피 | 김종수 | 9 |
@@ -65,6 +65,7 @@ erDiagram
   receipt_items |o--o| ingredients : "receipt_item_id"
   users ||--o{ ingredient_logs : "user_id"
   ingredients |o--o{ ingredient_logs : "ingredient_id"
+  ingredient_categories ||--o{ ingredient_logs : "category_id"
   users ||--o{ receipts : "user_id"
   receipts ||--o{ receipt_items : "receipt_id"
   ingredient_categories ||--o{ receipt_items : "category_id"
@@ -192,6 +193,7 @@ erDiagram
     bigint id PK
     bigint user_id FK
     bigint ingredient_id FK
+    bigint category_id FK
     varchar type
     varchar name
     numeric amount
@@ -509,6 +511,7 @@ erDiagram
 | `id` | bigint | PK |  | 아니오 |  | 고유 번호 |
 | `user_id` | bigint | FK | users | 아니오 |  | 회원(재료가 지워져도 월별로 셈) |
 | `ingredient_id` | bigint | FK | ingredients | 예 |  | 재료. 재료가 지워지면 비움 |
+| `category_id` | bigint | FK | ingredient_categories | 예(후속에서 NOT NULL) |  | 기록할 때의 카테고리. 새 코드는 항상 채움. 배포 중이나 롤백 뒤 구버전이 기록을 쓸 수 있도록 V25에서는 NULL을 허용하고, 후속 마이그레이션에서 남은 NULL을 채운 뒤 NOT NULL을 검. 재료를 지우거나 카테고리를 고쳐도 바뀌지 않음(버린 식재료 조회에서 읽음) |
 | `type` | varchar |  |  | 아니오 |  | USED/DISCARDED |
 | `name` | varchar |  |  | 아니오 |  | 기록할 때의 재료명 |
 | `amount` | numeric(10,3) |  |  | 아니오 |  | 뺀 수량 |
@@ -819,6 +822,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `receipt_items` | `ingredients` | receipt_item_id | 1:1 | 예 | SET NULL |
 | `users` | `ingredient_logs` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `ingredients` | `ingredient_logs` | ingredient_id | 1:N | 예 | SET NULL |
+| `ingredient_categories` | `ingredient_logs` | category_id | 1:N | 예(후속에서 NOT NULL) | RESTRICT(기준 데이터라 지우지 않음) |
 | `users` | `receipts` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `users` | `manual_ingredient_expenses` | user_id | 1:N | 아니오 | CASCADE(회원 탈퇴 시에는 앱이 삭제) |
 | `ingredient_categories` | `manual_ingredient_expenses` | category_id | 1:N | 아니오 | RESTRICT |

@@ -23,8 +23,27 @@ class NotificationMessagesTest {
 
 	@Test
 	void 식단표_완성_문구는_시작일과_일수를_쓴다() {
-		assertThat(NotificationMessages.mealPlanCompleted(LocalDate.of(2026, 11, 24), 5))
+		assertThat(NotificationMessages.mealPlanCompleted(LocalDate.of(2026, 11, 24), 5, 5, 0))
 				.isEqualTo("11월 24일부터 5일치 식단표가 완성됐어요");
+	}
+
+	@Test
+	void 최대_일수를_채우면_장바구니에_담았어도_부족_문장을_붙이지_않는다() {
+		assertThat(NotificationMessages.mealPlanCompleted(LocalDate.of(2026, 11, 24), 7, 7, 3))
+				.isEqualTo("11월 24일부터 7일치 식단표가 완성됐어요");
+	}
+
+	@Test
+	void 최대_일수를_못_채우면_N일치만_만들었다고_덧붙인다() {
+		assertThat(NotificationMessages.mealPlanCompleted(LocalDate.of(2026, 11, 24), 2, 5, 0))
+				.isEqualTo("11월 24일부터 2일치 식단표가 완성됐어요. 재료가 부족해 2일치만 만들었어요");
+	}
+
+	@Test
+	void 최대_일수를_못_채우고_장바구니에_담았으면_담은_개수도_덧붙인다() {
+		assertThat(NotificationMessages.mealPlanCompleted(LocalDate.of(2026, 11, 24), 2, 5, 3))
+				.isEqualTo("11월 24일부터 2일치 식단표가 완성됐어요. 재료가 부족해 2일치만 만들었어요. "
+						+ "부족한 재료 3개를 장바구니에 담았어요");
 	}
 
 	@Test
