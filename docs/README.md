@@ -13,7 +13,7 @@ docs/
 │  ├─ git-convention.md         브랜치·커밋·PR 규칙
 │  ├─ backend-convention.md     백엔드 코드 규칙 (헥사고날 구조, API 경로, 에러 형식, AI 생성, 이벤트 발행, 예약 작업)
 │  ├─ backend-testing.md        백엔드 테스트 작성법 (공통 통합 테스트 설정, Testcontainers)
-│  ├─ erd.md                    ERD·테이블 정의서 (테이블 26개, 컬럼, 관계, 구현 규칙)
+│  ├─ erd.md                    ERD·테이블 정의서 (테이블 29개, 컬럼, 관계, 구현 규칙)
 │  ├─ ci.md                     PR에서 도는 CI와 결과 읽는 법
 │  ├─ deployment.md             배포 구조, 서버 준비, 배포·롤백, 앱이 지켜야 할 배포 조건
 │  └─ spec/                     기획 문서 영문 요약 (영문만 있음)
@@ -39,7 +39,7 @@ docs/
       ├─ 03_receipt-ocr-spending.md  영역 3: 영수증·OCR·소비 패턴
       ├─ 04_ai-recipe.md        영역 4: AI 레시피
       ├─ 05_meal-plan.md        영역 5: 식단표
-      ├─ 06_notification-admin.md    영역 6: 알림 (어드민은 보류)
+      ├─ 06_notification-admin.md    영역 6: 알림·어드민 운영
       ├─ 07_shared-cart.md      영역 7: 공유 공간·장바구니
       └─ 08_event-tracking.md   전원: 이벤트 트래킹
    └─ qa/                       QA 시나리오 (한글만 있음)

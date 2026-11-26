@@ -51,6 +51,7 @@ frontend/
 │  ├─ page.tsx           # 스플래시 (/)
 │  ├─ public/            # /public/... 라우트 (로그인 전, §4)
 │  ├─ user/              # /user/... 라우트 (로그인 후, §4). 예: user/fridge/ingredients/ — 3.1 참고
+│  ├─ admin/             # /admin/... 라우트 (운영자, ADMIN만, §4 "어드민 화면")
 │  ├─ sw.ts              # 서비스 워커 (캐싱)
 │  ├─ serwist/[path]/    # 서비스 워커 서빙 라우트
 │  ├─ ~offline/          # 오프라인 대체 화면
@@ -131,7 +132,7 @@ components/Button/
 
 ## 4. 화면 / 라우트
 
-출처: WBS v2 3장 "프론트 URL"(2026-11-22). 형식은 `/{역할자}/{기능}/{자원}`입니다. 역할자는 `public`(로그인 전)과 `user`(로그인 후) 둘입니다. 예외는 스플래시 `/` 하나뿐입니다.
+출처: WBS v2 3장 "프론트 URL"(2026-11-22). 형식은 `/{역할자}/{기능}/{자원}`입니다. 역할자는 `public`(로그인 전), `user`(로그인 후), `admin`(운영자, ADMIN role만. 11/26 추가, 아래 "어드민 화면") 셋입니다. 예외는 스플래시 `/` 하나뿐입니다.
 
 - 시트·모달·드로워·로딩·실패는 따로 주소가 없고, 그 화면 안의 상태입니다.
 - 로그인하지 않았으면 모든 `/user/...` 라우트에서 `/public/auth/login`으로 보냅니다. 로그인했으면 `/`와 로그인 화면에서 `/user/fridge/ingredients`(인덱스)로 보냅니다.
@@ -176,6 +177,26 @@ components/Button/
 | `/user/cart/cart-items`                      | p7 장바구니                       | 수량 시트, 삭제 모드                                                     |
 
 아직 위치가 정해지지 않은 화면(화면 대기): 이번 달 버린 식재료 금액, 레시피 추천 여부.
+
+### 어드민 화면(11/26 운영자 페이지)
+
+출처: 피그마 '운영자 페이지'(노드 2005:4)와 11/26 기획 WBS. 데스크톱 1440. 어드민 프론트 기능 이름은 사이드 메뉴 묶음 `monitoring`·`operation`입니다.
+
+- 모달·토스트·빈 화면·오류는 그 화면 안 상태입니다. a3 탭은 주소에 넣어 대시보드 이상 징후 "기능별 지표 보기"에서 바로 열 수 있게 했습니다.
+- 모든 `/admin/...` 라우트는 공통 레이아웃(사이드 메뉴·처리 대기 신고 숫자(API 65)·운영자 계정·"서비스로 돌아가기"(`/`로))을 씁니다.
+- 프론트는 `GET /user/profile`(API 5)의 `role`로 먼저 판단하고, ADMIN이 아니면 서버가 403 `FORBIDDEN`을 줍니다. 어느 쪽이든 a0 권한 없음 화면을 보여 줍니다. a0 로딩·불러오기 실패는 각 어드민 화면 안 상태입니다.
+
+| 라우트                                      | 화면(피그마)           | 비고                                                                                   |
+| ------------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------- |
+| `/admin`                                    | (화면 없음)            | `/admin/monitoring/dashboard`로 이동                                                   |
+| `/admin/monitoring/dashboard`               | a1 대시보드            | 이상 징후·데이터 없음이 이 화면 안. API 61                                             |
+| `/admin/monitoring/funnels`                 | a2 퍼널                | API 62                                                                                 |
+| `/admin/monitoring/metrics/[tab]`           | a3 기능별 지표(탭 8개) | `tab` = registration·consumption·ai·meal-plan-cart·shared·retention·cost·error. API 63 |
+| `/admin/monitoring/events`                  | a6 이벤트 로그         | 검색 결과 없음이 이 화면 안. API 64                                                    |
+| `/admin/operation/reports`                  | a4 신고 관리           | 처리 대기·처리 완료·빈 화면이 이 화면 안. API 65                                       |
+| `/admin/operation/reports/[sharedRecipeId]` | a4.1 신고 상세         | 확인 모달 3개·처리 끝남·토스트·이미 처리됨·4차 안내가 이 화면 안. API 66, 67           |
+| `/admin/operation/users`                    | a5 사용자 관리         | 상세 패널·횟수 조정 모달·상태 6개가 이 화면 안. API 68, 69, 70                         |
+| `/admin/operation/weekly-rewards`           | a7 랭킹·보상           | 보상 없음·3개 미만이 이 화면 안. API 71                                                |
 
 ## 5. 데이터 흐름
 

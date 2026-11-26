@@ -18,7 +18,7 @@ AI 코딩 도구(Claude Code 등)는 루트 `AGENTS.md`와 영문 요약 [`docs/
 | [03_receipt-ocr-spending.md](03_receipt-ocr-spending.md) | 영역 3 이동준 |
 | [04_ai-recipe.md](04_ai-recipe.md) | 영역 4 김종수 |
 | [05_meal-plan.md](05_meal-plan.md) | 영역 5 한윤수 |
-| [06_notification-admin.md](06_notification-admin.md) | 영역 6 이상호 (알림. 어드민은 보류) |
+| [06_notification-admin.md](06_notification-admin.md) | 영역 6 이상호 (알림·어드민 운영). 어드민 모니터링 백엔드는 이준호 |
 | [07_shared-cart.md](07_shared-cart.md) | 영역 7 최유리 |
 | [08_event-tracking.md](08_event-tracking.md) | 전원 (포트폴리오 핵심 기능) |
 

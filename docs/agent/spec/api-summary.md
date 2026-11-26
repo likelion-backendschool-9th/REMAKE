@@ -1,12 +1,12 @@
 # API summary
 
-Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo). 60 APIs, numbered 1-60, plus API 61 (discarded food, #248) added after v4; other spec files refer to APIs by these numbers. Admin APIs are on hold because admin screens are not in Figma yet. Error codes per API are in `errors.md`; events are in `events.md`.
+Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo). 71 APIs: 1-60 from v4 and the 11 admin APIs 61-71 added on 11/26 from the Figma "운영자 페이지" (operator page). Compared with v3: 21 kept, 36 changed, 18 removed, 14 added. The 15 admin APIs that were on hold were resolved as 2 kept, 7 changed, 6 removed (see "Admin: changes from the previous admin APIs"). API 72 (discarded food, #248) was added in the repo after v4. Other spec files refer to APIs by these numbers. Error codes per API are in `errors.md`; events are in `events.md`.
 
 ## Common
 
 | Item | Rule |
 | --- | --- |
-| Path | `/api/v1/{role}/{resource}[/{id}[/{action}]]`. Role `public` (before login) or `user` (after login). Resources are plural kebab-case; actions are trailing verbs (`generate`, `cook`). No `me` under `user` |
+| Path | `/api/v1/{role}/{resource}[/{id}[/{action}]]`. Role `public` (before login), `user` (after login), or `admin` (operator, ADMIN role only). Resources are plural kebab-case; actions are trailing verbs (`generate`, `cook`). No `me` under `user` |
 | Format | REST + JSON (UTF-8). Only photo uploads use `multipart/form-data` |
 | Auth | Access (30 min) and refresh (14 days) JWTs, both in HttpOnly cookies (`Secure; SameSite=Lax`) ([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) option A). No `Authorization` header. Same domain `/api/...` + `credentials: 'include'` |
 | Success | Return the resource directly (no wrapper). Create 201, no body 204, event ingest and meal-plan generation acceptance (38) 202 |
@@ -17,9 +17,12 @@ Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo)
 | Images | `imageUrl` in responses is a server-made URL (storage is the backend's choice). Ingredient and item images are the category image |
 | Client headers | Every request sends `X-Client-Platform` (TWA/PWA/WEB), `X-App-Version`, and `X-Screen` (current screen code). The server writes them to `events.platform`, `app_version`, `screen` |
 | Timeouts | 10 s default, OCR 30 s, AI recipe generation 60 s (recipes only; meal-plan generation replies 202 at once and runs as a server job). Failed or timed-out generation is never charged |
-| Admin | Not in this version (no admin screens in Figma) |
+| Admin access | `/api/v1/admin/**` is for `users.role = ADMIN` only; otherwise 403 `FORBIDDEN` and the frontend shows the a0 "no permission" screen. Login is the app's social-login cookie as is. The frontend decides in advance from `role` in `GET /user/profile` (API 5) |
+| Admin period and seed | Monitoring APIs (61-63) share `?period=TODAY\|LAST_7_DAYS\|LAST_30_DAYS` (default `LAST_7_DAYS`). With `?excludeSeed=true` they count only `events.is_seed = false` (API 64 too) |
+| Admin personal data | Members appear only as member numbers (`users.id`). Responses never include email or social IDs |
+| Admin empty values | When the denominator is 0 or there is no data, the value is null (the frontend shows "-" and hides the target badge). An empty list returns an empty `content`, not an error |
 | Payments (Toss Payments) | Card auto-billing. The frontend only opens the card registration window with the client key. The server issues the billingKey (`POST /v1/billing/authorizations/issue`) and charges (`POST /v1/billing/{billingKey}`) with the secret key. Never send the billingKey or secret key to the frontend. The server makes the `orderId` |
-| Numbering | Subscription APIs (57-60) belong to area 1 but are numbered last so other documents keep their API numbers |
+| Numbering | Subscription APIs (57-60) belong to area 1 but are numbered last so other documents keep their API numbers. Admin APIs (61-71) are also numbered last for the same reason. API 72 (discarded food) was added in the repo after them |
 | Removed | No `Idempotency-Key` header rule (the duplicate-request key table was removed) |
 
 ## 1. Login, onboarding, settings (owner: 이준호)
@@ -30,7 +33,7 @@ Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo)
 | 2 | POST | `/public/auth/refresh` | Reissue the access cookie from the refresh cookie | no body (refresh cookie) | `204` | |
 | 3 | POST | `/user/auth/logout` | Delete the refresh token row and both cookies | no body | `204` | |
 | 4 | PUT | `/user/onboarding` | Save onboarding. Sent once when p1.2 is completed, with both screens' values. Zero allergies allowed | `{ householdSize (1-50), allergenCodes: [] }` | `204` | onboarding_completed |
-| 5 | GET | `/user/profile` | All settings screen values | - | `200 { provider, plan, householdSize, excludedIngredientCount, recipeSupplementEnabled, notificationEnabled, lastMealPurpose, onboardingCompleted }` | |
+| 5 | GET | `/user/profile` | All settings screen values. `role` (USER/ADMIN) lets the frontend decide admin entry (11/26) | - | `200 { provider, role, plan, householdSize, excludedIngredientCount, recipeSupplementEnabled, notificationEnabled, lastMealPurpose, onboardingCompleted }` | |
 | 6 | PATCH | `/user/profile` | Send only the changed values among household size, recipe supplement, notifications | `{ householdSize? (1-50), recipeSupplementEnabled?, notificationEnabled? }` | `200` (same shape as API 5) | |
 | 7 | GET | `/user/excluded-ingredients` | My excluded-ingredient codes | - | `200 { allergenCodes: [] }` | |
 | 8 | PUT | `/user/excluded-ingredients` | Replace the whole set. Zero allowed (settings "done" stays enabled) | `{ allergenCodes: [] }` | `200 { allergenCodes }` | |
@@ -68,7 +71,7 @@ Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo)
 | 24 | DELETE | `/user/receipts/{id}` | Delete receipt, items, image. It leaves spending and patterns; fridge ingredients stay | - | `204` | |
 | 25 | GET | `/user/expenses/patterns` | Consumption of the month: `receipt_items` by purchase date + priced `manual_ingredient_expenses` by registration date. `discardedAmount` = discarded cost of the month (sum of non-null `ingredient_logs.cost_amount`, #248) | `?month=2026-11` (within the last 6 months) | `200 { month, totalAmount, averageDiffAmount, discardedAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | |
 | 26 | GET | `/user/expenses/daily-items` | Items of the chosen day from `receipt_items` and `manual_ingredient_expenses` | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | |
-| 61 | GET | `/user/expenses/discarded-items` | Discarded food of the month for p3.4.1 (#248): one row per `DISCARDED` log via the fridge UseCase, newest first. `discardedOn` = discard date (KST). `amount` = `cost_amount`, null without a price; `totalAmount` sums the non-null amounts and equals API 25 `discardedAmount`. Empty month: 200 with an empty list | `?month=2026-11` (within the last 6 months; omit for the current KST month) | `200 { month, totalAmount, items: [{ name, categoryCode, discardedOn, amount }] }` | |
+| 72 | GET | `/user/expenses/discarded-items` | Discarded food of the month for p3.4.1 (#248): one row per `DISCARDED` log via the fridge UseCase, newest first. `discardedOn` = discard date (KST). `amount` = `cost_amount`, null without a price; `totalAmount` sums the non-null amounts and equals API 25 `discardedAmount`. Empty month: 200 with an empty list | `?month=2026-11` (within the last 6 months; omit for the current KST month) | `200 { month, totalAmount, items: [{ name, categoryCode, discardedOn, amount }] }` | |
 
 API 25 defaults to the current KST month. Use the same six calendar months for API 25, 26, and 61. An empty day returns zero and no items. Category ratios use the 0–1 scale. The average excludes the current KST month and months without expense records, as in API 22.
 
@@ -171,6 +174,66 @@ Cart contract for APIs 34, 35, 38, 41, 45, 48, 53 and 54 (#57 and the subsequent
 | --- | --- | --- | --- | --- | --- |
 | 56 | POST | `/user/events` | Frontend event batch (max 50). Names and properties in `events.md`. `platform` and `app_version` come from the common headers | `{ events: [{ name, sessionId, screen, properties, occurredAt }] }` | `202 { accepted, rejected }` |
 
+## Admin: monitoring (owner: 이준호)
+
+Source: Figma "운영자 페이지" (node 2005:4, desktop 1440), added 11/26. Metric formulas follow `events.md` section 5 (M00-M20). All admin APIs require the ADMIN role (see Common).
+
+| No. | Method | Path | Description | Request | Response |
+| --- | --- | --- | --- | --- | --- |
+| 61 | GET | `/admin/dashboard` | a1 dashboard in one call (incl. anomaly and no-data states). A value is null when its denominator is 0 (the frontend shows "-" and hides the target badge). Anomalies cover only the OCR failure rate and the report count: one is returned when the last hour is at least twice the average of the same hour over the past 7 days (11/26) | `?period=TODAY\|LAST_7_DAYS\|LAST_30_DAYS&excludeSeed=true\|false` | `200 { northStar: { rate, diffFromLastWeek, weekly: [{ weekStart, rate }] } (M00, 8 weeks), pendingReportCount, discardedAmount: { amount, noPriceCount } (M18), kpis: [{ metricId, name, value, target, achieved }] (M01, M02, M03, M04, M06, M08, M09, M15 D7), anomalies: [{ metric, recentValue, usualValue, message }] }` |
+| 62 | GET | `/admin/funnels` | a2 funnels: core flow (6 steps) and receipt path (3 steps) on one screen. `dropHigh = true` ("이탈 큼") when the rate from the previous step is below 70% (11/26) | `?period=TODAY\|LAST_7_DAYS\|LAST_30_DAYS&excludeSeed=true\|false` | `200 { core: [{ step, eventName, userCount, rateFromPrev, dropHigh }], receipt: [same shape] }` |
+| 63 | GET | `/admin/metrics/{tab}` | a3 one feature-metrics tab. `tab` = `registration`, `consumption`, `ai`, `meal-plan-cart`, `shared`, `retention`, `cost`, `error` (contents below) | `?period=TODAY\|LAST_7_DAYS\|LAST_30_DAYS&excludeSeed=true\|false` | `200 { cards: [{ metricId, name, value, target, achieved }], tables: [{ key, rows }], daily: [{ date, value }] (7 days) }` |
+| 64 | GET | `/admin/events` | a6 event log search, newest first. Members appear only as member numbers (no personal data). Raw events are kept 180 days | `?name=&userId=&source=CLIENT\|SERVER&excludeSeed=true\|false&page=0&size=20` | `200 { content: [{ id, occurredAt, eventName, userId, screen, source, sessionId, platform, appVersion, isSeed, properties }], page, size, totalElements, hasNext }` |
+
+API 63 tabs (metric IDs are `events.md` section 5):
+
+| `tab` | Screen | Contents |
+| --- | --- | --- |
+| `registration` | a3 등록 (5940:7728) | M03, M04, M05 cards; receipt scan results by `error_code` (count and ratio); daily `receipt_saved` |
+| `consumption` | a3 소비 (5940:7895) | M00, M07, M06 cards; used, discarded, expired, and use-up rate by category; daily discarded amount (M18) |
+| `ai` | a3 AI (5940:5932) | M09 attempts, failures, and success rate by kind (recipe, meal plan, slot replacement); M10 p50 and p95 (plus receipt OCR); M16 daily calls, quota-exhausted ratio, reward uses |
+| `meal-plan-cart` | a3 식단표·장바구니 (5940:8074) | M11, M12, and meal-plan success rate (M09) cards; generations, slot views, deletions, and replacements by the 5 meal purposes; daily `cart_moved_to_fridge` |
+| `shared` | a3 공유 (5940:8242) | M13 and M14 (save rate, report rate) cards; this week's top 5 by saves (views, saves, reports); daily `shared_recipe_published` |
+| `retention` | a3 리텐션 (5940:8410) | M15 D1, D7, and WAU cards; cohorts by signup week (D1, D7, D14); weekly WAU |
+| `cost` | a3 비용 (5940:8561) | M16 cards (today's calls, quota-exhausted ratio, reward uses); successes, failures, and calling users by kind (recipe generation, regeneration, meal plan, slot replacement, OCR); daily calls |
+| `error` | a3 오류 (5940:8717) | M20 error exposure rate; most frequent `error_code` and screen; counts by `error_code` x screen; daily error exposures |
+
+## Admin: operations (owner: 이상호)
+
+| No. | Method | Path | Description | Request | Response |
+| --- | --- | --- | --- | --- | --- |
+| 65 | GET | `/admin/reports` | a4 report list (pending, done, empty). Reports on the same post are one row (per post), most reports first. `pendingCount` is also the side-menu number | `?status=PENDING\|DONE&page=0&size=20` | `200 { pendingCount, content: [{ sharedRecipeId, title, reportCount, reasonCounts: [{ reason, count }], lastReportedAt, authorViolationCount, status, result?, sanction?: { level, type, days }, handledAt?, handledBy? }], page, size, totalElements, hasNext }` |
+| 66 | GET | `/admin/reports/{sharedRecipeId}` | a4.1 report detail: the shared recipe as users see it, its reports, the author's violations and current sanction, and the sanction a violation would apply next (`nextSanction` is null after the 4th ban) | - | `200 { sharedRecipe: { id, title, imageUrl, createdAt, saveCount, recipe (ingredients, steps, servings, time) }, status, reports: [{ reportedAt, reason, reporterId }], author: { userId, violationCount, currentSanction? }, nextSanction: { level, type, days (null when permanent) }, handled?: { result, handledAt, handledBy, sanction? } }` |
+| 67 | PATCH | `/admin/reports/{sharedRecipeId}` | Handle the reports of one post. `VIOLATION` = hide the post + next sanction, `NO_ISSUE` = unchanged, `DELETED` = delete the post and count it as a violation (next sanction). 409 when the post has no pending report | `{ result: VIOLATION\|NO_ISSUE\|DELETED }` | `200 { result, sanction?: { level, type, endsAt } }` |
+| 68 | GET | `/admin/users` | a5 user list and member-number search | `?filter=ALL\|SANCTIONED&userId=&page=0&size=20` | `200 { content: [{ userId, provider, joinedAt, plan, violationCount, sanction?: { type, endsAt }, deletedAt? }], page, size, totalElements, hasNext }` |
+| 69 | GET | `/admin/users/{userId}` | a5 user detail panel (no sanction, permanent ban, withdrawn) | - | `200 { userId, provider, joinedAt, deletedAt?, quota: { todayRemaining, rewardRemaining, blocked }, currentSanction?, sanctions: [{ level, type, startsAt, endsAt, sharedRecipeTitle }] }` |
+| 70 | POST | `/admin/users/{userId}/generation-quota-adjustments` | Increase or decrease a member's reward generation count. Reason required. A decrease cannot exceed the remaining reward | `{ delta, reason }` | `201 { rewardRemaining }` |
+| 71 | GET | `/admin/weekly-rewards` | a7 weekly top 3 and reward history. Without `week`, last week | `?week=2026-11-17` | `200 { weeks: [weekStart], week: { weekStart, weekEnd, grantedAt?, top: [{ rank, sharedRecipeId, title, saveCount, authorId, reward, granted }] }, history: [{ weekStart, winners: [{ rank, userId }], totalReward }] }` |
+
+## Admin: changes from the previous admin APIs
+
+The 15 admin APIs that were on hold in the previous plan. Do not implement the removed ones.
+
+| Previous API | Status | Now |
+| --- | --- | --- |
+| `GET /api/v1/admin/dashboard/summary` | Changed | 61 `GET /admin/dashboard` (a1 dashboard and anomalies in one call) |
+| `GET /api/v1/admin/metrics` | Changed | 63 `GET /admin/metrics/{tab}` (a3, 8 tabs) |
+| `GET /api/v1/admin/funnels/{funnelCode}` | Changed | 62 `GET /admin/funnels` (a2 shows both funnels on one screen) |
+| `GET /api/v1/admin/events` | Kept | 64 (a6 event log). Adds `source` and `excludeSeed` |
+| `GET /api/v1/admin/events/catalog` | Removed | The operator page has no event list or volume screen |
+| `GET /api/v1/admin/usage/daily` | Removed | Call volume is in the a3 cost and AI tabs (63) |
+| `GET /api/v1/admin/reports` | Changed | 65. One report per row → grouped per post (a4) |
+| `PATCH /api/v1/admin/reports/{id}` | Changed | 67 `PATCH /admin/reports/{sharedRecipeId}`. `result` is the three screen buttons (VIOLATION, NO_ISSUE, DELETED); the sanction applies automatically |
+| `GET /api/v1/admin/shared-recipes` | Removed | No separate shared-post management screen; the post is shown in the report detail (66) |
+| `PATCH /api/v1/admin/shared-recipes/{id}` | Removed | Hiding and deleting happen only through report handling (67) |
+| `GET /api/v1/admin/users` | Changed | 68. `?q=` → member-number search and a sanctioned filter (a5) |
+| `PATCH /api/v1/admin/users/{id}/generation-quota` | Changed | 70 `POST /admin/users/{userId}/generation-quota-adjustments` (creates one adjustment, reason required) |
+| `PATCH /api/v1/admin/users/{id}/status` | Removed | No button for an operator to suspend or restore directly; sanctions come only from report handling |
+| `GET /api/v1/admin/audit-logs` | Removed | No action-history screen. The handler and reason stay in each table (ERD 11/26) |
+| `GET /api/v1/admin/weekly-rewards` | Kept | 71 (a7 ranking and rewards) |
+| `GET /api/v1/admin/reports/{sharedRecipeId}` | Added | 66 (a4.1 report detail) |
+| `GET /api/v1/admin/users/{userId}` | Added | 69 (a5 user detail panel) |
+
 ## Handled without an API
 
 | Screen | Handling |
@@ -184,6 +247,9 @@ Cart contract for APIs 34, 35, 38, 41, 45, 48, 53 and 54 (#57 and the subsequent
 | p7 select all, delete mode | Frontend state |
 | p1.3.4 payment terms checkbox, "details" | Bottom button disabled until checked (frontend). Payment terms text in the terms drawer |
 | Toss payment window cancel or failure | Toss returns to the frontend failure URL with `code` and `message`. No server call; go back to the p1.3.4 before-subscribe screen with the common toast |
+| Admin "오늘·최근 7일·최근 30일" and "실제 데이터만" (a1, a2, a3, a6) | Screen state. Changing them calls 61-64 again |
+| Admin "서비스로 돌아가기" (admin common layout) | Go to the app's first screen (`/`) |
+| a4.1 three confirm modals, a5 count-adjust modal | Frontend modals. APIs 67 and 70 are called when the operator confirms |
 
 ## Scheduled server jobs (not APIs)
 
@@ -200,5 +266,5 @@ Cart contract for APIs 34, 35, 38, 41, 45, 48, 53 and 54 (#57 and the subsequent
 - What the subscription screen shows after scheduling cancellation, and whether a confirm modal is needed.
 - Which API and flow handle the 7-day full refund (Toss payment cancel, subscription status, events)?
 - Which API and screen let an author delete their own shared post?
-- How report sanctions (sharing bans, account suspension) are stored and returned to the frontend (tables, error codes)?
+- What a sanctioned member sees in the app (sharing ban, account ban) and which errors the app APIs return (`ACCOUNT_SUSPENDED`, a sharing-ban code). Storage is decided (`user_sanctions`, 11/26); the app screens are on hold as "added page 15".
 - Which E88 `end_reason` value marks an auto-payment failure ending?
