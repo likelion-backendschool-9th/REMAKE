@@ -253,20 +253,25 @@ class RecipeCookApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 내_칸이_아니거나_다른_레시피의_칸이면_INVALID_INPUT이고_차감도_되돌린다() throws Exception {
+	void 칸이_없거나_다른_레시피의_칸이면_칸_표시만_건너뛰고_차감은_한다() throws Exception {
 		Long recipeId = recipe(userId, line("양파", "1", RecipeUnit.EA));
 		Long otherRecipe = recipe(userId, line("마늘", "1", RecipeUnit.EA));
-		Long onion = ingredient(userId, "양파", "3", "EA", TODAY.plusDays(3));
+		Long onion = ingredient(userId, "양파", "5", "EA", TODAY.plusDays(3));
 		Long otherUser = createUser();
 		Long othersSlot = mealSlot(otherUser, recipe(otherUser, line("양파", "1", RecipeUnit.EA)), TODAY);
 		Long otherRecipeSlot = mealSlot(userId, otherRecipe, TODAY);
 
-		for (Long slot : List.of(othersSlot, otherRecipeSlot)) {
+		Long deletedSlot = mealSlot(userId, recipeId, TODAY);
+		jdbcTemplate.update("DELETE FROM meal_plan_slots WHERE id = ?", deletedSlot);
+
+		// 다른 회원의 칸, 다른 레시피로 바뀐 칸(교체), 지워진 칸(삭제·덮어쓰기): 요리 완료는 성공하고 칸만 표시하지 않는다
+		for (Long slot : List.of(othersSlot, otherRecipeSlot, deletedSlot)) {
 			cook(recipeId, "{\"items\":[{\"ingredientId\":%d,\"amount\":1}],\"mealPlanSlotId\":%d}"
 					.formatted(onion, slot))
-					.andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+					.andExpect(status().isOk()).andExpect(jsonPath("$.deductedCount").value(1));
 		}
-		assertThat(amountOf(onion)).isEqualByComparingTo("3");
+		// 세 번 모두 1개씩 뺐다
+		assertThat(amountOf(onion)).isEqualByComparingTo("2");
 		assertThat(cookedAt(othersSlot)).isNull();
 		assertThat(cookedAt(otherRecipeSlot)).isNull();
 	}

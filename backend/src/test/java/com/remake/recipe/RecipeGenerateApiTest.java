@@ -213,6 +213,26 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 만든_레시피의_재료_카테고리는_사전_냉장고_재료_AI_순서로_저장한다() throws Exception {
+		jdbcTemplate.update("UPDATE users SET recipe_supplement_enabled = true WHERE id = ?", userId);
+		Long egg = fridge("DAIRY_EGG", "계란", 3);
+		Long mine = fridge("ETC", "우리집소스", 3);
+		when(geminiRecipeAdapter.generate(any())).thenReturn(new GeneratedRecipe("볶음", 15, null, List.of(
+				new GeneratedRecipe.Ingredient(egg, "계란", BigDecimal.ONE, "EA", "MEAT"),
+				new GeneratedRecipe.Ingredient(mine, "우리집소스", BigDecimal.ONE, "TBSP", "SEASONING"),
+				new GeneratedRecipe.Ingredient(null, "양파", BigDecimal.ONE, "EA", "FRUIT"),
+				new GeneratedRecipe.Ingredient(null, "무지개채소", BigDecimal.ONE, "EA", "VEGETABLE")),
+				List.of("볶는다.")));
+
+		generate("{\"mode\":\"QUICK\"}").andExpect(status().isCreated());
+
+		// 계란: 사전(DAIRY_EGG), 우리집소스: 사전에 없어 냉장고 재료의 ETC, 양파: AI의 FRUIT보다 사전(VEGETABLE), 무지개채소: AI 값
+		assertThat(jdbcTemplate.queryForList(
+				"SELECT name || ':' || category_code FROM recipe_ingredients ORDER BY sort_order", String.class))
+				.containsExactly("계란:DAIRY_EGG", "우리집소스:ETC", "양파:VEGETABLE", "무지개채소:VEGETABLE");
+	}
+
+	@Test
 	void 횟수를_다_쓰면_AI를_부르지_않고_429와_details를_준다() throws Exception {
 		fridge("DAIRY_EGG", "계란", 5);
 		fridge("VEGETABLE", "양파", 5);

@@ -11,7 +11,7 @@ import org.springframework.web.client.RestClient;
 import com.remake.global.config.GeminiProperties;
 
 /**
- * 식단표 생성용 Gemini RestClient. 레시피 생성용(recipe GeminiClientConfig, 25초)과 따로 둔다.
+ * 식단표 생성용 Gemini RestClient. 레시피 생성용(recipe GeminiClientConfig, 연결 5초·읽기 20초)과 따로 둔다.
  * 식단표는 한 번에 최대 15칸 레시피를 받아 답이 길고, 서버 작업이라 사용자가 화면에서 기다리지 않는다.
  */
 @Configuration(proxyBeanMethods = false)
@@ -40,7 +40,7 @@ class GeminiMealPlanClientConfig {
 	}
 
 	/**
-	 * 식단 칸 교체(API 42)용. 사용자가 응답을 기다리므로 레시피 생성과 같은 호출 한 번 제한(gemini.request-timeout, 기본 25초)을 쓴다.
+	 * 식단 칸 교체(API 42)용. 사용자가 응답을 기다리므로 호출 한 번 제한(gemini.request-timeout, 기본 25초)을 쓴다.
 	 * 칸 하나라 답이 짧다. 1회 재시도까지 합쳐 Nginx 60초 안에 끝난다(#50).
 	 */
 	@Bean

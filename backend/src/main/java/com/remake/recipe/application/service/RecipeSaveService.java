@@ -3,6 +3,7 @@ package com.remake.recipe.application.service;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -11,6 +12,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.remake.cart.application.port.in.AddCartItemsUseCase;
+import com.remake.cart.application.port.in.CartAdditionCommand;
+import com.remake.cart.domain.CartSource;
 import com.remake.event.application.port.in.EventTrackCommand;
 import com.remake.event.application.port.in.EventTracker;
 import com.remake.event.domain.EventName;
@@ -18,12 +22,14 @@ import com.remake.event.domain.Screen;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.ingredient.application.port.in.GetFridgeUseCase;
+import com.remake.ingredient.application.port.in.GetIngredientCatalogUseCase;
 import com.remake.recipe.application.port.in.GetSavedRecipesUseCase;
 import com.remake.recipe.application.port.in.RecipeListItem;
 import com.remake.recipe.application.port.in.SaveRecipeUseCase;
 import com.remake.recipe.application.port.out.LoadRecipePort;
 import com.remake.recipe.application.port.out.RecipeHeader;
 import com.remake.recipe.application.port.out.SavedRecipePort;
+import com.remake.recipe.domain.Recipe;
 import com.remake.recipe.domain.SavedRecipe;
 import com.remake.recipe.domain.SavedRecipeFilter;
 import com.remake.recipe.domain.SavedRecipeSort;
@@ -35,26 +41,32 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 class RecipeSaveService implements SaveRecipeUseCase, GetSavedRecipesUseCase {
 
+	/** cart_items.name 길이(장바구니 담기가 50자를 넘는 이름을 거절한다) */
+	private static final int CART_NAME_MAX_LENGTH = 50;
+
 	private final LoadRecipePort loadRecipePort;
 	private final SavedRecipePort savedRecipePort;
 	private final GetFridgeUseCase getFridgeUseCase;
 	private final EventTracker eventTracker;
+	private final AddCartItemsUseCase addCartItemsUseCase;
+	private final GetIngredientCatalogUseCase getIngredientCatalogUseCase;
 	private final Clock clock;
 
 	/**
-	 * 내가 만든 레시피를 저장한다. 처음 저장할 때만 E44 recipe_saved를 남긴다.
-	 * 재료 보충으로 들어간 부족 재료의 장바구니 담기(#57: 장바구니에 없는 재료만 추가)는 장바구니 영역의 AddCartItemsUseCase가
-	 * 생기면 여기서 부른다. 그 전까지 cartAddedCount는 0이다.
+	 * 내가 만든 레시피를 저장한다. 처음 저장할 때(저장 취소 뒤 다시 저장 포함)만 부족 재료를 장바구니에 담고 E44 recipe_saved를 남긴다.
+	 * 부족 재료 = 재료 보충으로 들어간 줄(냉장고 재료 id 없음) 중 지금 내 냉장고에 소비기한 안의 같은 이름 재료가 없는 것("바로 가능"과 같은 기준).
+	 * 장바구니에 이미 있는 재료는 담지 않는다(#57, AddCartItemsUseCase가 중복을 막음). 물·꼬집·약간·양 없는 재료도 그쪽이 뺀다.
+	 * 카테고리를 정할 수 없는 줄(컬럼 전에 만든 레시피이고 사전에도 없음)과 50자를 넘는 이름은 담지 않고 저장은 계속한다.
 	 */
 	@Override
 	@Transactional
 	public SaveResult save(Long userId, Long recipeId) {
-		if (!loadRecipePort.existsByIdAndUserId(recipeId, userId)) {
-			throw new BusinessException(ErrorCode.RECIPE_NOT_FOUND);
-		}
+		Recipe recipe = loadRecipePort.loadByIdAndUserId(recipeId, userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.RECIPE_NOT_FOUND));
 		boolean inserted = savedRecipePort.insertIfAbsent(userId, recipeId, LocalDateTime.now(clock));
 		int cartAddedCount = 0;
 		if (inserted) {
+			cartAddedCount = addShortagesToCart(userId, recipe);
 			// 이벤트 명세: 내 레시피는 own, 공유 저장은 shared.
 			eventTracker.track(EventName.RECIPE_SAVED, Screen.RECIPE_DETAIL, Map.of(
 					"recipe_id", recipeId,
@@ -106,6 +118,19 @@ class RecipeSaveService implements SaveRecipeUseCase, GetSavedRecipesUseCase {
 	 * "바로 가능" 비교에 쓰는 이름: 내 냉장고 재료(소비기한 지난 것은 뺌, 레시피 생성과 같은 기준) + 물.
 	 * 물은 냉장고에 등록하는 품목이 아니라 없어도 만들 수 있다(#158, GeneratedRecipeValidator.WATER).
 	 */
+	private int addShortagesToCart(Long userId, Recipe recipe) {
+		Set<String> owned = usableFridgeNames(userId);
+		List<CartAdditionCommand> shortages = recipe.ingredients().stream()
+				.filter(line -> line.ingredientId() == null && !owned.contains(line.name()))
+				.filter(line -> line.name().length() <= CART_NAME_MAX_LENGTH)
+				.filter(line -> line.categoryCode() != null
+						|| getIngredientCatalogUseCase.findCatalogItemByName(line.name()).isPresent())
+				.map(line -> new CartAdditionCommand(recipe.id(), null, line.name(), line.amount(), line.unit(),
+						line.categoryCode()))
+				.toList();
+		return shortages.isEmpty() ? 0 : addCartItemsUseCase.add(userId, CartSource.OWN_RECIPE, shortages);
+	}
+
 	private Set<String> usableFridgeNames(Long userId) {
 		Set<String> names = getFridgeUseCase.getFridgeIngredients(userId, null, null, null).stream()
 				.filter(f -> f.dDay() >= 0)
