@@ -12,7 +12,7 @@ import org.springframework.util.StringUtils;
  * @param apiKey         Google AI Studio API 키. 비어 있으면 호출하지 않는다
  * @param model          모델 코드. 기본 gemini-3.5-flash-lite(무료 티어)
  * @param baseUrl        API 주소. 테스트는 접속되지 않는 주소를 넣는다
- * @param requestTimeout 호출 한 번의 읽기 제한 시간. 1회 재시도와 대기까지 합쳐 서버 55초 안(#50, Nginx 60초보다 먼저)에 끝나도록 25초
+ * @param requestTimeout 식단 칸 교체의 호출 한 번 제한 시간. 기본 25초. 레시피 생성은 recipe GeminiClientConfig의 값(연결 5초, 읽기 20초)을 쓴다
  */
 @ConfigurationProperties(prefix = "remake.gemini")
 public record GeminiProperties(String apiKey, String model, String baseUrl, Duration requestTimeout) {

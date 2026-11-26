@@ -104,7 +104,7 @@ public class GeminiRecipeAdapter implements GenerateRecipeAiPort {
 			throw new BusinessException(ErrorCode.AI_UPSTREAM_ERROR);
 		} catch (ResourceAccessException e) {
 			if (isTimeout(e)) {
-				log.warn("Gemini 호출 시간 초과: {}", properties.requestTimeout());
+				log.warn("Gemini 호출 시간 초과: {}", GeminiClientConfig.READ_TIMEOUT);
 				throw new BusinessException(ErrorCode.AI_TIMEOUT);
 			}
 			log.warn("Gemini 연결 실패: {}", e.getClass().getSimpleName());
