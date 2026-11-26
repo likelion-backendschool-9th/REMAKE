@@ -62,7 +62,7 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 직접_추가하면_ingredient_added_이벤트가_MANUAL로_남고_이름은_넣지_않는다() {
+	void 직접_추가하면_ingredient_added_이벤트가_manual로_남고_이름은_넣지_않는다() {
 		transactionTemplate.executeWithoutResult(status -> registerUseCase.registerIngredient(
 				command("우유", IngredientCategoryCode.DAIRY_EGG, LocalDate.of(2026, 3, 12), null,
 						new BigDecimal("2"), null)));
@@ -71,18 +71,18 @@ class IngredientRegistrationTest extends IntegrationTestSupport {
 		assertThat(jdbcTemplate.queryForObject("SELECT event_name FROM events", String.class)).isEqualTo("ingredient_added");
 		assertThat(jdbcTemplate.queryForObject("SELECT user_id FROM events", Long.class)).isEqualTo(userId);
 		String props = jdbcTemplate.queryForObject("SELECT properties::text FROM events", String.class);
-		assertThat(props).contains("MANUAL").contains("DAIRY_EGG").contains("FRIDGE").doesNotContain("우유");
+		assertThat(props).contains("manual").contains("DAIRY_EGG").contains("FRIDGE").doesNotContain("우유");
 	}
 
 	@Test
-	void 영수증_품목이면_RECEIPT로_남고_여러_건이면_건마다_하나씩_남는다() {
+	void 영수증_품목이면_receipt로_남고_여러_건이면_건마다_하나씩_남는다() {
 		transactionTemplate.executeWithoutResult(status -> registerUseCase.registerIngredients(List.of(
 				command("우유", IngredientCategoryCode.DAIRY_EGG, null, LocalDate.of(2026, 3, 1), BigDecimal.ONE, createReceiptItem(userId, "우유", "DAIRY_EGG")),
 				command("두부", IngredientCategoryCode.BEAN_TOFU, null, LocalDate.of(2026, 3, 1), BigDecimal.ONE, createReceiptItem(userId, "두부", "BEAN_TOFU")))));
 		awaitEventWrites();
 
-		assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM events WHERE properties::text LIKE '%RECEIPT%'",
-				Long.class)).isEqualTo(2L);
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT count(*) FROM events WHERE properties->>'add_source' = 'receipt'", Long.class)).isEqualTo(2L);
 	}
 
 	@Test

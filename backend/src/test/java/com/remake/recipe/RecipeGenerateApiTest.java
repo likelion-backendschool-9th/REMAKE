@@ -139,7 +139,7 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 		assertThat(recipeRows()).isEqualTo(1);
 		assertThat(usageRows()).isEqualTo(1);
 		assertThat(eventProperties("recipe_generated"))
-				.contains("\"recipe_mode\": \"QUICK\"", "\"is_regenerated\": false", "\"expiring_used_count\": 1",
+				.contains("\"recipe_mode\": \"quick\"", "\"is_regenerated\": false", "\"expiring_used_count\": 1",
 						"\"shortage_count\": 0", "\"remaining_quota\": 1");
 	}
 
@@ -249,7 +249,7 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 
 		verify(geminiRecipeAdapter, never()).generate(any());
 		assertThat(eventProperties("quota_exceeded"))
-				.contains("\"limit_feature\": \"RECIPE\"", "\"limit_total\": 2", "\"used_count\": 2");
+				.contains("\"limit_feature\": \"recipe\"", "\"limit_total\": 2", "\"used_count\": 2");
 	}
 
 	@Test

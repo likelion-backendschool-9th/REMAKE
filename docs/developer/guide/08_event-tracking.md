@@ -98,9 +98,9 @@ track('receipt_item_edited', { item_index: 2, edit_field: 'amount' });
 
 ## 8. 지금 코드와 다른 점
 
-- `EventName`(76개)을 정의서 79개에 맞춰야 합니다. 추가 12개(구독 6개, `recipe_favorited`, `meal_plan_overlap_answered`, `meal_slot_deleted`, `meal_slot_replaced`, `meal_slot_replace_failed`, `cart_moved_to_fridge`), 이름 변경 `notification_clicked` → `notification_banner_clicked`, 삭제 9개(`pwa_install_prompted`, `pwa_installed`, `push_permission_result`, `camera_unavailable`, `meal_plan_shortage_shown`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`, `shared_recipe_saved`). `cook_feedback_answered`(E50)는 보류에서 풀림(11/22, 차감 뒤 냉장고 바텀 시트). 속성 `feedback_value`를 `recipe_id`·`recommended`로 바꿔야 합니다.
-- `Screen` enum(대문자 25개)을 소문자 화면 코드 41개로 바꿔야 합니다.
-- 속성 14개가 빠지고(`was_skipped`, `is_expiration_estimated`, `duplicate_suspected`, `allergen_warning`, `channel`, `photo_count` 등) 19개가 새로 생겼습니다(`recommended` 포함). 목록은 영문 [`events.md`](../../agent/spec/events.md). `deleted_item_count`는 한때 뺐다가, 11/24 OCR 품목 삭제를 다시 허용하면서 되살렸습니다.
+- `EventName`은 정의서 79개와 맞습니다(`EventContractTest`). `cook_feedback_answered`(E50)는 `recipe_id`·`recommended`를 씁니다. E86 `subscription_renewed` 호출은 자동 결제 작업(#168)에서 이어집니다.
+- `Screen` enum은 정의서 화면 코드 41개(+ `UNKNOWN`)와 맞습니다. 스케줄·배치처럼 화면이 없으면 `null`을 넘깁니다.
+- 속성 코드 값은 소문자입니다(#172). `storage`·`filter_value`만 정의서대로 대문자입니다. 검증기와 서버 송신은 한 PR에서 같이 바꿨고, 이미 쌓인 대문자 행은 Flyway `V30`으로 소문자로 고쳤습니다.
 - 우선순위는 정의서를 따릅니다. 결정 [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58)대로 공유·장바구니·보상 이벤트는 P1이고, #58의 어드민 부분(ADMIN 접근 제어 선행, 분석 API)은 운영자 페이지 a1~a3·a6에서 조회(API 61~64)로 정리됐습니다(11/26).
 
 ## 9. 체크리스트

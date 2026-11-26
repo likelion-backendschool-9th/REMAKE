@@ -185,7 +185,7 @@ public class SubscriptionService implements GetSubscriptionUseCase, PrepareBilli
 					saveUserPort.save(user.withPlan(UserPlan.BASIC));
 				}
 			});
-			eventTracker.track(EventName.SUBSCRIPTION_ENDED, Screen.SETTINGS,
+			eventTracker.track(EventName.SUBSCRIPTION_ENDED, Screen.SETTING_MAIN,
 					Map.of("end_reason", "account_deleted", "subscribed_days", subscription.subscribedDays(now)),
 					EventTrackCommand.ofUser(userId));
 		});
