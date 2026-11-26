@@ -71,6 +71,9 @@ class MealPlanCombinationRulesTest {
 		assertThat(rules().keyOf("다진 대파")).hasValue("파");
 		assertThat(rules().keyOf("딸기(냉동)")).hasValue("딸기");
 		assertThat(rules().keyOf("유기농 두부")).hasValue("두부");
+		// 길이가 같으면 이름에서 더 뒤에 있는 것(한국어 합성어는 뒤가 중심)
+		assertThat(rules().keyOf("두부딸기")).hasValue("딸기");
+		assertThat(rules().keyOf("딸기두부")).hasValue("두부");
 		// 한 글자 사전 이름(쌀)은 똑같을 때만 맞춘다
 		assertThat(rules().keyOf("국산 쌀")).isEmpty();
 	}

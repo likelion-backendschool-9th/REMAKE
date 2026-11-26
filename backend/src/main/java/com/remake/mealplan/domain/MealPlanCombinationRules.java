@@ -1,8 +1,6 @@
 package com.remake.mealplan.domain;
 
 import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -21,13 +19,14 @@ import com.remake.ingredient.domain.IngredientCategoryCode;
  * 끼면 엉터리 조합("토마토초코밥")으로 본다. 두 재료가 모두 아침 재료(과일·견과류·빵·시리얼·요거트·우유·버터·잼·꿀 등)면 허용한다
  * (바나나토스트, 우유 시리얼).
  * 재료 이름은 정리 스크립트와 같은 규칙으로 검사 키에 맞춘다: 4글자 이하 "○○밥"(볶음밥 아님)은 쌀 → 고침표 → 사전 이름과 같음 →
- * 사전 이름(두 글자 이상)이 들어 있으면 가장 긴 것(같은 길이면 사전 순서가 앞선 것) → 같은 재료 다른 표기는 기준 이름 → 무리(김치류·면류 등)는
+ * 사전 이름(두 글자 이상)이 들어 있으면 가장 긴 것(같은 길이면 이름에서 더 뒤에 있는 것: 당근주스 → 주스) → 같은 재료 다른 표기는 기준 이름 → 무리(김치류·면류 등)는
  * 무리 이름. 사전과 못 맞춘 이름, 양념(SEASONING), 물·생수·육수는 검사하지 않는다.
  *
  * <p><b>F1 입력 거르기</b>: 식약처 요리(후식 제외)에 한 번도 나오지 않는 재료(콜라·초콜릿·과자 등 18개)와, 음료 카테고리인데 사전과 맞지 않는
  * 냉장고 재료는 AI에 보내지 않는다. 냉장고 재료 이름은 #145 규칙(사전 이름과 같음 → 같은 카테고리의 사전 이름이 들어 있으면 가장 긴 것)으로 맞춘다.
+ * 길이가 같을 때는 #145(id가 작은 것)와 달리 위와 같이 이름에서 더 뒤에 있는 것을 고른다(같은 카테고리 안의 동률은 드물다).
  *
- * @param catalog        재료 사전 이름 → 카테고리(V5 마이그레이션 사본, 사전 순서)
+ * @param catalog        재료 사전 이름 → 카테고리(V5 마이그레이션 사본)
  * @param synonyms       같은 재료 다른 표기 → 기준 이름
  * @param aliases        재료 이름(공백 뺀 것) → 고침표 값. 사전 이름이 null이면 사전과 연결하지 않는다
  * @param groups         무리에 든 재료 → 무리 이름
@@ -57,9 +56,8 @@ public record MealPlanCombinationRules(Map<String, IngredientCategoryCode> catal
 	public record Alias(String catalogName, IngredientCategoryCode categoryCode) {
 	}
 
-	/** catalog는 순서(같은 길이일 때 고르는 기준)를 지키도록 호출한 쪽이 LinkedHashMap으로 넘긴다. */
 	public MealPlanCombinationRules {
-		catalog = Collections.unmodifiableMap(new LinkedHashMap<>(catalog));
+		catalog = Map.copyOf(catalog);
 		synonyms = Map.copyOf(synonyms);
 		aliases = Map.copyOf(aliases);
 		groups = Map.copyOf(groups);
@@ -111,8 +109,11 @@ public record MealPlanCombinationRules(Map<String, IngredientCategoryCode> catal
 		return !(breakfast.contains(a) && breakfast.contains(b));
 	}
 
-	/** 재료 이름의 검사 키. 사전과 못 맞추거나 양념·물이면 비어 있다(정리 스크립트 Rules.key와 같다). */
-	Optional<String> keyOf(String name) {
+	/**
+	 * 재료 이름의 검사 키(무리 이름 또는 사전 이름). 사전과 못 맞추거나 양념·물이면 비어 있다.
+	 * 정리 스크립트 Rules.key와 같아야 하며, 스크립트가 만든 기대값과 비교하는 테스트가 있다.
+	 */
+	public Optional<String> keyOf(String name) {
 		if (name == null || name.isBlank()) {
 			return Optional.empty();
 		}
@@ -179,17 +180,24 @@ public record MealPlanCombinationRules(Map<String, IngredientCategoryCode> catal
 		return longestContained(name, category).map(this::canonical);
 	}
 
-	/** 이름에 들어 있는 사전 이름(두 글자 이상) 가운데 가장 긴 것. 같은 길이면 사전 순서가 앞선 것. category가 있으면 그 카테고리만 본다. */
+	/** 이름에 들어 있는 사전 이름(두 글자 이상) 가운데 가장 긴 것. 같은 길이면 이름에서 더 뒤에 있는 것. category가 있으면 그 카테고리만 본다. */
 	private Optional<String> longestContained(String name, IngredientCategoryCode category) {
 		String best = null;
+		int bestIndex = -1;
 		for (Map.Entry<String, IngredientCategoryCode> entry : catalog.entrySet()) {
 			String catalogName = entry.getKey();
-			if (catalogName.length() < MIN_CONTAINED_NAME_LENGTH || !name.contains(catalogName)
+			if (catalogName.length() < MIN_CONTAINED_NAME_LENGTH
 					|| (category != null && entry.getValue() != category)) {
 				continue;
 			}
-			if (best == null || catalogName.length() > best.length()) {
+			int index = name.lastIndexOf(catalogName);
+			if (index < 0) {
+				continue;
+			}
+			if (best == null || catalogName.length() > best.length()
+					|| (catalogName.length() == best.length() && index > bestIndex)) {
 				best = catalogName;
+				bestIndex = index;
 			}
 		}
 		return Optional.ofNullable(best);

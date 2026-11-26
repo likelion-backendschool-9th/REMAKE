@@ -3,11 +3,15 @@ package com.remake.mealplan.adapter.out.mfds;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
+import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ClassPathResource;
 
 import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.mealplan.domain.MealPlanCombinationRules;
@@ -16,7 +20,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 실제 combination-check.json으로 판정한다. 기대값은 정리 스크립트를 만들 때 파이썬으로 한 시뮬레이션과 같다
- * (11-24~26 실측 AI 레시피 958개 중 걸림 0개, 엉터리 예시 14개 중 12개 걸림).
+ * (11-24~26 실측 AI 레시피 991개 중 걸림 0개, 엉터리 예시 16개 중 14개 걸림).
  */
 class MealPlanCombinationRulesJsonAdapterTest {
 
@@ -36,7 +40,7 @@ class MealPlanCombinationRulesJsonAdapterTest {
 	}
 
 	@Test
-	void 엉터리_조합_14개_중_12개를_잡는다() {
+	void 엉터리_조합_16개_중_14개를_잡는다() {
 		Map<String, List<String>> caught = Map.ofEntries(
 				Map.entry("토마토초코밥", List.of("토마토", "초콜릿", "쌀")),
 				Map.entry("콜라 김치찌개", List.of("콜라", "배추김치", "돼지고기", "두부")),
@@ -49,7 +53,10 @@ class MealPlanCombinationRulesJsonAdapterTest {
 				Map.entry("과자 계란찜", List.of("과자", "계란")),
 				Map.entry("귤 돼지고기 찌개", List.of("귤", "돼지고기", "두부")),
 				Map.entry("초코 시리얼 김밥", List.of("초콜릿", "시리얼", "김", "쌀")),
-				Map.entry("딸기잼 라면", List.of("잼", "라면")));
+				Map.entry("딸기잼 라면", List.of("잼", "라면")),
+				// 초콜릿 다른 표기는 고침표로 초콜릿에 맞춘다
+				Map.entry("초코칩 김치볶음밥", List.of("초코칩", "배추김치", "밥")),
+				Map.entry("누텔라 닭볶음", List.of("누텔라", "닭다리", "양파")));
 		caught.forEach((title, names) -> assertThat(rules.unseenCautionPairs(names)).as(title).isPositive());
 
 		// 놓치는 2개: 식약처에 바나나+달걀·쌀 짝이 있고, 우유는 주의 재료가 아니다
@@ -73,7 +80,9 @@ class MealPlanCombinationRulesJsonAdapterTest {
 				Map.entry("아몬드 멸치볶음", List.of("아몬드", "멸치", "간장", "물엿")),
 				Map.entry("캐슈넛 닭볶음", List.of("캐슈넛", "닭가슴살", "양파")),
 				// 콜라비는 사전 "콜라"로 맞추지 않는다(고침표)
-				Map.entry("콜라비 무침", List.of("콜라비", "오이", "양파")));
+				Map.entry("콜라비 무침", List.of("콜라비", "오이", "양파")),
+				// 초콜릿은 아침 재료(잼·땅콩버터와 같은 쪽): 빵·바나나와 짝이 처음이어도 허용(11-26 결정)
+				Map.entry("초코 바나나 토스트", List.of("초코시럽", "바나나", "식빵")));
 		normal.forEach((title, names) -> assertThat(rules.unseenCautionPairs(names)).as(title).isZero());
 	}
 
@@ -88,6 +97,36 @@ class MealPlanCombinationRulesJsonAdapterTest {
 			assertThat(rules.excludedFromAi(name, null)).as(name).isFalse();
 		}
 		assertThat(rules.excludedFromAi("콜라비", IngredientCategoryCode.VEGETABLE)).isFalse();
+	}
+
+	/**
+	 * 정리 스크립트(파이썬)와 같은 판정인지: 스크립트가 식약처 재료 이름 전부·예시 이름의 검사 키와
+	 * 예시·무작위 레시피의 처음 보는 주의 재료 짝 수를 test resources에 써 둔다. 한쪽 규칙만 고치면 여기서 깨진다.
+	 */
+	@Test
+	void 정리_스크립트와_판정이_같다() throws Exception {
+		Expected expected;
+		try (InputStream in = new ClassPathResource(EXPECTED).getInputStream()) {
+			expected = JsonMapper.builder().build().readValue(in, Expected.class);
+		}
+		assertThat(expected.keys()).hasSizeGreaterThan(1000);
+		SoftAssertions soft = new SoftAssertions();
+		expected.keys().forEach((name, key) -> soft.assertThat(rules.keyOf(name)).as(name)
+				.isEqualTo(Optional.ofNullable(key)));
+		for (ExpectedRecipe recipe : expected.recipes()) {
+			soft.assertThat(rules.unseenCautionPairs(recipe.ingredients())).as(recipe.name())
+					.isEqualTo(recipe.unseenCautionPairs());
+		}
+		soft.assertAll();
+	}
+
+	/** 스크립트가 만든 판정 비교용 기대값. 고치지 말고 스크립트를 다시 돌린다. */
+	private static final String EXPECTED = "mfds/combination-check-expected.json";
+
+	record Expected(Map<String, String> keys, List<ExpectedRecipe> recipes) {
+	}
+
+	record ExpectedRecipe(String name, List<String> ingredients, int unseenCautionPairs) {
 	}
 
 	@Test

@@ -9,6 +9,7 @@
 - check_rules.json : 무리 묶음, 검사에서 뺄 이름, 주의 재료, 아침 재료, AI에 보내지 않을 냉장고 재료
 - name_fixes.tsv   : 재료 이름 → 재료 사전 이름(자동 맞추기가 틀리거나 없을 때)과 카테고리
 - synonyms.tsv     : 사전 안의 같은 재료 다른 표기(계란 → 달걀)
+- check_examples.json : 판정 비교용 예시(엉터리·멀쩡한 레시피). 결과는 --expected 파일로 쓰고 Java 테스트가 비교한다
 
 식약처 레시피 1,156개 전부(후식 포함)의 재료를 사전 이름으로 맞추고(양념·물 뺌), 주의 재료마다 함께 쓰인 재료 목록을 적는다.
 서버는 AI가 만든 칸의 재료 짝 가운데 이 목록에 없는 짝에 주의 재료가 끼면(아침 재료끼리는 빼고) 형식 오류로 본다.
@@ -19,6 +20,7 @@ import gzip
 import io
 import itertools
 import json
+import random
 import re
 import sys
 from collections import OrderedDict, defaultdict
@@ -29,6 +31,11 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 CATALOG_SQL = ROOT / 'backend/src/main/resources/db/migration/V5__create_ingredient_catalog.sql'
 DEFAULT_OUT = ROOT / 'backend/src/main/resources/mfds/combination-check.json'
+# 판정 비교용 기대값(Java MealPlanCombinationRulesJsonAdapterTest가 읽음)
+DEFAULT_EXPECTED = ROOT / 'backend/src/test/resources/mfds/combination-check-expected.json'
+# 판정 비교용 무작위 레시피 수와 씨앗(다시 돌려도 같은 파일)
+RANDOM_RECIPES = 300
+RANDOM_SEED = 288
 SEASONING = 'SEASONING'
 # 서버 MealPlanCombinationRules와 같은 값: "○○밥"(4글자 이하, 볶음밥 아님)은 쌀로 본다
 RICE_MAX_LENGTH = 4
@@ -294,7 +301,7 @@ class Rules:
         return key, category
 
     def match(self, name):
-        """고침표 → 사전 이름과 같음 → 사전 이름이 들어 있으면 가장 긴 것(같은 길이면 사전 순서가 앞선 것)."""
+        """고침표 → 사전 이름과 같음 → 사전 이름이 들어 있으면 가장 긴 것(같은 길이면 이름에서 더 뒤에 있는 것: 당근주스 → 주스)."""
         compact = name.replace(' ', '')
         base = re.sub(r'\(.*?\)', '', compact)
         for k in (compact, base):
@@ -305,10 +312,26 @@ class Rules:
             if k in self.catalog:
                 return k, None
         found = [c for c in self.catalog if len(c) >= MIN_CONTAINED_NAME_LENGTH and c in base]
-        return (max(found, key=len), None) if found else None
+        return (max(found, key=lambda c: (len(c), base.rfind(c))), None) if found else None
 
     def keys(self, names):
         return {k[0] for k in (self.key(n) for n in names) if k}
+
+
+def unseen_caution_pairs(data, names, rules):
+    """처음 보는 주의 재료 짝 수(서버 MealPlanCombinationRules.unseenCautionPairs와 같다)."""
+    partners = data['partners']
+    breakfast = set(data['breakfast'])
+    count = 0
+    for a, b in itertools.combinations(sorted(rules.keys(names)), 2):
+        if a not in partners and b not in partners:
+            continue
+        if (a in partners and b in partners[a]) or (b in partners and a in partners[b]):
+            continue
+        if a in breakfast and b in breakfast:
+            continue
+        count += 1
+    return count
 
 
 def recipe_names(row):
@@ -345,18 +368,56 @@ def build(csv_path, rules):
     return data
 
 
+def expected(csv_path, rules, data):
+    """판정 비교용 기대값: 식약처 재료 이름·예시 이름마다 검사 키, 예시·무작위 레시피마다 처음 보는 주의 재료 짝 수."""
+    examples = json.loads((HERE / 'check_examples.json').read_text(encoding='utf-8'))
+    names = set()
+    for row in read_csv(csv_path):
+        names.update(recipe_names(row))
+    recipes = OrderedDict()
+    for kind in ('absurd', 'normal'):
+        for title, recipe in examples[kind].items():
+            names.update(recipe)
+            recipes[f'{kind}:{title}'] = recipe
+    names = sorted(n for n in names if n.strip())
+    keyed = [n for n in names if rules.key(n)]
+    caution_names = [n for n in keyed if rules.key(n)[0] in data['partners']]
+    rnd = random.Random(RANDOM_SEED)
+    for i in range(RANDOM_RECIPES):
+        recipes[f'random:{i}'] = [rnd.choice(caution_names)] + rnd.sample(keyed, rnd.randint(2, 5))
+    out = OrderedDict()
+    out['_comment'] = 'scripts/mfds/build_combination_check.py가 만듦. 고치지 말고 스크립트를 다시 돌린다'
+    out['keys'] = OrderedDict((n, (rules.key(n) or (None,))[0]) for n in names)
+    out['recipes'] = [OrderedDict([('name', title), ('ingredients', recipe),
+                                   ('unseenCautionPairs', unseen_caution_pairs(data, recipe, rules))])
+                      for title, recipe in recipes.items()]
+    return out
+
+
+def write_json(path, data):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('csv', help='COOKRCP01 CSV(.csv 또는 .csv.gz)')
     parser.add_argument('--out', default=str(DEFAULT_OUT))
+    parser.add_argument('--expected', default=str(DEFAULT_EXPECTED))
     args = parser.parse_args()
     rules = Rules()
     data = build(args.csv, rules)
-    out = Path(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(data, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+    write_json(args.out, data)
     pair_count = sum(len(v) for v in data['partners'].values())
-    print(f'레시피 {data["recipeCount"]}개, 주의 재료 {len(data["partners"])}개, 주의 재료 짝 {pair_count}개 → {out}')
+    print(f'레시피 {data["recipeCount"]}개, 주의 재료 {len(data["partners"])}개, 주의 재료 짝 {pair_count}개 → {args.out}')
+    check = expected(args.csv, rules, data)
+    write_json(args.expected, check)
+    hit = sum(1 for r in check['recipes'] if r['unseenCautionPairs'])
+    print(f'판정 비교: 이름 {len(check["keys"])}개, 레시피 {len(check["recipes"])}개(걸림 {hit}개) → {args.expected}')
+    for r in check['recipes']:
+        if r['name'].startswith(('absurd:', 'normal:')):
+            print(f'  {r["name"]}: {r["unseenCautionPairs"]}')
 
 
 if __name__ == '__main__':
