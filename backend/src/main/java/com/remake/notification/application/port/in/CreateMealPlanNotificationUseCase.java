@@ -9,7 +9,12 @@ import com.remake.notification.domain.MealPlanFailReason;
  */
 public interface CreateMealPlanNotificationUseCase {
 
-	void notifyMealPlanCompleted(Long userId, Long mealPlanId, LocalDate startDate, int generatedDays);
+	/**
+	 * @param maxDays        접수 때 요금제의 최대 일수. 생성 일수가 이보다 적으면 부족 문장을 덧붙인다
+	 * @param cartAddedCount 부족 재료로 장바구니에 담은 행 수
+	 */
+	void notifyMealPlanCompleted(Long userId, Long mealPlanId, LocalDate startDate, int generatedDays, int maxDays,
+			int cartAddedCount);
 
 	void notifyMealPlanFailed(Long userId, MealPlanFailReason reason);
 }

@@ -15,7 +15,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import com.remake.global.web.LoginUserIdArgumentResolver;
 import com.remake.support.IntegrationTestSupport;
 
-// API 39 식단표 월 달력. 기간은 완성된 식단표만(#144 제안 A), 날짜는 칸이 있는 날.
+// API 39 식단표 월 달력. 기간은 완성된 식단표만(#144 확정), 날짜는 칸이 있는 날.
 // hasAnyMealPlan은 완성된 식단표가 하나라도 있는지(달 상관없이, 빈 화면 조건).
 class MealPlanCalendarApiTest extends IntegrationTestSupport {
 

@@ -4,7 +4,7 @@
 
 2026-11-22 · 이준호. 원본은 노션 "ERD v4"(피그마 기준, 화면 근거 칸 포함)이고, 이 문서는 그 내용을 개발용으로 옮긴 것이에요. 화면 근거(피그마 노드)는 원본에서 보세요.
 
-- 테이블 26개: 피그마 기준 25개 + 단위 사전 `ingredient_catalog`(11/22 결정, 화면 없는 내부 기준 데이터)
+- 이 문서의 테이블 28개: 피그마 기준 25개, 단위 사전 `ingredient_catalog`, #73의 직접 등록 재료 지출 기록, #92의 내부 주간 확정 완료 기록을 포함해요.
 - 어드민 화면이 피그마에 없어서 어드민 전용 컬럼·테이블은 넣지 않았어요(`users.role`, 신고 `status`, 공유 글 `status`만 둠).
 - 알림은 앱 안에서만 보여요(휴대폰 푸시 없음).
 
@@ -26,8 +26,8 @@
 | 5 | `subscriptions` | 구독 | 프리미엄 멤버십 구독(토스페이먼츠 카드 자동결제). 구독할 때마다 한 행, 끝나지 않은 구독은 회원당 하나 | 1 로그인·설정 | 이준호 | 12 |
 | 6 | `subscription_payments` | 구독 결제 기록 | 첫 결제와 매달 자동 결제 한 번마다 한 행(성공·실패 모두) | 1 로그인·설정 | 이준호 | 12 |
 | 7 | `ingredient_categories` | 재료 카테고리 | 12개 카테고리 기준 데이터(이미지·기본 보관 위치·기본 보관 일수) | 2 냉장고 | 김재연 | 7 |
-| 8 | `ingredients` | 냉장고 재료 | 냉장고 재료 한 줄. 수량이 0이 되면 행을 지움 | 2 냉장고 | 김재연 | 13 |
-| 9 | `ingredient_logs` | 재료 사용·버림 기록 | "사용 했어요/버렸어요"와 요리 완료 차감 기록. 버린 금액의 원본 | 2 냉장고 | 김재연 | 9 |
+| 8 | `ingredients` | 냉장고 재료 | 냉장고 재료 한 줄. 수량이 0이 되면 행을 지움. 영수증 없이 등록하면 출처 기록도 함께 저장 | 2 냉장고 | 김재연 | 13 |
+| 9 | `ingredient_logs` | 재료 사용·버림 기록 | "사용 했어요/버렸어요"와 요리 완료 차감 기록. 버린 금액의 원본 | 2 냉장고 | 김재연 | 10 |
 | 10 | `receipts` | 영수증 | 등록한 영수증 한 장. 6개월 보관. 삭제하면 식비·소비 패턴에서도 빠짐(냉장고 재료는 남음) | 3 영수증 | 이동준 | 9 |
 | 11 | `receipt_items` | 영수증 품목 | 영수증의 식재료 품목 한 줄 | 3 영수증 | 이동준 | 9 |
 | 12 | `recipes` | 레시피 | AI가 만든 레시피 본체. 만든 뒤 수정하지 않음 | 4 AI 레시피 | 김종수 | 9 |
@@ -45,6 +45,8 @@
 | 24 | `notifications` | 알림 | 회원에게 만든 알림 한 건 | 6 알림 | 이상호 | 8 |
 | 25 | `events` | 이벤트 | 사용자 행동 이벤트 원본(프론트·서버). 이름·속성은 이벤트 정의서 | 공통(이벤트) | 이준호 | 12 |
 | 26 | `ingredient_catalog` | 재료 단위 사전 | 재료명 → 단위·카테고리·보관 일수. 재료명으로 단위를 정할 때(API 14·15·16·21) 서버 안에서만 씀. 화면·API로 노출하지 않음 | 2 냉장고 | 김재연 | 6 |
+| 27 | `manual_ingredient_expenses` | 직접 등록 재료 지출 | 영수증 없이 등록한 재료의 출처와 지출 기록 | 3 영수증 | 이동준 | 9 |
+| 28 | `shared_recipe_weekly_settlements` | 주간 확정 완료 기록 | 대상이 없는 주도 포함한 주별 완료 기록. 순위·보상 중복 확정 방지 | 7 공유 공간·장바구니 | 최유리 | 2 |
 
 ## 관계도
 
@@ -63,9 +65,12 @@ erDiagram
   receipt_items |o--o| ingredients : "receipt_item_id"
   users ||--o{ ingredient_logs : "user_id"
   ingredients |o--o{ ingredient_logs : "ingredient_id"
+  ingredient_categories ||--o{ ingredient_logs : "category_id"
   users ||--o{ receipts : "user_id"
   receipts ||--o{ receipt_items : "receipt_id"
   ingredient_categories ||--o{ receipt_items : "category_id"
+  users ||--o{ manual_ingredient_expenses : "user_id"
+  ingredient_categories ||--o{ manual_ingredient_expenses : "category_id"
   users ||--o{ recipes : "user_id"
   recipes ||--o{ recipe_ingredients : "recipe_id"
   ingredients |o--o{ recipe_ingredients : "ingredient_id"
@@ -92,6 +97,10 @@ erDiagram
   ingredients |o--o{ notifications : "ingredient_id"
   meal_plans |o--o{ notifications : "meal_plan_id"
   ingredient_categories ||--o{ ingredient_catalog : "category_id"
+  shared_recipe_weekly_settlements {
+    date week_start PK
+    timestamp created_at
+  }
   users {
     bigint id PK
     varchar provider
@@ -184,6 +193,7 @@ erDiagram
     bigint id PK
     bigint user_id FK
     bigint ingredient_id FK
+    bigint category_id FK
     varchar type
     varchar name
     numeric amount
@@ -502,6 +512,7 @@ erDiagram
 | `id` | bigint | PK |  | 아니오 |  | 고유 번호 |
 | `user_id` | bigint | FK | users | 아니오 |  | 회원(재료가 지워져도 월별로 셈) |
 | `ingredient_id` | bigint | FK | ingredients | 예 |  | 재료. 재료가 지워지면 비움 |
+| `category_id` | bigint | FK | ingredient_categories | 예(후속에서 NOT NULL) |  | 기록할 때의 카테고리. 새 코드는 항상 채움. 배포 중이나 롤백 뒤 구버전이 기록을 쓸 수 있도록 V25에서는 NULL을 허용하고, 후속 마이그레이션에서 남은 NULL을 채운 뒤 NOT NULL을 검. 재료를 지우거나 카테고리를 고쳐도 바뀌지 않음(버린 식재료 조회에서 읽음) |
 | `type` | varchar |  |  | 아니오 |  | USED/DISCARDED |
 | `name` | varchar |  |  | 아니오 |  | 기록할 때의 재료명 |
 | `amount` | numeric(10,3) |  |  | 아니오 |  | 뺀 수량 |
@@ -766,6 +777,38 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 
 - 서버는 재료명으로 단위를 이 순서로 정해요(#145에서 결정). (1) 재료명이 사전 이름과 정확히 같으면 그 단위, (2) 아니면 재료명 안에 들어 있는 사전 이름 중 같은 카테고리의 두 글자 이상인 것, 여러 개면 가장 긴 이름의 단위, (3) 그래도 없으면 `EA`. 영수증에 찍힌 용량 단위(예: "300g"의 g)는 사전 단위보다 앞서지 않아요.
 
+### 27. `manual_ingredient_expenses` 직접 등록 재료 지출
+
+직접 등록·장바구니 이동은 가격이 비어 있어도 등록 시점 값을 같은 트랜잭션으로 저장합니다. 식비에는 가격이 있는 기록만 집계합니다. 재료가 삭제되어도 유지하고 회원 탈퇴 시 영수증 모듈에서 삭제합니다. 기존 행은 이관하지 않습니다.
+
+| 컬럼 | 타입 | 키 | 참조 | Null | 기본값 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `ingredient_id` | bigint | PK | - | 아니오 | - | 재료 삭제 후에도 유지되는 원래 재료 ID |
+| `user_id` | bigint | FK | users | 아니오 | - | 회원 |
+| `category_id` | bigint | FK | ingredient_categories | 아니오 | - | 등록 시 카테고리 |
+| `name` | varchar(50) | | | 아니오 | - | 등록 시 이름 |
+| `storage` | varchar(10) | | | 아니오 | - | 등록 시 보관 위치 |
+| `amount` | numeric(10,3) | | | 아니오 | - | 등록 시 수량 |
+| `unit` | varchar(10) | | | 아니오 | - | 등록 시 단위 |
+| `price` | bigint | | | 예 | - | 입력한 경우의 등록 시 가격(원) |
+| `created_at` | timestamp | | | 아니오 | - | 등록 시각(KST) |
+
+`(user_id, created_at)` 인덱스로 기간을 조회합니다.
+
+### 28. `shared_recipe_weekly_settlements` (주간 확정 완료 기록, #92)
+
+대상 글이 없는 주도 포함하여 확정한 주마다 한 행을 저장해요. 이 행·확정 순위·보상을 같은 트랜잭션에서 넣어요. 주별 고유 키로 동시 실행을 직렬화하고, 실패하면 완료 기록까지 롤백되어 다시 실행할 수 있어요. 공개 API 리소스가 아닌 작업 완료 기록이에요.
+
+| 컬럼 | 타입 | 키 | NULL | 설명 |
+| --- | --- | --- | --- | --- |
+| `week_start` | date | PK | 아니오 | 집계한 주의 월요일 |
+| `created_at` | timestamp | | 아니오 | 서버 Clock으로 정한 실행 시각 |
+
+- #92 구현: `FinalizeWeeklyRankingUseCase.finalizePreviousWeek()`가 KST 기준 직전 주를 확정해요. 공개(VISIBLE) 글에서 `[주 시작 00:00, 다음 월요일 00:00)`에 저장했고 현재 남아 있는 행을 세며, 본인 저장 제외·동점 순서는 #88과 같은 제안을 사용해요. 저장 0건 제외는 확정이에요. 탈퇴자는 순위에 남기되 보상만 건너뛰고 차순위에 넘기지 않는 것은 제안이에요.
+- 최대 100위까지 기록하고 레시피별 +10/+6/+3회를 지급하여 한 작성자의 여러 순위 수상도 허용해요. 만료는 실제 지급 시각 + 달력상 1개월(해당 일이 없으면 월말)이에요. 기본 횟수를 먼저 쓰고 만료 전 보상을 만료 시각·ID 순으로 차감하며, 사용한 `grant_id`를 같은 트랜잭션의 `usage_logs`에 기록해요.
+- 대상이 없는 주도 확정 완료예요. 순위 행 유무 대신 `shared_recipe_weekly_settlements`를 사용해요. E75는 EventTracker로 커밋 후 제출하며, 이벤트 적재는 최선 노력 방식이라 확정한 주를 재실행해도 재전송하지 않아요.
+- 시점 관련 한계: 취소된 저장 이력이 없어서 첫 실행이 늦으면 실행 시점까지 남은 행을 세며, 주 경계 이후 취소된 저장을 과거 상태로 복원할 수 없어요. 누락 주 자동 소급 실행은 제공하지 않아요. 정확한 과거 복구를 보장한다고 설명하면 안 돼요. 작성자 삭제·확정 후 보상 처리는 #230 미결로 남겨요.
+
 ## 관계 목록
 
 | 부모 | 자식 | 연결 컬럼 | 관계 | 부모가 없어도 됨 | 부모 삭제 시 |
@@ -781,7 +824,10 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `receipt_items` | `ingredients` | receipt_item_id | 1:1 | 예 | SET NULL |
 | `users` | `ingredient_logs` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `ingredients` | `ingredient_logs` | ingredient_id | 1:N | 예 | SET NULL |
+| `ingredient_categories` | `ingredient_logs` | category_id | 1:N | 예(후속에서 NOT NULL) | RESTRICT(기준 데이터라 지우지 않음) |
 | `users` | `receipts` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
+| `users` | `manual_ingredient_expenses` | user_id | 1:N | 아니오 | CASCADE(회원 탈퇴 시에는 앱이 삭제) |
+| `ingredient_categories` | `manual_ingredient_expenses` | category_id | 1:N | 아니오 | RESTRICT |
 | `receipts` | `receipt_items` | receipt_id | 1:N | 아니오 | CASCADE(6개월 정리 때 같이 삭제) |
 | `ingredient_categories` | `receipt_items` | category_id | 1:N | 아니오 | RESTRICT |
 | `users` | `recipes` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
@@ -872,6 +918,8 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 ## 이전 ERD v3(32개)와 차이
 
 요약: 변경 17개, 유지 7개, 삭제 7개, 보류 1개, 추가 2개 → 새 ERD 26개. 새로 생긴 테이블은 11/22 구독 추가로 생긴 subscriptions, subscription_payments예요.
+
+이후 #73의 `manual_ingredient_expenses`와 #92의 `shared_recipe_weekly_settlements`가 추가되어 위 목록에 문서화한 테이블은 28개예요.
 
 | 이전 테이블 | 상태 | 추가 컬럼 | 뺀 컬럼 | 이유 |
 | --- | --- | --- | --- | --- |

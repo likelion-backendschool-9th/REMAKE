@@ -22,6 +22,7 @@ import com.remake.ingredient.domain.FridgeIngredient;
 import com.remake.ingredient.domain.Ingredient;
 import com.remake.ingredient.domain.IngredientCategory;
 import com.remake.ingredient.domain.IngredientCategoryCode;
+import com.remake.ingredient.domain.IngredientDetail;
 
 import lombok.RequiredArgsConstructor;
 
@@ -43,20 +44,22 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 
 	@Override
 	@Transactional(readOnly = true)
-	public FridgeIngredient getIngredient(Long userId, Long ingredientId) {
-		return toFridgeIngredient(loadIngredientPort.loadByIdAndUserId(ingredientId, userId)
+	public IngredientDetail getIngredient(Long userId, Long ingredientId) {
+		return toDetail(loadIngredientPort.loadByIdAndUserId(ingredientId, userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_NOT_FOUND)));
 	}
 
 	@Override
 	@Transactional
-	public FridgeIngredient updateIngredient(UpdateIngredientCommand command) {
+	public IngredientDetail updateIngredient(UpdateIngredientCommand command) {
 		Ingredient ingredient = loadOwned(command.userId(), command.ingredientId());
 		// 수량 수정은 입력 실수를 바로잡는 용도라, 쓰거나 버린 기록이 있으면 처음 양이 달라지므로 거부한다.
 		if (command.amount() != null && loadIngredientLogPort.existsByIngredientId(ingredient.id())) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT, "사용하거나 폐기한 기록이 있는 재료는 수량을 고칠 수 없습니다.");
 		}
 		try {
+			// 단위를 다시 정할지는 수정하기 전 이름·카테고리의 사전 단위와 지금 단위가 같은지로 가른다(아래 참고).
+			boolean followedDictionary = unitFollowsName(ingredient);
 			boolean nameOrCategoryChanged = false;
 			if (command.name() != null) {
 				String before = ingredient.name();
@@ -69,8 +72,9 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 						.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND)).id());
 				nameOrCategoryChanged |= !before.equals(ingredient.categoryId());
 			}
-			if (nameOrCategoryChanged) {
+			if (nameOrCategoryChanged && followedDictionary) {
 				// 이름이나 카테고리가 바뀌면 단위만 다시 정한다. 수량 숫자는 그대로다(대파 1단 → 양파 1개).
+				// 장바구니·영수증 예외로 사전과 다른 단위를 가진 재료(followedDictionary가 false)는 단위와 수량을 그대로 둔다(#233).
 				// 기록이 있어도 같고, 기록은 당시 이름·단위를 따로 갖고 있어 지난 기록은 바뀌지 않는다.
 				ingredient.changeUnit(
 						resolveIngredientUnitUseCase.resolveUnit(ingredient.name(), categoryCodeOf(ingredient)));
@@ -90,7 +94,7 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 		} catch (IllegalArgumentException e) {
 			throw new BusinessException(ErrorCode.INVALID_INPUT, e.getMessage());
 		}
-		return toFridgeIngredient(saveIngredientPort.save(ingredient));
+		return toDetail(saveIngredientPort.save(ingredient));
 	}
 
 	@Override
@@ -101,11 +105,21 @@ public class IngredientService implements GetIngredientUseCase, UpdateIngredient
 		deleteIngredientPort.deleteById(ingredient.id());
 	}
 
-	// 카테고리 이미지와 오늘 기준 D-day·상태를 붙인다. 계산은 FridgeIngredient.of 한 곳이라 목록(API 12)과 같다.
-	private FridgeIngredient toFridgeIngredient(Ingredient ingredient) {
+	// 카테고리 이미지와 오늘 기준 D-day·상태를 붙이고, 단위를 다시 정하는 재료인지 더한다. D-day·상태 계산은 FridgeIngredient.of 한 곳이라 목록(API 12)과 같다.
+	private IngredientDetail toDetail(Ingredient ingredient) {
 		IngredientCategory category = loadIngredientCategoryPort.loadById(ingredient.categoryId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.INGREDIENT_CATEGORY_NOT_FOUND));
-		return FridgeIngredient.of(ingredient, category, LocalDate.now(clock));
+		return new IngredientDetail(FridgeIngredient.of(ingredient, category, LocalDate.now(clock)),
+				unitFollowsName(ingredient, category.code()));
+	}
+
+	// 지금 단위가 지금 이름·카테고리의 사전 단위와 같으면 true. 사전이 바뀌어 달라졌다면 false가 되어 단위를 유지한다.
+	private boolean unitFollowsName(Ingredient ingredient) {
+		return unitFollowsName(ingredient, categoryCodeOf(ingredient));
+	}
+
+	private boolean unitFollowsName(Ingredient ingredient, IngredientCategoryCode categoryCode) {
+		return ingredient.unit() == resolveIngredientUnitUseCase.resolveUnit(ingredient.name(), categoryCode);
 	}
 
 	private IngredientCategoryCode categoryCodeOf(Ingredient ingredient) {

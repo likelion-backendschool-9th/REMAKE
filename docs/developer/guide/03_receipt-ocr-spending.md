@@ -53,7 +53,7 @@
 | 보관 기간 | 구매일부터 6개월, 지나면 매일 새벽 정리 작업이 이미지와 함께 삭제 | 확정 |
 | 이미지 저장 | 저장소 종류는 백엔드가 정함. 응답 이미지 주소는 서버가 만듦 | 확정 |
 | 나의 소비 | "소비 패턴 확인 하기" → 나의 소비 화면: 최근 6개월 월 탭(프론트가 만듦), 그 달 지출(양수), "평균 보다 N원 더 지출", 카테고리 비율 막대·범례, 월~일 날짜 줄(선택일 아래 금액), 선택일 "총 N원"과 식재료 목록 | 확정(피그마) |
-| 소비 패턴 범위 | 영수증 품목 + 영수증 없이 추가했고 가격이 있는 재료(등록일 기준). 가격이 없으면 냉장고에만 넣은 것으로 보고 뺌. 버린 재료도 이미 산 것이라 그대로 포함 | 확정 |
+| 소비 패턴 범위 | 영수증 품목 + 영수증 없이 추가했고 가격이 있는 재료(등록일 기준). 등록 후 가격을 넣거나 고쳐도 반영하고, 지우면 합계에서 빼며 날짜는 등록일 그대로. 가격이 없으면 냉장고에만 넣은 것으로 보고 뺌. 버린 재료도 이미 산 것이라 그대로 포함 | 확정 |
 | 카테고리 비율 | 12개 카테고리별 지출 비율을 막대 하나와 범례로, 지출 0인 카테고리는 빠짐 | 확정(피그마) / 0 제외는 제안 |
 | 날짜 선택 | 기본은 오늘(이번 달이 아니면 그 달 마지막 구매일). 소비가 없으면 "해당 날짜에는 소비가 없습니다" | 확정(피그마) / 기본 날짜는 제안 |
 | 주 넘기기 | 월~일 날짜 줄을 좌우로 밀어(캐러셀) 고른 달의 앞·뒤 주로 넘김. 고른 달 밖의 날과 오늘 뒤의 날은 고를 수 없음 | 확정(11/25) / 고를 수 없는 날은 제안 |
@@ -72,9 +72,11 @@
 | 22 | GET | `/user/receipts` | 그 달 영수증. 월 합계는 영수증 품목만, 평균은 최근 6개월 월 합계 평균 | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, weeks: [{ label, startDate, endDate, totalAmount, receipts: [{ id, storeCode, storeName, purchasedOn, itemCount, totalAmount }] }] }` | receipts, receipt_items |
 | 23 | GET | `/user/receipts/{id}` | 영수증 하나 | `-` | `200 { id, storeCode, storeName, purchasedOn, imageUrl, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }], totalAmount }` | receipts, receipt_items |
 | 24 | DELETE | `/user/receipts/{id}` | 영수증·품목·이미지 삭제. 식비·소비 패턴에서도 빠지고 냉장고 재료는 남음(ERD 답 1) | `-` | `204` | receipts, receipt_items, ingredients |
-| 25 | GET | `/user/expenses/patterns` | 그 달 소비. 영수증 품목 + 영수증 없이 가격을 넣은 재료(등록일 기준, ERD 답 3). `discardedAmount`는 그 달 버린 금액(`ingredient_logs.cost_amount` 합계, 11/25 제안, #248) | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, discardedAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | receipt_items, ingredients |
-| 26 | GET | `/user/expenses/daily-items` | 고른 날의 품목 | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | receipt_items, ingredients |
+| 25 | GET | `/user/expenses/patterns` | 그 달 소비. 영수증 품목 + 영수증 없이 가격을 넣은 재료(등록일 기준, ERD 답 3). `discardedAmount`는 그 달 버린 금액(`ingredient_logs.cost_amount` 합계, 11/25 제안, #248) | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, averageDiffAmount, discardedAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | receipt_items, manual_ingredient_expenses |
+| 26 | GET | `/user/expenses/daily-items` | 고른 날의 품목 | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | receipt_items, manual_ingredient_expenses |
 | 61 | GET | `/user/expenses/discarded` | (11/25 제안, #248) p3.4.1 버린 식재료. 그 달 `DISCARDED` 기록 하나당 한 줄, 최근에 버린 것부터. `discardedOn`은 버린 날(KST), `amount`는 `cost_amount`(가격이 없으면 null), `totalAmount`는 null이 아닌 금액의 합으로 API 25 `discardedAmount`와 같음. 기록이 없는 달은 200 + 빈 목록 | `?month=2026-11(최근 6개월 안)` | `200 { month, totalAmount, items: [{ name, categoryCode, discardedOn, amount }] }` | ingredient_logs |
+
+API 25의 월을 생략하면 한국 시간 기준 이번 달을 조회해요. API 25·26은 이번 달을 포함한 최근 6개 달을 조회하고, 기록 없는 날은 합계 0과 빈 품목 목록을 돌려줘요. 카테고리 비율은 0~1이에요. API 22와 같이 평균에서는 이번 달과 기록이 없는 달을 제외해요. 버린 식비 필드는 #248에서 제안한 내용이에요.
 
 API 20 응답의 `purchaseQuantity`와 `volume`은 #72에서 반영 예정이며, #101에서 프론트 연동을 확인해요.
 
@@ -103,7 +105,7 @@ API 20 응답의 `purchaseQuantity`와 `volume`은 #72에서 반영 예정이며
 - 구매일·판매처를 못 읽으면 비워서 주고, 등록 때 둘 다 필수예요. 구매일이 6개월 지났으면 스캔 단계에서 실패로 돌려줘요.
 - 영수증 품목별 `cartDeductions`는 생략·빈 배열 또는 1개만 허용해요. 영수증 쪽은 양수 수량과 품목별 실제 냉장고 등록량 이내인지를 검증한 뒤, 최종 재료명·서버 결정 단위로 07의 `DeductCartItemsUseCase`를 같은 트랜잭션에서 호출해요. 반환값 `cartRemovedCount`는 0이 되어 실제 삭제된 행 수예요. 상세 계약은 [공유·장바구니 가이드](07_shared-cart.md#영수증-연동-계약57)를 보세요.
 - 월 합계는 그 달 영수증의 식재료 품목 금액(구매일 기준). 평균은 최근 6개월 월 합계 평균과의 차이예요(이번 달 제외 등 세부는 제안).
-- 소비 패턴은 영수증 품목 + 영수증 없이 가격을 넣은 재료(등록일 기준)예요. 가격 없는 재료는 빼고, 버린 재료는 이미 산 것이라 포함해요.
+- 소비 패턴은 영수증 품목 + 영수증 없이 가격을 넣은 재료(등록일 기준)예요. 등록 후 가격 수정도 반영하고 날짜는 등록일이에요. 가격 없는 재료는 빼고, 버린 재료는 이미 산 것이라 포함해요.
 - 판매처 이름을 14종 코드에 맞춰 `store_code`로 저장하고, 못 맞추면 비워요(기본 아이콘). 마트 배지는 영수증 라우트 안 코드 컴포넌트예요.
 - 영수증 이미지 저장소 종류는 백엔드가 정하고, 응답 이미지 주소는 서버가 만들어요. 매일 새벽 정리 작업이 구매일 6개월 지난 영수증을 이미지와 함께 지워요.
 - 영수증 스캔은 횟수 제한이 없어요. 비용·성공률은 이벤트로 봐요.

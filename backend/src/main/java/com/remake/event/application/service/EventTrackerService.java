@@ -49,7 +49,7 @@ public class EventTrackerService implements EventTracker {
 					command.userId(),
 					command.sessionId(),
 					EventSource.SERVER,
-					screen.getCode(),
+					screen == null ? null : screen.getCode(),
 					filtered.get(),
 					command.platform(),
 					command.appVersion(),
