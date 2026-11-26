@@ -1,0 +1,25 @@
+/* 피그마 a0-권한 없음: 배경 bg/subtle, 가운데 폭 328, 로고는 왼쪽 위(40, 32) */
+.page {
+  /* 운영자 화면과 같이 루트 셸(480px) 대신 화면 전체를 덮는다 */
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100dvh;
+  padding: 2rem;
+  background: var(--color-bg-subtle);
+}
+
+.logo {
+  position: absolute;
+  top: 2rem;
+  left: 2.5rem;
+}
+
+.content {
+  width: 100%;
+  max-width: 20.5rem;
+}

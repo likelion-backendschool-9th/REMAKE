@@ -1,0 +1,183 @@
+/* 피그마 a1-대시보드. 카드 사이 16 */
+
+/* 위 줄: 북극성 지표(남은 폭) + 오른쪽 칸(폭 340, 카드 2개 간격 16) */
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-16);
+  width: 100%;
+}
+
+.sideColumn {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 21.25rem;
+}
+
+/* 북극성 지표 카드: 높이 367, 제목·값은 위, 그래프는 아래 */
+.northStar {
+  flex: 1;
+  min-height: 22.9375rem;
+}
+
+.chart {
+  margin-top: auto;
+}
+
+/* 값과 변화: 아래 맞춤, 간격 12. 피그마 값 글은 숫자 전용 36 Bold(텍스트 스타일 없음) */
+.northStarValue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-12);
+}
+
+.bigNumber {
+  color: var(--color-text-strong);
+  font: 700 2.25rem/1.4 var(--font-family-base);
+}
+
+.bigNumber[data-tone="danger"] {
+  color: var(--color-text-danger);
+}
+
+/* 버린 금액·KPI 값: 숫자 전용 28 Bold */
+.mediumNumber {
+  color: var(--color-text-strong);
+  font: 700 1.75rem/1.4 var(--font-family-base);
+  white-space: nowrap;
+}
+
+/* 지난주 대비: Remake/content. 올랐어요=text/safe, 내렸어요=text/danger */
+.delta {
+  font: var(--font-content);
+}
+
+.delta[data-tone="up"] {
+  color: var(--color-text-safe);
+}
+
+.delta[data-tone="down"] {
+  color: var(--color-text-danger);
+}
+
+/* 보조 글: Remake/assist·text/sub */
+.assist {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+.link {
+  align-self: flex-start;
+}
+
+/* 이상 징후 띠: bg/surface, 테두리 text/danger, radius/lg, 여백 14/20, 간격 12 */
+.anomaly {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  width: 100%;
+  padding: var(--space-14) var(--space-20);
+  border: 1px solid var(--color-text-danger);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
+
+/* Remake/content-strong·text/strong. 남은 폭을 차지해 보조 글을 오른쪽으로 민다 */
+.anomalyMessage {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-strong);
+  font: var(--font-content-strong);
+}
+
+/* Remake/content·text/body */
+.anomalyDetail {
+  color: var(--color-text-body);
+  font: var(--font-content);
+  white-space: nowrap;
+}
+
+/* KPI: 한 줄에 4개, 간격 16 */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-16);
+  width: 100%;
+  padding: 0;
+  list-style: none;
+}
+
+/* KPI 카드: 여백 18/20, 간격 8 */
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  height: 100%;
+  padding: 1.125rem var(--space-20);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
+
+.kpiHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+/* Remake/content·text/title */
+.kpiName {
+  color: var(--color-text-title);
+  font: var(--font-content);
+}
+
+/* a1-대시보드-데이터 없음: 아래 여백 48 */
+.emptyCard {
+  padding-bottom: 3rem;
+}
+
+/* a0-로딩 */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  width: 100%;
+}
+
+.skeletonCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-14);
+  min-width: 0;
+  padding: var(--space-20) var(--space-24);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  overflow: hidden;
+}
+
+.skeletonCard[data-grow] {
+  flex: 1;
+}
+
+.skeletonCard[data-side] {
+  flex: none;
+  width: 21.25rem;
+}
+
+.skeletonCard[data-kpi] {
+  gap: var(--space-10);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
