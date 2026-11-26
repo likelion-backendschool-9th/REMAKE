@@ -117,6 +117,9 @@ public class SubscriptionService implements GetSubscriptionUseCase, PrepareBilli
 			throw new BusinessException(ErrorCode.BILLING_AUTH_FAILED);
 		}
 
+		// 결제 전에 암호화한다. TOSS_BILLING_KEY_SECRET이 비면 charge 전에 실패해 과금만 되는 상태를 막는다.
+		String encryptedKey = billingKeyCipherPort.encrypt(plainBillingKey);
+
 		LocalDateTime now = LocalDateTime.now(clock);
 		LocalDate today = now.toLocalDate();
 		String orderId = "sub_" + UUID.randomUUID().toString().replace("-", "");
@@ -135,7 +138,6 @@ public class SubscriptionService implements GetSubscriptionUseCase, PrepareBilli
 
 		// 첫 결제 실패 시 구독 행을 만들지 않는다. subscription_payments.subscription_id가 NOT NULL이라
 		// FAILED 결제 행은 남기지 않고 E85만 기록한다(errors.md의 FAILED 행 문구와 ERD 충돌).
-		String encryptedKey = billingKeyCipherPort.encrypt(plainBillingKey);
 		String customerKey = command.customerKey();
 		String paymentKey = charged.paymentKey();
 		return transactionTemplate.execute(status -> {
