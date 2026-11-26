@@ -1,0 +1,172 @@
+/* 피그마 a4 신고 관리 */
+
+/* 처리 대기·처리 완료 칩, 칩 사이 간격 8 */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* 목록 카드: 흰 바탕, 선 border/default, radius/lg */
+.card {
+  overflow: hidden;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
+
+/* 표: 칸 사이 16, 좌우 끝 여백 24. 머리줄은 bg/section, Remake/assist·text/sub */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table th,
+.table td {
+  padding: var(--space-14) var(--space-16);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: var(--space-24);
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-right: var(--space-24);
+}
+
+.table thead tr {
+  background: var(--color-bg-section);
+}
+
+.table th {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+  white-space: nowrap;
+}
+
+/* 줄: 아래 선 border/default, Remake/content·text/body */
+.row {
+  border-bottom: 1px solid var(--color-border-default);
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+.row:hover {
+  background: var(--color-bg-subtle);
+}
+
+/* 칸 폭. 숫자 칸은 오른쪽 맞춤 */
+.countColumn {
+  width: 4.5rem;
+}
+
+.violationColumn {
+  width: 7.5rem;
+}
+
+.table .countColumn,
+.table .violationColumn,
+.table .numeric {
+  text-align: right;
+}
+
+.reasonColumn {
+  width: 15.625rem;
+}
+
+.timeColumn {
+  width: 8.125rem;
+}
+
+.statusColumn {
+  width: 6rem;
+}
+
+.resultColumn {
+  width: 6.5rem;
+}
+
+.sanctionColumn {
+  width: 10rem;
+}
+
+.operatorColumn {
+  width: 7rem;
+}
+
+.numeric {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* 글 제목 칸: 썸네일 40(bg/skeleton, radius/sm) + 제목. 제목 칸 전체가 상세로 가는 링크 */
+.titleCell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.thumb {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-skeleton);
+}
+
+.titleLink {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-title);
+  font: var(--font-content);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titleLink::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+.titleLink:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* 신고 사유 배지: 간격 6 */
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+/* 표 아래 안내: 여백 14/24, Remake/assist·text/sub */
+.footnote {
+  padding: var(--space-14) var(--space-24);
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+.empty {
+  padding: 4rem var(--space-24);
+  text-align: center;
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-20) var(--space-24);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}

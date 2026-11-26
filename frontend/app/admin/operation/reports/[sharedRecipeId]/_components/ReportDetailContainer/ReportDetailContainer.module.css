@@ -1,0 +1,214 @@
+/* 피그마 a4.1 신고 상세: 왼쪽 글 내용(넓게), 오른쪽 신고 내역·작성자 400 */
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-12);
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+.back:hover {
+  color: var(--color-text-body);
+}
+
+.back:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+.backIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 25rem;
+  align-items: start;
+  gap: var(--space-24);
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+}
+
+@media (max-width: 960px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 카드 안 내용은 간격 16 */
+.recipe,
+.side > section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* 사진 자리: 300×200, bg/skeleton */
+.photo {
+  width: 18.75rem;
+  max-width: 100%;
+  height: 12.5rem;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-skeleton);
+}
+
+.servings {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.sectionTitle {
+  color: var(--color-text-title);
+  font: var(--font-content-strong);
+}
+
+/* 재료 태그: bg/section 바탕, radius/sm */
+.ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ingredient {
+  padding: var(--space-4) var(--space-10);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-section);
+  color: var(--color-text-body);
+  font: var(--font-assist);
+}
+
+.amount {
+  color: var(--color-text-sub);
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin: 0;
+  padding-left: var(--space-20);
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+.step {
+  padding-left: var(--space-4);
+}
+
+/* 신고 사유 요약 배지 */
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+/* 신고 한 건씩: 사유 배지와 시각·회원 번호를 한 줄에 */
+.reportList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reportRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-10) 0;
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+.reportRow:last-child {
+  border-bottom: 0;
+}
+
+.reportMeta {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+  white-space: nowrap;
+}
+
+/* 작성자 정보: 이름 칸 6.5rem, 값 칸은 남은 폭 */
+.facts {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: var(--space-8) var(--space-16);
+  margin: 0;
+}
+
+.fact {
+  display: contents;
+}
+
+.fact dt {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+.fact dd {
+  margin: 0;
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+/* 처리 끝남: 처리 결과 박스(bg/section) */
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-section);
+}
+
+.resultText {
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+.resultMeta {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+/* 문제 없음·글 삭제 글 버튼: 가운데 간격 16 */
+.secondary {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-16);
+}
+
+.toastArea {
+  position: fixed;
+  bottom: var(--space-24);
+  left: 50%;
+  z-index: var(--z-toast);
+  transform: translateX(-50%);
+}
+
+/* 불러오는 중 자리 */
+.skeletonCard {
+  height: 20rem;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
