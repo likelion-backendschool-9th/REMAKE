@@ -48,6 +48,11 @@ public enum ErrorCode {
 	DELETION_CODE_INVALID(HttpStatus.BAD_REQUEST, "인증번호가 맞지 않아요"),
 	DELETION_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "인증번호 유효 시간이 지났어요. 다시 받아 주세요"),
 	DELETION_CODE_LOCKED(HttpStatus.TOO_MANY_REQUESTS, "입력 횟수를 넘었어요. 인증번호를 다시 받아 주세요"),
+	ALREADY_SUBSCRIBED(HttpStatus.CONFLICT, "이미 구독 중이에요"),
+	SUBSCRIPTION_NOT_FOUND(HttpStatus.NOT_FOUND, "구독 중인 멤버십이 없어요"),
+	BILLING_AUTH_FAILED(HttpStatus.BAD_REQUEST, "카드 등록에 실패했어요. 다시 시도해 주세요"),
+	PAYMENT_FAILED(HttpStatus.PAYMENT_REQUIRED, "결제에 실패했어요. 다른 카드로 다시 시도해 주세요"),
+	PAYMENT_UPSTREAM_ERROR(HttpStatus.BAD_GATEWAY, "결제 서비스에 문제가 있어요. 잠시 후 다시 시도해 주세요"),
 	// 재료
 	INGREDIENT_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "재료 카테고리를 찾을 수 없습니다."),
 	INGREDIENT_NOT_FOUND(HttpStatus.NOT_FOUND, "재료를 찾을 수 없습니다."),

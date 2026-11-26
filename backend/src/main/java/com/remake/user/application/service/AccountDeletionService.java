@@ -37,6 +37,7 @@ import com.remake.quota.application.port.in.DeleteUsageLogsForUserUseCase;
 import com.remake.receipt.application.port.in.DeleteReceiptsForUserUseCase;
 import com.remake.recipe.application.port.in.DeleteSavedRecipesForUserUseCase;
 import com.remake.user.application.port.in.DeleteAccountUseCase;
+import com.remake.user.application.port.in.EndSubscriptionForWithdrawalUseCase;
 import com.remake.user.application.port.in.PurgeExpiredDeletionCodesUseCase;
 import com.remake.user.application.port.in.RequestAccountDeletionCodeUseCase;
 import com.remake.user.application.port.out.LoadAccountDeletionRequestPort;
@@ -52,7 +53,7 @@ import com.remake.user.domain.User;
 
 /**
  * 계정 삭제(API 9·10)와 하루 지난 인증번호 정리.
- * 구독 테이블이 아직 없으면 구독 종료 이벤트는 보내지 않는다(후속 이슈).
+ * 미종료 구독은 탈퇴 직전에 즉시 종료한다(#258).
  */
 @Service
 public class AccountDeletionService
@@ -75,6 +76,7 @@ public class AccountDeletionService
 	private final DeleteUsageLogsForUserUseCase deleteUsageLogsForUserUseCase;
 	private final DeleteRefreshTokensForUserUseCase deleteRefreshTokensForUserUseCase;
 	private final ExchangeOAuthProfileUseCase exchangeOAuthProfileUseCase;
+	private final EndSubscriptionForWithdrawalUseCase endSubscriptionForWithdrawalUseCase;
 	private final EventTracker eventTracker;
 	private final Clock clock;
 	private final TransactionTemplate requiresNewTransaction;
@@ -91,8 +93,9 @@ public class AccountDeletionService
 			DeleteReceiptsForUserUseCase deleteReceiptsForUserUseCase,
 			DeleteUsageLogsForUserUseCase deleteUsageLogsForUserUseCase,
 			DeleteRefreshTokensForUserUseCase deleteRefreshTokensForUserUseCase,
-			ExchangeOAuthProfileUseCase exchangeOAuthProfileUseCase, EventTracker eventTracker, Clock clock,
-			PlatformTransactionManager transactionManager) {
+			ExchangeOAuthProfileUseCase exchangeOAuthProfileUseCase,
+			EndSubscriptionForWithdrawalUseCase endSubscriptionForWithdrawalUseCase, EventTracker eventTracker,
+			Clock clock, PlatformTransactionManager transactionManager) {
 		this.loadUserPort = loadUserPort;
 		this.saveUserPort = saveUserPort;
 		this.loadAccountDeletionRequestPort = loadAccountDeletionRequestPort;
@@ -108,6 +111,7 @@ public class AccountDeletionService
 		this.deleteUsageLogsForUserUseCase = deleteUsageLogsForUserUseCase;
 		this.deleteRefreshTokensForUserUseCase = deleteRefreshTokensForUserUseCase;
 		this.exchangeOAuthProfileUseCase = exchangeOAuthProfileUseCase;
+		this.endSubscriptionForWithdrawalUseCase = endSubscriptionForWithdrawalUseCase;
 		this.eventTracker = eventTracker;
 		this.clock = clock;
 		this.requiresNewTransaction = new TransactionTemplate(transactionManager);
@@ -152,6 +156,7 @@ public class AccountDeletionService
 		LocalDateTime now = LocalDateTime.now(clock);
 		long tenureDays = tenureDays(user, now);
 
+		endSubscriptionForWithdrawalUseCase.endForWithdrawal(user.id());
 		deleteUserNotificationsUseCase.deleteUserNotifications(user.id());
 		deleteCartItemsForUserUseCase.deleteCartItemsForUser(user.id());
 		deleteMealPlansForUserUseCase.deleteMealPlansForUser(user.id());
@@ -162,7 +167,9 @@ public class AccountDeletionService
 		saveExcludedIngredientPort.replaceAll(user.id(), List.of());
 		deleteRefreshTokensForUserUseCase.deleteAllForUser(user.id());
 		saveAccountDeletionRequestPort.deleteAllByUserId(user.id());
-		saveUserPort.save(user.withdraw(now));
+		// 구독 종료가 plan을 BASIC으로 바꿨을 수 있어 다시 읽는다.
+		User toDelete = requireActiveUser(user.id());
+		saveUserPort.save(toDelete.withdraw(now));
 
 		eventTracker.track(EventName.ACCOUNT_DELETED, Screen.SETTINGS,
 				Map.of("tenure_days", tenureDays, "deletion_method", method.eventValue()),

@@ -82,6 +82,7 @@ When a feature needs a connection other than `adapter/in/web` and `adapter/out/p
 | File storage (receipt photos, cooking photos) | `adapter/out/filestorage` | `receipt/adapter/out/filestorage` |
 | Social unlink (Kakao unlink / Naver delete) | `adapter/out/oauth` | `user/adapter/out/oauth` |
 | Email delivery (Kakao/Google account deletion code) | `adapter/out/mail` | `user/adapter/out/mail` |
+| Payments (Toss billing key and auto-charge) | `adapter/out/payment` | `user/adapter/out/payment` |
 
 - Schedulers call only `UseCase` interfaces, like controllers. Running a job twice must give the same result; block concurrent duplicates with a DB unique key.
 - Services never call external services directly; they call `port/out` interfaces only. External call code implements those interfaces in the adapter folders above.

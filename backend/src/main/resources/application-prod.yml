@@ -62,4 +62,10 @@ remake:
     # AI 레시피·식단표 생성. 키는 배포 담당자가 서버 .env에 채운다. 비어 있으면 생성 요청만 AI_UPSTREAM_ERROR로 실패하고 앱은 정상 기동한다.
     api-key: ${GEMINI_API_KEY:}
     model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+  toss:
+    # 토스 자동결제. 시크릿·billingKey는 서버에만 둔다. 배포 담당자가 서버 .env에 채운다(#167).
+    mock-enabled: false
+    secret-key: ${TOSS_SECRET_KEY:}
+    billing-key-secret: ${TOSS_BILLING_KEY_SECRET:}
+    base-url: ${TOSS_BASE_URL:https://api.tosspayments.com}
 

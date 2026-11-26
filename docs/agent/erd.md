@@ -24,7 +24,7 @@
 | 3 | `refresh_tokens` | Refresh tokens | Login refresh tokens (hash). Deleted on logout | 1 login/settings | 이준호 | 5 |
 | 4 | `account_deletion_requests` | Account deletion codes | 6-digit email codes for Kakao/Google withdrawal | 1 login/settings | 이준호 | 7 |
 | 5 | `subscriptions` | Subscriptions | Premium subscription (Toss Payments card auto-billing). One row per subscription; at most one unfinished subscription per member | 1 login/settings | 이준호 | 12 |
-| 6 | `subscription_payments` | Subscription payments | One row per first payment and per monthly auto-payment (success or failure) | 1 login/settings | 이준호 | 12 |
+| 6 | `subscription_payments` | Subscription payments | One row per first payment and per monthly auto-payment (success or failure). A failed first payment does not create a row (E85 only) | 1 login/settings | 이준호 | 12 |
 | 7 | `ingredient_categories` | Ingredient categories | 12 categories (image, default storage, default shelf life) | 2 fridge | 김재연 | 7 |
 | 8 | `ingredients` | Fridge ingredients | One fridge ingredient. Deleted when the amount reaches 0. Registrations without a receipt also record their origin | 2 fridge | 김재연 | 13 |
 | 9 | `ingredient_logs` | Ingredient use and discard logs | "Used / discarded" and cook deductions. Source of the discarded cost | 2 fridge | 김재연 | 10 |
@@ -451,7 +451,7 @@ Premium membership subscription (Toss Payments card auto-billing). One row per s
 
 ### 6. `subscription_payments` (Subscription payments)
 
-One row per payment attempt: the first payment and each monthly auto-payment, success or failure. Owner 이준호 (1 login/settings).
+One row per payment attempt: the first payment and each monthly auto-payment, success or failure. A failed first payment does not create a row — there is no subscription yet so `subscription_id` (NOT NULL) cannot be filled; record it with event E85 only. Owner 이준호 (1 login/settings).
 
 | Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -897,7 +897,7 @@ These values appear on screens but have no column. They are computed from the so
 | Recipe "delete" | Remove only from the saved list (`saved_recipes`). Shared posts and others' saves stay |
 | Withdrawal and subscription | End the subscription immediately on withdrawal (ENDED, clear `billing_key`, no more payments). Keep `subscription_payments` (payment records). No refund for the remaining period (11/24 terms decision; resolves policy ch. 12 item 13) |
 | Cleanup jobs | Every early morning: receipts older than 6 months by purchase date (with images), notifications older than 30 days, deletion codes older than a day |
-| Subscription start | Toss card registration -> the server issues a billingKey -> on first payment success create `subscriptions` (ACTIVE) and `subscription_payments` (DONE) and set `users.plan` = PREMIUM. If the first payment fails, do not create a subscription (record the failure only). Premium limits apply at once (recipes 4 per day, meal plans 4 this month and 7 days) |
+| Subscription start | Toss card registration -> the server issues a billingKey -> on first payment success create `subscriptions` (ACTIVE) and `subscription_payments` (DONE) and set `users.plan` = PREMIUM. If the first payment fails, do not create a subscription and do not insert a `subscription_payments` row (E85 only). Premium limits apply at once (recipes 4 per day, meal plans 4 this month and 7 days) |
 | Subscription renewal | Every early morning, charge ACTIVE subscriptions whose `next_billing_date` is today with the billingKey. On success extend the period by a month. On failure end the subscription at once (ENDED, clear `billing_key`, `users.plan` = BASIC); to subscribe again, register a card again (11/24 terms decision; resolves policy ch. 12 item 11) |
 | Subscription cancel | Cancel request sets `status` = CANCELED and `canceled_at`. PREMIUM stays until the day before the next billing date; on that date's early morning do not charge, set ENDED, clear `billing_key`, set `users.plan` = BASIC. Basic limits apply afterwards (counts already used this month still count) |
 | Common | Amounts `numeric(10,3)`, money `bigint` (KRW), time `timestamp` (Korea time), JSON `jsonb`. `created_at` on every app-created row, `updated_at` only on tables whose values change |

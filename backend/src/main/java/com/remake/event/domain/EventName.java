@@ -37,6 +37,11 @@ public enum EventName {
 	LOGOUT_CONFIRMED("logout_confirmed", EventSource.CLIENT, Set.of()), // E16
 	ACCOUNT_DELETION_REQUESTED("account_deletion_requested", EventSource.SERVER, Set.of("provider", "deletion_method")), // E17
 	ACCOUNT_DELETED("account_deleted", EventSource.SERVER, Set.of("tenure_days", "deletion_method")), // E18
+	SUBSCRIPTION_CHECKOUT_STARTED("subscription_checkout_started", EventSource.CLIENT, Set.of()), // E83
+	SUBSCRIPTION_STARTED("subscription_started", EventSource.SERVER, Set.of("payment_amount")), // E84
+	SUBSCRIPTION_PAYMENT_FAILED("subscription_payment_failed", EventSource.SERVER, Set.of("is_renewal", "error_code")), // E85
+	SUBSCRIPTION_RENEWED("subscription_renewed", EventSource.SERVER, Set.of("payment_amount", "renewal_count")), // E86
+	SUBSCRIPTION_CANCELED("subscription_canceled", EventSource.SERVER, Set.of("subscribed_days")), // E87
 	SUBSCRIPTION_ENDED("subscription_ended", EventSource.SERVER, Set.of("end_reason", "subscribed_days")), // E88
 	FRIDGE_LIST_VIEWED("fridge_list_viewed", EventSource.CLIENT, Set.of("total_count", "danger_count", "soon_count", "ok_count")), // E19
 	FRIDGE_FILTER_APPLIED("fridge_filter_applied", EventSource.CLIENT, Set.of("filter_type", "filter_value")), // E20
