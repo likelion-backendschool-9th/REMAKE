@@ -30,4 +30,10 @@ class ExpenseHistoryController {
 	ExpenseHistoryUseCase.DailyItems dailyItems(@LoginUserId Long userId, @RequestParam LocalDate date) {
 		return history.dailyItems(userId, date);
 	}
+
+	@GetMapping("/discarded-items")
+	ExpenseHistoryUseCase.DiscardedItems discardedItems(@LoginUserId Long userId,
+			@RequestParam(required = false) YearMonth month) {
+		return history.discardedItems(userId, month);
+	}
 }

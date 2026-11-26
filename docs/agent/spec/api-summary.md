@@ -1,6 +1,6 @@
 # API summary
 
-Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo). 60 APIs, numbered 1-60, plus API 61 (discarded food, proposal 11/25, #248) added after v4; other spec files refer to APIs by these numbers. Admin APIs are on hold because admin screens are not in Figma yet. Error codes per API are in `errors.md`; events are in `events.md`.
+Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo). 60 APIs, numbered 1-60, plus API 61 (discarded food, #248) added after v4; other spec files refer to APIs by these numbers. Admin APIs are on hold because admin screens are not in Figma yet. Error codes per API are in `errors.md`; events are in `events.md`.
 
 ## Common
 
@@ -66,11 +66,11 @@ Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo)
 | 22 | GET | `/user/receipts` | Receipts of the month. Month total from receipt items only; average = average monthly total of the last 6 months | `?month=2026-11` (within the last 6 months) | `200 { month, totalAmount, averageDiffAmount, weeks: [{ label, startDate, endDate, totalAmount, receipts: [{ id, storeCode, storeName, purchasedOn, itemCount, totalAmount }] }] }` | |
 | 23 | GET | `/user/receipts/{id}` | One receipt | - | `200 { id, storeCode, storeName, purchasedOn, imageUrl, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }], totalAmount }` | |
 | 24 | DELETE | `/user/receipts/{id}` | Delete receipt, items, image. It leaves spending and patterns; fridge ingredients stay | - | `204` | |
-| 25 | GET | `/user/expenses/patterns` | Consumption of the month: `receipt_items` by purchase date + priced `manual_ingredient_expenses` by registration date. `discardedAmount` = discarded cost of the month (sum of `ingredient_logs.cost_amount`; proposal 11/25, #248) | `?month=2026-11` (within the last 6 months) | `200 { month, totalAmount, averageDiffAmount, discardedAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | |
+| 25 | GET | `/user/expenses/patterns` | Consumption of the month: `receipt_items` by purchase date + priced `manual_ingredient_expenses` by registration date. `discardedAmount` = discarded cost of the month (sum of non-null `ingredient_logs.cost_amount`, #248) | `?month=2026-11` (within the last 6 months) | `200 { month, totalAmount, averageDiffAmount, discardedAmount, categories: [{ categoryCode, amount, ratio }], dailyTotals: [{ date, amount }] }` | |
 | 26 | GET | `/user/expenses/daily-items` | Items of the chosen day from `receipt_items` and `manual_ingredient_expenses` | `?date=2026-11-20` | `200 { date, totalAmount, items: [{ name, categoryCode, imageUrl, storage, amount, unit, price }] }` | |
-| 61 | GET | `/user/expenses/discarded` | (proposal 11/25, #248) Discarded food of the month for p3.4.1: one row per `DISCARDED` log, newest first. `discardedOn` = discard date (KST). `amount` = `cost_amount`, null without a price; `totalAmount` sums the non-null amounts and equals API 25 `discardedAmount`. Empty month: 200 with an empty list | `?month=2026-11` (within the last 6 months) | `200 { month, totalAmount, items: [{ name, categoryCode, discardedOn, amount }] }` | |
+| 61 | GET | `/user/expenses/discarded-items` | Discarded food of the month for p3.4.1 (#248): one row per `DISCARDED` log via the fridge UseCase, newest first. `discardedOn` = discard date (KST). `amount` = `cost_amount`, null without a price; `totalAmount` sums the non-null amounts and equals API 25 `discardedAmount`. Empty month: 200 with an empty list | `?month=2026-11` (within the last 6 months; omit for the current KST month) | `200 { month, totalAmount, items: [{ name, categoryCode, discardedOn, amount }] }` | |
 
-API 25 defaults to the current KST month. Use the same six calendar months for API 25 and 26. An empty day returns zero and no items. Category ratios use the 0–1 scale. The average excludes the current KST month and months without expense records, as in API 22. The discarded amount is proposed in #248.
+API 25 defaults to the current KST month. Use the same six calendar months for API 25, 26, and 61. An empty day returns zero and no items. Category ratios use the 0–1 scale. The average excludes the current KST month and months without expense records, as in API 22.
 
 API 20 response fields `purchaseQuantity` and `volume` are planned in #72. Frontend integration will be verified in #101.
 
