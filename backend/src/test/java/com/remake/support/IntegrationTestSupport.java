@@ -37,6 +37,7 @@ import com.remake.receipt.adapter.out.ocr.GeminiReceiptTextAdapter;
 import com.remake.receipt.application.port.out.ReceiptImageStoragePort;
 import com.remake.recipe.adapter.out.ai.GeminiRecipeAdapter;
 import com.remake.user.adapter.out.mail.LoggingDeletionCodeMailAdapter;
+import com.remake.user.adapter.out.payment.TossPaymentsAdapter;
 import com.remake.user.domain.AuthProvider;
 
 /**
@@ -133,6 +134,10 @@ public abstract class IntegrationTestSupport {
 	// 테스트 클래스마다 따로 선언하면 Spring 컨텍스트가 하나 더 떠서(앱·DB 기동 2회) 여기 한 곳에 둔다.
 	@MockitoSpyBean
 	protected ReceiptImageStoragePort images;
+
+	// 토스 자동결제. 실제 토스를 부르지 않는다. 테스트마다 발급·결제 응답을 stub한다.
+	@MockitoBean
+	protected TossPaymentsAdapter tossPaymentsAdapter;
 
 	/** 테스트용 회원 한 명을 넣고 id를 돌려준다. provider_user_id는 호출마다 다르게 만든다. */
 	protected Long createUser() {

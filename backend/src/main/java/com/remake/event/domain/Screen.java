@@ -20,6 +20,7 @@ public enum Screen {
 	LOGIN("login"),
 	ONBOARDING("onboarding"),
 	SETTINGS("settings"),
+	SUBSCRIPTION_MANAGE("subscription_manage"),
 	FRIDGE_LIST("fridge_list"),
 	INGREDIENT_ADD("ingredient_add"),
 	RECEIPT_SCAN("receipt_scan"),

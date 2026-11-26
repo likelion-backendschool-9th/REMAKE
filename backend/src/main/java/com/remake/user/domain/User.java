@@ -71,6 +71,7 @@ public record User(
 
 	/**
 	 * 탈퇴. provider_user_id·email을 비우고 deleted_at을 남긴다. 행은 유지한다.
+	 * 구독은 탈퇴 시 즉시 끝나므로 plan은 BASIC으로 둔다(#258).
 	 */
 	public User withdraw(LocalDateTime deletedAt) {
 		if (deletedAt == null) {
@@ -79,7 +80,7 @@ public record User(
 		if (this.deletedAt != null) {
 			throw new IllegalStateException("이미 탈퇴한 회원입니다.");
 		}
-		return new User(id, provider, null, null, role, status, plan, householdSize, onboardingCompleted,
+		return new User(id, provider, null, null, role, status, UserPlan.BASIC, householdSize, onboardingCompleted,
 				recipeSupplementEnabled, notificationEnabled, lastMealPurpose, deletedAt, createdAt);
 	}
 
@@ -90,6 +91,15 @@ public record User(
 		}
 		return new User(id, provider, providerUserId, email, role, status, plan, householdSize, onboardingCompleted,
 				recipeSupplementEnabled, notificationEnabled, mealPurpose, deletedAt, createdAt);
+	}
+
+	/** 구독 시작·종료에 맞춰 plan을 바꾼다. */
+	public User withPlan(UserPlan plan) {
+		if (plan == null) {
+			throw new IllegalArgumentException("요금제가 필요합니다.");
+		}
+		return new User(id, provider, providerUserId, email, role, status, plan, householdSize, onboardingCompleted,
+				recipeSupplementEnabled, notificationEnabled, lastMealPurpose, deletedAt, createdAt);
 	}
 
 	private static void validateHouseholdSize(int householdSize) {

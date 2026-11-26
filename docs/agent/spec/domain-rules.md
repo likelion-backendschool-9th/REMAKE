@@ -168,7 +168,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
 - Retention: 6 months from the purchase date; a daily early-morning job deletes older receipts with their images.
 - Image storage type is the backend's choice; the server builds image URLs.
 - "나의 소비" (spending pattern): month tabs for the last 6 months (built by the frontend), month spending (positive), "평균 보다 N원 더 지출", one category ratio bar with legend, Mon–Sun day row (amount under the selected day), "총 N원" and the food list for the selected day.
-- Pattern scope: receipt items + ingredients added without a receipt that have a price (by registration date). Unpriced ones are treated as fridge-only and excluded. Discarded ingredients stay included (already bought).
+- Pattern scope: receipt items + ingredients added without a receipt that have a price (by registration date). Price edits after registration are reflected (set, change, or clear); the date stays the registration date. Unpriced ones are treated as fridge-only and excluded. Discarded ingredients stay included (already bought).
 - Category ratio: 12 categories; categories with 0 spending are left out (proposal).
 - Day selection: default today (or the last purchase day if not this month, proposal). No spending: "해당 날짜에는 소비가 없습니다".
 - Week row: swipe left/right (carousel) to the previous/next week of the selected month (decided 11/25). Days outside the selected month and days after today cannot be chosen (proposal).
@@ -289,6 +289,9 @@ Apply #57, the [ERD](../erd.md#19-cart_items-cart), and the subsequently approve
 - Authors can delete their own shared posts at any time (11/24 terms decision). This is separate from ⋮ "삭제 하기", which only removes a recipe from my saved list. Screen and API for deleting my shared post: (open).
 - **Reward**: members who posted last week's top 1–3 recipes by saves. Per recipe rank, so one member can receive more than once. 1st +10, 2nd +6, 3rd +3 recipe generations, usable for one month from the grant.
 - Week = Monday 00:00 to Sunday 24:00 KST. The Monday 00:00 job records last week's TOP 100 and grants rewards, counting only saves that still exist then. Apply the same eligibility rule in #92: zero valid saves for the counted week means no finalized rank or reward (confirmed). Never grant the same week twice. Own saves do not count (proposal). No reward screen or notification; only the remaining count changes.
+
+- #92 implementation: weekly completion, ranks and rewards commit atomically, including empty weeks. `FinalizeWeeklyRankingUseCase.finalizePreviousWeek()` is the internal entry point; there is no manual admin API. Repeated/concurrent execution cannot change a settled week or issue another E75. Proposed: withdrawn authors keep their rank but receive no reward; do not promote the next rank. Expiry is payment time plus one calendar month (month-end clamp).
+- Delayed execution limitation: `saved_recipes` keeps no unsave history, so a late first execution cannot reconstruct saves canceled after Monday 00:00. It counts rows still retained when it runs, within the previous week's save-time window. Automatic missed-week recovery is not provided. #230 author-deletion and finalized-reward policies remain open.
 
 ### Cooking photo storage (#64)
 

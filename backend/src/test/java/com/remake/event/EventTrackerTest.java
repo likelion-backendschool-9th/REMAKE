@@ -23,6 +23,16 @@ class EventTrackerTest extends IntegrationTestSupport {
 	private TransactionTemplate transactionTemplate;
 
 	@Test
+	void 화면없는_배치_이벤트는_screen을_null로_저장한다() {
+		transactionTemplate.executeWithoutResult(status -> eventTracker.track(
+				EventName.WEEKLY_REWARD_GRANTED, null,
+				Map.of("reward_rank", 1, "reward_amount", 10), EventTrackCommand.ofUser(1L)));
+		awaitEventWrites();
+		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM events", Integer.class)).isEqualTo(1);
+		assertThat(jdbcTemplate.queryForObject("SELECT screen FROM events", String.class)).isNull();
+	}
+
+	@Test
 	void 커밋_후에만_서버_이벤트가_쌓인다() {
 		Long userId = createUser();
 		transactionTemplate.executeWithoutResult(status -> eventTracker.track(

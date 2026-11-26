@@ -74,6 +74,18 @@ class ExpenseHistoryPersistenceAdapter implements LoadExpenseHistoryPort, Manual
 	}
 
 	@Override
+	public void updatePrice(Long ingredientId, Long price) {
+		jdbc.sql("""
+				UPDATE manual_ingredient_expenses
+				   SET price = :price
+				 WHERE ingredient_id = :ingredientId
+				""")
+				.param("price", price)
+				.param("ingredientId", ingredientId)
+				.update();
+	}
+
+	@Override
 	public void deleteAllForUser(Long userId) {
 		jdbc.sql("DELETE FROM manual_ingredient_expenses WHERE user_id = :userId")
 				.param("userId", userId)

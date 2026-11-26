@@ -4,7 +4,7 @@
 
 2026-11-22 · 이준호. Source: Notion "ERD v4" (Figma-based, with a screen-evidence column). This file carries the same content for development; see the source for the Figma node evidence.
 
-- 27 tables: 25 Figma-based tables, the internal unit dictionary `ingredient_catalog`, and the manual ingredient expense history added in #73.
+- Tables documented here: 28 — 25 Figma-based tables, the unit dictionary `ingredient_catalog`, manual ingredient expense history added in #73, and the internal weekly settlement record added in #92.
 - Admin screens are not in Figma, so there are no admin-only columns or tables (only `users.role`, report `status`, and shared post `status`).
 - Notifications are in-app only (no device push).
 
@@ -24,7 +24,7 @@
 | 3 | `refresh_tokens` | Refresh tokens | Login refresh tokens (hash). Deleted on logout | 1 login/settings | 이준호 | 5 |
 | 4 | `account_deletion_requests` | Account deletion codes | 6-digit email codes for Kakao/Google withdrawal | 1 login/settings | 이준호 | 7 |
 | 5 | `subscriptions` | Subscriptions | Premium subscription (Toss Payments card auto-billing). One row per subscription; at most one unfinished subscription per member | 1 login/settings | 이준호 | 12 |
-| 6 | `subscription_payments` | Subscription payments | One row per first payment and per monthly auto-payment (success or failure) | 1 login/settings | 이준호 | 12 |
+| 6 | `subscription_payments` | Subscription payments | One row per first payment and per monthly auto-payment (success or failure). A failed first payment does not create a row (E85 only) | 1 login/settings | 이준호 | 12 |
 | 7 | `ingredient_categories` | Ingredient categories | 12 categories (image, default storage, default shelf life) | 2 fridge | 김재연 | 7 |
 | 8 | `ingredients` | Fridge ingredients | One fridge ingredient. Deleted when the amount reaches 0. Registrations without a receipt also record their origin | 2 fridge | 김재연 | 13 |
 | 9 | `ingredient_logs` | Ingredient use and discard logs | "Used / discarded" and cook deductions. Source of the discarded cost | 2 fridge | 김재연 | 10 |
@@ -46,6 +46,7 @@
 | 25 | `events` | Events | Raw behavior events (frontend and server). Names and properties in `spec/events.md` | common (events) | 이준호 | 12 |
 | 26 | `ingredient_catalog` | Ingredient unit dictionary | Ingredient name -> unit, category, shelf life. Used only inside the server to pick units (API 14, 15, 16, 21). Never exposed by screens or APIs | 2 fridge | 김재연 | 6 |
 | 27 | `manual_ingredient_expenses` | Manual ingredient expenses | Registration snapshots for ingredients added without a receipt | 3 receipts | 이동준 | 9 |
+| 28 | `shared_recipe_weekly_settlements` | Weekly settlement completion | One completion record per week, including empty weeks; prevents duplicate rank/reward settlement | 7 sharing/cart | 최유리 | 2 |
 
 ## ERD diagram
 
@@ -96,6 +97,10 @@ erDiagram
   ingredients |o--o{ notifications : "ingredient_id"
   meal_plans |o--o{ notifications : "meal_plan_id"
   ingredient_categories ||--o{ ingredient_catalog : "category_id"
+  shared_recipe_weekly_settlements {
+    date week_start PK
+    timestamp created_at
+  }
   users {
     bigint id PK
     varchar provider
@@ -446,7 +451,7 @@ Premium membership subscription (Toss Payments card auto-billing). One row per s
 
 ### 6. `subscription_payments` (Subscription payments)
 
-One row per payment attempt: the first payment and each monthly auto-payment, success or failure. Owner 이준호 (1 login/settings).
+One row per payment attempt: the first payment and each monthly auto-payment, success or failure. A failed first payment does not create a row — there is no subscription yet so `subscription_id` (NOT NULL) cannot be filled; record it with event E85 only. Owner 이준호 (1 login/settings).
 
 | Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -788,6 +793,20 @@ Direct registration and cart-to-fridge moves record the original values in the s
 
 An index on `(user_id, created_at)` supports period queries.
 
+### 28. `shared_recipe_weekly_settlements` (Weekly settlement completion, #92)
+
+Use one row per completed week, including weeks with no eligible posts. Insert this row, final ranks, and reward grants in the same transaction. A unique week key serializes concurrent executions; rollback removes the claim so a failed run can retry. This is a job completion record, not a public API resource.
+
+| Column | Type | Key | Null | Description |
+| --- | --- | --- | --- | --- |
+| `week_start` | date | PK | no | Monday of the counted week |
+| `created_at` | timestamp | | no | Execution time from the server Clock |
+
+- #92 implementation: `FinalizeWeeklyRankingUseCase.finalizePreviousWeek()` settles the immediately preceding KST week. Count currently retained saves in `[week_start 00:00, next Monday 00:00)` from VISIBLE posts, using the same own-save exclusion and tie-order proposals as #88. Exclude zero-save posts (confirmed). Proposed: retain withdrawn authors in ranks but skip their reward without promoting lower ranks.
+- Store up to 100 ranks and grant +10/+6/+3 per recipe, including multiple wins by one author. Grant expiry is actual payment time plus one calendar month (clamp to month end). Consume base quota first, then unexpired grants by expiry and ID; save the consumed `grant_id` in `usage_logs` in the same transaction.
+- An empty week is final too: use `shared_recipe_weekly_settlements` rather than inferring completion from rank rows. E75 is submitted after commit through EventTracker; tracking remains best effort and is not retried by re-running a settled week.
+- Timing limitation: deleted saves have no historical record. A delayed first execution counts the retained rows at execution time; it cannot reconstruct saves removed after the boundary. There is no automatic missed-week backfill. Do not claim exact historical recovery. Author deletion and post-settlement reward policy remain open in #230.
+
 ## Relationships
 
 | Parent | Child | Column | Relation | Parent optional | On parent delete |
@@ -878,7 +897,7 @@ These values appear on screens but have no column. They are computed from the so
 | Recipe "delete" | Remove only from the saved list (`saved_recipes`). Shared posts and others' saves stay |
 | Withdrawal and subscription | End the subscription immediately on withdrawal (ENDED, clear `billing_key`, no more payments). Keep `subscription_payments` (payment records). No refund for the remaining period (11/24 terms decision; resolves policy ch. 12 item 13) |
 | Cleanup jobs | Every early morning: receipts older than 6 months by purchase date (with images), notifications older than 30 days, deletion codes older than a day |
-| Subscription start | Toss card registration -> the server issues a billingKey -> on first payment success create `subscriptions` (ACTIVE) and `subscription_payments` (DONE) and set `users.plan` = PREMIUM. If the first payment fails, do not create a subscription (record the failure only). Premium limits apply at once (recipes 4 per day, meal plans 4 this month and 7 days) |
+| Subscription start | Toss card registration -> the server issues a billingKey -> on first payment success create `subscriptions` (ACTIVE) and `subscription_payments` (DONE) and set `users.plan` = PREMIUM. If the first payment fails, do not create a subscription and do not insert a `subscription_payments` row (E85 only). Premium limits apply at once (recipes 4 per day, meal plans 4 this month and 7 days) |
 | Subscription renewal | Every early morning, charge ACTIVE subscriptions whose `next_billing_date` is today with the billingKey. On success extend the period by a month. On failure end the subscription at once (ENDED, clear `billing_key`, `users.plan` = BASIC); to subscribe again, register a card again (11/24 terms decision; resolves policy ch. 12 item 11) |
 | Subscription cancel | Cancel request sets `status` = CANCELED and `canceled_at`. PREMIUM stays until the day before the next billing date; on that date's early morning do not charge, set ENDED, clear `billing_key`, set `users.plan` = BASIC. Basic limits apply afterwards (counts already used this month still count) |
 | Common | Amounts `numeric(10,3)`, money `bigint` (KRW), time `timestamp` (Korea time), JSON `jsonb`. `created_at` on every app-created row, `updated_at` only on tables whose values change |
@@ -897,6 +916,8 @@ Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged
 ## Differences from ERD v3 (32 tables)
 
 Summary: 17 changed, 7 kept, 7 removed, 1 on hold, 2 added -> 26 tables in the new ERD. The new tables are `subscriptions` and `subscription_payments`, added with the subscription on 11/22.
+
+Later additions in #73 (`manual_ingredient_expenses`) and #92 (`shared_recipe_weekly_settlements`) bring the table inventory documented above to 28.
 
 | Previous table | Status | Added columns | Removed columns | Reason |
 | --- | --- | --- | --- | --- |
