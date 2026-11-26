@@ -13,6 +13,7 @@
 - **타입**: 수량 `numeric(10,3)`, 금액 `bigint`(원), 시각 `timestamp`(한국 시간, Java `LocalDateTime`), JSON `jsonb`.
 - **시각 컬럼**: 앱이 만드는 행은 모두 `created_at`을 가짐(`BaseCreatedEntity`). 값이 바뀌는 테이블만 `updated_at`도 가짐(`BaseTimeEntity`). 시각은 서버 `Clock`이 넣고 `DEFAULT now()`는 쓰지 않음.
 - **기준 데이터**: `ingredient_categories`, `ingredient_catalog`는 Flyway 마이그레이션으로만 넣음. 머지된 마이그레이션 파일은 고치지 않고 새 번호를 추가함.
+  - 예외(#288): 식단표 재료 조합 검사 데이터는 테이블이 아님. `scripts/mfds/build_combination_check.py`가 식약처 조리식품 레시피 DB로 만들어 `backend/src/main/resources/mfds/combination-check.json`에 쓰고, 백엔드는 앱이 켜질 때 이 파일을 읽음(파일이 없거나 망가지면 앱이 뜨지 않음). 목록(주의 재료·아침 재료·무리·이름 고침표)을 마감 전까지 다듬는 중이라, 테이블이면 고칠 때마다 새 마이그레이션이 필요하기 때문. 다른 기능의 포트 없이 이름을 맞추려고 `ingredient_catalog`의 이름·카테고리 사본(V5에서 읽음)도 파일에 들어 있음. 사전 마이그레이션이 바뀌면 스크립트를 다시 돌림.
 - **코드값**: 부록 C. enum 이름은 코드값과 같게.
 
 ## 테이블 목록
