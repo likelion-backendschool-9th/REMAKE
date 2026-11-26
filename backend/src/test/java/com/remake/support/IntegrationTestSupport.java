@@ -151,12 +151,26 @@ public abstract class IntegrationTestSupport {
 
 	/** 서버 EventTracker(@Async) 적재가 끝날 때까지 기다린다. */
 	protected void awaitEventWrites() {
-		Awaitility.await().atMost(Duration.ofSeconds(3)).until(() -> idle(eventTaskExecutor));
+		awaitIdle(eventTaskExecutor, Duration.ofSeconds(3));
 	}
 
 	/** 식단표 생성 서버 작업이 모두 끝날 때까지 기다린다. */
 	protected void awaitMealPlanJobs() {
-		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> idle(mealPlanTaskExecutor));
+		awaitIdle(mealPlanTaskExecutor, Duration.ofSeconds(10));
+	}
+
+	/*
+	 * Awaitility는 기본으로 첫 확인 전에 100ms를 쉰다. cleanUp이 테스트마다 두 번 부르므로 그대로 두면
+	 * 통합 테스트 하나에 200ms씩 그냥 늘어난다. 0ms가 아니라 10ms인 이유: idle()은 작업자 스레드가
+	 * 대기열에서 작업을 막 꺼냈지만 아직 실행 중으로 표시되기 전인 짧은 순간을 "비어 있음"으로 볼 수 있다.
+	 * 전역 기본값(Awaitility.setDefaultPollDelay)은 다른 테스트의 대기까지 바꾸므로 쓰지 않는다.
+	 */
+	private static void awaitIdle(ThreadPoolTaskExecutor executor, Duration atMost) {
+		Awaitility.await()
+				.pollDelay(Duration.ofMillis(10))
+				.pollInterval(Duration.ofMillis(10))
+				.atMost(atMost)
+				.until(() -> idle(executor));
 	}
 
 	private static boolean idle(ThreadPoolTaskExecutor executor) {
