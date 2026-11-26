@@ -511,7 +511,7 @@ erDiagram
 | `id` | bigint | PK |  | 아니오 |  | 고유 번호 |
 | `user_id` | bigint | FK | users | 아니오 |  | 회원(재료가 지워져도 월별로 셈) |
 | `ingredient_id` | bigint | FK | ingredients | 예 |  | 재료. 재료가 지워지면 비움 |
-| `category_id` | bigint | FK | ingredient_categories | 아니오 |  | 기록할 때의 카테고리. V25에서 배포 중 구버전이 기록을 쓸 수 있도록 NULL을 허용해 추가했고, V26에서 남은 NULL(재료의 카테고리, 없으면 `ETC`)을 채운 뒤 NOT NULL을 걺. 재료를 지우거나 카테고리를 고쳐도 바뀌지 않음(버린 식재료 조회에서 읽음) |
+| `category_id` | bigint | FK | ingredient_categories | 아니오 |  | 기록할 때의 카테고리. V25에서 배포 중 구버전이 기록을 쓸 수 있도록 NULL을 허용해 추가했고, V29에서 남은 NULL(재료의 카테고리, 없으면 `ETC`)을 채운 뒤 NOT NULL을 걺. 재료를 지우거나 카테고리를 고쳐도 바뀌지 않음(버린 식재료 조회에서 읽음) |
 | `type` | varchar |  |  | 아니오 |  | USED/DISCARDED |
 | `name` | varchar |  |  | 아니오 |  | 기록할 때의 재료명 |
 | `amount` | numeric(10,3) |  |  | 아니오 |  | 뺀 수량 |

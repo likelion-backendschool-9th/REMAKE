@@ -78,7 +78,7 @@ class IngredientSchemaMigrationTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void V26은_남은_NULL_카테고리를_채우고_NOT_NULL을_건다() {
+	void V29는_남은_NULL_카테고리를_채우고_NOT_NULL을_건다() {
 		flyway("25").migrate();
 		JdbcTemplate jdbc = new JdbcTemplate(dataSource);
 		jdbc.update("""

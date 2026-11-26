@@ -511,7 +511,7 @@ One fridge ingredient. The row is deleted when the amount reaches 0. Owner ê¹€ìž
 | `id` | bigint | PK |  | no |  | ID |
 | `user_id` | bigint | FK | users | no |  | Member (counted by month even after the ingredient is deleted) |
 | `ingredient_id` | bigint | FK | ingredients | yes |  | Ingredient. Cleared when it is deleted |
-| `category_id` | bigint | FK | ingredient_categories | no |  | Category at logging time. V25 added it nullable so the old version could still write logs during the deploy; V26 filled the remaining NULLs (ingredient's category, else `ETC`) and set NOT NULL. Never changes when the ingredient is deleted or its category is edited (read by the discarded-ingredients list) |
+| `category_id` | bigint | FK | ingredient_categories | no |  | Category at logging time. V25 added it nullable so the old version could still write logs during the deploy; V29 filled the remaining NULLs (ingredient's category, else `ETC`) and set NOT NULL. Never changes when the ingredient is deleted or its category is edited (read by the discarded-ingredients list) |
 | `type` | varchar |  |  | no |  | USED/DISCARDED |
 | `name` | varchar |  |  | no |  | Ingredient name at logging time |
 | `amount` | numeric(10,3) |  |  | no |  | Amount taken out |
