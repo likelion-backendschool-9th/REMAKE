@@ -5,16 +5,26 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.ResultActions;
 
+import com.remake.cart.application.port.in.CartDeductionCommand;
+import com.remake.cart.application.port.in.DeductCartItemsUseCase;
+import com.remake.cart.application.port.in.UpdateCartItemUseCase;
 import com.remake.global.web.LoginUserIdArgumentResolver;
+import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.support.IntegrationTestSupport;
 import com.remake.support.MutableClock;
 
@@ -22,6 +32,11 @@ import com.remake.support.MutableClock;
 class MealSlotDeleteApiTest extends IntegrationTestSupport {
 
 	private static final LocalDate TODAY = LocalDate.of(2026, 3, 4);
+
+	@Autowired
+	private UpdateCartItemUseCase updateCart;
+	@Autowired
+	private DeductCartItemsUseCase deductCart;
 
 	private Long me;
 	private Long planId;
@@ -73,6 +88,69 @@ class MealSlotDeleteApiTest extends IntegrationTestSupport {
 				RETURNING id
 				""", Long.class, userId, recipeId, slotId, categoryId("SEASONING"), name, now,
 				edited ? now.plusMinutes(5) : now);
+	}
+
+	/** 식단표에서 담고 손대지 않은 장바구니 행(그램 단위). 영수증 차감은 같은 단위만 되므로 G를 쓴다. */
+	private Long cartGrams(Long recipeId, Long slotId, String name, int grams) {
+		LocalDateTime now = LocalDateTime.now(clock);
+		return jdbcTemplate.queryForObject("""
+				INSERT INTO cart_items (user_id, recipe_id, meal_plan_slot_id, category_id, name, amount, unit,
+				                        created_at, updated_at)
+				VALUES (?, ?, ?, ?, ?, ?, 'G', ?, ?)
+				RETURNING id
+				""", Long.class, me, recipeId, slotId, categoryId("MEAT"), name, grams, now, now);
+	}
+
+	/** 영수증 등록이 장바구니 행을 일부 차감하는 것과 같은 호출 */
+	private void deductGrams(Long cartItemId, String name, int grams) {
+		deductCart.deduct(me, List.of(new CartDeductionCommand(cartItemId, name, BigDecimal.valueOf(grams),
+				IngredientUnit.G)));
+	}
+
+	private BigDecimal amount(Long cartItemId) {
+		return (BigDecimal) cartRow(cartItemId).get("amount");
+	}
+
+	/**
+	 * lockingChange가 다른 트랜잭션에서 장바구니 행을 잠근 채 커밋을 미루는 동안 칸 삭제를 보낸다.
+	 * 칸 삭제가 행 잠금을 기다리는 것을 확인한 뒤에야 그 트랜잭션을 커밋하고, 칸 삭제의 응답 코드를 돌려준다.
+	 */
+	private int deleteSlotWhileLocked(Long slotId, Runnable lockingChange) throws Exception {
+		CountDownLatch locked = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
+		try (var executor = Executors.newFixedThreadPool(2)) {
+			var change = executor.submit(() -> transactionTemplate.executeWithoutResult(status -> {
+				lockingChange.run();
+				locked.countDown();
+				try {
+					release.await(15, TimeUnit.SECONDS);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				}
+			}));
+			assertThat(locked.await(15, TimeUnit.SECONDS)).isTrue();
+			var deletion = executor.submit(() -> deleteSlot(me, slotId).andReturn().getResponse().getStatus());
+			awaitLockWait();
+			release.countDown();
+			change.get(15, TimeUnit.SECONDS);
+			return deletion.get(15, TimeUnit.SECONDS);
+		}
+	}
+
+	/** 다른 연결이 행 잠금을 기다리기 시작할 때까지 기다린다. */
+	private void awaitLockWait() throws InterruptedException {
+		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+		while (System.nanoTime() < deadline) {
+			Integer waiting = jdbcTemplate.queryForObject("""
+					SELECT count(*) FROM pg_stat_activity
+					WHERE datname = current_database() AND wait_event_type = 'Lock'
+					""", Integer.class);
+			if (waiting != null && waiting > 0) {
+				return;
+			}
+			Thread.sleep(20);
+		}
+		throw new AssertionError("칸 삭제가 장바구니 행 잠금을 기다리지 않았다");
 	}
 
 	private Map<String, Object> cartRow(Long cartItemId) {
@@ -173,6 +251,56 @@ class MealSlotDeleteApiTest extends IntegrationTestSupport {
 		deleteSlot(me, target).andExpect(status().isNoContent());
 
 		assertThat(cartRow(untouched)).containsEntry("meal_plan_slot_id", null).containsEntry("recipe_id", recipeId);
+	}
+
+	@Test
+	void 장바구니에서_수량을_바꾸거나_영수증으로_일부_차감한_행은_칸을_지워도_남고_연결만_비운다() throws Exception {
+		Long recipeId = createRecipe(me);
+		Long target = slot(planId, recipeId, TODAY.plusDays(1), "DINNER", false);
+		Long changed = cartGrams(recipeId, target, "두부", 300);
+		Long deducted = cartGrams(recipeId, target, "돼지고기", 500);
+		Long untouched = cartGrams(recipeId, target, "애호박", 200);
+		// 실제로는 담은 뒤 시간이 지나 고친다. 시험 시계는 멈춰 있으므로 앞으로 돌린다
+		clock.advance(Duration.ofMinutes(1));
+		updateCart.updateAmount(me, changed, BigDecimal.valueOf(400));
+		deductGrams(deducted, "돼지고기", 200);
+
+		deleteSlot(me, target).andExpect(status().isNoContent());
+
+		assertThat(cartRow(untouched)).isNull();
+		assertThat(cartRow(changed)).containsEntry("meal_plan_slot_id", null).containsEntry("recipe_id", recipeId);
+		assertThat(amount(changed)).isEqualByComparingTo("400");
+		assertThat(cartRow(deducted)).containsEntry("meal_plan_slot_id", null).containsEntry("recipe_id", recipeId);
+		assertThat(amount(deducted)).isEqualByComparingTo("300");
+	}
+
+	@Test
+	void 수량_변경이_행을_먼저_잠그면_칸_삭제는_기다렸다가_고친_수량을_남긴다() throws Exception {
+		Long recipeId = createRecipe(me);
+		Long target = slot(planId, recipeId, TODAY.plusDays(1), "DINNER", false);
+		Long row = cartGrams(recipeId, target, "두부", 300);
+		clock.advance(Duration.ofMinutes(1));
+
+		int status = deleteSlotWhileLocked(target, () -> updateCart.updateAmount(me, row, BigDecimal.valueOf(400)));
+
+		assertThat(status).isEqualTo(204);
+		assertThat(slotExists(target)).isFalse();
+		assertThat(cartRow(row)).containsEntry("meal_plan_slot_id", null).containsEntry("recipe_id", recipeId);
+		assertThat(amount(row)).isEqualByComparingTo("400");
+	}
+
+	@Test
+	void 영수증_차감이_행을_먼저_잠그면_칸_삭제는_기다렸다가_남은_수량을_남긴다() throws Exception {
+		Long recipeId = createRecipe(me);
+		Long target = slot(planId, recipeId, TODAY.plusDays(1), "DINNER", false);
+		Long row = cartGrams(recipeId, target, "돼지고기", 500);
+		clock.advance(Duration.ofMinutes(1));
+
+		int status = deleteSlotWhileLocked(target, () -> deductGrams(row, "돼지고기", 200));
+
+		assertThat(status).isEqualTo(204);
+		assertThat(cartRow(row)).containsEntry("meal_plan_slot_id", null).containsEntry("recipe_id", recipeId);
+		assertThat(amount(row)).isEqualByComparingTo("300");
 	}
 
 	// ---- 거절 ----

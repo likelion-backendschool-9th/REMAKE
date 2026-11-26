@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,12 +21,17 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.ResultActions;
 
 import com.jayway.jsonpath.JsonPath;
+import com.remake.cart.application.port.in.CartDeductionCommand;
+import com.remake.cart.application.port.in.DeductCartItemsUseCase;
+import com.remake.cart.application.port.in.UpdateCartItemUseCase;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.global.web.LoginUserIdArgumentResolver;
+import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.mealplan.application.port.out.GeneratedMealSlot;
 import com.remake.mealplan.application.port.out.MealPlanAiRequest;
 import com.remake.mealplan.domain.FridgeStock;
@@ -39,6 +45,11 @@ import com.remake.support.MutableClock;
 class MealSlotReplaceApiTest extends IntegrationTestSupport {
 
 	private static final LocalDate TODAY = LocalDate.of(2026, 3, 4);
+
+	@Autowired
+	private UpdateCartItemUseCase updateCart;
+	@Autowired
+	private DeductCartItemsUseCase deductCart;
 
 	private Long me;
 	private Long planId;
@@ -532,6 +543,29 @@ class MealSlotReplaceApiTest extends IntegrationTestSupport {
 		assertThat(((BigDecimal) cartRow(edited).get("amount")).stripTrailingZeros()).isEqualTo(BigDecimal.valueOf(3));
 		// 다른 칸에서 담은 행은 건드리지 않는다
 		assertThat(cartRow(otherRow)).containsEntry("meal_plan_slot_id", other);
+	}
+
+	@Test
+	void 장바구니에서_수량을_바꾸거나_영수증으로_일부_차감한_행은_교체해도_남고_연결만_비운다() throws Exception {
+		Long target = slot(TODAY.plusDays(1), "DINNER", "대파볶음밥", 100);
+		Long oldRecipe = (Long) slotRow(target).get("recipe_id");
+		Long changed = cartItem(me, oldRecipe, target, "돼지고기", 300, "G");
+		Long deducted = cartItem(me, oldRecipe, target, "애호박", 500, "G");
+		Long untouched = cartItem(me, oldRecipe, target, "굴소스", 3, "TBSP");
+		// 실제로는 담은 뒤 시간이 지나 고친다. 시험 시계는 멈춰 있으므로 앞으로 돌린다
+		clock.advance(Duration.ofMinutes(1));
+		updateCart.updateAmount(me, changed, BigDecimal.valueOf(400));
+		deductCart.deduct(me, List.of(new CartDeductionCommand(deducted, "애호박", BigDecimal.valueOf(200),
+				IngredientUnit.G)));
+		aiUses(greenOnion, 120);
+
+		replace(me, target).andExpect(status().isOk());
+
+		assertThat(cartRow(untouched)).isNull();
+		assertThat(cartRow(changed)).containsEntry("recipe_id", oldRecipe).containsEntry("meal_plan_slot_id", null);
+		assertThat((BigDecimal) cartRow(changed).get("amount")).isEqualByComparingTo("400");
+		assertThat(cartRow(deducted)).containsEntry("recipe_id", oldRecipe).containsEntry("meal_plan_slot_id", null);
+		assertThat((BigDecimal) cartRow(deducted).get("amount")).isEqualByComparingTo("300");
 	}
 
 	@Test
