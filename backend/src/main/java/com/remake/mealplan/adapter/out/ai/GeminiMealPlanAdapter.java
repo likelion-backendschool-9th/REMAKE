@@ -119,7 +119,8 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort, ReplaceMea
 		} catch (ResourceAccessException e) {
 			if (isTimeout(e)) {
 				log.warn("Gemini 식단표 호출 시간 초과: {}",
-						busyAsRetryable ? GeminiMealPlanClientConfig.READ_TIMEOUT : properties.requestTimeout());
+						busyAsRetryable ? GeminiMealPlanClientConfig.READ_TIMEOUT
+								: GeminiMealPlanClientConfig.SLOT_REPLACE_READ_TIMEOUT);
 				throw new BusinessException(ErrorCode.AI_TIMEOUT);
 			}
 			log.warn("Gemini 식단표 연결 실패: {}", e.getClass().getSimpleName());

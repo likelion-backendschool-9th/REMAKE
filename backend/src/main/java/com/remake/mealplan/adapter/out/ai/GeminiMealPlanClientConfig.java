@@ -27,6 +27,15 @@ class GeminiMealPlanClientConfig {
 	 */
 	static final Duration READ_TIMEOUT = Duration.ofSeconds(90);
 
+	/** 식단 칸 교체 연결 제한. 레시피 생성(recipe GeminiClientConfig)과 같다. 구글 서버 연결은 보통 바로 되므로 짧게 둔다. */
+	static final Duration SLOT_REPLACE_CONNECT_TIMEOUT = Duration.ofSeconds(5);
+
+	/**
+	 * 식단 칸 교체 읽기 제한. 연결과 따로 걸리므로 호출 한 번은 최대 5 + 20 = 25초이고,
+	 * MealSlotReplaceService가 1회 재시도하고 1.5초 쉬므로 가장 나쁜 경우 25 × 2 + 1.5 = 51.5초로 #50의 "서버 55초 안"(Nginx 60초보다 먼저)을 지킨다.
+	 */
+	static final Duration SLOT_REPLACE_READ_TIMEOUT = Duration.ofSeconds(20);
+
 	@Bean
 	@Qualifier(GEMINI_MEAL_PLAN_REST_CLIENT)
 	RestClient geminiMealPlanRestClient(RestClient.Builder restClientBuilder, GeminiProperties properties) {
@@ -40,15 +49,15 @@ class GeminiMealPlanClientConfig {
 	}
 
 	/**
-	 * 식단 칸 교체(API 42)용. 사용자가 응답을 기다리므로 호출 한 번 제한(gemini.request-timeout, 기본 25초)을 쓴다.
+	 * 식단 칸 교체(API 42)용. 사용자가 응답을 기다리므로 연결 5초·읽기 20초(호출 한 번 최대 25초)를 쓴다.
 	 * 칸 하나라 답이 짧다. 1회 재시도까지 합쳐 Nginx 60초 안에 끝난다(#50).
 	 */
 	@Bean
 	@Qualifier(GEMINI_MEAL_SLOT_REPLACE_REST_CLIENT)
 	RestClient geminiMealSlotReplaceRestClient(RestClient.Builder restClientBuilder, GeminiProperties properties) {
 		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-		requestFactory.setConnectTimeout(properties.requestTimeout());
-		requestFactory.setReadTimeout(properties.requestTimeout());
+		requestFactory.setConnectTimeout(SLOT_REPLACE_CONNECT_TIMEOUT);
+		requestFactory.setReadTimeout(SLOT_REPLACE_READ_TIMEOUT);
 		return restClientBuilder.clone()
 				.baseUrl(properties.baseUrl())
 				.requestFactory(requestFactory)
