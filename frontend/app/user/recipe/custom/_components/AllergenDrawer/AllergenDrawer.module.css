@@ -1,0 +1,12 @@
+/* 피그마 p4.1.2-커스텀 레시피 생성-알레르기 재료: 설정 p1.3.2와 같은 배치. 질문 제목 위 34(헤더 아래),
+   Remake/header·text/strong. 아래 고정 버튼에 가리지 않게 아래 여백 */
+.content {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem var(--layout-gutter) calc(7.5rem + env(safe-area-inset-bottom));
+}
+
+.title {
+  color: var(--color-text-strong);
+  font: var(--font-header);
+}

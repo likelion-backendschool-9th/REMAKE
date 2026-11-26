@@ -64,6 +64,16 @@
   flex: none;
 }
 
+/* 지우기(공용 InputClearButton): 단위 다음 오른쪽 끝. 입력칸 오른쪽 여백만큼 당겨 아이콘이 오른쪽 끝에서 11에 오게 한다
+   (피그마 5991-7263). 값이 없으면(안내 문구가 보이면) 숨긴다 */
+.clear {
+  margin-right: calc(-1 * var(--space-16));
+}
+
+.input:placeholder-shown ~ .clear {
+  display: none;
+}
+
 .message {
   display: flex;
   align-items: center;

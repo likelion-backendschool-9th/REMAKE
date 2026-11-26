@@ -2,6 +2,8 @@
 
 import { type RefObject, useEffect, useRef } from "react";
 
+import { setPageScrollLocked } from "@/lib/page-scrollbar";
+
 import { useBackToClose } from "./useBackToClose";
 
 // blueprint §6.2: 열린 모달·시트로 포커스를 옮기고, 뒤쪽 내용은 inert로 막고, 닫으면 연 버튼으로 포커스를 돌려준다.
@@ -10,20 +12,17 @@ import { useBackToClose } from "./useBackToClose";
 // 공통 토스트 영역(aria-live)에 붙인다. inert 안의 aria-live는 스크린 리더가 읽지 않는다.
 
 // 열린 레이어 수. 하나라도 열려 있으면 뒤 화면 스크롤을 막는다.
+// 막는 방법은 lib/page-scrollbar: 겹쳐 그리는 스크롤바라 막아도 화면 폭이 바뀌지 않는다(가운데 화면이 움직이지 않음).
 let openLayers = 0;
-let savedOverflow = "";
 
 function lockScroll() {
-  if (openLayers === 0) {
-    savedOverflow = document.documentElement.style.overflow;
-    document.documentElement.style.overflow = "hidden";
-  }
+  if (openLayers === 0) setPageScrollLocked(true);
   openLayers += 1;
 }
 
 function unlockScroll() {
   openLayers -= 1;
-  if (openLayers === 0) document.documentElement.style.overflow = savedOverflow;
+  if (openLayers === 0) setPageScrollLocked(false);
 }
 
 export function useDialogLayer(

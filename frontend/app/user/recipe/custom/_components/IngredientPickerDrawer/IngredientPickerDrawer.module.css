@@ -1,0 +1,25 @@
+/* 피그마 p4.1.2-커스텀 레시피 생성-드로워: 헤더 아래 목록, 옆 여백 16. 아래 고정 버튼에 가리지 않게 아래 여백 */
+.content {
+  padding: var(--space-10) var(--layout-gutter) calc(7.5rem + env(safe-area-inset-bottom));
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 한 줄: 체크박스 22 + 사이 12 + 재료 행(높이 60). 줄 전체를 누르면 체크 */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  cursor: pointer;
+}
+
+.ingredient {
+  flex: 1;
+  min-width: 0;
+}

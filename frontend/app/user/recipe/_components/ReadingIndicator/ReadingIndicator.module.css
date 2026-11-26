@@ -1,0 +1,80 @@
+/* 피그마 레시피 재생: 높이 120, 위 투명 → 20.667%부터 흰색, 가운데 60 동그라미 */
+.bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: var(--z-fixed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: var(--layout-max-width);
+  height: calc(7.5rem + env(safe-area-inset-bottom));
+  margin: 0 auto;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #fff 20.667%);
+}
+
+/* 동그라미: bg/primary-tint, 파랑 테두리 2, 막대 사이 3 */
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1875rem;
+  width: 3.75rem;
+  height: 3.75rem;
+  padding: 0;
+  border: 2px solid var(--color-brand-primary);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-primary-tint);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+/* 막대: 폭 3, 파랑 → 보라(#D119FF, 피그마 값). 가운데 기준으로 위아래로 자란다.
+   주기·지연은 막대마다 컴포넌트에서 준다. scaleY 대신 높이를 바꿔 둥근 끝이 납작해지지 않게 한다 */
+.wave {
+  width: 3px;
+  height: var(--wave-rest);
+  border-radius: var(--radius-full);
+  background: linear-gradient(to bottom, #3182f6, #d119ff);
+  animation: wave ease-in-out infinite;
+}
+
+/* 고르지 않은 높낮이(최고 높이의 비율)로 말할 때 소리 크기가 오르내리는 느낌을 낸다 */
+@keyframes wave {
+  0%,
+  100% {
+    height: calc(var(--wave-max) * 0.35);
+  }
+
+  18% {
+    height: var(--wave-max);
+  }
+
+  34% {
+    height: calc(var(--wave-max) * 0.5);
+  }
+
+  52% {
+    height: calc(var(--wave-max) * 0.85);
+  }
+
+  68% {
+    height: calc(var(--wave-max) * 0.25);
+  }
+
+  84% {
+    height: calc(var(--wave-max) * 0.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave {
+    animation: none;
+  }
+}

@@ -1,0 +1,107 @@
+/* 피그마 p4.1.1.1-레시피 공유 작성(5778-2904): 서브 헤더 바로 아래 사진 칸(360×240), 아래 23에 제목 입력, 그 아래 레시피 내용.
+   아래 여백: Tips와 아래 고정 버튼 사이 36(버튼 53 + 고정 영역 아래 여백 24를 더함) */
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  padding-bottom: calc(7.0625rem + env(safe-area-inset-bottom));
+  background: var(--color-bg-surface);
+}
+
+/* 사진 칸: 폭 가득 3:2, 검정 바탕. 사진이 없으면 가운데 "+ 탭해서 이미지를 추가해 주세요"와 모서리 테두리 */
+.photo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  background: #000;
+  cursor: pointer;
+}
+
+.photo:focus-within {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -2px;
+}
+
+.image {
+  object-fit: cover;
+}
+
+/* 안내 글: Remake/content·#E5E5E5(피그마 값), + 아이콘 14, 사이 1 */
+.photoAdd {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.0625rem;
+  width: 15rem;
+  height: 3rem;
+  color: #e5e5e5;
+  font: var(--font-content);
+}
+
+/* 모서리 테두리 그림(240×48, 피그마 보더) */
+.photoFrame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.photoAddIcon {
+  position: relative;
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* "탭해서 이미지 수정": 아래 가운데, 검정 60%, 여백 4/6, radius 3, Remake/content-regular·#E5E5E5 */
+.photoEdit {
+  position: absolute;
+  bottom: 0.4375rem;
+  left: 50%;
+  padding: var(--space-4) var(--space-6);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #e5e5e5;
+  font: var(--font-content-regular);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* 제목 입력: 사진 아래 23에 라벨, 라벨·입력칸 사이 10, 입력칸 아래 10(재료 준비 위 여백 15와 합쳐 25) */
+.titleField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  padding: 1.4375rem var(--layout-gutter) 0.625rem;
+}
+
+/* "레시피 제목 *": Remake/title·text/title, 별표 text/danger */
+.titleLabel {
+  color: var(--color-text-title);
+  font: var(--font-title);
+}
+
+.required {
+  margin-left: 0.125rem;
+  color: var(--color-text-danger);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 아래 고정 영역: 바탕을 투명하게 해 버튼만 떠 보이게 한다(뒤 내용이 버튼 옆·아래로 비쳐 보임) */
+.bottom {
+  background: transparent;
+}

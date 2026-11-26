@@ -1,0 +1,37 @@
+/* 피그마 p4.1.2-커스텀 레시피 생성: 서브 헤더 아래 17에 설정 카드, 카드 아래 10에 안내 박스.
+   아래 고정 버튼(레시피 생성)에 가리지 않게 아래 여백 */
+.main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 1.0625rem var(--layout-gutter) calc(7.5rem + env(safe-area-inset-bottom));
+}
+
+/* 설정 카드: bg/surface, 테두리 #EAEAEA(border/chip 값), radius 12, 옆 여백 14 */
+.card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 var(--space-14);
+  border: 1px solid var(--color-border-chip);
+  border-radius: 0.75rem;
+  background: var(--color-bg-surface);
+}
+
+/* 고르기 행: 피그마 높이 68 + 아래 선 1 → 위아래 24·옆 5 */
+.row {
+  padding: 1.5rem 0.3125rem;
+}
+
+/* 식사 인원(스테퍼) 행: 피그마 높이 64 + 아래 선 1 → 위 21·아래 19 */
+.stepperRow {
+  padding: 1.3125rem 0.3125rem 1.1875rem;
+}
+
+.card > :last-child {
+  border-bottom: 0;
+}
+
+.info {
+  margin-top: var(--space-10);
+}
