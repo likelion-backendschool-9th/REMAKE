@@ -2,6 +2,7 @@ package com.remake.mealplan.adapter.out.ai;
 
 import java.util.Arrays;
 
+import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.mealplan.domain.MealPurpose;
 import com.remake.recipe.domain.RecipeUnit;
 
@@ -46,6 +47,8 @@ final class MealPlanPrompt {
 			2. 재료 규칙
 			- fridgeIngredients의 재료를 쓸 때는 그 재료의 ingredientId를 fridgeIngredientId에 그대로 넣는다.
 			  냉장고에 없는 재료는 fridgeIngredientId를 null로 둔다(사용자가 따로 산다).
+			- 냉장고에 없는 재료(물 제외)는 categoryCode를 다음 코드 중 하나로 고른다: %s.
+			  애매하면 ETC를 쓴다. 냉장고 재료와 물의 categoryCode는 null로 둔다.
 			- 냉장고 재료는 fridgeIngredients의 unit과 같은 단위로 쓴다. 0.3처럼 소수도 된다(예: BUNCH 재료는 BUNCH로).
 			- fridgePlan에는 냉장고 재료마다 어느 칸(day·mealType)에 얼마를 쓸지 uses에 나누고,
 			  uses를 모두 더한 total이 그 재료의 amount를 넘지 않게 한다. 넘으면 뒤쪽 날의 칸에서 양을 줄이거나 다른 냉장고 재료로 바꾼다.
@@ -159,8 +162,8 @@ final class MealPlanPrompt {
 			""";
 
 	static String systemInstruction(MealPurpose purpose) {
-		return COMMON.formatted(BREAKFAST_COOK_MINUTES, purposeBlock(purpose), Arrays.toString(RecipeUnit.values()),
-				MIN_STEPS, MAX_STEPS, LONG_DISH_MIN_STEPS);
+		return COMMON.formatted(Arrays.toString(IngredientCategoryCode.values()), BREAKFAST_COOK_MINUTES,
+				purposeBlock(purpose), Arrays.toString(RecipeUnit.values()), MIN_STEPS, MAX_STEPS, LONG_DISH_MIN_STEPS);
 	}
 
 	/** 식단 칸 교체: 생성과 같은 지시문 + 교체 규칙. */

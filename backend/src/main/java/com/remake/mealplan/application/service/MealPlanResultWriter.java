@@ -17,6 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.remake.cart.application.port.in.AddCartItemsUseCase;
+import com.remake.cart.application.port.in.CartAdditionCommand;
+import com.remake.cart.application.port.in.CleanUpMealPlanSlotCartItemsUseCase;
+import com.remake.cart.domain.CartSource;
 import com.remake.event.application.port.in.EventTrackCommand;
 import com.remake.event.application.port.in.EventTracker;
 import com.remake.event.domain.EventName;
@@ -26,6 +30,7 @@ import com.remake.mealplan.application.port.out.LoadMealPlanPort;
 import com.remake.mealplan.application.port.out.LoadMealPlanSlotPort;
 import com.remake.mealplan.application.port.out.SaveMealPlanPort;
 import com.remake.mealplan.application.port.out.SaveMealPlanSlotPort;
+import com.remake.mealplan.domain.FridgeStock;
 import com.remake.mealplan.domain.MealPlan;
 import com.remake.mealplan.domain.MealPlanSlot;
 import com.remake.mealplan.domain.MealPlanStatus;
@@ -56,23 +61,31 @@ class MealPlanResultWriter {
 	private final SaveMealPlanRecipesUseCase saveMealPlanRecipesUseCase;
 	private final ConsumeMealPlanQuotaUseCase consumeMealPlanQuotaUseCase;
 	private final CreateMealPlanNotificationUseCase createMealPlanNotificationUseCase;
+	private final AddCartItemsUseCase addCartItemsUseCase;
+	private final CleanUpMealPlanSlotCartItemsUseCase cleanUpMealPlanSlotCartItemsUseCase;
 	private final EventTracker eventTracker;
 	private final Clock clock;
 
 	/**
-	 * 완성: 덮어쓸 칸 다시 확인·삭제 → 레시피 저장 → 칸 저장 → COMPLETED → 월 차감 → 완성 알림.
+	 * 완성: 덮어쓸 칸 다시 확인·삭제 → 레시피 저장 → 칸 저장 → 부족 재료 장바구니 담기 → COMPLETED → 월 차감 → 완성 알림.
 	 *
 	 * <p>덮어쓸 칸은 AI를 부르기 전에 정했으므로, AI를 기다리는 사이 사용자가 그 칸을 요리했을 수 있다.
 	 * 그래서 칸을 잠그고 다시 읽어, 그 사이 요리한 칸은 지우지 않고 그 날짜·끼니에는 새 칸(과 레시피)을 넣지 않는다
 	 * (domain-rules: 요리한 칸은 덮어써도 남긴다). 요리 완료(MealSlotCookService)도 칸을 잠그고 읽어 둘이 겹치지 않는다.
 	 * 생성 일수(generatedDays)는 그대로 둔다. 그날은 요리한 칸으로 채워져 있다.
 	 *
+	 * <p>부족 재료는 새로 저장한 칸의 레시피마다 원본 recipeId와 칸 id를 넣어 AddCartItemsUseCase(MEAL_PLAN)로 담는다(#91).
+	 * 이미 장바구니에 있는 행은 담기 쪽이 건드리지 않고, 실제로 새로 넣은 행 수가 완성 알림과 E53 cart_added_count가 된다.
+	 * 덮어써서 지우는 칸에서 담은 장바구니 행은 칸을 지우기 전에 정리한다: 손대지 않은 행은 지우고, 수량을 고친 행과
+	 * 저장해 둔 레시피의 행은 칸 연결만 비운다(CleanUpMealPlanSlotCartItemsUseCase).
+	 *
 	 * @param slots           새로 채울 칸(날짜·끼니 순)
 	 * @param replacedSlotIds 지울 기존 칸(AI 호출 전 기준, 요청 기간 안의 요리 안 한 칸 전부. 못 만든 뒤쪽 날도 지워 빈 날이 된다)
+	 * @param fridge          AI에 보낼 때 읽은 냉장고 재료. 이름이 같은 냉장고 재료가 있는 줄은 장바구니에 담지 않는다
 	 */
 	@Transactional
 	public void complete(MealPlanGenerationJob job, List<GeneratedMealSlot> slots, int generatedDays,
-			int shortageCount, Collection<Long> replacedSlotIds) {
+			int shortageCount, Collection<Long> replacedSlotIds, List<FridgeStock> fridge) {
 		MealPlan plan = loadGenerating(job.mealPlanId()).orElseThrow(
 				() -> new IllegalStateException("생성 중인 식단표가 아닙니다: " + job.mealPlanId()));
 		plan.complete(generatedDays);
@@ -93,6 +106,10 @@ class MealPlanResultWriter {
 			log.info("생성 중 요리한 칸을 남김 mealPlanId={} count={}", plan.id(), cookedMeanwhile.size());
 		}
 
+		// 지울 칸에서 담은 장바구니 행을 칸을 지우기 전에 정리한다(#91, 지운 뒤면 SET NULL로 어느 칸 행인지 모른다)
+		cleanUpMealPlanSlotCartItemsUseCase.cleanUp(plan.userId(), replacedNow.stream()
+				.filter(slot -> !slot.isCooked())
+				.collect(Collectors.toMap(MealPlanSlot::id, MealPlanSlot::recipeId)));
 		saveMealPlanSlotPort.deleteAllById(deletedSlotIds);
 		List<Long> recipeIds = saveMealPlanRecipesUseCase.saveMealPlanRecipes(plan.userId(),
 				slotsToSave.stream().map(slot -> toRecipeCommand(slot, plan.servings())).toList());
@@ -101,11 +118,10 @@ class MealPlanResultWriter {
 			GeneratedMealSlot slot = slotsToSave.get(i);
 			newSlots.add(MealPlanSlot.create(plan.id(), slot.date(), slot.mealType(), recipeIds.get(i)));
 		}
-		saveMealPlanSlotPort.saveAll(newSlots);
+		List<MealPlanSlot> savedSlots = saveMealPlanSlotPort.saveAll(newSlots);
+		int cartAddedCount = addShortagesToCart(plan.userId(), slotsToSave, recipeIds, savedSlots, fridge);
 		saveMealPlanPort.update(plan);
 		int remaining = consumeMealPlanQuotaUseCase.consumeMealPlanQuota(plan.userId()).remaining();
-		// 부족 재료 장바구니 담기(#91)가 아직 없어 0. 연결하면 AddCartItemsUseCase가 넣은 행 수로 바꾼다
-		int cartAddedCount = 0;
 		createMealPlanNotificationUseCase.notifyMealPlanCompleted(plan.userId(), plan.id(), plan.startDate(),
 				generatedDays, job.maxDays(), cartAddedCount);
 
@@ -172,6 +188,16 @@ class MealPlanResultWriter {
 				.filter(plan -> plan.status() == MealPlanStatus.GENERATING);
 	}
 
+	/** 새로 저장한 칸들의 부족 재료를 담고 실제로 새로 넣은 행 수를 돌려준다. 담을 것이 없으면 담기를 부르지 않는다. */
+	private int addShortagesToCart(Long userId, List<GeneratedMealSlot> slots, List<Long> recipeIds,
+			List<MealPlanSlot> savedSlots, List<FridgeStock> fridge) {
+		List<CartAdditionCommand> items = new ArrayList<>();
+		for (int i = 0; i < slots.size(); i++) {
+			items.addAll(MealPlanCartItems.shortages(slots.get(i), recipeIds.get(i), savedSlots.get(i).id(), fridge));
+		}
+		return items.isEmpty() ? 0 : addCartItemsUseCase.add(userId, CartSource.MEAL_PLAN, items);
+	}
+
 	private long durationMillis(Instant acceptedAt) {
 		return Math.max(Duration.between(acceptedAt, clock.instant()).toMillis(), 0);
 	}
@@ -183,6 +209,6 @@ class MealPlanResultWriter {
 
 	private static MealPlanRecipeCommand.Ingredient toRecipeIngredient(SlotIngredient ingredient) {
 		return new MealPlanRecipeCommand.Ingredient(ingredient.fridgeIngredientId(), ingredient.name(),
-				ingredient.amount(), ingredient.unit());
+				ingredient.amount(), ingredient.unit(), ingredient.categoryCode());
 	}
 }

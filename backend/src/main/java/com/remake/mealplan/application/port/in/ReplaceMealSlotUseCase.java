@@ -18,8 +18,9 @@ public interface ReplaceMealSlotUseCase {
 	 *
 	 * @param ingredientSummary    앞 3개 재료를 " · "로 이은 것
 	 * @param extraIngredientCount 보여 주지 않은 재료 개수
+	 * @param cartAddedCount       새 레시피의 부족 재료로 장바구니에 새로 넣은 행 수(#91). 0이면 화면에 토스트를 띄우지 않는다
 	 */
 	record ReplacedMealSlot(Long slotId, Long recipeId, String title, String ingredientSummary,
-			int extraIngredientCount) {
+			int extraIngredientCount, int cartAddedCount) {
 	}
 }

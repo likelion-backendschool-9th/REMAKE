@@ -64,6 +64,7 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 	private final LoadMealPlanPort loadMealPlanPort;
 	private final LoadMealPlanSlotPort loadMealPlanSlotPort;
 	private final MealPlanStockReader stockReader;
+	private final MealPlanIngredientCategories ingredientCategories;
 	private final GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase;
 	private final GenerateMealPlanAiPort generateMealPlanAiPort;
 	private final MealPlanResultWriter resultWriter;
@@ -72,13 +73,15 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 	private final List<Duration> busyRetryDelays;
 
 	public MealPlanGenerationJobService(LoadMealPlanPort loadMealPlanPort, LoadMealPlanSlotPort loadMealPlanSlotPort,
-			MealPlanStockReader stockReader, GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase,
+			MealPlanStockReader stockReader, MealPlanIngredientCategories ingredientCategories,
+			GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase,
 			GenerateMealPlanAiPort generateMealPlanAiPort, MealPlanResultWriter resultWriter, Clock clock,
 			@Value("${remake.meal-plan.ai-retry-delay:1500ms}") Duration retryDelay,
 			@Value("${remake.meal-plan.ai-busy-retry-delays:3s,5s,7s,9s,10s,10s,10s,10s,10s}") String busyRetryDelays) {
 		this.loadMealPlanPort = loadMealPlanPort;
 		this.loadMealPlanSlotPort = loadMealPlanSlotPort;
 		this.stockReader = stockReader;
+		this.ingredientCategories = ingredientCategories;
 		this.getUserGenerationPreferencesUseCase = getUserGenerationPreferencesUseCase;
 		this.generateMealPlanAiPort = generateMealPlanAiPort;
 		this.resultWriter = resultWriter;
@@ -159,7 +162,7 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 		MealPlanAiRequest aiRequest = new MealPlanAiRequest(plan.purpose(), plan.servings(), schedule, available,
 				excludedAllergens);
 		List<GeneratedMealSlot> generated = generateWithRetry(plan.id(), schedule, aiRequest).stream()
-				.map(slot -> MealPlanStockReader.keepOwnFridgeIds(slot, fridge))
+				.map(slot -> MealPlanStockReader.normalizeFridgeLinks(slot, fridge))
 				.toList();
 		TrimResult trim = MealPlanTrimmer.trim(schedule,
 				// "못 만듦" 칸은 빠진 칸으로 넘겨 그날에서 자르기가 멈추게 한다
@@ -169,8 +172,11 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 			throw new NoIngredientsException();
 		}
 
-		resultWriter.complete(job, slotsToSave(schedule, trim.generatedDays(), generated), trim.generatedDays(),
-				trim.shortages().size(), replacedSlotIds);
+		// 재료 카테고리(장바구니 담기·레시피 저장용)는 남긴 칸만 정한다(사전 조회를 줄이려고)
+		List<GeneratedMealSlot> slotsToSave = ingredientCategories.resolve(
+				slotsToSave(schedule, trim.generatedDays(), generated), fridge);
+		resultWriter.complete(job, slotsToSave, trim.generatedDays(), trim.shortages().size(), replacedSlotIds,
+				fridge);
 	}
 
 	/**

@@ -111,7 +111,7 @@ class MealPlanAbandonedJobServiceTest extends IntegrationTestSupport {
 		MealPlanGenerationJob lateJob = new MealPlanGenerationJob(planId, userId, 5, false,
 				acceptedAt.atZone(clock.getZone()).toInstant());
 
-		assertThatThrownBy(() -> resultWriter.complete(lateJob, List.of(), 1, 0, List.of()))
+		assertThatThrownBy(() -> resultWriter.complete(lateJob, List.of(), 1, 0, List.of(), List.of()))
 				.isInstanceOf(IllegalStateException.class);
 
 		assertThat(planStatus(planId)).isEqualTo("FAILED");

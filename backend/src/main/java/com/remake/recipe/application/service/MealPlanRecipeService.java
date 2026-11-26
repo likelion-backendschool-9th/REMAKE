@@ -48,7 +48,7 @@ public class MealPlanRecipeService implements SaveMealPlanRecipesUseCase, GetRec
 	private static Recipe toRecipe(Long userId, MealPlanRecipeCommand command) {
 		List<RecipeIngredient> ingredients = command.ingredients().stream()
 				.map(ingredient -> new RecipeIngredient(ingredient.ingredientId(), ingredient.name(),
-						ingredient.amount(), ingredient.unit()))
+						ingredient.amount(), ingredient.unit(), ingredient.categoryCode()))
 				.toList();
 		return Recipe.create(userId, RecipeSource.MEAL_PLAN, command.title(), command.servings(),
 				command.cookMinutes(), command.tips(), null, ingredients, command.steps());

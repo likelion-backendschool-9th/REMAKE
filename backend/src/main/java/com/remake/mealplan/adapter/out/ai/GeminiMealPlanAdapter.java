@@ -24,6 +24,7 @@ import org.springframework.web.client.RestClientResponseException;
 import com.remake.global.config.GeminiProperties;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.mealplan.application.port.out.GenerateMealPlanAiPort;
 import com.remake.mealplan.application.port.out.GeneratedMealSlot;
 import com.remake.mealplan.application.port.out.MealPlanAiBusyException;
@@ -234,6 +235,7 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort, ReplaceMea
 
 	/**
 	 * 14개 코드에 없는 단위의 줄과 냉장고에 없는 재료인데 양이 0 이하인 줄은 null(뺀다). "약간"(TO_TASTE)은 양을 비운다.
+	 * 카테고리 코드가 12개 코드에 없으면 카테고리만 비우고 줄은 남긴다(실패로 보지 않음, 레시피 생성 #76과 같음).
 	 * 이름이 빈 줄은 무슨 재료인지 몰라 레시피를 쓸 수 없으므로 형식 오류다.
 	 */
 	private SlotIngredient parseIngredient(JsonNode item) {
@@ -255,7 +257,10 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort, ReplaceMea
 			log.warn("Gemini 식단표 응답: 냉장고에 없는 재료 중 양 0인 줄을 뺌");
 			return null;
 		}
-		return new SlotIngredient(fridgeIngredientId, name, amount, unit);
+		// 카테고리는 AI가 고른 값(12개 코드에 없으면 비움). 저장 전에 사전·냉장고 값이 먼저다(MealPlanIngredientCategories)
+		IngredientCategoryCode categoryCode = parseEnum(IngredientCategoryCode.class,
+				textOrNull(item.path("categoryCode")));
+		return new SlotIngredient(fridgeIngredientId, name, amount, unit, categoryCode);
 	}
 
 	/** 소수 셋째 자리로 반올림하고 끝의 0을 지운다. 300이 3E+2로 바뀌지 않게 정수는 소수 자리 0으로 둔다. */
@@ -429,6 +434,10 @@ public class GeminiMealPlanAdapter implements GenerateMealPlanAiPort, ReplaceMea
 																	"amount", Map.of("type", "NUMBER", "nullable", true),
 																	"unit", Map.of("type", "STRING", "enum",
 																			Arrays.stream(RecipeUnit.values())
+																					.map(Enum::name).toList()),
+																	"categoryCode", Map.of("type", "STRING",
+																			"nullable", true, "enum",
+																			Arrays.stream(IngredientCategoryCode.values())
 																					.map(Enum::name).toList())),
 															"required", List.of("name", "unit"))),
 											"steps", Map.of("type", "ARRAY", "items", Map.of("type", "STRING"))),

@@ -147,7 +147,7 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 
 | ID | Name | Source | Priority | Properties | Metrics | Publisher (API no.) | Owner |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| E62 | `cart_item_added` | SERVER | P1 | cart_source, item_count | M12 | 34 `PUT /user/saved-recipes/{recipeId}`<br>53 `PUT /user/shared-recipes/{id}/save`<br>38 `POST /user/meal-plans/generate` | 최유리 |
+| E62 | `cart_item_added` | SERVER | P1 | cart_source, item_count | M12 | 34 `PUT /user/saved-recipes/{recipeId}`<br>53 `PUT /user/shared-recipes/{id}/save`<br>38 `POST /user/meal-plans/generate`<br>42 `POST /user/meal-plan-slots/{slotId}/replace` | 최유리 |
 | E63 | `cart_viewed` | CLIENT | P1 | item_count | M15 | 56 (frontend) | frontend (assigned by 이준호) |
 | E64 | `cart_amount_changed` | CLIENT | P2 | (common only) | - | 56 (frontend) | frontend (assigned by 이준호) |
 | E65 | `cart_items_deleted` | CLIENT | P1 | deleted_count, was_select_all | M12 | 56 (frontend) | frontend (assigned by 이준호) |
