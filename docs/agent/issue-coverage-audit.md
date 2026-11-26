@@ -6,6 +6,22 @@ All 76 WBS tasks were reconciled, and 15 missing tracking issues were created. E
 
 Use this document as a dated record of coverage and issue disposition. It is neither an edited Notion/Sheets original nor a code-validation report. Update implementation, QA and policy completion in their respective issues.
 
+## Follow-up: events and admin screens (2026-11-26)
+
+Checked `origin/dev` `eccff40`, which includes merged PR #290 (head `f143ae5`), and the related issues' current state. Preserve the original tables, owners and WBS Baseline below as the 2026-11-23 audit record. This section appends subsequent changes; it does not modify the original WBS or establish runtime QA completion.
+
+| Item | Follow-up state and evidence |
+| --- | --- |
+| Property count | The v2 original has 102 properties. Restoring `deleted_item_count` on 2026-11-24 makes the current contract 103; retain 79 events (45 CLIENT/34 SERVER), 21 metrics and 41 screen codes |
+| #172/#196 handoff | The [handoff by 재연](https://github.com/likelion-backendschool-9th/REMAKE/issues/196#issuecomment-7181075194) and [#172 ownership clarification](https://github.com/likelion-backendschool-9th/REMAKE/issues/172#issuecomment-7181075532) establish @JUNHORANG as the current owner of both issues. Preserve 김재연's WBS 10.6 assignment and the original issue table below. Feature owners still publish SERVER events; screen owners still publish CLIENT events |
+| PR #290 | [PR #290](https://github.com/likelion-backendschool-9th/REMAKE/pull/290) is 김재연's preliminary work, now merged. Event names/allowed properties, `EventContractTest`, the English event spec's code comparison/E50 reference, and CI/paired CI docs to run contract tests on spec changes are in dev. Do not count it as completion of #172/#196 |
+| Remaining verification | #172 aligns value validators, server senders and tests together, and checks 41-screen alignment. #196 verifies actual actions for omissions, duplicates, properties, PII filters and failure impact. Recheck current code: the handoff's nine sender locations and other findings were investigated at dev `e5c7579` |
+| Admin screens | #283 common layout/dashboard/funnel/event logs, #284 feature metrics/shared charts, #285 reports and #286 user management/ranking/rewards are separate markup work. API integration is excluded |
+| Held and active work | Aggregation API #93 and live integration #117 remain WBS v2 11.2/P1/blocked pending contract reconciliation. Distinguish them from markup; SQL metrics #186 and seeds #187 remain active |
+| Unresolved casing | Resolve the conflict between the general lowercase rule and uppercase `storage`/`filter_value` table entries against the source definition through #172. This documentation change does not alter allowlists, code or event contracts. Existing uppercase data and M05 query handling also require a decision with #186 |
+
+Align the documents with PR #290's merged code comparison, contract tests and CI changes; do not duplicate the implementation. These documentation additions record follow-up state, unresolved questions and work boundaries. Use the [event guide](../developer/guide/08_event-tracking.md), [English spec](spec/events.md), and [notification/admin guide](../developer/guide/06_notification-admin.md) for responsibilities and rules.
+
 ## Document sources and baselines
 
 | Document | Scope |

@@ -1,6 +1,6 @@
 # API summary
 
-Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo). 60 APIs, numbered 1-60, plus API 61 (discarded food, proposal 11/25, #248) added after v4; other spec files refer to APIs by these numbers. Admin APIs are on hold because admin screens are not in Figma yet. Error codes per API are in `errors.md`; events are in `events.md`.
+Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo). 60 APIs, numbered 1-60, plus API 61 (discarded food, proposal 11/25, #248) added after v4; other spec files refer to APIs by these numbers. Admin APIs/data integration remain on hold pending contract reconciliation (#93/#117 and related issues); separate admin screen markup #283–#286 does not define or resume API contracts. Error codes per API are in `errors.md`; events are in `events.md`.
 
 ## Common
 
@@ -17,7 +17,7 @@ Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo)
 | Images | `imageUrl` in responses is a server-made URL (storage is the backend's choice). Ingredient and item images are the category image |
 | Client headers | Every request sends `X-Client-Platform` (TWA/PWA/WEB), `X-App-Version`, and `X-Screen` (current screen code). The server writes them to `events.platform`, `app_version`, `screen` |
 | Timeouts | 10 s default, OCR 30 s, AI recipe generation 60 s (recipes only; meal-plan generation replies 202 at once and runs as a server job). Failed or timed-out generation is never charged |
-| Admin | Not in this version (no admin screens in Figma) |
+| Admin | API/data integration remains on hold pending contract reconciliation; markup #283–#286 is separate and does not add endpoints |
 | Payments (Toss Payments) | Card auto-billing. The frontend only opens the card registration window with the client key. The server issues the billingKey (`POST /v1/billing/authorizations/issue`) and charges (`POST /v1/billing/{billingKey}`) with the secret key. Never send the billingKey or secret key to the frontend. The server makes the `orderId` |
 | Numbering | Subscription APIs (57-60) belong to area 1 but are numbered last so other documents keep their API numbers |
 | Removed | No `Idempotency-Key` header rule (the duplicate-request key table was removed) |

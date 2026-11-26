@@ -5,7 +5,7 @@
 2026-11-22 · 이준호. Source: Notion "ERD v4" (Figma-based, with a screen-evidence column). This file carries the same content for development; see the source for the Figma node evidence.
 
 - Tables documented here: 28 — 25 Figma-based tables, the unit dictionary `ingredient_catalog`, manual ingredient expense history added in #73, and the internal weekly settlement record added in #92.
-- Admin screens are not in Figma, so there are no admin-only columns or tables (only `users.role`, report `status`, and shared post `status`).
+- Admin screen markup #283–#286 is separate from held backend/API/data integration work (#93/#117 and related issues). Keep the existing ERD and its admin holds unchanged (only `users.role`, report `status`, and shared post `status` are retained here); markup does not authorize new columns or tables. See the [notification/admin guide](../developer/guide/06_notification-admin.md).
 - Notifications are in-app only (no device push).
 
 ## Common rules
@@ -916,6 +916,8 @@ Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged
 | `events` | Same | Nothing to change |
 
 ## Differences from ERD v3 (32 tables)
+
+Historical comparison from 2026-11-22: preserve the rows below, including the then-current absence of admin screens. As of 2026-11-26, markup #283–#286 is tracked separately; admin schema/API/data integration remains on hold pending contract reconciliation. These later screens do not restore removed columns or tables.
 
 Summary: 17 changed, 7 kept, 7 removed, 1 on hold, 2 added -> 26 tables in the new ERD. The new tables are `subscriptions` and `subscription_payments`, added with the subscription on 11/22.
 

@@ -5,7 +5,7 @@ Source: PRD v4 and policy doc v4 (Figma-based, 2026-11-22; Korean, kept in Notio
 - (proposal): a draft the PO has not confirmed yet. Implement it behind a named constant.
 - (open): not decided. Ask the user before implementing.
 - (screen pending): the rule is decided, but its screen is in "screens to add" and not in Figma yet.
-- Admin rules are on hold because admin screens are not in Figma (see the end).
+- Admin backend/API/data rules remain on hold pending contract reconciliation (see the end). Separate screen markup #283–#286 does not settle these contracts.
 
 ## Access and common behavior
 
@@ -284,7 +284,7 @@ Apply #57, the [ERD](../erd.md#19-cart_items-cart), and the subsequently approve
 - The same recipe can be shared once per week (again next week).
 - Shared detail: photo, title, flag (report), "재료 준비 · servings · time", ingredients (missing ones with a red border), steps with read-aloud, Tips!, heart + save count, "레시피 저장", "레시피 저장 시 부족한 재료는 장바구니로 들어가요".
 - Save: the heart and "레시피 저장" are the same action. Puts the original recipe in my saved list (no copy). Save count +1; tapping again cancels (-1). Missing ingredients go to the cart. Removing it from my list leaves the shared post.
-- Report: flag → 4 reasons (`OFFENSIVE_IMAGE` 불쾌한 이미지 사용, `AD_TITLE` 광고성 제목, `DANGEROUS_RECIPE` 위험한 조리법 공유, `OTHER` 기타) → 신고 하기. No text input, even for 기타. Once per person per recipe; again → `REPORT_ALREADY_EXISTS` toast. No auto hide; operators review (handling screen comes with the admin design, on hold).
+- Report: flag → 4 reasons (`OFFENSIVE_IMAGE` 불쾌한 이미지 사용, `AD_TITLE` 광고성 제목, `DANGEROUS_RECIPE` 위험한 조리법 공유, `OTHER` 기타) → 신고 하기. No text input, even for 기타. Once per person per recipe; again → `REPORT_ALREADY_EXISTS` toast. No auto hide; operators review (handling contract/API integration #87 remains on hold; screen markup #285 is separate).
 - Sanctions after an operator confirms a report as a violation: 1st 7-day recipe sharing ban, 2nd 30-day recipe sharing ban, 3rd 30-day account suspension, 4th permanent account suspension (11/24 terms decision). How sanctions are stored, checked, and returned (API, error codes): (open).
 - Authors can delete their own shared posts at any time (11/24 terms decision). This is separate from ⋮ "삭제 하기", which only removes a recipe from my saved list. Screen and API for deleting my shared post: (open).
 - **Reward**: members who posted last week's top 1–3 recipes by saves. Per recipe rank, so one member can receive more than once. 1st +10, 2nd +6, 3rd +3 recipe generations, usable for one month from the grant.
@@ -305,7 +305,7 @@ Apply #57, the [ERD](../erd.md#19-cart_items-cart), and the subsequently approve
 ## Admin (on hold)
 
 - Access: social login + ADMIN role at `/admin`. No separate login.
-- Metrics, logs, threshold alerts, user management, report handling, account suspension (`SUSPENDED`), per-member quota adjustment, and hidden shared recipes (`HIDDEN`) are on hold until the admin screens are designed.
+- Metrics, logs, threshold alerts, user management, report handling, account suspension (`SUSPENDED`), per-member quota adjustment, and hidden shared recipes (`HIDDEN`) remain on hold pending backend/API/data contract reconciliation (#84/#85/#87/#93/#94/#117). Keep the existing holds, priorities and owners. Screen markup #283–#286 is separate work and does not resume these features. SQL metrics #186 and seeds #187 remain active.
 
 ## Out of scope (release 1)
 

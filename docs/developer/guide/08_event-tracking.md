@@ -2,7 +2,14 @@
 
 이 프로젝트의 핵심 기능입니다. 사용자 행동을 이벤트로 쌓고 지표(KPI)·퍼널로 모니터링합니다. 팀원 모두 "이벤트 데이터를 남기는 API/모듈을 활용"했다고 쓸 수 있도록 **이준호가 공통 `EventTracker` 모듈과 수집 API**를 만들고, 각 담당자가 **자기 API에서 서버 이벤트를 발행**합니다.
 
-기준 문서: 이벤트 정의서 v2(피그마 기준, 2026-11-22, 노션. 이벤트 79개, 속성 102개, 지표 21개, 화면 코드 41개). 영문 전체 목록은 [`docs/agent/spec/events.md`](../../agent/spec/events.md), 영역별 이벤트 표는 각 영역 문서(01~07)의 "발행 이벤트"에 있습니다.
+기준 문서: 이벤트 정의서 v2(피그마 기준, 2026-11-22, 노션. 이벤트 79개, 원문 속성 102개, 지표 21개, 화면 코드 41개). 2026-11-24 `deleted_item_count` 복원으로 현재 계약의 속성은 **103개**입니다. 영문 전체 목록은 [`docs/agent/spec/events.md`](../../agent/spec/events.md), 영역별 이벤트 표는 각 영역 문서(01~07)의 "발행 이벤트"에 있습니다.
+
+### 2026-11-26 후속 확인
+
+- 기준: PR #290이 병합된 `origin/dev` `eccff40`(PR head `f143ae5`). [인수인계 댓글](https://github.com/likelion-backendschool-9th/REMAKE/issues/196#issuecomment-7181075194)과 [담당 정리 댓글](https://github.com/likelion-backendschool-9th/REMAKE/issues/172#issuecomment-7181075532)에 따라 #172(서버 계약 정리)·#196(실제 발행·적재 QA)은 이준호(@JUNHORANG)가 이어서 진행합니다. WBS Baseline의 10.6 담당 김재연 기록은 보존합니다. 각 기능 담당자의 서버 이벤트 발행 책임과 화면 담당자의 CLIENT 발행 책임은 바뀌지 않습니다.
+- 김재연의 [PR #290](https://github.com/likelion-backendschool-9th/REMAKE/pull/290)은 **병합 완료**입니다. 이벤트 이름·허용 속성 정리, `EventContractTest`, 영문 명세의 코드 비교 절과 E50 참조, 명세만 바뀌어도 계약 테스트를 실행하는 CI·CI 문서 변경이 반영되었습니다. 이는 전체 이벤트 QA 완료가 아닙니다.
+- 값 검증기와 서버 송신부·관련 테스트의 동시 변경, `Screen` 41개 정합성은 #172의 남은 범위입니다. #196은 실제 행동별 누락·중복·속성·개인정보 필터·실패 영향 검증을 이어갑니다. 댓글의 송신 9곳·코드 차이는 조사 당시 dev `e5c7579` 기준이므로 구현 전 최신 코드와 대조합니다.
+- PR #290의 병합된 변경을 기반으로 아래 §8과 영문 명세를 맞춥니다. 이름·속성·계약 테스트·CI 변경을 다시 구현하지 않고, 남은 값·화면 코드 문제는 #172에서 조율합니다.
 
 ## 1. 구조
 
@@ -13,13 +20,13 @@
 
 - 프론트 이벤트(화면 노출·클릭)와 서버 이벤트(OCR·AI 결과, 한도, 알림, 보상, 재료 등록·차감, 장바구니 담기·빼기)를 나눠 적재합니다. **같은 행동은 한쪽에서만** 기록합니다(정의서 "발송" 칸이 FE/BE).
 - 외부 분석 도구는 쓰지 않습니다. 원본은 180일 보관합니다.
-- 일별 집계 테이블(`event_daily_stats`)은 없습니다. 어드민 화면이 디자인되기 전까지는 정의서 5장 계산식(영문 [`events.md`](../../agent/spec/events.md) Metrics)대로 `events`를 직접 조회하고, 일별 집계는 어드민 디자인 때 다시 정합니다.
+- 일별 집계 테이블(`event_daily_stats`)은 없습니다. 정의서 5장 계산식(영문 [`events.md`](../../agent/spec/events.md) Metrics)대로 `events`를 직접 조회합니다(#186). 운영자 화면 마크업 #283~#286은 별도 진행 범위이며, 집계 API #93·실제 연동 #117은 계약 정리 후 재개하는 보류 범위입니다. 마크업만으로 일별 집계 테이블·API 계약이 확정되지는 않습니다.
 
 ## 2. 이벤트의 모양
 
 모든 이벤트에 붙는 공통 값: `user_id`(내부 회원 번호, 로그인 전 null, 탈퇴해도 번호만 남음), `session_id`(앱을 연 뒤 30분 무행동이면 새 세션), `source`(CLIENT/SERVER), `screen`(화면 코드, 서버 이벤트는 요청 헤더 `X-Screen`, 정기 작업은 null), `platform`(TWA/PWA/WEB, 헤더 `X-Client-Platform`), `app_version`(헤더 `X-App-Version`), `is_seed`(시연용 가상 이벤트), `occurred_at`(한국 시간).
 
-이벤트별 값은 `properties`(JSON). **중첩 없이 문자·숫자·참거짓만, 25개 이하.** 코드값은 소문자입니다.
+이벤트별 값은 `properties`(JSON). **중첩 없이 문자·숫자·참거짓만, 25개 이하.** 일반 규칙은 코드값 소문자이지만, 속성 표의 `storage`·`filter_value`에는 대문자 값이 있어 정합성 확인이 필요합니다. #172에서 원본 정의와 확인하기 전에는 일괄 소문자 변환이나 허용값 변경을 하지 않습니다. 이 문서 수정은 기존 코드·이벤트 계약을 변경하지 않습니다. 기존 대문자 데이터와 M05 집계 처리도 #186과 함께 정해야 합니다.
 
 ```json
 { "name": "receipt_saved", "screen": "receipt_result",
@@ -94,14 +101,17 @@ track('receipt_item_edited', { item_index: 2, edit_field: 'amount' });
 - **북극성 지표(M00)**: 소비기한 내 소진율 = `ingredient_used` ÷ (`ingredient_used` + `ingredient_discarded` + `ingredient_expired`).
 - KPI 20개(M01~M20): 온보딩 완료율, 첫 재료 등록률, OCR 성공률·품목 수정률, 영수증 등록 소요 시간, 임박 알림 확인율, 임박 재료 소진율, 레시피 생성 → 요리 완료율, AI 생성 성공률·응답 시간, 식단표 → 칸 열람률, 장바구니 → 냉장고 전환율, 공유 작성 완료율, 공유 저장율·신고율, D1·D7·WAU, AI·OCR 호출 수와 한도 소진율, 핵심 흐름 퍼널, 이번 달 버린 식재료 금액, 소비 패턴 이용률, 오류 노출률. 계산식은 영문 [`events.md`](../../agent/spec/events.md) Metrics.
 - 실사용자가 적으므로 시연용 **시드 데이터 생성 스크립트**를 만들고(`is_seed = true`), 지표 계산 때 실제 데이터만 보려면 `is_seed = false`로 거릅니다.
-- 어드민(모니터링) 화면은 문서 정리가 끝난 뒤 디자인할 예정이라, 어드민 API·대시보드는 그때 정합니다.
+- 운영자 화면 마크업(#283~#286)은 진행 범위입니다. 집계 API(#93)·실제 연동(#117)은 계약 정리 후 재개하며, SQL 지표(#186)·이벤트 시드(#187)는 보류에 포함하지 않습니다.
 
-## 8. 지금 코드와 다른 점
+## 8. 병합된 코드와 남은 차이(PR #290 이후)
 
-- `EventName`(76개)을 정의서 79개에 맞춰야 합니다. 추가 12개(구독 6개, `recipe_favorited`, `meal_plan_overlap_answered`, `meal_slot_deleted`, `meal_slot_replaced`, `meal_slot_replace_failed`, `cart_moved_to_fridge`), 이름 변경 `notification_clicked` → `notification_banner_clicked`, 삭제 9개(`pwa_install_prompted`, `pwa_installed`, `push_permission_result`, `camera_unavailable`, `meal_plan_shortage_shown`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`, `shared_recipe_saved`). `cook_feedback_answered`(E50)는 보류에서 풀림(11/22, 차감 뒤 냉장고 바텀 시트). 속성 `feedback_value`를 `recipe_id`·`recommended`로 바꿔야 합니다.
-- `Screen` enum(대문자 25개)을 소문자 화면 코드 41개로 바꿔야 합니다.
-- 속성 14개가 빠지고(`was_skipped`, `is_expiration_estimated`, `duplicate_suspected`, `allergen_warning`, `channel`, `photo_count` 등) 19개가 새로 생겼습니다(`recommended` 포함). 목록은 영문 [`events.md`](../../agent/spec/events.md). `deleted_item_count`는 한때 뺐다가, 11/24 OCR 품목 삭제를 다시 허용하면서 되살렸습니다.
-- 우선순위는 정의서를 따릅니다. 결정 [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58)대로 공유·장바구니·보상 이벤트는 P1이고, #58의 어드민 부분(ADMIN 접근 제어 선행, 분석 API)은 어드민 화면이 없어 보류입니다.
+- `EventName`의 이름·발송 주체·허용 속성은 정의서의 79개와 맞췄습니다. `EventContractTest`가 영문 명세의 이벤트 표와 enum을 비교합니다. PR #290에서 옛 이벤트 8개(`pwa_install_prompted`, `pwa_installed`, `push_permission_result`, `camera_unavailable`, `meal_plan_shortage_shown`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`)를 제거했습니다. 카메라 오류는 `error_shown`의 `CAMERA_UNAVAILABLE`로 기록합니다.
+- `cook_feedback_answered`(E50)는 11/22 보류에서 풀렸으며 차감 뒤 냉장고 바텀 시트에서 CLIENT로 발행합니다. 속성은 `recipe_id`·`recommended`이며, 전용 API·테이블 없이 추적 데이터만 남깁니다. 이벤트 우선순위는 #53 미결입니다.
+- E84·E85·E87·E88의 서버 호출 지점은 구독 API(#270)에 있습니다. E86 `subscription_renewed` 호출 지점은 자동 결제 작업 #168의 남은 범위입니다.
+- 값 검증기에는 `limit_feature`, `add_source`, `recipe_mode`, `meal_purpose`, `meal_type`, `date_relation`의 대문자 값이 남아 있습니다. #172에서 검증기와 송신부·테스트를 함께 맞춰야 합니다. `storage`·`filter_value`는 §2의 대소문자 충돌 확인 전까지 기존 허용값을 유지합니다. 대소문자 외에 값 자체가 다른 `filter_type`, `edit_field`, `scan_method`, `detail_origin`, `view_from`, `rank_bucket`, `ranking_view`도 원본과 대조해야 합니다.
+- `Screen` enum은 28개(`ranking`, `shared_recipe`, `admin`, `unknown` 포함)로 명세의 41개와 다릅니다. 명세에만 있는 24개(`splash`, `setting_main`, `ingredient_consume`, `receipt_loading`, `recipe_result` 등)를 대조해야 합니다. CLIENT는 프론트가 보낸 문자열을 유지하고 SERVER만 enum을 씁니다.
+- 계약·코드에서 제거된 속성은 `permission_result`(푸시 이벤트와 함께), `needs_check_count`, `feedback_value`, `slot_source`, `has_recipe`, `group_count`, `duplicate_suspected`, `receipt_result_abandoned`의 `duration_sec`입니다. `deleted_item_count`는 한때 뺐다가 11/24 OCR 품목 삭제를 다시 허용하면서 복원했고 PR #290에서도 유지했습니다.
+- 우선순위는 정의서를 따릅니다. 결정 [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58)대로 공유·장바구니·보상 이벤트는 P1입니다. 과거 어드민 보류 사유였던 화면 부재는 현재 마크업 진행 상태와 구분하며, 집계 API·실제 연동은 계약 정리 전까지 보류합니다.
 
 ## 9. 체크리스트
 

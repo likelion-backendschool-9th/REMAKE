@@ -18,7 +18,7 @@ AI 코딩 도구(Claude Code 등)는 루트 `AGENTS.md`와 영문 요약 [`docs/
 | [03_receipt-ocr-spending.md](03_receipt-ocr-spending.md) | 영역 3 이동준 |
 | [04_ai-recipe.md](04_ai-recipe.md) | 영역 4 김종수 |
 | [05_meal-plan.md](05_meal-plan.md) | 영역 5 한윤수 |
-| [06_notification-admin.md](06_notification-admin.md) | 영역 6 이상호 (알림. 어드민은 보류) |
+| [06_notification-admin.md](06_notification-admin.md) | 영역 6 이상호 (알림. 어드민 API·데이터 연동 보류, 화면 마크업은 별도 진행) |
 | [07_shared-cart.md](07_shared-cart.md) | 영역 7 최유리 |
 | [08_event-tracking.md](08_event-tracking.md) | 전원 (포트폴리오 핵심 기능) |
 
@@ -32,5 +32,7 @@ AI 코딩 도구(Claude Code 등)는 루트 `AGENTS.md`와 영문 요약 [`docs/
 - API 정의서 v4: API 60개(영문 요약 [`api-summary.md`](../../agent/spec/api-summary.md))
 - 에러·예외 정의서 v2: 에러 코드 59개(영문 요약 [`errors.md`](../../agent/spec/errors.md))
 - ERD v4: 테이블 26개(레포에는 [`../erd.md`](../erd.md))
-- 이벤트 정의서 v2: 이벤트 79개, 속성 102개, 지표 21개, 화면 코드 41개(영문 요약 [`events.md`](../../agent/spec/events.md))
+- 이벤트 정의서 v2: 이벤트 79개, 원문 속성 102개, 지표 21개, 화면 코드 41개. 11/24 `deleted_item_count` 복원 후 현재 계약은 속성 103개(영문 요약 [`events.md`](../../agent/spec/events.md))
 - WBS v2: 일정·담당
+
+2026-11-26 후속 기준: 운영자 피그마 화면과 마크업 #283~#286은 진행 범위이고, 집계 API #93·실제 연동 #117 등 어드민 백엔드 계약·데이터 연동은 보류 상태를 유지합니다. PR #290은 dev `eccff40`에 병합됐으며 전체 이벤트 QA 완료를 뜻하지 않습니다. 담당 인수인계와 `storage`·`filter_value` 대소문자 미결은 [이벤트 가이드](08_event-tracking.md)의 후속 확인을 보세요.

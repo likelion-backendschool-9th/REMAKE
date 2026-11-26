@@ -101,7 +101,7 @@
 ## 구현 메모
 
 - JWT([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) A안): 액세스(30분)·리프레시(14일) 모두 HttpOnly 쿠키(`Secure; SameSite=Lax`). 응답 본문에 토큰을 넣지 않고 프론트는 `Authorization` 헤더를 쓰지 않아요. 리프레시는 DB에 해시로만 저장하고, 로그아웃하면 행을 지워요.
-- `/api/v1/admin/**`는 서버 보안 설정에서 ADMIN만 통과시켜요. 어드민 화면은 피그마에 없어 어드민 기능은 보류예요.
+- `/api/v1/admin/**`는 서버 보안 설정에서 ADMIN만 통과시켜요. 운영자 화면 마크업 #283~#286과 어드민 백엔드 보류(#84·#85·#87·#93·#94·#117)를 구분해요. 화면 마크업으로 권한·API·데이터 연동 계약이 확정되거나 보류가 해제되지는 않아요([06 문서](06_notification-admin.md)).
 - 온보딩은 p1.2 완료 때 `PUT /user/onboarding` 한 번으로 가구원 수와 제외 재료를 같이 저장해요. 건너뛰기 버튼은 없어요.
 - 제외 재료는 칩 19개 코드(`allergenCodes`)로 주고받아요. 코드 목록은 ERD 부록 B, 화면은 프론트 상수예요.
 - 계정 삭제: 카카오·구글은 `POST /user/account/deletion-code`로 이메일 인증번호를 보내고 `POST /user/account/deletion` `{ method: "EMAIL_CODE", code }`로 확인해요. 인증번호는 해시만 `account_deletion_requests`에 저장하고, 재전송하면 새 행을 만들어요(5분 유효, 5회 넘게 틀리면 그 번호는 잠금).

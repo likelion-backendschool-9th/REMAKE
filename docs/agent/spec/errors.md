@@ -1,6 +1,6 @@
 # Error contract
 
-Source: error and exception definition v2 (Figma-based, Korean, kept in Notion; not in the repo). 59 codes. Codes are fixed UPPER_SNAKE_CASE; never rename. Clients branch on `code`; `message` is Korean user-facing text (the texts below are proposals; screens may change wording, codes do not change). API numbers refer to `api-summary.md`. Admin codes are on hold (no admin screens in Figma).
+Source: error and exception definition v2 (Figma-based, Korean, kept in Notion; not in the repo). 59 codes. Codes are fixed UPPER_SNAKE_CASE; never rename. Clients branch on `code`; `message` is Korean user-facing text (the texts below are proposals; screens may change wording, codes do not change). API numbers refer to `api-summary.md`. Admin codes remain on hold pending backend/API/data contract reconciliation; screen markup #283–#286 does not activate them.
 
 ## Response body
 
@@ -256,7 +256,7 @@ Errors are also recorded as events (see `events.md`).
 
 ## Codes on hold and removed
 
-On hold (admin screens are not in Figma): `FORBIDDEN`, `ACCOUNT_SUSPENDED`, `USER_NOT_FOUND`, `REPORT_NOT_FOUND`, `FUNNEL_NOT_FOUND`, `ADMIN_REASON_REQUIRED`, `QUOTA_ADJUST_INVALID`. `FORBIDDEN` and `ACCOUNT_SUSPENDED` already exist in `global/error/ErrorCode`; keep them in code but do not return them from new APIs (others' resources return 404).
+On hold (backend/API/data contracts remain unresolved, separately from markup #283–#286): `FORBIDDEN`, `ACCOUNT_SUSPENDED`, `USER_NOT_FOUND`, `REPORT_NOT_FOUND`, `FUNNEL_NOT_FOUND`, `ADMIN_REASON_REQUIRED`, `QUOTA_ADJUST_INVALID`. `FORBIDDEN` and `ACCOUNT_SUSPENDED` already exist in `global/error/ErrorCode`; keep them in code but do not return them from new APIs (others' resources return 404).
 
 Removed (do not use in new code; remove from `ErrorCode` when the related code is changed):
 
