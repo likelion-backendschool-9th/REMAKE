@@ -182,7 +182,7 @@ Every `user` and `admin` API can also return the common codes (`UNAUTHORIZED`, `
 | 50 | `GET /user/shared-recipes/ranking` | INVALID_INPUT |
 | 51 | `POST /user/shared-recipes` | INVALID_INPUT, FILE_TOO_LARGE, UNSUPPORTED_FILE_TYPE, RECIPE_NOT_FOUND, RECIPE_NOT_SHAREABLE, ALREADY_SHARED, PHOTO_REQUIRED |
 | 52 | `GET /user/shared-recipes/{id}` | SHARED_RECIPE_NOT_FOUND |
-| 53 | `PUT /user/shared-recipes/{id}/save` | SHARED_RECIPE_NOT_FOUND |
+| 53 | `PUT /user/shared-recipes/{id}/save` | INVALID_INPUT (eligible cart shortage without an exact catalog category or persisted recipe category; whole save/cart rollback, #245), SHARED_RECIPE_NOT_FOUND |
 | 54 | `DELETE /user/shared-recipes/{id}/save` | SHARED_RECIPE_NOT_FOUND |
 | 55 | `POST /user/shared-recipes/{id}/reports` | INVALID_INPUT, SHARED_RECIPE_NOT_FOUND, REPORT_ALREADY_EXISTS |
 | 56 | `POST /user/events` | INVALID_INPUT, EVENT_BATCH_TOO_LARGE |

@@ -185,6 +185,8 @@ class SharedRecipeSaveApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 장바구니_DB실패면_저장과_담기와_이벤트가_모두롤백된다() {
+		// 카테고리 fallback 재료를 먼저 INSERT한 뒤 다음 재료에서 실패해도 모두 롤백한다.
+		jdbcTemplate.update("UPDATE recipe_ingredients SET name='가나다채소', category_code='VEGETABLE' WHERE recipe_id=? AND name='당근'", recipeId);
 		jdbcTemplate.execute("ALTER TABLE cart_items ADD CONSTRAINT test_shared_save_failure CHECK (name <> '양파')");
 		try {
 			assertThatThrownBy(() -> saves.save(reader, postId)).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
@@ -198,7 +200,7 @@ class SharedRecipeSaveApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 사전미등록_부족재료는_임의카테고리대신400이고_저장도롤백한다() throws Exception {
+	void 사전미등록이고_확정카테고리도없는_부족재료는400이고_저장도롤백한다() throws Exception {
 		jdbcTemplate.update("UPDATE recipe_ingredients SET name='사전에없는재료' WHERE recipe_id=? AND name='양파'", recipeId);
 		save().andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_INPUT"));
 		assertThat(count("saved_recipes")).isZero();
@@ -208,7 +210,49 @@ class SharedRecipeSaveApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 사전미등록도_확정카테고리로담고_반복과재저장은_수정량과이벤트를보존한다() throws Exception {
+		jdbcTemplate.update("UPDATE recipe_ingredients SET name='사전에없는채소', category_code='VEGETABLE' WHERE recipe_id=? AND name='양파'", recipeId);
+		save().andExpect(status().isOk()).andExpect(jsonPath("$.saved").value(true))
+				.andExpect(jsonPath("$.saveCount").value(1)).andExpect(jsonPath("$.cartAddedCount").value(2));
+		Long cartId = jdbcTemplate.queryForObject("SELECT id FROM cart_items WHERE user_id=? AND name='사전에없는채소'", Long.class, reader);
+		assertThat(jdbcTemplate.queryForObject("SELECT c.code FROM cart_items i JOIN ingredient_categories c ON c.id=i.category_id WHERE i.id=?", String.class, cartId)).isEqualTo("VEGETABLE");
+		assertThat(jdbcTemplate.queryForObject("SELECT recipe_id FROM saved_recipes WHERE user_id=?", Long.class, reader)).isEqualTo(recipeId);
+		assertThat(count("recipes")).isEqualTo(1);
+		jdbcTemplate.update("UPDATE cart_items SET amount=7 WHERE id=?", cartId);
+		save().andExpect(status().isOk()).andExpect(jsonPath("$.cartAddedCount").value(0));
+		assertThat(events("recipe_saved")).isEqualTo(1);
+		assertThat(events("cart_item_added")).isEqualTo(1);
+		unsave().andExpect(status().isOk()).andExpect(jsonPath("$.saved").value(false));
+		assertThat(count("cart_items")).isEqualTo(2);
+		jdbcTemplate.update("DELETE FROM cart_items WHERE user_id=? AND name='당근'", reader);
+		save().andExpect(status().isOk()).andExpect(jsonPath("$.cartAddedCount").value(1));
+		assertThat(jdbcTemplate.queryForObject("SELECT amount FROM cart_items WHERE id=?", BigDecimal.class, cartId)).isEqualByComparingTo("7");
+		assertThat(count("cart_items")).isEqualTo(2);
+		assertThat(events("recipe_saved")).isEqualTo(2);
+		assertThat(events("cart_item_added")).isEqualTo(2);
+		assertThat(jdbcTemplate.queryForList("SELECT properties->>'cart_added_count' FROM events WHERE user_id=? AND event_name='recipe_saved'", String.class, reader)).containsExactlyInAnyOrder("2", "1");
+		assertThat(jdbcTemplate.queryForList("SELECT properties->>'item_count' FROM events WHERE user_id=? AND event_name='cart_item_added'", String.class, reader)).containsExactlyInAnyOrder("2", "1");
+	}
+
+	@Test
+	void 사전카테고리는_레시피카테고리보다_우선한다() throws Exception {
+		jdbcTemplate.update("UPDATE recipe_ingredients SET category_code='MEAT' WHERE recipe_id=? AND name='양파'", recipeId);
+		save().andExpect(status().isOk()).andExpect(jsonPath("$.cartAddedCount").value(2));
+		assertThat(jdbcTemplate.queryForObject("SELECT c.code FROM cart_items i JOIN ingredient_categories c ON c.id=i.category_id WHERE i.user_id=? AND i.name='양파'", String.class, reader)).isEqualTo("VEGETABLE");
+	}
+
+	@Test
+	void 수량없는재료와_PINCH와_TO_TASTE는_사전과카테고리가없어도_제외한다() throws Exception {
+		jdbcTemplate.update("UPDATE recipe_ingredients SET name='사전미등록수량없음' WHERE recipe_id=? AND name='소금'", recipeId);
+		jdbcTemplate.update("UPDATE recipe_ingredients SET name='사전미등록꼬집' WHERE recipe_id=? AND name='후추'", recipeId);
+		jdbcTemplate.update("INSERT INTO recipe_ingredients(recipe_id, name, amount, unit, sort_order, created_at) VALUES (?, '사전미등록적당량', 1, 'TO_TASTE', 5, ?)", recipeId, LocalDateTime.now(clock));
+		save().andExpect(status().isOk()).andExpect(jsonPath("$.cartAddedCount").value(2));
+		assertThat(jdbcTemplate.queryForList("SELECT name FROM cart_items", String.class)).containsExactlyInAnyOrder("양파", "당근");
+	}
+
+	@Test
 	void 동시저장도_저장과_담기와_이벤트가_한번만반영된다() throws Exception {
+		jdbcTemplate.update("UPDATE recipe_ingredients SET name='사전에없는채소', category_code='VEGETABLE' WHERE recipe_id=? AND name='양파'", recipeId);
 		CountDownLatch start = new CountDownLatch(1);
 		try (var executor = Executors.newFixedThreadPool(2)) {
 			var first = executor.submit(() -> { start.await(); return saves.save(reader, postId); });
