@@ -4,8 +4,8 @@
 
 2026-11-22 · 이준호. 원본은 노션 "ERD v4"(피그마 기준, 화면 근거 칸 포함)이고, 이 문서는 그 내용을 개발용으로 옮긴 것이에요. 화면 근거(피그마 노드)는 원본에서 보세요.
 
-- 이 문서의 테이블 28개: 피그마 기준 25개, 단위 사전 `ingredient_catalog`, #73의 직접 등록 재료 지출 기록, #92의 내부 주간 확정 완료 기록을 포함해요.
-- 어드민 화면이 피그마에 없어서 어드민 전용 컬럼·테이블은 넣지 않았어요(`users.role`, 신고 `status`, 공유 글 `status`만 둠).
+- 이 문서의 테이블 30개: 피그마 기준 26개(11/26에 추가한 `user_sanctions` 포함), 단위 사전 `ingredient_catalog`, #73의 직접 등록 재료 지출 기록, #92의 내부 주간 확정 완료 기록, #266의 영수증 최초 반영 기록을 포함해요.
+- 11/26 피그마 '운영자 페이지' 기준으로 `user_sanctions`를 추가하고, 신고 처리 결과(`result`·`handled_by`·`handled_at`), 운영자 횟수 조정(`grant_type`·`reason`·`admin_id`), 공유 글 `DELETED` 상태를 넣었어요. 기획 ERD는 테이블 26개·컬럼 219개·관계 42개로 세고 `user_sanctions`를 26번으로 매기지만, 이 문서는 레포 번호(30번)를 유지해요.
 - 알림은 앱 안에서만 보여요(휴대폰 푸시 없음).
 
 ## 공통 규칙
@@ -39,15 +39,16 @@
 | 18 | `meal_plan_slots` | 식단 칸 | 날짜·끼니별 레시피 한 칸 | 5 주간 식단표 | 한윤수 | 8 |
 | 19 | `cart_items` | 장바구니 | 부족 재료 목록(공유 레시피 저장, 재료 보충으로 부족 재료가 들어간 내 레시피 저장, 식단표 생성 때 자동으로 담김) | 7 공유 공간·장바구니 | 최유리 | 10 |
 | 20 | `shared_recipes` | 공유 레시피 | 공유 공간에 올린 글(완전 익명) | 7 공유 공간·장바구니 | 최유리 | 7 |
-| 21 | `shared_recipe_reports` | 공유 레시피 신고 | 신고 한 건 | 7 공유 공간·장바구니 | 최유리 | 6 |
+| 21 | `shared_recipe_reports` | 공유 레시피 신고 | 신고 한 건과 운영자 처리 결과 | 7 공유 공간·장바구니 | 최유리 | 9 |
 | 22 | `shared_recipe_weekly_ranks` | 주간 순위 기록 | 지난주 최종 순위(순위 변동 ↑↓ 계산용) | 7 공유 공간·장바구니 | 최유리 | 6 |
-| 23 | `generation_quota_grants` | 보상 생성 횟수 | 금주의 레시피 1~3위 보상으로 준 추가 레시피 생성 횟수 | 7 공유 공간·장바구니 | 최유리 | 9 |
+| 23 | `generation_quota_grants` | 보상 생성 횟수 | 금주의 레시피 1~3위 보상과 운영자 조정으로 준 추가 레시피 생성 횟수 | 7 공유 공간·장바구니 | 최유리 | 12 |
 | 24 | `notifications` | 알림 | 회원에게 만든 알림 한 건 | 6 알림 | 이상호 | 8 |
 | 25 | `events` | 이벤트 | 사용자 행동 이벤트 원본(프론트·서버). 이름·속성은 이벤트 정의서 | 공통(이벤트) | 이준호 | 12 |
 | 26 | `ingredient_catalog` | 재료 단위 사전 | 재료명 → 단위·카테고리·보관 일수. 재료명으로 단위를 정할 때(API 14·15·16·21) 서버 안에서만 씀. 화면·API로 노출하지 않음 | 2 냉장고 | 김재연 | 6 |
 | 27 | `manual_ingredient_expenses` | 직접 등록 재료 지출 | 영수증 없이 등록한 재료의 출처와 지출 기록 | 3 영수증 | 이동준 | 9 |
 | 28 | `receipt_first_applications` | 영수증 최초 반영 | 번호 있는 구매의 최초 냉장고·장바구니 반영. 영수증 삭제 후에도 남아 재등록 시 재고·장바구니를 건너뜀(#266) | 3 영수증 | 이동준 | 6 |
 | 29 | `shared_recipe_weekly_settlements` | 주간 확정 완료 기록 | 대상이 없는 주도 포함한 주별 완료 기록. 순위·보상 중복 확정 방지 | 7 공유 공간·장바구니 | 최유리 | 2 |
+| 30 | `user_sanctions` | 제재 | 신고 처리로 확정된 위반 한 번마다 한 행(1~4차 제재) | 어드민 운영 | 이상호 | 9 |
 
 ## 관계도
 
@@ -99,6 +100,11 @@ erDiagram
   ingredients |o--o{ notifications : "ingredient_id"
   meal_plans |o--o{ notifications : "meal_plan_id"
   ingredient_categories ||--o{ ingredient_catalog : "category_id"
+  users ||--o{ user_sanctions : "user_id"
+  users ||--o{ user_sanctions : "admin_id"
+  shared_recipes ||--o{ user_sanctions : "shared_recipe_id"
+  users |o--o{ shared_recipe_reports : "handled_by"
+  users |o--o{ generation_quota_grants : "admin_id"
   shared_recipe_weekly_settlements {
     date week_start PK
     timestamp created_at
@@ -318,6 +324,9 @@ erDiagram
     bigint reporter_id FK
     varchar reason
     varchar status
+    varchar result
+    bigint handled_by FK
+    timestamp handled_at
     timestamp created_at
   }
   shared_recipe_weekly_ranks {
@@ -332,11 +341,14 @@ erDiagram
     bigint id PK
     bigint user_id FK
     bigint shared_recipe_id FK
+    varchar grant_type
     date week_start
     int rank_no
     int amount
     int remaining
     timestamp expires_at
+    varchar reason
+    bigint admin_id FK
     timestamp created_at
   }
   notifications {
@@ -363,6 +375,17 @@ erDiagram
     timestamp occurred_at
     timestamp created_at
   }
+  user_sanctions {
+    bigint id PK
+    bigint user_id FK
+    bigint shared_recipe_id FK
+    int level
+    varchar type
+    timestamp starts_at
+    timestamp ends_at
+    bigint admin_id FK
+    timestamp created_at
+  }
   ingredient_catalog {
     bigint id PK
     bigint category_id FK
@@ -387,7 +410,7 @@ erDiagram
 | `provider` | varchar |  |  | 아니오 |  | KAKAO/NAVER/GOOGLE |
 | `provider_user_id` | varchar | UK |  | 예 |  | 소셜 고유 ID. UK(provider+이 값). 탈퇴하면 비움 |
 | `email` | varchar |  |  | 예 |  | 카카오·구글 탈퇴 인증번호를 보낼 주소(카카오는 로그인 때 이메일 필수 동의, 구글은 기본 제공). 네이버는 비어도 됨. 탈퇴하면 비움 |
-| `role` | varchar |  |  | 아니오 | USER | USER/ADMIN |
+| `role` | varchar |  |  | 아니오 | USER | USER/ADMIN. ADMIN만 /api/v1/admin/** 사용 |
 | `plan` | varchar |  |  | 아니오 | BASIC | BASIC/PREMIUM. 구독(subscriptions)이 ACTIVE·CANCELED(해지 예약)인 동안 PREMIUM, 구독이 끝나면 BASIC. 한도 계산에 씀 |
 | `household_size` | int |  |  | 예 |  | 가구원 수 1~50. 온보딩 전에는 비어 있음 |
 | `onboarding_completed` | boolean |  |  | 아니오 | false | 온보딩을 마쳤는지 |
@@ -684,13 +707,13 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `recipe_id` | bigint | FK | recipes | 아니오 |  | 공유한 레시피(같은 레시피는 한 주에 한 번) |
 | `title` | varchar |  |  | 아니오 |  | 공유 제목 |
 | `image_key` | varchar |  |  | 아니오 |  | 조리 사진 1장 경로 |
-| `status` | varchar |  |  | 아니오 | VISIBLE | VISIBLE/HIDDEN(운영자가 숨김) |
+| `status` | varchar |  |  | 아니오 | VISIBLE | VISIBLE/HIDDEN(위반 처리로 숨김)/DELETED(운영자가 글 삭제. 행은 남기고 어디에도 안 보임) |
 | `created_at` | timestamp |  |  | 아니오 |  | 공유 시각 |
 | `updated_at` | timestamp |  |  | 아니오 |  | 상태 변경 시각 |
 
 ### 21. `shared_recipe_reports` 공유 레시피 신고
 
-신고 한 건. 담당 최유리(7 공유 공간·장바구니).
+신고 한 건과 운영자 처리 결과. 담당 최유리(7 공유 공간·장바구니).
 
 | 컬럼 | 타입 | 키 | 참조 | NULL | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -699,6 +722,9 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `reporter_id` | bigint | FK | users | 아니오 |  | 신고한 회원. UK(reporter_id+shared_recipe_id), 같은 글은 한 번만 신고 |
 | `reason` | varchar |  |  | 아니오 |  | OFFENSIVE_IMAGE/AD_TITLE/DANGEROUS_RECIPE/OTHER |
 | `status` | varchar |  |  | 아니오 | PENDING | PENDING/DONE |
+| `result` | varchar |  |  | 예 |  | 처리 결과 VIOLATION(위반·숨김)/NO_ISSUE(문제 없음)/DELETED(글 삭제). 운영자가 글 단위로 처리해 그 글의 대기 신고에 같은 값이 들어감 |
+| `handled_by` | bigint | FK | users | 예 |  | 처리한 운영자 |
+| `handled_at` | timestamp |  |  | 예 |  | 처리 시각 |
 | `created_at` | timestamp |  |  | 아니오 |  | 신고 시각 |
 
 ### 22. `shared_recipe_weekly_ranks` 주간 순위 기록
@@ -716,18 +742,21 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 
 ### 23. `generation_quota_grants` 보상 생성 횟수
 
-금주의 레시피 1~3위 보상으로 준 추가 레시피 생성 횟수. 담당 최유리(7 공유 공간·장바구니).
+금주의 레시피 1~3위 보상과 운영자 조정으로 준 추가 레시피 생성 횟수. 담당 최유리(7 공유 공간·장바구니).
 
 | 컬럼 | 타입 | 키 | 참조 | NULL | 기본값 | 설명 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `id` | bigint | PK |  | 아니오 |  | 고유 번호 |
 | `user_id` | bigint | FK | users | 아니오 |  | 받은 회원 |
 | `shared_recipe_id` | bigint | FK | shared_recipes | 예 |  | 보상받은 공유 레시피 |
-| `week_start` | date |  |  | 아니오 |  | 보상 주(월요일). UK(week_start+rank_no) |
-| `rank_no` | int |  |  | 아니오 |  | 1~3 |
-| `amount` | int |  |  | 아니오 |  | 지급 횟수 10/6/3 |
-| `remaining` | int |  |  | 아니오 |  | 남은 횟수 |
+| `grant_type` | varchar |  |  | 아니오 | WEEKLY_REWARD | WEEKLY_REWARD(금주의 레시피 보상)/ADMIN_ADJUST(운영자 조정) |
+| `week_start` | date |  |  | 예 |  | 보상 주(월요일). UK(week_start+rank_no). 운영자 조정은 비움 |
+| `rank_no` | int |  |  | 예 |  | 1~3. 운영자 조정은 비움 |
+| `amount` | int |  |  | 아니오 |  | 지급 횟수 10/6/3. 운영자 조정은 늘린 횟수(+) 또는 줄인 횟수(-) |
+| `remaining` | int |  |  | 아니오 |  | 남은 횟수. 운영자가 줄인 행은 0(줄인 만큼 다른 보상 행에서 기한 가까운 것부터 뺌) |
 | `expires_at` | timestamp |  |  | 아니오 |  | 사용 기한(지급 + 1개월) |
+| `reason` | varchar |  |  | 예 |  | 조정 사유. 운영자 조정이면 필수 |
+| `admin_id` | bigint | FK | users | 예 |  | 조정한 운영자 |
 | `created_at` | timestamp |  |  | 아니오 |  | 지급 시각 |
 
 ### 24. `notifications` 알림
@@ -827,6 +856,22 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 - 대상이 없는 주도 확정 완료예요. 순위 행 유무 대신 `shared_recipe_weekly_settlements`를 사용해요. E75는 EventTracker로 커밋 후 제출하며, 이벤트 적재는 최선 노력 방식이라 확정한 주를 재실행해도 재전송하지 않아요.
 - 시점 관련 한계: 취소된 저장 이력이 없어서 첫 실행이 늦으면 실행 시점까지 남은 행을 세며, 주 경계 이후 취소된 저장을 과거 상태로 복원할 수 없어요. 누락 주 자동 소급 실행은 제공하지 않아요. 정확한 과거 복구를 보장한다고 설명하면 안 돼요. 작성자 삭제·확정 후 보상 처리는 #230 미결로 남겨요.
 
+### 30. `user_sanctions` 제재
+
+신고 처리로 확정된 위반 한 번마다 한 행(1~4차 제재). 담당 이상호(어드민 운영). 근거: 운영자 페이지 a4.1 신고 상세·a5 사용자 관리(11/26), 11/24 약관 답(제재 단계). 기획 ERD에서는 26번이에요.
+
+| 컬럼 | 타입 | 키 | 참조 | NULL | 기본값 | 설명 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `id` | bigint | PK |  | 아니오 |  | 고유 번호 |
+| `user_id` | bigint | FK | users | 아니오 |  | 제재받은 회원(신고된 글 작성자) |
+| `shared_recipe_id` | bigint | FK | shared_recipes | 아니오 |  | 제재 원인이 된 신고 글 |
+| `level` | int |  |  | 아니오 |  | 1~4차. UK(user_id+level). 이 회원의 행 수 = 확정 위반 수, 최대 4(4차 이후 위반은 행을 만들지 않음) |
+| `type` | varchar |  |  | 아니오 |  | SHARE_BAN(레시피 공유 정지, 1·2차)/ACCOUNT_BAN(계정 정지, 3·4차) |
+| `starts_at` | timestamp |  |  | 아니오 |  | 제재 시작 시각(처리 시각) |
+| `ends_at` | timestamp |  |  | 예 |  | 끝나는 시각. 4차 영구 정지는 비움 |
+| `admin_id` | bigint | FK | users | 아니오 |  | 처리한 운영자 |
+| `created_at` | timestamp |  |  | 아니오 |  | 만든 시각 |
+
 ## 관계 목록
 
 | 부모 | 자식 | 연결 컬럼 | 관계 | 부모가 없어도 됨 | 부모 삭제 시 |
@@ -875,6 +920,11 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `ingredients` | `notifications` | ingredient_id | 1:N | 예 | SET NULL |
 | `meal_plans` | `notifications` | meal_plan_id | 1:N | 예 | SET NULL |
 | `ingredient_categories` | `ingredient_catalog` | category_id | 1:N | 아니오 | RESTRICT(기준 데이터) |
+| `users` | `user_sanctions` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
+| `users` | `user_sanctions` | admin_id | 1:N | 아니오 | -(users 행은 지우지 않음) |
+| `shared_recipes` | `user_sanctions` | shared_recipe_id | 1:N | 아니오 | RESTRICT(공유 글은 DELETED 상태로 남김) |
+| `users` | `shared_recipe_reports` | handled_by | 1:N | 예 | -(users 행은 지우지 않음) |
+| `users` | `generation_quota_grants` | admin_id | 1:N | 예 | -(users 행은 지우지 않음) |
 
 ## 화면 값 중 저장하지 않고 계산하는 것
 
@@ -897,6 +947,9 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | p7 장바구니 | 전체 선택(N건) | cart_items 개수 |
 | p1 로그인 | "최근 로그인" 말풍선 | DB 아님. 기기(localStorage)에 저장(11/20 결정) |
 | p1.3.4 구독 전 | 다음 결제일(오늘 구독하면) | 오늘 + 1달. 저장하지 않음 |
+| a4 신고 관리 | 글별 신고 수·사유별 수·최근 신고, 처리 대기 수(사이드 메뉴 숫자) | shared_recipe_reports를 shared_recipe_id로 묶어 계산(status=PENDING) |
+| a4.1·a5 | 작성자 확정 위반 수, 현재 제재, 다음 제재 단계 | user_sanctions 행 수, ends_at이 지나지 않았거나 빈 행 중 가장 높은 단계, 행 수 + 1(4차 이후는 없음) |
+| a5 사용자 관리 | 제재 상태(공유 정지·계정 정지·영구)·탈퇴, 남은 생성 횟수 | user_sanctions + users.deleted_at, usage_logs + generation_quota_grants.remaining |
 
 ## 처리 규칙
 
@@ -922,6 +975,8 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | 구독 시작 | 토스 카드 등록 → 서버가 billingKey 발급 → 첫 결제 성공하면 subscriptions(ACTIVE)·subscription_payments(DONE) 만들고 users.plan = PREMIUM. 첫 결제가 실패하면 구독을 만들지 않고 subscription_payments 행도 남기지 않음(E85로만 기록). 한도는 바로 구독 한도(레시피 하루 4회, 식단표 이번 달 4회·7일치) |
 | 구독 자동 연장 | 매일 새벽, next_billing_date가 오늘인 ACTIVE 구독을 billingKey로 결제. 성공하면 기간을 한 달 늘림. 실패하면 구독을 바로 끝냄(ENDED, billing_key 비움, users.plan = BASIC). 다시 구독하려면 카드를 새로 등록(11/24 약관 결정, 정책 12장 11 해결) |
 | 구독 해지 | 해지 예약은 status = CANCELED, canceled_at 기록. 다음 결제일 전날까지 PREMIUM 유지, 다음 결제일 새벽에 결제하지 않고 ENDED·billing_key 비움·users.plan = BASIC. 그 뒤 한도는 일반 한도(이번 달 이미 쓴 횟수는 그대로 셈) |
+| 신고 처리(운영자) | 글 단위로 처리. 그 글의 PENDING 신고를 모두 DONE으로 하고 result·handled_by·handled_at 기록. VIOLATION이면 shared_recipes.status = HIDDEN, DELETED면 DELETED이고 둘 다 user_sanctions에 다음 단계 한 행(1차 SHARE_BAN 7일·2차 SHARE_BAN 30일·3차 ACCOUNT_BAN 30일·4차 ACCOUNT_BAN 영구). NO_ISSUE면 글·제재 그대로. 대기 신고가 없으면 409(이미 처리됨). 단계를 정할 때 작성자 users 행을 잠금(UK(user_id+level)은 마지막 안전장치). 새 제재는 처리 시각부터 시작(이전 제재에 이어 붙이지 않음). 4차 이후에는 VIOLATION·DELETED도 글만 바꿈. 이미 준 주간 보상은 회수하지 않음(11/26 PR #292 리뷰) |
+| 생성 횟수 조정(운영자) | 늘리면 ADMIN_ADJUST 행(remaining = amount, 한 달 유효). 줄이면 amount 음수·remaining 0 행을 남기고, 남은 보상 행에서 기한 가까운 것부터 뺌(남은 보상보다 많이 줄일 수 없음) |
 | 공통 규칙 | 수량 numeric(10,3), 금액 bigint(원), 시각 timestamp(한국 시간), JSON jsonb. created_at은 앱이 만드는 행 전부, updated_at은 값이 바뀌는 테이블만 |
 
 ## 지금 코드와 다른 점
@@ -930,20 +985,24 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 
 | 테이블 | 지금 코드 | 이 ERD에 맞추려면 |
 | --- | --- | --- |
-| `users` | `status`(ACTIVE/SUSPENDED) 있음 | `status` 삭제 |
+| `users` | `status`(ACTIVE/SUSPENDED) 있음. `AuthService` 로그인·토큰 갱신이 SUSPENDED면 `ACCOUNT_SUSPENDED` 반환 | 새 마이그레이션으로 `status`와 그 검사를 지움(#171). SUSPENDED로 바꾸는 API가 없어 지금 동작은 바뀌지 않음. `ACCOUNT_BAN`(user_sanctions) 회원을 앱에서 막는 규칙은 추가될 페이지 15로 보류라, 그전까지 계정 정지는 기록만 되고 앱에서는 막지 않음 |
 | `refresh_tokens` | `revoked_at` 있음(로그아웃 = 취소 표시) | `revoked_at` 삭제. 로그아웃하면 행 삭제 |
 | `ingredient_catalog` | PR #140(V5): `unit` 없음, 자동완성 API `GET /user/ingredient-catalog` 있음 | `unit` 추가, 자동완성 API는 빼기 |
 | `events` | 같음 | 바꿀 것 없음 |
+| `user_sanctions` | 코드에 없음 | 새 마이그레이션으로 테이블 생성(UK(user_id+level)·FK 포함) |
+| `shared_recipe_reports` | V14: `result`·`handled_by`·`handled_at` 없음 | 새 마이그레이션으로 NULL 허용 컬럼 3개 추가 |
+| `generation_quota_grants` | V26: `grant_type`·`reason`·`admin_id` 없음. `week_start`·`rank_no` NOT NULL. 검사 `ck_quota_grants_reward`(순위별 지급 수)·`ck_quota_grants_remaining`(0~`amount`) | 새 마이그레이션: 컬럼 추가(`grant_type` 기본 WEEKLY_REWARD), `week_start`·`rank_no` NULL 허용, 두 검사를 WEEKLY_REWARD 행에만 적용해 ADMIN_ADJUST 행(음수 `amount`, `remaining` 0)을 허용 |
+| `shared_recipes` | V12: `ck_shared_recipes_status`가 VISIBLE/HIDDEN만 허용 | 새 마이그레이션으로 `DELETED` 허용 |
 
 ## 이전 ERD v3(32개)와 차이
 
-요약: 변경 17개, 유지 7개, 삭제 7개, 보류 1개, 추가 2개 → 새 ERD 26개. 새로 생긴 테이블은 11/22 구독 추가로 생긴 subscriptions, subscription_payments예요.
+요약: 변경 17개, 유지 7개, 삭제 8개, 추가 3개 → 새 ERD 27개. 새로 생긴 테이블은 11/22 구독 추가로 생긴 subscriptions, subscription_payments와 11/26 운영자 페이지로 생긴 user_sanctions예요. admin_audit_logs는 보류에서 삭제로 바뀌었어요(11/26). 기획 ERD는 `ingredient_catalog`를 목록에 넣지 않아 "변경 16, 유지 7, 삭제 9, 추가 3 → 26개"로 적어요.
 
-이후 #73의 `manual_ingredient_expenses`, #92의 `shared_recipe_weekly_settlements`, #266의 `receipt_first_applications`가 추가되어 위 목록에 문서화한 테이블은 29개예요.
+이후 #73의 `manual_ingredient_expenses`, #92의 `shared_recipe_weekly_settlements`, #266의 `receipt_first_applications`, 11/26 `user_sanctions`가 추가되어 위 목록에 문서화한 테이블은 30개예요.
 
 | 이전 테이블 | 상태 | 추가 컬럼 | 뺀 컬럼 | 이유 |
 | --- | --- | --- | --- | --- |
-| `users` | 변경 | - | status | status는 어드민(이용 제한) 화면이 없어 뺌. plan은 구독 상태를 따라감(11/22 구독 추가) |
+| `users` | 변경 | - | status | status 뺌. 이용 제한은 제재 테이블 user_sanctions로(11/26 운영자 페이지). plan은 구독 상태를 따라감(11/22 구독 추가) |
 | `user_excluded_ingredients` | 변경 | allergen_code | catalog_id | catalog_id(재료 사전) → allergen_code. 칩 19개가 고정 목록이라 사전 없이 코드로 저장 |
 | `refresh_tokens` | 변경 | - | revoked_at | revoked_at 뺌. 로그아웃하면 행을 지우면 됨 |
 | `account_deletion_requests` | 유지 | - | - | 11/21 롤백으로 카카오·구글 이메일 인증번호가 다시 필요 |
@@ -965,18 +1024,19 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `cart_items` | 변경 | category_id | meal_plan_id, group_name | v4에서 슬롯 키를 뺐으나 #57에서 nullable meal_plan_slot_id·SET NULL로 복원. p7에는 출처 레시피명 표시, category_id는 냉장고 이동에 사용 |
 | `shared_recipes` | 변경 | image_key | save_count | recipe_id UK 해제(주마다 다시 공유 가능, 11/21 답 17). save_count 뺌(저장 수는 계산). 사진 1장이라 image_key를 여기로 |
 | `shared_recipe_photos` | 삭제 | - | (테이블 전체) | 공유 사진이 1장(p4.1.1.1) → shared_recipes.image_key |
-| `shared_recipe_reports` | 변경 | - | reason_detail, result, handled_by, handled_at | reason_detail 뺌(기타 입력칸 없음, 11/21 답 21). result·handled_by·handled_at 뺌(어드민 화면 없음). UK(reporter_id+shared_recipe_id)는 유지(에러 정의서 답 3) |
+| `shared_recipe_reports` | 변경 | - | reason_detail | reason_detail 뺌(기타 입력칸 없음, 11/21 답 21). result·handled_by·handled_at은 11/21에 뺐다가 11/26 운영자 페이지(a4 처리 완료)로 되살림. UK(reporter_id+shared_recipe_id)는 유지(에러 정의서 답 3) |
 | `shared_recipe_weekly_ranks` | 유지 | - | - | UK를 week_start+shared_recipe_id로 |
-| `generation_quota_grants` | 변경 | - | reason, admin_id, memo | reason·admin_id·memo 뺌(어드민 조정 화면 없음) |
+| `generation_quota_grants` | 변경 | grant_type | memo | reason·admin_id는 11/26 운영자 페이지(a5 생성 횟수 조정)로 되살리고 grant_type 추가. memo는 화면에 없어 뺌 |
 | `usage_logs` | 변경 | - | status, error_code, duration_ms | 성공만 기록(실패는 차감 안 함). status·error_code·duration_ms 뺌, type에서 OCR·MEAL_DETAIL 뺌(OCR 제한 없음, 11/20 결정) |
 | `notifications` | 변경 | message | dedupe_key, title, body | title·body → message 한 줄(p6 문구). dedupe_key 뺌 |
 | `push_subscriptions` | 삭제 | - | (테이블 전체) | 알림은 앱 안에서만(p6·상단 띠), 휴대폰 푸시 안 함(ERD 답 11) |
 | `events` | 유지 | - | - | 같은 구조(screen·platform·app_version·is_seed 유지, 이벤트 정의서 답 1) |
-| `event_daily_stats` | 삭제 | - | (테이블 전체) | 대시보드(어드민) 화면 없음. 어드민 화면을 디자인할 때 다시 판단(이벤트 정의서 답 2) |
-| `admin_audit_logs` | 보류 | - | (테이블 전체) | 어드민 화면 없음. 어드민 디자인이 나오면 다시 |
+| `event_daily_stats` | 삭제 | - | (테이블 전체) | 어드민 지표는 events를 바로 조회(API 61~63). 일별 집계 테이블은 개발하며 판단(이벤트 정의서 답 2, 11/26) |
+| `admin_audit_logs` | 삭제 | - | (테이블 전체) | 운영자 페이지(11/26)에 조치 이력 화면이 없음. 처리자·사유는 shared_recipe_reports·user_sanctions·generation_quota_grants에 남김 |
 | `idempotency_keys` | 삭제 | - | (테이블 전체) | 화면·결정 근거 없음. 2단계 API에서 필요하면 다시 |
 | `subscriptions` | 추가 | id, user_id, status, customer_key, billing_key, price, current_period_start, next_billing_date, canceled_at, ended_at, created_at, updated_at | - | p1.3.4 구독 관리(11/22 피그마 추가), 토스페이먼츠 자동결제(11/22 답 1·2·4) |
 | `subscription_payments` | 추가 | id, subscription_id, user_id, order_id, payment_key, amount, status, failure_code, period_start, period_end, approved_at, created_at | - | 구독 첫 결제·자동 결제 기록(11/22 답 1·2) |
+| `user_sanctions` | 추가 | id, user_id, shared_recipe_id, level, type, starts_at, ends_at, admin_id, created_at | - | 운영자 페이지 a4.1·a5 제재(11/26), 제재 단계는 11/24 약관 답 |
 
 ## 부록 A. 재료 카테고리 12개
 
@@ -1038,9 +1098,12 @@ p1.2 칩 순서 그대로예요.
 | meal_plans.purpose | BALANCED 균형 잡힌 식단 / DIET 다이어트 식단 / HIGH_PROTEIN 고단백 식단 / SIMPLE 간편 식단 / SAVING 재료 절약 식단 |
 | meal_plans.status | GENERATING 진행 중 / COMPLETED 완료 / FAILED 실패 |
 | meal_type | BREAKFAST 아침 / LUNCH 점심 / DINNER 저녁 |
-| shared_recipes.status | VISIBLE 보임 / HIDDEN 운영자가 숨김 |
+| shared_recipes.status | VISIBLE 보임 / HIDDEN 위반으로 숨김 / DELETED 운영자가 삭제 |
 | shared_recipe_reports.reason | OFFENSIVE_IMAGE 불쾌한 이미지 사용 / AD_TITLE 광고성 제목 / DANGEROUS_RECIPE 위험한 조리법 공유 / OTHER 기타 |
 | shared_recipe_reports.status | PENDING 접수 / DONE 처리됨 |
+| shared_recipe_reports.result | VIOLATION 위반·숨김 / NO_ISSUE 문제 없음 / DELETED 글 삭제 |
+| user_sanctions.type | SHARE_BAN 레시피 공유 정지 / ACCOUNT_BAN 계정 정지 |
+| generation_quota_grants.grant_type | WEEKLY_REWARD 금주의 레시피 보상 / ADMIN_ADJUST 운영자 조정 |
 | notifications.type | EXPIRY_SOON 소비기한 임박 / EXPIRED 기한 지남 / MEAL_PLAN_COMPLETED 식단표 완성 / MEAL_PLAN_FAILED 식단표 생성 실패 |
 | receipts.store_code | CU / GS25 / SEVEN_ELEVEN / EMART24 / EMART / HOMEPLUS / LOTTE_MART / COSTCO / TRADERS / HANARO / GS_FRESH / LOTTE_SUPER / EMART_EVERYDAY / HOMEPLUS_EXPRESS(못 맞추면 비움) |
 | unit | PRD 부록 A: 냉장고 9개(G·KG·ML·L·EA·PACK·BUNCH·PIECE·SHEET), 레시피는 TBSP·TSP·CUP·PINCH·TO_TASTE 추가. 값은 백엔드가 재료에 맞춰 정함 |

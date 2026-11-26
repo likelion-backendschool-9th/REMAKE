@@ -4,8 +4,8 @@
 
 2026-11-22 · 이준호. Source: Notion "ERD v4" (Figma-based, with a screen-evidence column). This file carries the same content for development; see the source for the Figma node evidence.
 
-- Tables documented here: 28 — 25 Figma-based tables, the unit dictionary `ingredient_catalog`, manual ingredient expense history added in #73, and the internal weekly settlement record added in #92.
-- Admin screens are not in Figma, so there are no admin-only columns or tables (only `users.role`, report `status`, and shared post `status`).
+- Tables documented here: 30 — 26 Figma-based tables (including `user_sanctions`, added 11/26), the unit dictionary `ingredient_catalog`, manual ingredient expense history added in #73, the internal weekly settlement record added in #92, and receipt first applications added in #266.
+- 11/26, from the Figma "운영자 페이지" (operator page): added `user_sanctions`, report handling results (`result`, `handled_by`, `handled_at`), operator quota adjustments (`grant_type`, `reason`, `admin_id`), and the shared post status `DELETED`. The planning ERD counts 26 tables, 219 columns, and 42 relationships; it numbers `user_sanctions` 26, while this file keeps the repo numbering (30).
 - Notifications are in-app only (no device push).
 
 ## Common rules
@@ -39,15 +39,16 @@
 | 18 | `meal_plan_slots` | Meal plan slots | One recipe per date and meal | 5 meal plan | 한윤수 | 8 |
 | 19 | `cart_items` | Cart | Missing ingredients (added automatically by saving a shared recipe, saving my recipe with supplemented ingredients, and meal-plan generation) | 7 sharing/cart | 최유리 | 10 |
 | 20 | `shared_recipes` | Shared recipes | Posts in the shared space (fully anonymous) | 7 sharing/cart | 최유리 | 7 |
-| 21 | `shared_recipe_reports` | Shared recipe reports | One report | 7 sharing/cart | 최유리 | 6 |
+| 21 | `shared_recipe_reports` | Shared recipe reports | One report and the operator's handling result | 7 sharing/cart | 최유리 | 9 |
 | 22 | `shared_recipe_weekly_ranks` | Weekly ranking records | Last week's final ranks (for rank change arrows) | 7 sharing/cart | 최유리 | 6 |
-| 23 | `generation_quota_grants` | Reward generation grants | Extra recipe generations for the weekly top 1-3 | 7 sharing/cart | 최유리 | 9 |
+| 23 | `generation_quota_grants` | Reward generation grants | Extra recipe generations from the weekly top 1-3 reward and from operator adjustments | 7 sharing/cart | 최유리 | 12 |
 | 24 | `notifications` | Notifications | One notification for a member | 6 notifications | 이상호 | 8 |
 | 25 | `events` | Events | Raw behavior events (frontend and server). Names and properties in `spec/events.md` | common (events) | 이준호 | 12 |
 | 26 | `ingredient_catalog` | Ingredient unit dictionary | Ingredient name -> unit, category, shelf life. Used only inside the server to pick units (API 14, 15, 16, 21). Never exposed by screens or APIs | 2 fridge | 김재연 | 6 |
 | 27 | `manual_ingredient_expenses` | Manual ingredient expenses | Registration snapshots for ingredients added without a receipt | 3 receipts | 이동준 | 9 |
 | 28 | `receipt_first_applications` | Receipt first stock applications | First fridge/cart apply for a numbered purchase; survives receipt delete so re-register skips stock/cart (#266) | 3 receipts | 이동준 | 6 |
 | 29 | `shared_recipe_weekly_settlements` | Weekly settlement completion | One completion record per week, including empty weeks; prevents duplicate rank/reward settlement | 7 sharing/cart | 최유리 | 2 |
+| 30 | `user_sanctions` | Sanctions | One row per violation confirmed by report handling (1st-4th sanction) | admin operations | 이상호 | 9 |
 
 ## ERD diagram
 
@@ -99,6 +100,11 @@ erDiagram
   ingredients |o--o{ notifications : "ingredient_id"
   meal_plans |o--o{ notifications : "meal_plan_id"
   ingredient_categories ||--o{ ingredient_catalog : "category_id"
+  users ||--o{ user_sanctions : "user_id"
+  users ||--o{ user_sanctions : "admin_id"
+  shared_recipes ||--o{ user_sanctions : "shared_recipe_id"
+  users |o--o{ shared_recipe_reports : "handled_by"
+  users |o--o{ generation_quota_grants : "admin_id"
   shared_recipe_weekly_settlements {
     date week_start PK
     timestamp created_at
@@ -318,6 +324,9 @@ erDiagram
     bigint reporter_id FK
     varchar reason
     varchar status
+    varchar result
+    bigint handled_by FK
+    timestamp handled_at
     timestamp created_at
   }
   shared_recipe_weekly_ranks {
@@ -332,11 +341,14 @@ erDiagram
     bigint id PK
     bigint user_id FK
     bigint shared_recipe_id FK
+    varchar grant_type
     date week_start
     int rank_no
     int amount
     int remaining
     timestamp expires_at
+    varchar reason
+    bigint admin_id FK
     timestamp created_at
   }
   notifications {
@@ -363,6 +375,17 @@ erDiagram
     timestamp occurred_at
     timestamp created_at
   }
+  user_sanctions {
+    bigint id PK
+    bigint user_id FK
+    bigint shared_recipe_id FK
+    int level
+    varchar type
+    timestamp starts_at
+    timestamp ends_at
+    bigint admin_id FK
+    timestamp created_at
+  }
   ingredient_catalog {
     bigint id PK
     bigint category_id FK
@@ -387,7 +410,7 @@ Social login members and settings screen values. Owner 이준호 (1 login/settin
 | `provider` | varchar |  |  | no |  | KAKAO/NAVER/GOOGLE |
 | `provider_user_id` | varchar | UK |  | yes |  | Social ID. UK(provider + this). Cleared on withdrawal |
 | `email` | varchar |  |  | yes |  | Address for the Kakao/Google withdrawal code (Kakao requires email consent at login, Google always provides it). May be empty for Naver. Cleared on withdrawal |
-| `role` | varchar |  |  | no | USER | USER/ADMIN |
+| `role` | varchar |  |  | no | USER | USER/ADMIN. Only ADMIN may use `/api/v1/admin/**` |
 | `plan` | varchar |  |  | no | BASIC | BASIC/PREMIUM. PREMIUM while the subscription is ACTIVE or CANCELED (cancel scheduled), BASIC once it ends. Used for quota limits |
 | `household_size` | int |  |  | yes |  | Household size 1-50. Empty before onboarding |
 | `onboarding_completed` | boolean |  |  | no | false | Whether onboarding is done |
@@ -684,13 +707,13 @@ Posts in the shared space (fully anonymous). Owner 최유리 (7 sharing/cart).
 | `recipe_id` | bigint | FK | recipes | no |  | Shared recipe (the same recipe once per week) |
 | `title` | varchar |  |  | no |  | Title |
 | `image_key` | varchar |  |  | no |  | Path of the single cooking photo |
-| `status` | varchar |  |  | no | VISIBLE | VISIBLE/HIDDEN (hidden by an operator) |
+| `status` | varchar |  |  | no | VISIBLE | VISIBLE/HIDDEN (hidden by a violation decision)/DELETED (deleted by an operator; the row stays and is shown nowhere) |
 | `created_at` | timestamp |  |  | no |  | Shared time |
 | `updated_at` | timestamp |  |  | no |  | Status change time |
 
 ### 21. `shared_recipe_reports` (Shared recipe reports)
 
-One report. Owner 최유리 (7 sharing/cart).
+One report and the operator's handling result. Owner 최유리 (7 sharing/cart).
 
 | Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -699,6 +722,9 @@ One report. Owner 최유리 (7 sharing/cart).
 | `reporter_id` | bigint | FK | users | no |  | Reporter. UK(reporter_id + shared_recipe_id): one report per post |
 | `reason` | varchar |  |  | no |  | OFFENSIVE_IMAGE/AD_TITLE/DANGEROUS_RECIPE/OTHER |
 | `status` | varchar |  |  | no | PENDING | PENDING/DONE |
+| `result` | varchar |  |  | yes |  | Handling result VIOLATION (violation, hidden)/NO_ISSUE/DELETED (post deleted). The operator handles a post at once, so all of its pending reports get the same value |
+| `handled_by` | bigint | FK | users | yes |  | Operator who handled it |
+| `handled_at` | timestamp |  |  | yes |  | Handled time |
 | `created_at` | timestamp |  |  | no |  | Reported time |
 
 ### 22. `shared_recipe_weekly_ranks` (Weekly ranking records)
@@ -716,18 +742,21 @@ Last week's final ranking (for the rank change arrows). Owner 최유리 (7 shari
 
 ### 23. `generation_quota_grants` (Reward generation grants)
 
-Extra recipe generations given as the weekly top 1-3 reward. Owner 최유리 (7 sharing/cart). No reward screen in Figma.
+Extra recipe generations from the weekly top 1-3 reward and from operator adjustments. Owner 최유리 (7 sharing/cart).
 
 | Column | Type | Key | Ref | Null | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- |
 | `id` | bigint | PK |  | no |  | ID |
 | `user_id` | bigint | FK | users | no |  | Member who received it |
 | `shared_recipe_id` | bigint | FK | shared_recipes | yes |  | Rewarded shared recipe |
-| `week_start` | date |  |  | no |  | Reward week (Monday). UK(week_start + rank_no) |
-| `rank_no` | int |  |  | no |  | 1-3 |
-| `amount` | int |  |  | no |  | Granted count 10/6/3 |
-| `remaining` | int |  |  | no |  | Remaining count |
+| `grant_type` | varchar |  |  | no | WEEKLY_REWARD | WEEKLY_REWARD (weekly recipe reward)/ADMIN_ADJUST (operator adjustment) |
+| `week_start` | date |  |  | yes |  | Reward week (Monday). UK(week_start + rank_no). Empty for operator adjustments |
+| `rank_no` | int |  |  | yes |  | 1-3. Empty for operator adjustments |
+| `amount` | int |  |  | no |  | Granted count 10/6/3. For an operator adjustment, the increase (+) or decrease (-) |
+| `remaining` | int |  |  | no |  | Remaining count. A row for an operator decrease is 0 (the decrease is taken from other reward rows, nearest expiry first) |
 | `expires_at` | timestamp |  |  | no |  | Expiry (grant + 1 month) |
+| `reason` | varchar |  |  | yes |  | Adjustment reason. Required for operator adjustments |
+| `admin_id` | bigint | FK | users | yes |  | Operator who adjusted it |
 | `created_at` | timestamp |  |  | no |  | Granted time |
 
 ### 24. `notifications` (Notifications)
@@ -827,6 +856,22 @@ Use one row per completed week, including weeks with no eligible posts. Insert t
 - An empty week is final too: use `shared_recipe_weekly_settlements` rather than inferring completion from rank rows. E75 is submitted after commit through EventTracker; tracking remains best effort and is not retried by re-running a settled week.
 - Timing limitation: deleted saves have no historical record. A delayed first execution counts the retained rows at execution time; it cannot reconstruct saves removed after the boundary. There is no automatic missed-week backfill. Do not claim exact historical recovery. Author deletion and post-settlement reward policy remain open in #230.
 
+### 30. `user_sanctions` (Sanctions)
+
+One row per violation confirmed by report handling (1st-4th sanction). Owner 이상호 (admin operations). Source: operator page a4.1 report detail and a5 user management (11/26), sanction steps from the 11/24 terms decision. The planning ERD numbers this table 26.
+
+| Column | Type | Key | Ref | Null | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| `id` | bigint | PK |  | no |  | ID |
+| `user_id` | bigint | FK | users | no |  | Sanctioned member (author of the reported post) |
+| `shared_recipe_id` | bigint | FK | shared_recipes | no |  | Reported post that caused the sanction |
+| `level` | int |  |  | no |  | 1st-4th. UK(user_id + level). The number of this member's rows = confirmed violations, at most 4 (violations after the 4th ban add no row) |
+| `type` | varchar |  |  | no |  | SHARE_BAN (recipe sharing ban, 1st and 2nd)/ACCOUNT_BAN (account ban, 3rd and 4th) |
+| `starts_at` | timestamp |  |  | no |  | Sanction start (handling time) |
+| `ends_at` | timestamp |  |  | yes |  | End time. Empty for the 4th (permanent) ban |
+| `admin_id` | bigint | FK | users | no |  | Operator who handled it |
+| `created_at` | timestamp |  |  | no |  | Created time |
+
 ## Relationships
 
 | Parent | Child | Column | Relation | Parent optional | On parent delete |
@@ -875,6 +920,11 @@ Use one row per completed week, including weeks with no eligible posts. Insert t
 | `ingredients` | `notifications` | ingredient_id | 1:N | yes | SET NULL |
 | `meal_plans` | `notifications` | meal_plan_id | 1:N | yes | SET NULL |
 | `ingredient_categories` | `ingredient_catalog` | category_id | 1:N | no | RESTRICT (reference data) |
+| `users` | `user_sanctions` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `users` | `user_sanctions` | admin_id | 1:N | no | - (users rows are never deleted) |
+| `shared_recipes` | `user_sanctions` | shared_recipe_id | 1:N | no | RESTRICT (shared posts stay with the DELETED status) |
+| `users` | `shared_recipe_reports` | handled_by | 1:N | yes | - (users rows are never deleted) |
+| `users` | `generation_quota_grants` | admin_id | 1:N | yes | - (users rows are never deleted) |
 
 ## Screen values computed instead of stored
 
@@ -897,6 +947,9 @@ These values appear on screens but have no column. They are computed from the so
 | p7 cart | Select all (N) | Count of `cart_items` |
 | p1 login | "Recent login" bubble | Not in the DB. Stored on the device (localStorage) |
 | p1.3.4 before subscribing | Next billing date (if subscribing today) | Today + 1 month. Not stored |
+| a4 report management | Report count, count per reason, and latest report per post; pending count (side-menu number) | `shared_recipe_reports` grouped by `shared_recipe_id` (`status` = PENDING) |
+| a4.1, a5 | Author's confirmed violation count, current sanction, next sanction step | Count of `user_sanctions` rows; the highest level among rows whose `ends_at` has not passed or is empty; row count + 1 (none after the 4th) |
+| a5 user management | Sanction status (sharing ban, account ban, permanent), withdrawal, remaining generation count | `user_sanctions` + `users.deleted_at`; `usage_logs` + `generation_quota_grants.remaining` |
 
 ## Processing rules
 
@@ -922,6 +975,8 @@ These values appear on screens but have no column. They are computed from the so
 | Subscription start | Toss card registration -> the server issues a billingKey -> on first payment success create `subscriptions` (ACTIVE) and `subscription_payments` (DONE) and set `users.plan` = PREMIUM. If the first payment fails, do not create a subscription and do not insert a `subscription_payments` row (E85 only). Premium limits apply at once (recipes 4 per day, meal plans 4 this month and 7 days) |
 | Subscription renewal | Every early morning, charge ACTIVE subscriptions whose `next_billing_date` is today with the billingKey. On success extend the period by a month. On failure end the subscription at once (ENDED, clear `billing_key`, `users.plan` = BASIC); to subscribe again, register a card again (11/24 terms decision; resolves policy ch. 12 item 11) |
 | Subscription cancel | Cancel request sets `status` = CANCELED and `canceled_at`. PREMIUM stays until the day before the next billing date; on that date's early morning do not charge, set ENDED, clear `billing_key`, set `users.plan` = BASIC. Basic limits apply afterwards (counts already used this month still count) |
+| Report handling (operator) | Handle per post. Set all of the post's PENDING reports to DONE and record `result`, `handled_by`, `handled_at`. VIOLATION sets `shared_recipes.status` = HIDDEN and DELETED sets DELETED; both add one `user_sanctions` row at the next step (1st SHARE_BAN 7 days, 2nd SHARE_BAN 30 days, 3rd ACCOUNT_BAN 30 days, 4th ACCOUNT_BAN permanent). NO_ISSUE leaves the post and sanctions unchanged. No pending report -> 409 (already handled). Lock the author's `users` row while deciding the level (`UK(user_id + level)` is the last guard). A new sanction starts at the handling time, not after the previous one. After the 4th ban, VIOLATION and DELETED only change the post. Weekly rewards already granted are not taken back (11/26, PR #292 review) |
+| Generation count adjustment (operator) | An increase adds an ADMIN_ADJUST row (`remaining` = `amount`, valid one month). A decrease keeps a row with a negative `amount` and `remaining` 0, and subtracts from the remaining reward rows, nearest expiry first (cannot exceed the remaining reward) |
 | Common | Amounts `numeric(10,3)`, money `bigint` (KRW), time `timestamp` (Korea time), JSON `jsonb`. `created_at` on every app-created row, `updated_at` only on tables whose values change |
 
 ## Differences from the current code
@@ -930,20 +985,24 @@ Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged
 
 | Table | Current code | To match this ERD |
 | --- | --- | --- |
-| `users` | Has `status` (ACTIVE/SUSPENDED) | Drop `status` |
+| `users` | Has `status` (ACTIVE/SUSPENDED); `AuthService` login and token refresh return `ACCOUNT_SUSPENDED` for SUSPENDED | Drop `status` and those checks with a new migration (#171). No API sets SUSPENDED, so this changes no current behavior. Blocking `ACCOUNT_BAN` members (`user_sanctions`) in the app is on hold as "added page 15"; until then account bans are recorded but not enforced in the app |
 | `refresh_tokens` | Has `revoked_at` (logout = mark revoked) | Drop `revoked_at`. Logout deletes the row |
 | `ingredient_catalog` | PR #140 (V5): no `unit`, has autocomplete API `GET /user/ingredient-catalog` | Add `unit`, remove the autocomplete API |
 | `events` | Same | Nothing to change |
+| `user_sanctions` | Not in code | Create the table with `UK(user_id + level)` and its FKs in a new migration |
+| `shared_recipe_reports` | V14: no `result`, `handled_by`, `handled_at` | Add the three nullable columns in a new migration |
+| `generation_quota_grants` | V26: no `grant_type`, `reason`, `admin_id`; `week_start` and `rank_no` NOT NULL; checks `ck_quota_grants_reward` (rank-based amounts) and `ck_quota_grants_remaining` (0 to `amount`) | New migration: add the columns (`grant_type` default WEEKLY_REWARD), make `week_start` and `rank_no` nullable, and limit the two checks to WEEKLY_REWARD rows so ADMIN_ADJUST rows (negative `amount`, `remaining` 0) are allowed |
+| `shared_recipes` | V12: `ck_shared_recipes_status` allows VISIBLE/HIDDEN | Allow `DELETED` in a new migration |
 
 ## Differences from ERD v3 (32 tables)
 
-Summary: 17 changed, 7 kept, 7 removed, 1 on hold, 2 added -> 26 tables in the new ERD. The new tables are `subscriptions` and `subscription_payments`, added with the subscription on 11/22.
+Summary: 17 changed, 7 kept, 8 removed, 3 added -> 27 tables in the new ERD. The new tables are `subscriptions` and `subscription_payments` (subscription, 11/22) and `user_sanctions` (operator page, 11/26); `admin_audit_logs` moved from on hold to removed (11/26). The planning ERD writes "16 changed, 7 kept, 9 removed, 3 added -> 26" because it does not list `ingredient_catalog`.
 
-Later additions in #73 (`manual_ingredient_expenses`), #92 (`shared_recipe_weekly_settlements`), and #266 (`receipt_first_applications`) bring the table inventory documented above to 29.
+Later additions in #73 (`manual_ingredient_expenses`), #92 (`shared_recipe_weekly_settlements`), #266 (`receipt_first_applications`), and `user_sanctions` (11/26) bring the table inventory documented above to 30.
 
 | Previous table | Status | Added columns | Removed columns | Reason |
 | --- | --- | --- | --- | --- |
-| `users` | changed | - | status | No admin (suspension) screen. `plan` follows the subscription (11/22) |
+| `users` | changed | - | status | `status` removed; restrictions are the `user_sanctions` table (operator page, 11/26). `plan` follows the subscription (11/22) |
 | `user_excluded_ingredients` | changed | allergen_code | catalog_id | catalog_id (dictionary) -> allergen_code. The 19 chips are a fixed list, stored as codes |
 | `refresh_tokens` | changed | - | revoked_at | Logout deletes the row |
 | `account_deletion_requests` | kept | - | - | The 11/21 rollback brings back email codes for Kakao/Google |
@@ -965,18 +1024,19 @@ Later additions in #73 (`manual_ingredient_expenses`), #92 (`shared_recipe_weekl
 | `cart_items` | changed | category_id | meal_plan_id, group_name | v4 initially removed the slot key; #57 restores nullable meal_plan_slot_id with SET NULL. p7 shows the source recipe name; category_id is used for moving to the fridge |
 | `shared_recipes` | changed | image_key | save_count | `recipe_id` no longer unique (can be shared again each week). Save count is computed. One photo, so `image_key` lives here |
 | `shared_recipe_photos` | removed | - | (whole table) | One shared photo -> `shared_recipes.image_key` |
-| `shared_recipe_reports` | changed | - | reason_detail, result, handled_by, handled_at | No "other" text input; no admin screen. UK(reporter_id + shared_recipe_id) kept |
+| `shared_recipe_reports` | changed | - | reason_detail | `reason_detail` removed (no "other" text input, 11/21). `result`, `handled_by`, `handled_at` were removed on 11/21 and restored for the operator page (a4 handled list, 11/26). UK(reporter_id + shared_recipe_id) kept |
 | `shared_recipe_weekly_ranks` | kept | - | - | UK is week_start + shared_recipe_id |
-| `generation_quota_grants` | changed | - | reason, admin_id, memo | No admin adjustment screen |
+| `generation_quota_grants` | changed | grant_type | memo | `reason` and `admin_id` restored and `grant_type` added for the operator page (a5 generation count adjustment, 11/26). `memo` removed (not on any screen) |
 | `usage_logs` | changed | - | status, error_code, duration_ms | Successes only (failures are not charged). OCR and MEAL_DETAIL removed from `type` (no OCR limit) |
 | `notifications` | changed | message | dedupe_key, title, body | title/body -> one `message` line |
 | `push_subscriptions` | removed | - | (whole table) | In-app notifications only, no device push |
 | `events` | kept | - | - | Same structure (screen, platform, app_version, is_seed kept) |
-| `event_daily_stats` | removed | - | (whole table) | No admin dashboard screen. Revisit when admin screens are designed |
-| `admin_audit_logs` | on hold | - | (whole table) | No admin screen. Revisit with the admin design |
+| `event_daily_stats` | removed | - | (whole table) | Admin metrics query `events` directly (APIs 61-63). Whether a daily aggregate table is needed is decided during development (11/26) |
+| `admin_audit_logs` | removed | - | (whole table) | The operator page (11/26) has no action-history screen. The handler and reason are kept in `shared_recipe_reports`, `user_sanctions`, and `generation_quota_grants` |
 | `idempotency_keys` | removed | - | (whole table) | No screen or decision basis |
 | `subscriptions` | added | id, user_id, status, customer_key, billing_key, price, current_period_start, next_billing_date, canceled_at, ended_at, created_at, updated_at | - | p1.3.4 subscription management (added to Figma 11/22), Toss auto-billing |
 | `subscription_payments` | added | id, subscription_id, user_id, order_id, payment_key, amount, status, failure_code, period_start, period_end, approved_at, created_at | - | First payment and auto-payment records |
+| `user_sanctions` | added | id, user_id, shared_recipe_id, level, type, starts_at, ends_at, admin_id, created_at | - | Operator page a4.1 and a5 sanctions (11/26); sanction steps from the 11/24 terms decision |
 
 ## Appendix A. 12 ingredient categories
 
@@ -1038,9 +1098,12 @@ In the p1.2 chip order.
 | meal_plans.purpose | BALANCED / DIET / HIGH_PROTEIN / SIMPLE / SAVING |
 | meal_plans.status | GENERATING generating / COMPLETED done / FAILED failed |
 | meal_type | BREAKFAST / LUNCH / DINNER |
-| shared_recipes.status | VISIBLE / HIDDEN (hidden by an operator) |
+| shared_recipes.status | VISIBLE / HIDDEN hidden by a violation / DELETED deleted by an operator |
 | shared_recipe_reports.reason | OFFENSIVE_IMAGE / AD_TITLE / DANGEROUS_RECIPE / OTHER |
 | shared_recipe_reports.status | PENDING / DONE |
+| shared_recipe_reports.result | VIOLATION violation, hidden / NO_ISSUE no issue / DELETED post deleted |
+| user_sanctions.type | SHARE_BAN recipe sharing ban / ACCOUNT_BAN account ban |
+| generation_quota_grants.grant_type | WEEKLY_REWARD weekly recipe reward / ADMIN_ADJUST operator adjustment |
 | notifications.type | EXPIRY_SOON / EXPIRED / MEAL_PLAN_COMPLETED meal plan done / MEAL_PLAN_FAILED meal plan failed |
 | receipts.store_code | CU / GS25 / SEVEN_ELEVEN / EMART24 / EMART / HOMEPLUS / LOTTE_MART / COSTCO / TRADERS / HANARO / GS_FRESH / LOTTE_SUPER / EMART_EVERYDAY / HOMEPLUS_EXPRESS (empty when not matched) |
 | unit | PRD appendix A: 9 fridge units (G, KG, ML, L, EA, PACK, BUNCH, PIECE, SHEET); recipes add TBSP, TSP, CUP, PINCH, TO_TASTE. The backend picks the value per ingredient |

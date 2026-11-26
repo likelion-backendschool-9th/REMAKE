@@ -50,7 +50,7 @@ Feature folders and tables (ERD v3):
 | `quota` | usage_logs, generation_quota_grants |
 | `notification` | notifications |
 | `event` | events |
-| `admin` | On hold: admin screens are not in Figma, so there are no admin tables. When designed, admin actions call each feature's UseCase |
+| `admin` | user_sanctions (operator page, 11/26). Admin APIs 61-71 call each feature's UseCase for the other tables (reports, grants, events) |
 
 Rules:
 
@@ -257,4 +257,4 @@ How to write tests: [backend testing](backend-testing.md).
 
 - Unit tests for business rules: quota counting (success only, concurrent requests per member), unit conversion (same kind only; TBSP 15 ml, TSP 5 ml, CUP 200 ml; PINCH and TO_TASTE never deducted), expiry status, meal-plan ingredient allocation and shortage, ranking and `rankChange`, duplicate receipts, receipt retention.
 - Mock the OCR and LLM adapters and cover the timeout and invalid-response cases.
-- Admin endpoints (on hold until admin screens exist): test 403 for non-admins.
+- Admin endpoints (APIs 61-71): test 403 `FORBIDDEN` for non-admins.

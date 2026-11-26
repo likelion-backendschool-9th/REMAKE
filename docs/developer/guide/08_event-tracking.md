@@ -13,7 +13,7 @@
 
 - 프론트 이벤트(화면 노출·클릭)와 서버 이벤트(OCR·AI 결과, 한도, 알림, 보상, 재료 등록·차감, 장바구니 담기·빼기)를 나눠 적재합니다. **같은 행동은 한쪽에서만** 기록합니다(정의서 "발송" 칸이 FE/BE).
 - 외부 분석 도구는 쓰지 않습니다. 원본은 180일 보관합니다.
-- 일별 집계 테이블(`event_daily_stats`)은 없습니다. 어드민 화면이 디자인되기 전까지는 정의서 5장 계산식(영문 [`events.md`](../../agent/spec/events.md) Metrics)대로 `events`를 직접 조회하고, 일별 집계는 어드민 디자인 때 다시 정합니다.
+- 일별 집계 테이블(`event_daily_stats`)은 없습니다. 정의서 5장 계산식(영문 [`events.md`](../../agent/spec/events.md) Metrics)대로 `events`를 직접 조회하고(운영자 페이지 a1~a3·a6에서 조회, API 61~64), 일별 집계 테이블은 개발하며 판단합니다.
 
 ## 2. 이벤트의 모양
 
@@ -94,14 +94,14 @@ track('receipt_item_edited', { item_index: 2, edit_field: 'amount' });
 - **북극성 지표(M00)**: 소비기한 내 소진율 = `ingredient_used` ÷ (`ingredient_used` + `ingredient_discarded` + `ingredient_expired`).
 - KPI 20개(M01~M20): 온보딩 완료율, 첫 재료 등록률, OCR 성공률·품목 수정률, 영수증 등록 소요 시간, 임박 알림 확인율, 임박 재료 소진율, 레시피 생성 → 요리 완료율, AI 생성 성공률·응답 시간, 식단표 → 칸 열람률, 장바구니 → 냉장고 전환율, 공유 작성 완료율, 공유 저장율·신고율, D1·D7·WAU, AI·OCR 호출 수와 한도 소진율, 핵심 흐름 퍼널, 이번 달 버린 식재료 금액, 소비 패턴 이용률, 오류 노출률. 계산식은 영문 [`events.md`](../../agent/spec/events.md) Metrics.
 - 실사용자가 적으므로 시연용 **시드 데이터 생성 스크립트**를 만들고(`is_seed = true`), 지표 계산 때 실제 데이터만 보려면 `is_seed = false`로 거릅니다.
-- 어드민(모니터링) 화면은 문서 정리가 끝난 뒤 디자인할 예정이라, 어드민 API·대시보드는 그때 정합니다.
+- 어드민(모니터링)은 운영자 페이지 a1~a3·a6에서 조회합니다(API 61~64, 11/26, 백엔드 이준호).
 
 ## 8. 지금 코드와 다른 점
 
 - `EventName`은 정의서 79개와 맞습니다(`EventContractTest`). `cook_feedback_answered`(E50)는 `recipe_id`·`recommended`를 씁니다. E86 `subscription_renewed` 호출은 자동 결제 작업(#168)에서 이어집니다.
 - `Screen` enum은 정의서 화면 코드 41개(+ `UNKNOWN`)와 맞습니다. 스케줄·배치처럼 화면이 없으면 `null`을 넘깁니다.
 - 속성 코드 값은 소문자입니다(#172). `storage`·`filter_value`만 정의서대로 대문자입니다. 검증기와 서버 송신은 한 PR에서 같이 바꿨고, 이미 쌓인 대문자 행은 Flyway `V30`으로 소문자로 고쳤습니다.
-- 우선순위는 정의서를 따릅니다. 결정 [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58)대로 공유·장바구니·보상 이벤트는 P1이고, #58의 어드민 부분(ADMIN 접근 제어 선행, 분석 API)은 어드민 화면이 없어 보류입니다.
+- 우선순위는 정의서를 따릅니다. 결정 [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58)대로 공유·장바구니·보상 이벤트는 P1이고, #58의 어드민 부분(ADMIN 접근 제어 선행, 분석 API)은 운영자 페이지 a1~a3·a6에서 조회(API 61~64)로 정리됐습니다(11/26).
 
 ## 9. 체크리스트
 
