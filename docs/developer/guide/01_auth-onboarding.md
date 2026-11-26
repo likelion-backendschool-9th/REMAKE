@@ -81,7 +81,7 @@
 | 2 | POST | `/public/auth/refresh` | 리프레시 쿠키로 액세스 쿠키 재발급 | `본문 없음(리프레시 쿠키)` | `204` | refresh_tokens |
 | 3 | POST | `/user/auth/logout` | 리프레시 토큰 행 삭제 + 두 쿠키 삭제 | `본문 없음` | `204` | refresh_tokens |
 | 4 | PUT | `/user/onboarding` | 온보딩 저장. p1.2 완료 때 두 화면 값을 한 번에 보냄. 알레르기는 0개여도 됨(11/21 결정) | `{ householdSize(1~50), allergenCodes: [] }` | `204` | users, user_excluded_ingredients |
-| 5 | GET | `/user/profile` | 설정 화면 값 한 번에 | `-` | `200 { provider, plan, householdSize, excludedIngredientCount, recipeSupplementEnabled, notificationEnabled, lastMealPurpose, onboardingCompleted }` | users, user_excluded_ingredients |
+| 5 | GET | `/user/profile` | 설정 화면 값 한 번에. `role`(USER/ADMIN)로 프론트가 어드민 진입을 판단(11/26) | `-` | `200 { provider, role, plan, householdSize, excludedIngredientCount, recipeSupplementEnabled, notificationEnabled, lastMealPurpose, onboardingCompleted }` | users, user_excluded_ingredients |
 | 6 | PATCH | `/user/profile` | 가구원 수·레시피 재료 보충·알림 받기 중 바꾼 것만 보냄 | `{ householdSize?(1~50), recipeSupplementEnabled?, notificationEnabled? }` | `200 (GET /user/profile과 같은 모양)` | users |
 | 7 | GET | `/user/excluded-ingredients` | 내가 고른 제외 재료 코드 | `-` | `200 { allergenCodes: [] }` | user_excluded_ingredients |
 | 8 | PUT | `/user/excluded-ingredients` | 제외 재료를 통째로 바꿈. 0개여도 저장(11/22 답: 설정에서도 완료 버튼 활성) | `{ allergenCodes: [] (0개 가능) }` | `200 { allergenCodes }` | user_excluded_ingredients |
