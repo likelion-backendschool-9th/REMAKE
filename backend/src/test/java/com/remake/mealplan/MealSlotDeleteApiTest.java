@@ -63,14 +63,22 @@ class MealSlotDeleteApiTest extends IntegrationTestSupport {
 		return slot(planId, createRecipe(me), date, mealType, false);
 	}
 
-	private Long cartItemFrom(Long userId, Long recipeId, Long slotId) {
+	/** 식단표에서 담은 장바구니 행. edited면 담은 뒤 수량을 고친 행(updated_at이 created_at보다 뒤)이다. */
+	private Long cartItemFrom(Long userId, Long recipeId, Long slotId, String name, boolean edited) {
 		LocalDateTime now = LocalDateTime.now(clock);
 		return jdbcTemplate.queryForObject("""
 				INSERT INTO cart_items (user_id, recipe_id, meal_plan_slot_id, category_id, name, amount, unit,
 				                        created_at, updated_at)
-				VALUES (?, ?, ?, ?, '간장', 2, 'TBSP', ?, ?)
+				VALUES (?, ?, ?, ?, ?, 2, 'TBSP', ?, ?)
 				RETURNING id
-				""", Long.class, userId, recipeId, slotId, categoryId("SEASONING"), now, now);
+				""", Long.class, userId, recipeId, slotId, categoryId("SEASONING"), name, now,
+				edited ? now.plusMinutes(5) : now);
+	}
+
+	private Map<String, Object> cartRow(Long cartItemId) {
+		List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+				"SELECT meal_plan_slot_id, recipe_id, amount FROM cart_items WHERE id = ?", cartItemId);
+		return rows.isEmpty() ? null : rows.getFirst();
 	}
 
 	private boolean slotExists(Long slotId) {
@@ -125,21 +133,46 @@ class MealSlotDeleteApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 칸을_지워도_레시피와_장바구니_항목과_식단표_기간은_남는다() throws Exception {
+	void 칸을_지워도_레시피와_식단표_기간은_남는다() throws Exception {
 		Long recipeId = createRecipe(me);
 		Long target = slot(planId, recipeId, TODAY.plusDays(1), "DINNER", false);
-		Long cartItemId = cartItemFrom(me, recipeId, target);
 
 		deleteSlot(me, target).andExpect(status().isNoContent());
 
 		assertThat(count("SELECT count(*) FROM recipes WHERE id = ?", recipeId)).isEqualTo(1);
-		Map<String, Object> cartItem = jdbcTemplate.queryForMap(
-				"SELECT meal_plan_slot_id, recipe_id, amount FROM cart_items WHERE id = ?", cartItemId);
-		assertThat(cartItem.get("meal_plan_slot_id")).isNull();
-		assertThat(cartItem.get("recipe_id")).isEqualTo(recipeId);
-		assertThat(((Number) cartItem.get("amount")).intValue()).isEqualTo(2);
 		assertThat(jdbcTemplate.queryForMap("SELECT status, generated_days FROM meal_plans WHERE id = ?", planId))
 				.containsEntry("status", "COMPLETED").containsEntry("generated_days", 5);
+	}
+
+	@Test
+	void 칸을_지우면_그_칸에서_담고_손대지_않은_장바구니_행은_지우고_고친_행은_연결만_비운다() throws Exception {
+		Long recipeId = createRecipe(me);
+		Long target = slot(planId, recipeId, TODAY.plusDays(1), "DINNER", false);
+		Long other = slot(planId, createRecipe(me), TODAY.plusDays(2), "DINNER", false);
+		Long untouched = cartItemFrom(me, recipeId, target, "간장", false);
+		Long edited = cartItemFrom(me, recipeId, target, "굴소스", true);
+		Long otherSlotRow = cartItemFrom(me, (Long) jdbcTemplate.queryForObject(
+				"SELECT recipe_id FROM meal_plan_slots WHERE id = ?", Long.class, other), other, "간장", false);
+
+		deleteSlot(me, target).andExpect(status().isNoContent());
+
+		assertThat(cartRow(untouched)).isNull();
+		assertThat(cartRow(edited)).containsEntry("meal_plan_slot_id", null).containsEntry("recipe_id", recipeId);
+		assertThat(((Number) cartRow(edited).get("amount")).intValue()).isEqualTo(2);
+		assertThat(cartRow(otherSlotRow)).containsEntry("meal_plan_slot_id", other);
+	}
+
+	@Test
+	void 저장해_둔_레시피의_칸을_지우면_장바구니_행은_남고_연결만_비운다() throws Exception {
+		Long recipeId = createRecipe(me);
+		Long target = slot(planId, recipeId, TODAY.plusDays(1), "DINNER", false);
+		Long untouched = cartItemFrom(me, recipeId, target, "간장", false);
+		jdbcTemplate.update("INSERT INTO saved_recipes (user_id, recipe_id, is_favorite, saved_at) VALUES (?, ?, false, ?)",
+				me, recipeId, LocalDateTime.now(clock));
+
+		deleteSlot(me, target).andExpect(status().isNoContent());
+
+		assertThat(cartRow(untouched)).containsEntry("meal_plan_slot_id", null).containsEntry("recipe_id", recipeId);
 	}
 
 	// ---- 거절 ----

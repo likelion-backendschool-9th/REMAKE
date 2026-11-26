@@ -1,6 +1,7 @@
 package com.remake.mealplan;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -156,6 +157,40 @@ class MealSlotReplaceApiTest extends IntegrationTestSupport {
 				""", eventName, me);
 	}
 
+	/** 장바구니 행 하나(식단표에서 담은 것). updated_at은 created_at과 같다(손대지 않은 행). */
+	private Long cartItem(Long userId, Long recipeId, Long slotId, String name, int amount, String unit) {
+		return cartItem(userId, recipeId, slotId, name, amount, unit, false);
+	}
+
+	/** edited면 담은 뒤 수량을 고친 행(updated_at이 created_at보다 뒤). */
+	private Long cartItem(Long userId, Long recipeId, Long slotId, String name, int amount, String unit,
+			boolean edited) {
+		LocalDateTime now = LocalDateTime.now(clock);
+		return jdbcTemplate.queryForObject("""
+				INSERT INTO cart_items (user_id, recipe_id, meal_plan_slot_id, category_id, name, amount, unit,
+				                        created_at, updated_at)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+				RETURNING id
+				""", Long.class, userId, recipeId, slotId, categoryId("SEASONING"), name, amount, unit, now,
+				edited ? now.plusMinutes(5) : now);
+	}
+
+	/** 장바구니 행. 지워졌으면 null. */
+	private Map<String, Object> cartRow(Long cartItemId) {
+		List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+				SELECT recipe_id, meal_plan_slot_id, amount, created_at = updated_at AS untouched
+				FROM cart_items WHERE id = ?
+				""", cartItemId);
+		return rows.isEmpty() ? null : rows.getFirst();
+	}
+
+	/** 그 레시피로 담은 장바구니 행(이름·단위·양·칸, 이름순). */
+	private List<Map<String, Object>> cartRowsOf(Long recipeId) {
+		return jdbcTemplate.queryForList("""
+				SELECT name, unit, amount, meal_plan_slot_id FROM cart_items WHERE recipe_id = ? ORDER BY name
+				""", recipeId);
+	}
+
 	private MealPlanAiRequest capturedRequest() {
 		ArgumentCaptor<MealPlanAiRequest> request = ArgumentCaptor.forClass(MealPlanAiRequest.class);
 		verify(mealPlanAiAdapter).replace(request.capture());
@@ -174,7 +209,9 @@ class MealSlotReplaceApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.slotId").value(target))
 				.andExpect(jsonPath("$.title").value("대파두부볶음"))
 				.andExpect(jsonPath("$.ingredientSummary").value("대파 · 두부 · 간장"))
-				.andExpect(jsonPath("$.extraIngredientCount").value(1));
+				.andExpect(jsonPath("$.extraIngredientCount").value(1))
+				// 냉장고에 없는 두부·간장 2개를 담았다(#91)
+				.andExpect(jsonPath("$.cartAddedCount").value(2));
 
 		Long newRecipe = (Long) slotRow(target).get("recipe_id");
 		assertThat(newRecipe).isNotEqualTo(oldRecipe);
@@ -380,11 +417,19 @@ class MealSlotReplaceApiTest extends IntegrationTestSupport {
 	@Test
 	void 남은_양보다_많이_쓰거나_냉장고_재료를_안_쓰면_형식_오류다() throws Exception {
 		Long target = slot(TODAY, "DINNER", "대파볶음밥", 100);
-		// 첫 번째: 대파 600g(남은 양 500g 초과), 두 번째: 냉장고 재료 없이(다른 회원의 재료 id는 냉장고에 없는 재료로 바뀜)
-		Long othersFridge = fridgeGrams(createUser(), "대파", 500, TODAY.plusDays(30));
+		// 첫 번째: 대파 600g(남은 양 500g 초과), 두 번째: 냉장고 재료 없이(다른 회원의 재료 id는 냉장고에 없는 재료로 바뀌고,
+		// 내 냉장고에 같은 이름이 없어 다시 연결되지도 않는다)
+		Long othersFridge = fridgeGrams(createUser(), "양배추", 500, TODAY.plusDays(30));
 		given(mealPlanAiAdapter.replace(any()))
 				.willAnswer(invocation -> List.of(newSlot(invocation.getArgument(0), greenOnion, 600)))
-				.willAnswer(invocation -> List.of(newSlot(invocation.getArgument(0), othersFridge, 100)));
+				.willAnswer(invocation -> {
+					MealPlanAiRequest request = invocation.getArgument(0);
+					LocalDate date = request.schedule().startDate();
+					return List.of(new GeneratedMealSlot(date, request.schedule().mealTypesOn(date).iterator().next(),
+							"양배추볶음", 10, null,
+							List.of(new SlotIngredient(othersFridge, "양배추", BigDecimal.valueOf(100), RecipeUnit.G)),
+							List.of("양배추를 썬다", "볶는다", "간한다")));
+				});
 
 		replace(me, target).andExpect(status().isBadGateway())
 				.andExpect(jsonPath("$.code").value("AI_INVALID_RESPONSE"));
@@ -424,5 +469,101 @@ class MealSlotReplaceApiTest extends IntegrationTestSupport {
 		assertThat(recipeUsage()).isZero();
 		assertThat(events("meal_slot_replace_failed")).singleElement().satisfies(event -> assertThat(event)
 				.containsEntry("error_code", "PAST_DATE_NOT_ALLOWED").containsEntry("has_duration", true));
+	}
+
+	// ---- 장바구니(#91) ----
+
+	@Test
+	void 교체하면_새_레시피의_부족_재료를_그_칸_출처로_장바구니에_담는다() throws Exception {
+		Long target = slot(TODAY.plusDays(1), "DINNER", "대파볶음밥", 100);
+		aiUses(greenOnion, 120);
+
+		replace(me, target).andExpect(status().isOk()).andExpect(jsonPath("$.cartAddedCount").value(2));
+
+		Long newRecipe = (Long) slotRow(target).get("recipe_id");
+		// 냉장고 재료(대파)와 양 없는 재료(참기름 약간)는 담지 않는다
+		assertThat(cartRowsOf(newRecipe)).extracting(row -> row.get("name"), row -> row.get("unit"),
+						row -> ((BigDecimal) row.get("amount")).stripTrailingZeros(), row -> row.get("meal_plan_slot_id"))
+				.containsExactly(
+						tuple("간장", "TBSP", BigDecimal.ONE, target),
+						tuple("두부", "EA", BigDecimal.ONE, target));
+		awaitEventWrites();
+		assertThat(jdbcTemplate.queryForMap("""
+				SELECT properties->>'cart_source' AS source, properties->>'item_count' AS item_count
+				FROM events WHERE event_name = 'cart_item_added' AND user_id = ?
+				""", me)).containsEntry("source", "meal_plan").containsEntry("item_count", "2");
+	}
+
+	@Test
+	void 새_레시피에_담을_부족_재료가_없으면_담은_개수는_0이다() throws Exception {
+		Long target = slot(TODAY.plusDays(1), "DINNER", "대파볶음밥", 100);
+		given(mealPlanAiAdapter.replace(any())).willAnswer(invocation -> {
+			MealPlanAiRequest request = invocation.getArgument(0);
+			LocalDate date = request.schedule().startDate();
+			return List.of(new GeneratedMealSlot(date, request.schedule().mealTypesOn(date).iterator().next(),
+					"대파구이", 10, null, List.of(
+							new SlotIngredient(greenOnion, "대파", BigDecimal.valueOf(100), RecipeUnit.G),
+							new SlotIngredient(null, "소금", null, RecipeUnit.TO_TASTE),
+							new SlotIngredient(null, "물", BigDecimal.valueOf(50), RecipeUnit.ML)),
+					List.of("대파를 썬다", "굽는다", "소금을 뿌린다")));
+		});
+
+		replace(me, target).andExpect(status().isOk()).andExpect(jsonPath("$.cartAddedCount").value(0));
+
+		assertThat(count("SELECT COUNT(*) FROM cart_items WHERE user_id = ?", me)).isZero();
+	}
+
+	@Test
+	void 교체하면_바꾸기_전_레시피로_담고_손대지_않은_행은_지우고_고친_행은_연결만_비운다() throws Exception {
+		Long target = slot(TODAY.plusDays(1), "DINNER", "대파볶음밥", 100);
+		Long oldRecipe = (Long) slotRow(target).get("recipe_id");
+		Long other = slot(TODAY.plusDays(2), "DINNER", "대파국", 100);
+		Long untouched = cartItem(me, oldRecipe, target, "굴소스", 3, "TBSP");
+		Long edited = cartItem(me, oldRecipe, target, "고춧가루", 3, "TBSP", true);
+		Long otherRow = cartItem(me, (Long) slotRow(other).get("recipe_id"), other, "굴소스", 2, "TBSP");
+		aiUses(greenOnion, 120);
+
+		replace(me, target).andExpect(status().isOk());
+
+		assertThat(cartRow(untouched)).isNull();
+		// 고친 행은 원본 레시피·수량을 그대로 두고 칸 연결만 비운다. 수정 시각도 바꾸지 않는다
+		assertThat(cartRow(edited)).containsEntry("recipe_id", oldRecipe).containsEntry("meal_plan_slot_id", null)
+				.containsEntry("untouched", false);
+		assertThat(((BigDecimal) cartRow(edited).get("amount")).stripTrailingZeros()).isEqualTo(BigDecimal.valueOf(3));
+		// 다른 칸에서 담은 행은 건드리지 않는다
+		assertThat(cartRow(otherRow)).containsEntry("meal_plan_slot_id", other);
+	}
+
+	@Test
+	void 바꾸기_전_레시피를_저장해_뒀으면_그_행은_남기고_연결만_비운다() throws Exception {
+		Long target = slot(TODAY.plusDays(1), "DINNER", "대파볶음밥", 100);
+		Long oldRecipe = (Long) slotRow(target).get("recipe_id");
+		Long untouched = cartItem(me, oldRecipe, target, "굴소스", 3, "TBSP");
+		jdbcTemplate.update("INSERT INTO saved_recipes (user_id, recipe_id, is_favorite, saved_at) VALUES (?, ?, false, ?)",
+				me, oldRecipe, LocalDateTime.now(clock));
+		aiUses(greenOnion, 120);
+
+		replace(me, target).andExpect(status().isOk());
+
+		assertThat(cartRow(untouched)).containsEntry("recipe_id", oldRecipe).containsEntry("meal_plan_slot_id", null);
+	}
+
+	@Test
+	void 교체_저장이_실패하면_장바구니도_그대로다() throws Exception {
+		Long target = slot(TODAY, "DINNER", "대파볶음밥", 100);
+		Long oldRecipe = (Long) slotRow(target).get("recipe_id");
+		Long oldRow = cartItem(me, oldRecipe, target, "굴소스", 3, "TBSP");
+		// AI를 기다리는 동안 다른 요청이 하루 횟수를 다 써서 마지막 차감에서 실패한다
+		given(mealPlanAiAdapter.replace(any())).willAnswer(invocation -> {
+			useRecipeQuota(2);
+			return List.of(newSlot(invocation.getArgument(0), greenOnion, 100));
+		});
+
+		replace(me, target).andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("GENERATION_LIMIT_EXCEEDED"));
+
+		assertThat(slotRow(target).get("recipe_id")).isEqualTo(oldRecipe);
+		assertThat(cartRow(oldRow)).containsEntry("meal_plan_slot_id", target);
+		assertThat(count("SELECT COUNT(*) FROM cart_items WHERE user_id = ?", me)).isEqualTo(1);
 	}
 }
