@@ -11,6 +11,8 @@ on:
       # 마크다운(AGENTS.md, README.md 등)만 바뀐 변경은 빌드·검사·배포에 영향이 없어 건너뛴다.
       - '!backend/**/*.md'
       - '.github/workflows/backend-ci.yml'
+      # EventContractTest가 읽는 이벤트 정의서. 이 문서만 바뀐 변경도 백엔드 테스트로 확인한다.
+      - 'docs/agent/spec/events.md'
 
 concurrency:
   group: backend-ci-${{ github.event.pull_request.number || github.ref }}
@@ -45,10 +47,11 @@ jobs:
           # 마크다운(backend/ 아래 README.md 등)만 바뀐 PR은 빌드에 영향이 없어 검사하지 않는다. (push 는 on.paths 에서 같은 기준)
           # compose.prod.yml 과 deploy/prod.env.example 은 아래 운영 설정 기동 확인이 쓰는 파일이다. 백엔드에 넘기는 환경 변수를
           # 바꾸는 PR이 바로 그 확인이 필요한 경우라서, 이 파일만 바뀐 PR도 검사한다.
+          # docs/agent/spec/events.md 는 EventContractTest 가 읽는 이벤트 정의서라, 이 문서만 바뀐 PR도 검사한다.
           # git diff 가 실패하면 여기서 작업이 실패한다(검사를 조용히 건너뛰지 않게). grep 은 남는 파일이 없을 때만 1 이라 무시한다.
           diff_files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           changed_files="$(grep -Ev '^backend/.*\.md$' <<<"$diff_files" || true)"
-          if grep -Eq '^(backend/|compose\.prod\.yml$|deploy/prod\.env\.example$|\.github/workflows/backend-ci\.yml$|scripts/(backend_test_summary|check_migrations)\.py$)' <<<"$changed_files"; then
+          if grep -Eq '^(backend/|compose\.prod\.yml$|deploy/prod\.env\.example$|\.github/workflows/backend-ci\.yml$|scripts/(backend_test_summary|check_migrations)\.py$|docs/agent/spec/events\.md$)' <<<"$changed_files"; then
             echo 'changed=true' >> "$GITHUB_OUTPUT"
           else
             echo 'changed=false' >> "$GITHUB_OUTPUT"
