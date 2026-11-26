@@ -6,7 +6,7 @@
         [--out backend/src/main/resources/mfds/combination-check.json]
 
 원본 CSV는 저장소에 올리지 않는다(README 참고). 같은 폴더의 표만 고쳐 다시 돌린다.
-- check_rules.json : 무리 묶음, 검사에서 뺄 이름, 주의 재료, 아침 재료, AI에 보내지 않을 냉장고 재료
+- check_rules.json : 무리 묶음, 검사에서 뺄 이름, 요리 이름인 사전 항목, 주의 재료, 아침 재료, AI에 보내지 않을 냉장고 재료
 - name_fixes.tsv   : 재료 이름 → 재료 사전 이름(자동 맞추기가 틀리거나 없을 때)과 카테고리
 - synonyms.tsv     : 사전 안의 같은 재료 다른 표기(계란 → 달걀)
 - check_examples.json : 판정 비교용 예시(엉터리·멀쩡한 레시피). 결과는 --expected 파일로 쓰고 Java 테스트가 비교한다
@@ -41,6 +41,8 @@ SEASONING = 'SEASONING'
 RICE_MAX_LENGTH = 4
 RICE_EXCEPT = ('볶음밥',)
 RICE = '쌀'
+# 요리 이름을 낱말로 나누는 문자(서버 MealPlanCombinationRules.TITLE_SPLIT와 같다)
+TITLE_SPLIT = re.compile(r'[\s,()·&/+]+')
 # 이름 안에서 찾을 사전 이름의 최소 글자 수(IngredientUnitPolicy와 같다)
 MIN_CONTAINED_NAME_LENGTH = 2
 
@@ -264,6 +266,7 @@ class Rules:
             for member in members:
                 self.groups[member] = group
         self.skipped = set(raw['skippedNames'])
+        self.dishes = set(raw['dishNames'])
         c = raw['caution']
         caution_names = ({n for n, (cat, _) in self.catalog.items() if cat in c['categories']}
                          - set(c['exceptNames']) | set(c['names']))
@@ -278,7 +281,7 @@ class Rules:
     def validate(self, caution_names, breakfast_names):
         known = set(self.catalog) | set(self.groups.values())
         for label, names in (('caution', caution_names), ('breakfast', breakfast_names),
-                             ('excludedFromAi', self.excluded)):
+                             ('excludedFromAi', self.excluded), ('dishNames', self.dishes)):
             missing = sorted(n for n in names if n not in known)
             if missing:
                 sys.exit(f'{label}에 사전에 없는 이름: {missing}')
@@ -316,6 +319,43 @@ class Rules:
 
     def keys(self, names):
         return {k[0] for k in (self.key(n) for n in names) if k}
+
+    def title_terms(self, title):
+        """요리 이름 → 이름에 든 재료(사전 이름, 요리 이름인 사전 항목 뺌). 낱말마다 앞에서부터 가장 긴 사전 이름으로 끊는다
+        (감자두부 → 감자·두부, 자두를 찾지 않음). 한 글자 사전 이름(무·김)은 낱말 전체가 그 이름일 때만 (서버와 같다)."""
+        terms = []
+        for word in TITLE_SPLIT.split(title):
+            i = 0
+            while i < len(word):
+                best = None
+                for c in self.catalog:
+                    if c in self.dishes or not word.startswith(c, i):
+                        continue
+                    if (len(c) >= MIN_CONTAINED_NAME_LENGTH or word == c) and (best is None or len(c) > len(best)):
+                        best = c
+                if best:
+                    terms.append(best)
+                    i += len(best)
+                else:
+                    i += 1
+        return list(OrderedDict.fromkeys(terms))
+
+    def title_missing(self, title, names):
+        """요리 이름에 들었지만 재료 목록에 없는 재료(서버 MealPlanCombinationRules.missingTitleIngredients와 같다)."""
+        return [t for t in self.title_terms(title) if not self.title_term_used(t, names)]
+
+    def title_term_used(self, term, names):
+        term_name = canonical(term, self.synonyms)
+        term_key = self.groups.get(term_name, term_name)
+        for name in names:
+            matched = self.match(name.strip())
+            name_canonical = canonical(matched[0], self.synonyms) if matched else None
+            name_key = self.groups.get(name_canonical, name_canonical) if name_canonical else None
+            compact = name.replace(' ', '')
+            if (name_canonical == term_name or (name_key is not None and name_key == term_key) or term_name in compact
+                    or term in compact or (term_key != term_name and term_key in compact)):
+                return True
+        return False
 
 
 def unseen_caution_pairs(data, names, rules):
@@ -362,6 +402,7 @@ def build(csv_path, rules):
                                   for n, (c, cat) in rules.fixes.items())
     data['groups'] = rules.groups
     data['skippedNames'] = sorted(rules.skipped)
+    data['dishNames'] = sorted(rules.dishes)
     data['breakfast'] = rules.breakfast
     data['excludedFromAi'] = rules.excluded
     data['partners'] = OrderedDict((n, sorted(partners[n])) for n in rules.caution)
@@ -375,10 +416,12 @@ def expected(csv_path, rules, data):
     for row in read_csv(csv_path):
         names.update(recipe_names(row))
     recipes = OrderedDict()
-    for kind in ('absurd', 'normal'):
+    titles = OrderedDict()
+    for kind in ('absurd', 'normal', 'titleMismatch'):
         for title, recipe in examples[kind].items():
             names.update(recipe)
             recipes[f'{kind}:{title}'] = recipe
+            titles[f'{kind}:{title}'] = title
     names = sorted(n for n in names if n.strip())
     keyed = [n for n in names if rules.key(n)]
     caution_names = [n for n in keyed if rules.key(n)[0] in data['partners']]
@@ -389,7 +432,9 @@ def expected(csv_path, rules, data):
     out['_comment'] = 'scripts/mfds/build_combination_check.py가 만듦. 고치지 말고 스크립트를 다시 돌린다'
     out['keys'] = OrderedDict((n, (rules.key(n) or (None,))[0]) for n in names)
     out['recipes'] = [OrderedDict([('name', title), ('ingredients', recipe),
-                                   ('unseenCautionPairs', unseen_caution_pairs(data, recipe, rules))])
+                                   ('unseenCautionPairs', unseen_caution_pairs(data, recipe, rules)),
+                                   ('title', titles.get(title)),
+                                   ('missingTitleIngredients', rules.title_missing(titles[title], recipe) if title in titles else [])])
                       for title, recipe in recipes.items()]
     return out
 
@@ -416,8 +461,8 @@ def main():
     hit = sum(1 for r in check['recipes'] if r['unseenCautionPairs'])
     print(f'판정 비교: 이름 {len(check["keys"])}개, 레시피 {len(check["recipes"])}개(걸림 {hit}개) → {args.expected}')
     for r in check['recipes']:
-        if r['name'].startswith(('absurd:', 'normal:')):
-            print(f'  {r["name"]}: {r["unseenCautionPairs"]}')
+        if r['name'].startswith(('absurd:', 'normal:', 'titleMismatch:')):
+            print(f'  {r["name"]}: 짝 {r["unseenCautionPairs"]}, 이름에 없는 재료 {r["missingTitleIngredients"]}')
 
 
 if __name__ == '__main__':

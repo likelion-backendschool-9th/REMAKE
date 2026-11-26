@@ -30,10 +30,13 @@ class MealPlanCombinationRulesTest {
 		catalog.put("생수", IngredientCategoryCode.BEVERAGE);
 		catalog.put("바나나", IngredientCategoryCode.FRUIT);
 		catalog.put("버터", IngredientCategoryCode.DAIRY_EGG);
+		catalog.put("감자", IngredientCategoryCode.VEGETABLE);
+		catalog.put("자두", IngredientCategoryCode.FRUIT);
+		catalog.put("두부조림", IngredientCategoryCode.SIDE_DISH);
 		return new MealPlanCombinationRules(catalog, Map.of("계란", "달걀"),
 				Map.of("콜라비", new MealPlanCombinationRules.Alias(null, IngredientCategoryCode.VEGETABLE),
 						"간장소스", new MealPlanCombinationRules.Alias("간장", null)),
-				Map.of("대파", "파", "쪽파", "파", "식빵", "빵"), Set.of("생수"),
+				Map.of("대파", "파", "쪽파", "파", "식빵", "빵"), Set.of("생수"), Set.of("두부조림"),
 				Set.of("딸기", "바나나", "우유", "빵", "버터"), Set.of("콜라"),
 				Map.of("딸기", Set.of("우유", "빵"), "바나나", Set.of(), "콜라", Set.of("파")));
 	}
@@ -109,6 +112,24 @@ class MealPlanCombinationRulesTest {
 		// 카테고리를 모르면 사전 이름과 똑같을 때만 맞춘다
 		assertThat(rules.excludedFromAi("콜라", null)).isTrue();
 		assertThat(rules.excludedFromAi("제로 콜라", null)).isFalse();
+	}
+
+	@Test
+	void 요리_이름에_든_재료가_재료_목록에_없으면_돌려준다() {
+		assertThat(rules().missingTitleIngredients("두부계란국", List.of("두부", "물"))).containsExactly("계란");
+		// 같은 재료 다른 표기(계란=달걀)와 무리(대파=쪽파)는 같은 재료다
+		assertThat(rules().missingTitleIngredients("두부계란국", List.of("두부", "달걀"))).isEmpty();
+		assertThat(rules().missingTitleIngredients("대파 두부볶음", List.of("쪽파", "두부"))).isEmpty();
+		// 재료 이름에 들어 있어도 쓴 것으로 본다(돼지고기 앞다리 → 돼지고기 등)
+		assertThat(rules().missingTitleIngredients("감자볶음", List.of("햇감자"))).isEmpty();
+	}
+
+	@Test
+	void 요리_이름은_앞에서부터_가장_긴_사전_이름으로_끊고_요리_이름인_사전_항목은_재료로_보지_않는다() {
+		// 감자두부조림 → 감자·두부(자두를 찾지 않고, 두부조림은 요리 이름이라 재료가 아니다)
+		assertThat(rules().missingTitleIngredients("감자두부조림", List.of("감자", "두부"))).isEmpty();
+		assertThat(rules().missingTitleIngredients("감자두부조림", List.of("감자"))).containsExactly("두부");
+		assertThat(rules().missingTitleIngredients("", List.of("감자"))).isEmpty();
 	}
 
 	@Test

@@ -118,6 +118,10 @@ class MealPlanCombinationRulesJsonAdapterTest {
 		for (ExpectedRecipe recipe : expected.recipes()) {
 			soft.assertThat(rules.unseenCautionPairs(recipe.ingredients())).as(recipe.name())
 					.isEqualTo(recipe.unseenCautionPairs());
+			if (recipe.title() != null) {
+				soft.assertThat(rules.missingTitleIngredients(recipe.title(), recipe.ingredients())).as(recipe.name())
+						.isEqualTo(recipe.missingTitleIngredients());
+			}
 		}
 		soft.assertAll();
 	}
@@ -128,7 +132,17 @@ class MealPlanCombinationRulesJsonAdapterTest {
 	record Expected(Map<String, String> keys, List<ExpectedRecipe> recipes) {
 	}
 
-	record ExpectedRecipe(String name, List<String> ingredients, int unseenCautionPairs) {
+	record ExpectedRecipe(String name, List<String> ingredients, int unseenCautionPairs, String title,
+			List<String> missingTitleIngredients) {
+	}
+
+	@Test
+	void 요리_이름과_재료가_안_맞는_칸을_찾는다() {
+		assertThat(rules.missingTitleIngredients("양파계란국", List.of("계란", "김치", "물", "소금"))).containsExactly("양파");
+		assertThat(rules.missingTitleIngredients("두부된장찌개", List.of("두부", "대파"))).containsExactly("된장");
+		assertThat(rules.missingTitleIngredients("애호박 감자국수", List.of("감자", "애호박", "물"))).containsExactly("국수");
+		assertThat(rules.missingTitleIngredients("돼지고기앞다리살덮밥", List.of("돼지고기 앞다리", "양파", "쌀"))).isEmpty();
+		assertThat(rules.missingTitleIngredients("바지락칼국수", List.of("바지락", "칼국수면", "애호박"))).isEmpty();
 	}
 
 	@Test

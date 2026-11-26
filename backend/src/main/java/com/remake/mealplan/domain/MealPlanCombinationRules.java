@@ -1,6 +1,7 @@
 package com.remake.mealplan.domain;
 
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,6 +23,10 @@ import com.remake.ingredient.domain.IngredientCategoryCode;
  * 사전 이름(두 글자 이상)이 들어 있으면 가장 긴 것(같은 길이면 이름에서 더 뒤에 있는 것: 당근주스 → 주스) → 같은 재료 다른 표기는 기준 이름 → 무리(김치류·면류 등)는
  * 무리 이름. 사전과 못 맞춘 이름, 양념(SEASONING), 물·생수·육수는 검사하지 않는다.
  *
+ * <p><b>이름·재료 검사</b>: 요리 이름에 든 재료(사전 이름, 두부조림·샐러드 같은 요리 이름인 사전 항목은 뺌)가 재료 목록에 없는지 본다.
+ * 이름은 낱말마다 앞에서부터 가장 긴 사전 이름으로 끊어 읽는다(감자두부 → 감자·두부). 같은 재료 다른 표기·무리는 같은 재료로 본다.
+ * 지금은 막지 않고 걸린 칸 수만 센다(11-26 결정, 실측 AI 레시피의 3.1%가 걸려 막으면 재시도가 크게 늘어남).
+ *
  * <p><b>F1 입력 거르기</b>: 식약처 요리(후식 제외)에 한 번도 나오지 않는 재료(콜라·초콜릿·과자 등 18개)와, 음료 카테고리인데 사전과 맞지 않는
  * 냉장고 재료는 AI에 보내지 않는다. 냉장고 재료 이름은 #145 규칙(사전 이름과 같음 → 같은 카테고리의 사전 이름이 들어 있으면 가장 긴 것)으로 맞춘다.
  * 길이가 같을 때는 #145(id가 작은 것)와 달리 위와 같이 이름에서 더 뒤에 있는 것을 고른다(같은 카테고리 안의 동률은 드물다).
@@ -31,13 +36,14 @@ import com.remake.ingredient.domain.IngredientCategoryCode;
  * @param aliases        재료 이름(공백 뺀 것) → 고침표 값. 사전 이름이 null이면 사전과 연결하지 않는다
  * @param groups         무리에 든 재료 → 무리 이름
  * @param skippedNames   검사하지 않는 이름(물·생수·육수)
+ * @param dishNames      요리 이름인 사전 항목(두부조림·샐러드 등). 이름·재료 검사에서 재료로 보지 않는다
  * @param breakfast      아침 재료(검사 키)
  * @param excludedFromAi AI에 보내지 않을 냉장고 재료(사전 이름)
  * @param partners       주의 재료 → 식약처 레시피에서 함께 쓰인 검사 키. 키 목록이 곧 주의 재료다
  */
 public record MealPlanCombinationRules(Map<String, IngredientCategoryCode> catalog, Map<String, String> synonyms,
-		Map<String, Alias> aliases, Map<String, String> groups, Set<String> skippedNames, Set<String> breakfast,
-		Set<String> excludedFromAi, Map<String, Set<String>> partners) {
+		Map<String, Alias> aliases, Map<String, String> groups, Set<String> skippedNames, Set<String> dishNames,
+		Set<String> breakfast, Set<String> excludedFromAi, Map<String, Set<String>> partners) {
 
 	/** 이름 안에서 찾을 사전 이름의 최소 글자 수(IngredientUnitPolicy와 같다) */
 	static final int MIN_CONTAINED_NAME_LENGTH = 2;
@@ -46,6 +52,8 @@ public record MealPlanCombinationRules(Map<String, IngredientCategoryCode> catal
 	static final String RICE = "쌀";
 	private static final Set<String> RICE_EXCEPT = Set.of("볶음밥");
 	private static final Pattern PARENTHESES = Pattern.compile("\\(.*?\\)");
+	/** 요리 이름을 낱말로 나누는 문자(정리 스크립트 TITLE_SPLIT와 같다) */
+	private static final Pattern TITLE_SPLIT = Pattern.compile("[\\s,()·&/+]+");
 
 	/**
 	 * 고침표 한 줄.
@@ -62,6 +70,7 @@ public record MealPlanCombinationRules(Map<String, IngredientCategoryCode> catal
 		aliases = Map.copyOf(aliases);
 		groups = Map.copyOf(groups);
 		skippedNames = Set.copyOf(skippedNames);
+		dishNames = Set.copyOf(dishNames);
 		breakfast = Set.copyOf(breakfast);
 		excludedFromAi = Set.copyOf(excludedFromAi);
 		partners = partners.entrySet().stream()
@@ -72,7 +81,7 @@ public record MealPlanCombinationRules(Map<String, IngredientCategoryCode> catal
 	/** 검사하지 않는 빈 기준(테스트 등). */
 	public static MealPlanCombinationRules empty() {
 		return new MealPlanCombinationRules(Map.of(), Map.of(), Map.of(), Map.of(), Set.of(), Set.of(), Set.of(),
-				Map.of());
+				Set.of(), Map.of());
 	}
 
 	/**
@@ -135,6 +144,66 @@ public record MealPlanCombinationRules(Map<String, IngredientCategoryCode> catal
 			return Optional.empty();
 		}
 		return Optional.of(key);
+	}
+
+	/**
+	 * 요리 이름에 들었지만 재료 목록에 없는 재료(이름에 나온 순서, 정리 스크립트 Rules.title_missing과 같다).
+	 * 예: 재료가 계란·김치·물·소금인 "양파계란국" → [양파]. 비어 있으면 이름과 재료가 맞다.
+	 */
+	public List<String> missingTitleIngredients(String title, Collection<String> ingredientNames) {
+		if (title == null || title.isBlank()) {
+			return List.of();
+		}
+		return titleTerms(title).stream()
+				.filter(term -> !titleTermUsed(term, ingredientNames))
+				.toList();
+	}
+
+	/** 낱말마다 앞에서부터 가장 긴 사전 이름(요리 이름인 항목 뺌)으로 끊는다. 한 글자 사전 이름은 낱말 전체가 그 이름일 때만. */
+	private List<String> titleTerms(String title) {
+		LinkedHashSet<String> terms = new LinkedHashSet<>();
+		for (String word : TITLE_SPLIT.split(title)) {
+			int i = 0;
+			while (i < word.length()) {
+				String best = null;
+				for (String catalogName : catalog.keySet()) {
+					if (dishNames.contains(catalogName) || !word.startsWith(catalogName, i)) {
+						continue;
+					}
+					boolean longEnough = catalogName.length() >= MIN_CONTAINED_NAME_LENGTH || word.equals(catalogName);
+					if (longEnough && (best == null || catalogName.length() > best.length())) {
+						best = catalogName;
+					}
+				}
+				if (best != null) {
+					terms.add(best);
+					i += best.length();
+				} else {
+					i++;
+				}
+			}
+		}
+		return List.copyOf(terms);
+	}
+
+	/** 이름의 재료가 재료 목록에 있는지: 기준 이름이나 무리가 같거나, 재료 이름(공백 뺌)에 그 이름이나 무리 이름이 들어 있으면 있다. */
+	private boolean titleTermUsed(String term, Collection<String> ingredientNames) {
+		String termName = canonical(term);
+		String termKey = groups.getOrDefault(termName, termName);
+		for (String name : ingredientNames) {
+			if (name == null || name.isBlank()) {
+				continue;
+			}
+			Optional<String> nameCanonical = match(name.strip()).map(alias -> canonical(alias.catalogName()));
+			String nameKey = nameCanonical.map(n -> groups.getOrDefault(n, n)).orElse(null);
+			String compact = name.replace(" ", "");
+			if (nameCanonical.filter(termName::equals).isPresent() || termKey.equals(nameKey)
+					|| compact.contains(termName) || compact.contains(term)
+					|| (!termKey.equals(termName) && compact.contains(termKey))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** 고침표 → 사전 이름과 같음 → 사전 이름이 들어 있으면 가장 긴 것. 고침표에서 연결하지 않기로 한 이름은 비어 있다. */
