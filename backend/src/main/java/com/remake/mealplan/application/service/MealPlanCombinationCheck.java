@@ -70,7 +70,8 @@ class MealPlanCombinationCheck {
 				continue;
 			}
 			String fixed = rules.fixedTitle(slot.title(), slot.ingredients().stream().map(SlotIngredient::name).toList());
-			if (fixed.equals(slot.title())) {
+			// 이름 길이 검사(GeneratedMealPlanValidator)는 고치기 전에 하므로, 주재료를 붙여 한도를 넘으면 원래 이름을 둔다
+			if (fixed.equals(slot.title()) || fixed.strip().length() > GeneratedMealPlanValidator.TITLE_MAX_LENGTH) {
 				result.add(slot);
 			} else {
 				result.add(slot.withTitle(fixed));
