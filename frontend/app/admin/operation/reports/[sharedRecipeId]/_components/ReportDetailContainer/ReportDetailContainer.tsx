@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-import { ArrowLeftIcon } from "@solar-icons/react/linear";
+import { ArrowLeftIcon, GalleryIcon } from "@solar-icons/react/linear";
 
 import { Badge } from "@/components/Badge/Badge";
 import { Button } from "@/components/Button/Button";
@@ -84,7 +84,7 @@ export function ReportDetailContainer({
   };
 
   return (
-    <>
+    <div className={styles.page}>
       <Link href={ADMIN_PATHS.reports} className={styles.back}>
         <ArrowLeftIcon className={styles.backIcon} aria-hidden="true" />
         신고 목록
@@ -126,7 +126,7 @@ export function ReportDetailContainer({
           </Toast>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -136,34 +136,30 @@ function RecipeCard({ report }: { report: ReportDetail }) {
 
   return (
     <AdminCard title="공유 레시피" meta="사용자에게 보이는 그대로" className={styles.recipe}>
-      <div className={styles.photo} aria-hidden="true" />
+      <div className={styles.photo} aria-hidden="true">
+        <GalleryIcon className={styles.photoIcon} />
+      </div>
 
-      <section className={styles.recipeInfo}>
-        <h3 className={styles.recipeTitle}>{report.title}</h3>
-        <p className={styles.recipeMeta}>
-          {recipe.readiness} · {recipe.servings} · {recipe.cookingTime}
-        </p>
-      </section>
+      <h3 className={styles.recipeTitle}>{report.title}</h3>
+      <p className={styles.recipeMeta}>
+        {recipe.readiness} · {recipe.servings} · {recipe.cookingTime}
+      </p>
 
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>재료</h3>
-        <p className={styles.ingredients}>
-          {recipe.ingredients
-            .map((ingredient) => `${ingredient.name} ${ingredient.amount}`)
-            .join(", ")}
-        </p>
-      </section>
+      <h3 className={styles.sectionTitle}>재료</h3>
+      <p className={styles.ingredients}>
+        {recipe.ingredients
+          .map((ingredient) => `${ingredient.name} ${ingredient.amount}`)
+          .join(", ")}
+      </p>
 
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}>만드는 방법</h3>
-        <ol className={styles.steps}>
-          {recipe.steps.map((step) => (
-            <li key={step} className={styles.step}>
-              {step}
-            </li>
-          ))}
-        </ol>
-      </section>
+      <h3 className={styles.sectionTitle}>만드는 방법</h3>
+      <ol className={styles.steps}>
+        {recipe.steps.map((step, index) => (
+          <li key={step}>
+            {index + 1}. {step}
+          </li>
+        ))}
+      </ol>
     </AdminCard>
   );
 }
@@ -173,7 +169,11 @@ function ReportListCard({ report }: { report: ReportDetail }) {
   const reasons = summarizeReasons(report.reports);
 
   return (
-    <AdminCard title={`신고 ${report.reports.length}건`} meta="같은 글은 한 사람이 한 번만">
+    <AdminCard
+      title={`신고 ${report.reports.length}건`}
+      meta="같은 글은 한 사람이 한 번만"
+      className={styles.sideCard}
+    >
       <div className={styles.badges}>
         {reasons.map((reason) => (
           <Badge key={reason.label} tone={getReasonTone(reason.label)}>
@@ -209,11 +209,11 @@ function AuthorCard({ report, onChoose }: AuthorCardProps) {
   const { author, handled } = report;
 
   return (
-    <AdminCard title="작성자" meta={`회원 #${author.userId}`}>
+    <AdminCard title="작성자" meta={`회원 #${author.userId}`} className={styles.author}>
       <dl className={styles.facts}>
         <div className={styles.fact}>
           <dt>확정된 위반</dt>
-          <dd>{author.violationCount}회</dd>
+          <dd className={styles.factStrong}>{author.violationCount}회</dd>
         </div>
         <div className={styles.fact}>
           <dt>현재 제재</dt>
@@ -223,29 +223,34 @@ function AuthorCard({ report, onChoose }: AuthorCardProps) {
 
       {handled ? (
         <div className={styles.result}>
-          <Badge tone={REPORT_RESULT_TONE[handled.result]}>
-            {REPORT_RESULT_LABEL[handled.result]}
-          </Badge>
+          <div className={styles.resultHead}>
+            <Badge tone={REPORT_RESULT_TONE[handled.result]}>
+              {REPORT_RESULT_LABEL[handled.result]}
+            </Badge>
+            <p className={styles.resultMeta}>
+              {handled.handledAt} · {handled.operator}
+            </p>
+          </div>
           <p className={styles.resultText}>{getHandledDescription(handled)}</p>
-          <p className={styles.resultMeta}>
-            {handled.handledAt} · {handled.operator}
-          </p>
         </div>
       ) : (
         <>
           <InfoBox variant="gray">{getNextSanctionNotice(author.violationCount)}</InfoBox>
 
-          <Button tone="danger" size="lg" onClick={() => onChoose("VIOLATION")}>
-            위반으로 처리하기
-          </Button>
+          {/* 남는 높이는 안내 박스와 버튼 사이에 두어 버튼을 카드 아래에 붙인다 */}
+          <div className={styles.actions}>
+            <Button tone="danger" size="lg" onClick={() => onChoose("VIOLATION")}>
+              위반으로 처리하기
+            </Button>
 
-          <div className={styles.secondary}>
-            <TextButton tone="neutral" onClick={() => onChoose("NO_ISSUE")}>
-              문제 없음으로 처리하기
-            </TextButton>
-            <TextButton tone="danger" onClick={() => onChoose("DELETED")}>
-              글 삭제하기
-            </TextButton>
+            <div className={styles.secondary}>
+              <TextButton tone="neutral" onClick={() => onChoose("NO_ISSUE")}>
+                문제 없음으로 처리하기
+              </TextButton>
+              <TextButton tone="danger" onClick={() => onChoose("DELETED")}>
+                글 삭제하기
+              </TextButton>
+            </div>
           </div>
         </>
       )}
@@ -267,6 +272,7 @@ function ActionConfirm({ action, violationCount, onClose, onConfirm }: ActionCon
   return (
     <ConfirmModal
       isOpen
+      isFullScreen
       onClose={onClose}
       onConfirm={onConfirm}
       title={copy.title}

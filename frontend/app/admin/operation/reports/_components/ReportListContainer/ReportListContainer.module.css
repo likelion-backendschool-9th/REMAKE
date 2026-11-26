@@ -15,7 +15,7 @@
   background: var(--color-bg-surface);
 }
 
-/* 표: 칸 사이 16, 좌우 끝 여백 24. 머리줄은 bg/section, Remake/assist·text/sub */
+/* 표: 칸 사이 16(칸마다 좌우 8), 좌우 끝 여백 24. 머리줄은 위아래 10, bg/section, Remake/assist·text/sub */
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -24,9 +24,14 @@
 
 .table th,
 .table td {
-  padding: var(--space-14) var(--space-16);
+  padding: var(--space-14) var(--space-8);
   text-align: left;
   vertical-align: middle;
+}
+
+.table th {
+  padding-top: var(--space-10);
+  padding-bottom: var(--space-10);
 }
 
 .table th:first-child,
@@ -57,16 +62,51 @@
 }
 
 .row:hover {
-  background: var(--color-bg-subtle);
+  background: var(--color-bg-primary-tint);
 }
 
-/* 칸 폭. 숫자 칸은 오른쪽 맞춤 */
-.countColumn {
-  width: 4.5rem;
+/* 칸 폭(피그마 안쪽 폭 + 좌우 8, 맨 끝 칸은 오른쪽 여백 24 포함). 숫자 칸은 오른쪽 맞춤.
+   처리 대기: 신고 수 70 · 신고 사유 250 · 최근 신고 130 · 작성자 확정 위반 110 · 상태 80
+   처리 완료: 신고 수 60 · 처리 결과 100 · 적용한 제재 150 · 처리 시각 120 · 처리한 운영자 100
+   두 표가 칸 이름은 같고 폭이 달라 표마다 따로 정한다 */
+.pending .countColumn {
+  width: 5.375rem;
 }
 
-.violationColumn {
-  width: 7.5rem;
+.pending .reasonColumn {
+  width: 16.625rem;
+}
+
+.pending .timeColumn {
+  width: 9.125rem;
+}
+
+.pending .violationColumn {
+  width: 7.875rem;
+}
+
+.pending .statusColumn {
+  width: 7rem;
+}
+
+.done .countColumn {
+  width: 4.75rem;
+}
+
+.done .resultColumn {
+  width: 7.25rem;
+}
+
+.done .sanctionColumn {
+  width: 10.375rem;
+}
+
+.done .timeColumn {
+  width: 8.5rem;
+}
+
+.done .operatorColumn {
+  width: 8.25rem;
 }
 
 .table .countColumn,
@@ -75,36 +115,12 @@
   text-align: right;
 }
 
-.reasonColumn {
-  width: 15.625rem;
-}
-
-.timeColumn {
-  width: 8.125rem;
-}
-
-.statusColumn {
-  width: 6rem;
-}
-
-.resultColumn {
-  width: 6.5rem;
-}
-
-.sanctionColumn {
-  width: 10rem;
-}
-
-.operatorColumn {
-  width: 7rem;
-}
-
 .numeric {
   text-align: right;
   white-space: nowrap;
 }
 
-/* 글 제목 칸: 썸네일 40(bg/skeleton, radius/sm) + 제목. 제목 칸 전체가 상세로 가는 링크 */
+/* 글 제목 칸: 썸네일 40(bg/skeleton, radius/sm, 가운데에 이미지 아이콘 24) + 제목. 제목 칸 전체가 상세로 가는 링크 */
 .titleCell {
   position: relative;
   display: flex;
@@ -114,11 +130,20 @@
 }
 
 .thumb {
+  display: flex;
   flex: none;
+  align-items: center;
+  justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
   border-radius: var(--radius-sm);
   background: var(--color-bg-skeleton);
+}
+
+.thumbIcon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--color-text-sub);
 }
 
 .titleLink {

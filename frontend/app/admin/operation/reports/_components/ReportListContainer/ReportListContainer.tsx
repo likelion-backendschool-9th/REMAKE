@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { GalleryIcon } from "@solar-icons/react/linear";
+
 import { Badge } from "@/components/Badge/Badge";
 import { Chip } from "@/components/Chip/Chip";
 import { EmptyState } from "@/components/EmptyState/EmptyState";
@@ -92,7 +94,7 @@ function PendingReportTable({ items }: PendingReportTableProps) {
         </div>
       ) : (
         <>
-          <table className={styles.table}>
+          <table className={`${styles.table} ${styles.pending}`}>
             <thead>
               <tr>
                 <th scope="col">공유 레시피</th>
@@ -158,7 +160,7 @@ function DoneReportTable({ items }: DoneReportTableProps) {
           <EmptyState>처리한 신고가 없어요</EmptyState>
         </div>
       ) : (
-        <table className={styles.table}>
+        <table className={`${styles.table} ${styles.done}`}>
           <thead>
             <tr>
               <th scope="col">공유 레시피</th>
@@ -207,7 +209,9 @@ function DoneReportTable({ items }: DoneReportTableProps) {
 function TitleCell({ sharedRecipeId, title }: { sharedRecipeId: number; title: string }) {
   return (
     <div className={styles.titleCell}>
-      <span className={styles.thumb} aria-hidden="true" />
+      <span className={styles.thumb} aria-hidden="true">
+        <GalleryIcon className={styles.thumbIcon} />
+      </span>
       <Link href={`${ADMIN_PATHS.reports}/${sharedRecipeId}`} className={styles.titleLink}>
         {title}
       </Link>
