@@ -662,7 +662,7 @@ Missing-ingredient list (added automatically when saving a shared recipe, saving
 | `id` | bigint | PK |  | no |  | ID |
 | `user_id` | bigint | FK | users | no |  | Member |
 | `recipe_id` | bigint | FK | recipes | yes |  | Source recipe |
-| `meal_plan_slot_id` | bigint | FK | meal_plan_slots | yes |  | Initial meal-slot source (#57). SET NULL on slot deletion; keep recipe and cart quantity. Reusing an existing cart row does not replace its source. Before slot delete/replace/overwrite, rows from that slot and recipe are deleted if unchanged (`updated_at = created_at`) or else unlinked here; replace must do it in code because updating the slot's `recipe_id` does not fire SET NULL (#91) |
+| `meal_plan_slot_id` | bigint | FK | meal_plan_slots | yes |  | Initial meal-slot source (#57). The FK is SET NULL on slot deletion and the recipe stays. Reusing an existing cart row does not replace its source. Before slot delete/replace/overwrite, the service first cleans up rows from that slot and recipe: deleted if unchanged (`updated_at = created_at`), otherwise (edited amount, receipt partial deduction, or a recipe the user saved) only unlinked here; replace must do it in code because updating the slot's `recipe_id` does not fire SET NULL (#91) |
 | `category_id` | bigint | FK | ingredient_categories | no |  | Category estimated when added (used when moving to the fridge) |
 | `name` | varchar |  |  | no |  | Ingredient name |
 | `amount` | numeric(10,3) |  |  | no |  | Amount |

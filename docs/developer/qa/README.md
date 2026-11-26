@@ -14,7 +14,7 @@
 | [02_fridge.md](02_fridge.md) | 냉장고(ING) | 김재연 | 51 |
 | [03_receipt-exp.md](03_receipt-exp.md) | 영수증(RCP), 월 식비·소비 패턴(EXP) | 이동준 | 71 + 23 |
 | [04_ai-recipe.md](04_ai-recipe.md) | AI 레시피(AI) | 김종수 | 60 |
-| [05_meal-plan.md](05_meal-plan.md) | 식단표(MEAL) | 한윤수 | 55 |
+| [05_meal-plan.md](05_meal-plan.md) | 식단표(MEAL) | 한윤수 | 59 |
 | [06_notification.md](06_notification.md) | 알림(NOTI) | 이상호 | 31 |
 | [07_shared-cart.md](07_shared-cart.md) | 장바구니(CART), 공유 공간(SHARE) | 최유리 | 35 + 58 |
 | [08_common.md](08_common.md) | 공통·비기능(COM), 동시성 점검표, 핵심 흐름 회귀 세트, 담당자 결정·확인 요청 표 | 전원 | 65 |
