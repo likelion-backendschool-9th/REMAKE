@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 import com.remake.event.domain.EventName;
+import com.remake.event.domain.Screen;
 
 // docs/agent/spec/events.md 의 이벤트 표(79개)와 EventName enum이 이름·발송 주체·허용 속성까지 같은지 확인한다(#196).
 // 문서만 고치거나 코드만 고쳐서 어긋나면, 수집 API(56)가 이름을 몰라 조용히 거부하는 일이 생기므로 여기서 먼저 잡는다.
@@ -86,5 +87,37 @@ class EventContractTest {
 
 		assertThat(client).isEqualTo(45);
 		assertThat(server).isEqualTo(34);
+	}
+
+	@Test
+	void Screen은_문서_41개_화면_코드와_같다() throws IOException {
+		Path doc = Path.of("..", "docs", "agent", "spec", "events.md");
+		Pattern row = Pattern.compile("^\\| `([a-z0-9_]+)` \\|");
+		boolean inScreens = false;
+		Set<String> docCodes = new HashSet<>();
+		for (String line : Files.readAllLines(doc)) {
+			if (line.startsWith("## Screen codes")) {
+				inScreens = true;
+				continue;
+			}
+			if (inScreens && line.startsWith("## ")) {
+				break;
+			}
+			if (!inScreens) {
+				continue;
+			}
+			Matcher m = row.matcher(line);
+			if (m.find()) {
+				docCodes.add(m.group(1));
+			}
+		}
+
+		Set<String> code = Arrays.stream(Screen.values())
+				.filter(s -> s != Screen.UNKNOWN)
+				.map(Screen::getCode)
+				.collect(Collectors.toSet());
+
+		assertThat(docCodes).hasSize(41);
+		assertThat(code).containsExactlyInAnyOrderElementsOf(docCodes);
 	}
 }

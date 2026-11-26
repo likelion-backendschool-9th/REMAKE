@@ -71,11 +71,45 @@ class EventPropertyFilterTest {
 	@Test
 	void 정해진_문자열_허용값만_통과한다() {
 		assertThat(EventPropertyFilter.filter(EventName.APP_OPENED,
-				Map.of("entry_source", "icon", "is_standalone", true))).isPresent();
+				Map.of("entry_source", "direct", "is_standalone", true))).isPresent();
 		assertThat(EventPropertyFilter.filter(EventName.CART_ITEM_ADDED,
 				Map.of("cart_source", "meal_plan", "item_count", 3))).isPresent();
 		assertThat(EventPropertyFilter.filter(EventName.CART_ITEM_ADDED,
 				Map.of("cart_source", "FREE_TEXT", "item_count", 3))).isEmpty();
+	}
+
+	@Test
+	void 코드값은_소문자만_통과하고_대문자는_거절한다() {
+		assertThat(EventPropertyFilter.filter(EventName.QUOTA_EXCEEDED,
+				Map.of("limit_feature", "recipe", "limit_total", 2, "used_count", 2))).isPresent();
+		assertThat(EventPropertyFilter.filter(EventName.QUOTA_EXCEEDED,
+				Map.of("limit_feature", "RECIPE", "limit_total", 2, "used_count", 2))).isEmpty();
+		assertThat(EventPropertyFilter.filter(EventName.INGREDIENT_ADDED,
+				Map.of("add_source", "manual", "category_code", "VEGETABLE", "storage", "FRIDGE", "has_price", false)))
+						.isPresent();
+		assertThat(EventPropertyFilter.filter(EventName.INGREDIENT_ADDED,
+				Map.of("add_source", "MANUAL", "category_code", "VEGETABLE", "storage", "FRIDGE", "has_price", false)))
+						.isEmpty();
+		assertThat(EventPropertyFilter.filter(EventName.MEAL_SLOT_DELETED,
+				Map.of("meal_type", "dinner", "date_relation", "today"))).isPresent();
+		assertThat(EventPropertyFilter.filter(EventName.MEAL_SLOT_DELETED,
+				Map.of("meal_type", "DINNER", "date_relation", "TODAY"))).isEmpty();
+	}
+
+	@Test
+	void 정의서와_다른_옛_CLIENT_값은_거절한다() {
+		assertThat(EventPropertyFilter.filter(EventName.RECEIPT_SCAN_STARTED,
+				Map.of("scan_method", "camera"))).isPresent();
+		assertThat(EventPropertyFilter.filter(EventName.RECEIPT_SCAN_STARTED,
+				Map.of("scan_method", "CAMERA"))).isEmpty();
+		assertThat(EventPropertyFilter.filter(EventName.RECEIPT_SCAN_STARTED,
+				Map.of("scan_method", "upload"))).isPresent();
+		assertThat(EventPropertyFilter.filter(EventName.RECEIPT_SCAN_STARTED,
+				Map.of("scan_method", "GALLERY"))).isEmpty();
+		assertThat(EventPropertyFilter.filter(EventName.FRIDGE_FILTER_APPLIED,
+				Map.of("filter_type", "location", "filter_value", "FRIDGE"))).isPresent();
+		assertThat(EventPropertyFilter.filter(EventName.FRIDGE_FILTER_APPLIED,
+				Map.of("filter_type", "storage", "filter_value", "FRIDGE"))).isEmpty();
 	}
 	@Test
 	void 레시피저장과_취소는_명세의_소문자출처만_허용한다() {

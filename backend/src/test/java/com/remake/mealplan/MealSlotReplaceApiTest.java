@@ -224,7 +224,7 @@ class MealSlotReplaceApiTest extends IntegrationTestSupport {
 		assertThat(recipeUsage()).isEqualTo(1);
 		assertThat(count("SELECT COUNT(*) FROM usage_logs WHERE user_id = ? AND type = 'MEAL_PLAN'", me)).isZero();
 		assertThat(events("meal_slot_replaced")).singleElement().satisfies(event -> assertThat(event)
-				.containsEntry("meal_type", "DINNER").containsEntry("date_relation", "FUTURE")
+				.containsEntry("meal_type", "dinner").containsEntry("date_relation", "future")
 				.containsEntry("remaining_quota", "1").containsEntry("has_duration", true));
 	}
 
@@ -238,7 +238,7 @@ class MealSlotReplaceApiTest extends IntegrationTestSupport {
 		Long recipeId = ((Number) JsonPath.read(body, "$.recipeId")).longValue();
 		assertThat(slotRow(target).get("recipe_id")).isEqualTo(recipeId);
 		assertThat(events("meal_slot_replaced")).singleElement()
-				.satisfies(event -> assertThat(event).containsEntry("date_relation", "TODAY"));
+				.satisfies(event -> assertThat(event).containsEntry("date_relation", "today"));
 	}
 
 	@Test
@@ -338,7 +338,7 @@ class MealSlotReplaceApiTest extends IntegrationTestSupport {
 		assertThat(jdbcTemplate.queryForMap("""
 				SELECT properties->>'limit_feature' AS feature, properties->>'used_count' AS used
 				FROM events WHERE event_name = 'quota_exceeded' AND user_id = ?
-				""", me)).containsEntry("feature", "RECIPE").containsEntry("used", "2");
+				""", me)).containsEntry("feature", "recipe").containsEntry("used", "2");
 	}
 
 	@Test

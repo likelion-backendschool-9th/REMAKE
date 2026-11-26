@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -187,10 +188,9 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 			throw e;
 		}
 
-		// 값은 지금 검증기에 맞춰 대문자. 이벤트 값 소문자 통일은 #172에서 같이 바꾼다
-		eventTracker.track(EventName.MEAL_SLOT_REPLACED, Screen.MEAL_DAY, Map.of(
-				"meal_type", slot.mealType().name(),
-				"date_relation", slot.slotDate().equals(today) ? "TODAY" : "FUTURE",
+		eventTracker.track(EventName.MEAL_SLOT_REPLACED, Screen.MEAL_PLAN_CALENDAR, Map.of(
+				"meal_type", slot.mealType().name().toLowerCase(Locale.ROOT),
+				"date_relation", slot.slotDate().equals(today) ? "today" : "future",
 				"duration_ms", elapsedMillis(start),
 				"remaining_quota", saved.quota().remaining()), EventTrackCommand.ofUser(userId));
 
@@ -303,15 +303,15 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 	}
 
 	private void trackFailure(Long userId, ErrorCode code, long start) {
-		eventTracker.track(EventName.MEAL_SLOT_REPLACE_FAILED, Screen.MEAL_DAY, Map.of(
+		eventTracker.track(EventName.MEAL_SLOT_REPLACE_FAILED, Screen.MEAL_PLAN_CALENDAR, Map.of(
 				"error_code", code.name(),
 				"duration_ms", elapsedMillis(start)), EventTrackCommand.ofUser(userId));
 	}
 
 	private void trackQuotaExceeded(Long userId) {
 		RecipeQuota quota = getUsageQuotasUseCase.getRecipeQuota(userId);
-		eventTracker.track(EventName.QUOTA_EXCEEDED, Screen.MEAL_DAY, Map.of(
-				"limit_feature", "RECIPE",
+		eventTracker.track(EventName.QUOTA_EXCEEDED, Screen.MEAL_PLAN_CALENDAR, Map.of(
+				"limit_feature", "recipe",
 				"limit_total", quota.limit() + quota.bonusRemaining(),
 				"used_count", quota.used()), EventTrackCommand.ofUser(userId));
 	}

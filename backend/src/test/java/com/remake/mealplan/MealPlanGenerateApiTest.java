@@ -294,7 +294,7 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 				.andExpect(jsonPath("$.code").value("MEAL_PLAN_LIMIT_EXCEEDED"));
 
 		assertThat(count("SELECT COUNT(*) FROM meal_plans WHERE user_id = ?", userId)).isZero();
-		assertThat(eventProperty("quota_exceeded", "limit_feature")).isEqualTo("MEAL_PLAN");
+		assertThat(eventProperty("quota_exceeded", "limit_feature")).isEqualTo("meal_plan");
 		assertThat(eventProperty("quota_exceeded", "used_count")).isEqualTo("1");
 	}
 

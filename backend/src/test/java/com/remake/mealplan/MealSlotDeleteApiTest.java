@@ -110,7 +110,7 @@ class MealSlotDeleteApiTest extends IntegrationTestSupport {
 		assertThat(slotExists(target)).isFalse();
 		assertThat(slotExists(sameDay)).isTrue();
 		assertThat(slotExists(tomorrow)).isTrue();
-		assertThat(deletedEvents()).containsExactly(Map.of("meal_type", "DINNER", "date_relation", "TODAY"));
+		assertThat(deletedEvents()).containsExactly(Map.of("meal_type", "dinner", "date_relation", "today"));
 	}
 
 	@Test
@@ -120,7 +120,7 @@ class MealSlotDeleteApiTest extends IntegrationTestSupport {
 		deleteSlot(me, future).andExpect(status().isNoContent());
 
 		assertThat(slotExists(future)).isFalse();
-		assertThat(deletedEvents()).containsExactly(Map.of("meal_type", "LUNCH", "date_relation", "FUTURE"));
+		assertThat(deletedEvents()).containsExactly(Map.of("meal_type", "lunch", "date_relation", "future"));
 	}
 
 	@Test
