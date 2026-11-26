@@ -111,13 +111,12 @@ public class IngredientRegistrationService implements RegisterIngredientUseCase,
 	/**
 	 * ingredient_added 이벤트. EventTracker가 커밋 뒤에 보내므로 롤백되면 나가지 않고, 실패해도 등록은 깨지지 않는다.
 	 * 개인정보·자유 입력 없이 코드 값과 true/false만 넣는다. 이름은 넣지 않는다.
-	 * add_source는 장바구니 이동이면 명세의 cart, 영수증 품목이면 RECEIPT, 그 밖은 기존 MANUAL이다.
-	 * 기존 직접 추가·영수증 이벤트의 대문자 값은 유지하며, 장바구니만 최신 명세 값과 cart_list 화면을 사용한다.
+	 * add_source는 정의서 소문자(manual / receipt / cart). storage는 정의서대로 대문자(FRIDGE 등).
 	 * duration_sec(추가 화면에 머문 시간)은 서버가 알 수 없어 보내지 않는다.
 	 */
 	private void trackAdded(Ingredient ingredient, IngredientCategory category, boolean fromReceipt, boolean fromCart) {
 		eventTracker.track(EventName.INGREDIENT_ADDED, fromCart ? Screen.CART_LIST : fromReceipt ? Screen.RECEIPT_RESULT : Screen.INGREDIENT_ADD,
-				Map.of("add_source", fromCart ? "cart" : fromReceipt ? "RECEIPT" : "MANUAL",
+				Map.of("add_source", fromCart ? "cart" : fromReceipt ? "receipt" : "manual",
 						"category_code", category.code().name(),
 						"storage", ingredient.storage().name(),
 						"has_price", ingredient.price() != null),

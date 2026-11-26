@@ -52,7 +52,7 @@ class SharedRecipeSaveService implements SaveSharedRecipeUseCase {
 					.toList();
 			// 서버 확정 카테고리가 없는 사전 미등록 재료는 공통 UseCase가 INVALID_INPUT으로 거절한다.
 			added = cart.add(userId, CartSource.SHARED_RECIPE, missing);
-			events.track(EventName.RECIPE_SAVED, Screen.SHARED_RECIPE,
+			events.track(EventName.RECIPE_SAVED, Screen.SHARED_DETAIL,
 					Map.of("recipe_id", recipe.id(), "save_source", "shared", "cart_added_count", added),
 					EventTrackCommand.ofUser(userId));
 		}

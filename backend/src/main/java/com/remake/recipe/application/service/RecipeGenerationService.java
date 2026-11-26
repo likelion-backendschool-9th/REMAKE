@@ -3,6 +3,7 @@ package com.remake.recipe.application.service;
 import java.time.Duration;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -173,8 +174,8 @@ class RecipeGenerationService implements GenerateRecipeUseCase, RegenerateRecipe
 	/** 횟수 확인부터 저장까지. 생성과 다시 받기가 같이 쓴다. */
 	Recipe run(Long userId, RecipeAiRequest request, List<FridgeIngredient> selected, boolean regenerated) {
 		long start = System.nanoTime();
-		// 이벤트 값은 EventPropertyValues 허용 목록대로 대문자(QUICK·CUSTOM, RECIPE)를 쓴다
-		String mode = request.source().name();
+		// 이벤트 코드 값은 정의서 소문자(quick·custom, recipe)
+		String mode = request.source().name().toLowerCase(Locale.ROOT);
 		Screen screen = request.source() == RecipeSource.CUSTOM ? Screen.RECIPE_CUSTOM : Screen.RECIPE_CREATE;
 
 		requireQuota(userId, screen);
@@ -296,7 +297,7 @@ class RecipeGenerationService implements GenerateRecipeUseCase, RegenerateRecipe
 		int limitTotal = quota.limit() + quota.bonusRemaining();
 		int used = quota.used();
 		eventTracker.track(EventName.QUOTA_EXCEEDED, screen, Map.of(
-				"limit_feature", "RECIPE",
+				"limit_feature", "recipe",
 				"limit_total", limitTotal,
 				"used_count", used), EventTrackCommand.ofUser(userId));
 	}
