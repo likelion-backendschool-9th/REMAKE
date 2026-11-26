@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.List;
 
@@ -31,6 +32,7 @@ import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.ingredient.domain.StorageLocation;
 import com.remake.receipt.application.port.in.DeleteReceiptsForUserUseCase;
+import com.remake.receipt.application.port.in.UpdateManualIngredientExpensePriceUseCase;
 import com.remake.support.IntegrationTestSupport;
 import com.remake.user.domain.UserRole;
 
@@ -53,6 +55,9 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 
 	@Autowired
 	private RegisterCartIngredientsUseCase registerCartIngredients;
+
+	@Autowired
+	private UpdateManualIngredientExpensePriceUseCase updateManualExpensePrice;
 
 	private Long owner;
 
@@ -117,6 +122,58 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.totalAmount").value(2500))
 				.andExpect(jsonPath("$.items.length()").value(2));
+	}
+
+	@Test
+	void 직접_등록_지출_가격을_바꾸면_등록일은_그대로이고_합계에_반영된다() throws Exception {
+		long noPrice = registerIngredient(owner, "null");
+		long priced = registerIngredient(owner, "3000");
+		long receiptOnly = registerReceipt(owner, "2026-03-03", 5000);
+		long receiptIngredientId = jdbcTemplate.queryForObject(
+				"SELECT id FROM ingredients WHERE user_id = ? AND receipt_item_id IS NOT NULL", Long.class, owner);
+
+		transactionTemplate.executeWithoutResult(status -> updateManualExpensePrice.updatePrice(noPrice, 3000L));
+		transactionTemplate.executeWithoutResult(status -> updateManualExpensePrice.updatePrice(priced, 3500L));
+		transactionTemplate.executeWithoutResult(status -> updateManualExpensePrice.updatePrice(receiptIngredientId, 999L));
+
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT price FROM manual_ingredient_expenses WHERE ingredient_id = ?", Long.class, noPrice))
+				.isEqualTo(3000L);
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT price FROM manual_ingredient_expenses WHERE ingredient_id = ?", Long.class, priced))
+				.isEqualTo(3500L);
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT CAST(created_at AS date) FROM manual_ingredient_expenses WHERE ingredient_id = ?",
+				LocalDate.class, noPrice)).isEqualTo(LocalDate.of(2026, 3, 4));
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT count(*) FROM manual_ingredient_expenses WHERE ingredient_id = ?", Long.class,
+				receiptIngredientId)).isZero();
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT price FROM receipt_items WHERE receipt_id = ?", Long.class, receiptOnly)).isEqualTo(5000L);
+
+		mockMvc.perform(get(EXPENSES + "/patterns").cookie(cookie(owner)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalAmount").value(11500));
+	}
+
+	@Test
+	void 직접_등록_지출_가격을_지우면_합계에서_빠지고_행_없는_id는_무시한다() throws Exception {
+		long priced = registerIngredient(owner, "3000");
+		long missingId = priced + 9_999;
+
+		transactionTemplate.executeWithoutResult(status -> updateManualExpensePrice.updatePrice(priced, null));
+		transactionTemplate.executeWithoutResult(status -> updateManualExpensePrice.updatePrice(missingId, 1000L));
+
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT price FROM manual_ingredient_expenses WHERE ingredient_id = ?", Long.class, priced)).isNull();
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT count(*) FROM manual_ingredient_expenses WHERE ingredient_id = ?", Long.class, missingId))
+				.isZero();
+		mockMvc.perform(get(EXPENSES + "/patterns").cookie(cookie(owner)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalAmount").value(0))
+				.andExpect(jsonPath("$.categories").isEmpty())
+				.andExpect(jsonPath("$.dailyTotals").isEmpty());
 	}
 
 	@Test
