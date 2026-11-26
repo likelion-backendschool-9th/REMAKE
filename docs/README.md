@@ -13,7 +13,7 @@ docs/
 │  ├─ git-convention.md         브랜치·커밋·PR 규칙
 │  ├─ backend-convention.md     백엔드 코드 규칙 (헥사고날 구조, API 경로, 에러 형식, AI 생성, 이벤트 발행, 예약 작업)
 │  ├─ backend-testing.md        백엔드 테스트 작성법 (공통 통합 테스트 설정, Testcontainers)
-│  ├─ erd.md                    ERD·테이블 정의서 (테이블 26개, 컬럼, 관계, 구현 규칙)
+│  ├─ erd.md                    ERD·테이블 정의서 (테이블 29개, 컬럼, 관계, 구현 규칙)
 │  ├─ ci.md                     PR에서 도는 CI와 결과 읽는 법
 │  ├─ deployment.md             배포 구조, 서버 준비, 배포·롤백, 앱이 지켜야 할 배포 조건
 │  └─ spec/                     기획 문서 영문 요약 (영문만 있음)
