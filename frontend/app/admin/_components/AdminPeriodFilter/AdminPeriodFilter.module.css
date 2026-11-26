@@ -1,0 +1,7 @@
+/* 피그마 a1·a2 페이지 제목 오른쪽 칩: 간격 8 */
+.filter,
+.group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}

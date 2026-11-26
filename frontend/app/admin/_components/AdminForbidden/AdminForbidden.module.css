@@ -1,0 +1,22 @@
+/* 피그마 a0-권한 없음: 배경 bg/subtle, 가운데 폭 328, 로고는 왼쪽 위(40, 32) */
+.page {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100dvh;
+  padding: 2rem;
+  background: var(--color-bg-subtle);
+}
+
+.logo {
+  position: absolute;
+  top: 2rem;
+  left: 2.5rem;
+}
+
+.content {
+  width: 100%;
+  max-width: 20.5rem;
+}

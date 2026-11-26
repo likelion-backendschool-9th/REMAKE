@@ -1,0 +1,33 @@
+/* 피그마 운영자 페이지 > 페이지 제목: 제목·설명 간격 6, 오른쪽 동작은 아래쪽 맞춤 */
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-16);
+  width: 100%;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Remake/display·text/strong */
+.title {
+  color: var(--color-text-strong);
+  font: var(--font-display);
+}
+
+/* Remake/content-regular·text/sub */
+.description {
+  color: var(--color-text-sub);
+  font: var(--font-content-regular);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}

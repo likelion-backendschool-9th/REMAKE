@@ -1,0 +1,102 @@
+/* 피그마 a2-퍼널 표: 줄 사이 16, 칸 사이 16 */
+.funnel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 100%;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: 0;
+  list-style: none;
+}
+
+/* 칸 폭: 단계 170 · 막대(남은 폭) · 사람 수 80 · 이전 단계 대비 140 */
+.row {
+  display: grid;
+  grid-template-columns: 10.625rem minmax(0, 1fr) 5rem 8.75rem;
+  align-items: center;
+  column-gap: var(--space-16);
+}
+
+/* 머리줄: Remake/assist·text/sub. "사용자 수"는 막대와 사람 수 두 칸에 걸친다 */
+.row[data-head] {
+  align-items: start;
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+.usersHead {
+  grid-column: span 2;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Remake/content·text/title */
+.stepLabel {
+  color: var(--color-text-title);
+  font: var(--font-content);
+}
+
+/* Remake/assist·text/sub */
+.eventName {
+  overflow: hidden;
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 막대 바탕: 높이 28, bg/section, radius/sm. 채움: bg/primary */
+.track {
+  display: block;
+  height: 1.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-section);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  width: calc(100% * var(--fill-ratio));
+  height: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-primary);
+}
+
+/* Remake/content-strong·text/strong */
+.users {
+  color: var(--color-text-strong);
+  font: var(--font-content-strong);
+  white-space: nowrap;
+}
+
+/* Remake/content·text/body. 이탈 큼=text/danger */
+.rate {
+  display: inline-flex;
+  gap: var(--space-8);
+  color: var(--color-text-body);
+  font: var(--font-content);
+  white-space: nowrap;
+}
+
+.rate[data-drop] {
+  color: var(--color-text-danger);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

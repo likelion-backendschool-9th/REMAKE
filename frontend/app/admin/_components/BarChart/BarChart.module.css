@@ -1,0 +1,42 @@
+/* 피그마 a1-대시보드 > 막대 그래프: 아래 맞춤, 막대 사이 12, 막대·글 간격 6 */
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-12);
+  width: 100%;
+}
+
+.column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+/* 막대: 폭 32, 가장 큰 값이 96, radius/xs, bg/primary. 지난 주들은 투명도 30% */
+.bar {
+  width: 2rem;
+  height: calc(6rem * var(--bar-ratio));
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-primary);
+  opacity: 0.3;
+}
+
+.bar[data-current] {
+  opacity: 1;
+}
+
+/* 이번 주 값: Remake/assist-strong·text/primary */
+.value {
+  color: var(--color-text-primary);
+  font: var(--font-assist-strong);
+}
+
+/* 날짜: Remake/assist·text/sub */
+.label {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+  white-space: nowrap;
+}

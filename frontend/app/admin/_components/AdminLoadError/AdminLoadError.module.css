@@ -1,0 +1,11 @@
+/* 피그마 a0-불러오기 실패: 카드 여백 80/24, 결과 안내(폭 328)와 버튼 간격 20, 가운데 */
+.card {
+  align-items: center;
+  gap: var(--space-20);
+  padding: 5rem var(--space-24);
+}
+
+.result {
+  width: 100%;
+  max-width: 20.5rem;
+}

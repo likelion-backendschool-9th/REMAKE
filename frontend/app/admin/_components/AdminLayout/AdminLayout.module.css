@@ -1,0 +1,130 @@
+/* 피그마 운영자 페이지 > 화면 틀: 배경 bg/subtle, 사이드 메뉴 232 + 본문(여백 32, 묶음 간격 24) */
+.layout {
+  /* 운영자 화면은 배경(bg/subtle)과 입력 칸(bg/input) 색이 거의 같아 입력 칸을 흰색으로 바꾼다.
+     검색창 등 bg/input을 쓰는 입력 칸이 운영자 화면 안에서만 흰 바탕이 된다 */
+  --color-bg-input: var(--color-bg-surface);
+
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 100dvh;
+  background: var(--color-bg-subtle);
+}
+
+/* 사이드 메뉴: 폭 232, bg/surface, 오른쪽 선 border/default, 여백 28/16/24, 항목 간격 4.
+   본문이 길어져도 화면 높이에 붙어 있고, 계정 영역은 맨 아래에 둔다 */
+.side {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 14.5rem;
+  height: 100dvh;
+  padding: 1.75rem var(--space-16) var(--space-24);
+  border-right: 1px solid var(--color-border-default);
+  background: var(--color-bg-surface);
+  overflow-y: auto;
+}
+
+/* 로고 + "운영자" 배지: 간격 8, 아래 20, 왼쪽 8 */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 0 0 var(--space-20) var(--space-8);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 묶음 이름(모니터링·운영): 위 16, 아래 6, 왼쪽 12, Remake/assist·text/sub */
+.groupTitle {
+  padding: var(--space-16) 0 var(--space-6) var(--space-12);
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+/* 메뉴 항목: 여백 10/12, radius/sm, Remake/content·text/title. 지금 메뉴=bg/primary-subtle·Remake/content-strong·text/primary */
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-10) var(--space-12);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-title);
+  font: var(--font-content);
+}
+
+.item[aria-current="page"] {
+  background: var(--color-bg-primary-subtle);
+  color: var(--color-text-primary);
+  font: var(--font-content-strong);
+}
+
+a.item:hover:not([aria-current="page"]) {
+  background: var(--color-bg-section);
+}
+
+a.item:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: -2px;
+}
+
+/* 계정: 맨 아래, 위 선 border/default, 여백 16/12/0, 간격 4 */
+.account {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: auto;
+  padding: var(--space-16) var(--space-12) 0;
+  border-top: 1px solid var(--color-border-default);
+}
+
+.accountName {
+  color: var(--color-text-strong);
+  font: var(--font-content-strong);
+}
+
+.accountDescription {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+.back {
+  align-self: flex-start;
+  margin-top: var(--space-8);
+}
+
+/* 본문: 남은 폭 전체, 여백 32, 묶음 간격 24 */
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-24);
+  min-width: 0;
+  min-height: 100dvh;
+  padding: 2rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
