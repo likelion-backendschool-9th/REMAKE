@@ -847,7 +847,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `id` | bigint | PK |  | 아니오 |  | 고유 번호 |
 | `user_id` | bigint | FK | users | 아니오 |  | 제재받은 회원(신고된 글 작성자) |
 | `shared_recipe_id` | bigint | FK | shared_recipes | 아니오 |  | 제재 원인이 된 신고 글 |
-| `level` | int |  |  | 아니오 |  | 1~4차. 이 회원의 행 수 = 확정 위반 수 |
+| `level` | int |  |  | 아니오 |  | 1~4차. UK(user_id+level). 이 회원의 행 수 = 확정 위반 수, 최대 4(4차 이후 위반은 행을 만들지 않음) |
 | `type` | varchar |  |  | 아니오 |  | SHARE_BAN(레시피 공유 정지, 1·2차)/ACCOUNT_BAN(계정 정지, 3·4차) |
 | `starts_at` | timestamp |  |  | 아니오 |  | 제재 시작 시각(처리 시각) |
 | `ends_at` | timestamp |  |  | 예 |  | 끝나는 시각. 4차 영구 정지는 비움 |
@@ -929,7 +929,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | p1 로그인 | "최근 로그인" 말풍선 | DB 아님. 기기(localStorage)에 저장(11/20 결정) |
 | p1.3.4 구독 전 | 다음 결제일(오늘 구독하면) | 오늘 + 1달. 저장하지 않음 |
 | a4 신고 관리 | 글별 신고 수·사유별 수·최근 신고, 처리 대기 수(사이드 메뉴 숫자) | shared_recipe_reports를 shared_recipe_id로 묶어 계산(status=PENDING) |
-| a4.1·a5 | 작성자 확정 위반 수, 현재 제재, 다음 제재 단계 | user_sanctions 행 수, ends_at이 지나지 않았거나 빈 행, 행 수 + 1(4차까지) |
+| a4.1·a5 | 작성자 확정 위반 수, 현재 제재, 다음 제재 단계 | user_sanctions 행 수, ends_at이 지나지 않았거나 빈 행 중 가장 높은 단계, 행 수 + 1(4차 이후는 없음) |
 | a5 사용자 관리 | 제재 상태(공유 정지·계정 정지·영구)·탈퇴, 남은 생성 횟수 | user_sanctions + users.deleted_at, usage_logs + generation_quota_grants.remaining |
 
 ## 처리 규칙
@@ -955,7 +955,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | 구독 시작 | 토스 카드 등록 → 서버가 billingKey 발급 → 첫 결제 성공하면 subscriptions(ACTIVE)·subscription_payments(DONE) 만들고 users.plan = PREMIUM. 첫 결제가 실패하면 구독을 만들지 않고 subscription_payments 행도 남기지 않음(E85로만 기록). 한도는 바로 구독 한도(레시피 하루 4회, 식단표 이번 달 4회·7일치) |
 | 구독 자동 연장 | 매일 새벽, next_billing_date가 오늘인 ACTIVE 구독을 billingKey로 결제. 성공하면 기간을 한 달 늘림. 실패하면 구독을 바로 끝냄(ENDED, billing_key 비움, users.plan = BASIC). 다시 구독하려면 카드를 새로 등록(11/24 약관 결정, 정책 12장 11 해결) |
 | 구독 해지 | 해지 예약은 status = CANCELED, canceled_at 기록. 다음 결제일 전날까지 PREMIUM 유지, 다음 결제일 새벽에 결제하지 않고 ENDED·billing_key 비움·users.plan = BASIC. 그 뒤 한도는 일반 한도(이번 달 이미 쓴 횟수는 그대로 셈) |
-| 신고 처리(운영자) | 글 단위로 처리. 그 글의 PENDING 신고를 모두 DONE으로 하고 result·handled_by·handled_at 기록. VIOLATION이면 shared_recipes.status = HIDDEN, DELETED면 DELETED이고 둘 다 user_sanctions에 다음 단계 한 행(1차 SHARE_BAN 7일·2차 SHARE_BAN 30일·3차 ACCOUNT_BAN 30일·4차 ACCOUNT_BAN 영구). NO_ISSUE면 글·제재 그대로. 대기 신고가 없으면 409(이미 처리됨) |
+| 신고 처리(운영자) | 글 단위로 처리. 그 글의 PENDING 신고를 모두 DONE으로 하고 result·handled_by·handled_at 기록. VIOLATION이면 shared_recipes.status = HIDDEN, DELETED면 DELETED이고 둘 다 user_sanctions에 다음 단계 한 행(1차 SHARE_BAN 7일·2차 SHARE_BAN 30일·3차 ACCOUNT_BAN 30일·4차 ACCOUNT_BAN 영구). NO_ISSUE면 글·제재 그대로. 대기 신고가 없으면 409(이미 처리됨). 단계를 정할 때 작성자 users 행을 잠금(UK(user_id+level)은 마지막 안전장치). 새 제재는 처리 시각부터 시작(이전 제재에 이어 붙이지 않음). 4차 이후에는 VIOLATION·DELETED도 글만 바꿈. 이미 준 주간 보상은 회수하지 않음(11/26 PR #292 리뷰) |
 | 생성 횟수 조정(운영자) | 늘리면 ADMIN_ADJUST 행(remaining = amount, 한 달 유효). 줄이면 amount 음수·remaining 0 행을 남기고, 남은 보상 행에서 기한 가까운 것부터 뺌(남은 보상보다 많이 줄일 수 없음) |
 | 공통 규칙 | 수량 numeric(10,3), 금액 bigint(원), 시각 timestamp(한국 시간), JSON jsonb. created_at은 앱이 만드는 행 전부, updated_at은 값이 바뀌는 테이블만 |
 
@@ -965,10 +965,14 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 
 | 테이블 | 지금 코드 | 이 ERD에 맞추려면 |
 | --- | --- | --- |
-| `users` | `status`(ACTIVE/SUSPENDED) 있음 | `status` 삭제 |
+| `users` | `status`(ACTIVE/SUSPENDED) 있음. `AuthService` 로그인·토큰 갱신이 SUSPENDED면 `ACCOUNT_SUSPENDED` 반환 | 새 마이그레이션으로 `status`와 그 검사를 지움(#171). SUSPENDED로 바꾸는 API가 없어 지금 동작은 바뀌지 않음. `ACCOUNT_BAN`(user_sanctions) 회원을 앱에서 막는 규칙은 추가될 페이지 15로 보류라, 그전까지 계정 정지는 기록만 되고 앱에서는 막지 않음 |
 | `refresh_tokens` | `revoked_at` 있음(로그아웃 = 취소 표시) | `revoked_at` 삭제. 로그아웃하면 행 삭제 |
 | `ingredient_catalog` | PR #140(V5): `unit` 없음, 자동완성 API `GET /user/ingredient-catalog` 있음 | `unit` 추가, 자동완성 API는 빼기 |
 | `events` | 같음 | 바꿀 것 없음 |
+| `user_sanctions` | 코드에 없음 | 새 마이그레이션으로 테이블 생성(UK(user_id+level)·FK 포함) |
+| `shared_recipe_reports` | V14: `result`·`handled_by`·`handled_at` 없음 | 새 마이그레이션으로 NULL 허용 컬럼 3개 추가 |
+| `generation_quota_grants` | V26: `grant_type`·`reason`·`admin_id` 없음. `week_start`·`rank_no` NOT NULL. 검사 `ck_quota_grants_reward`(순위별 지급 수)·`ck_quota_grants_remaining`(0~`amount`) | 새 마이그레이션: 컬럼 추가(`grant_type` 기본 WEEKLY_REWARD), `week_start`·`rank_no` NULL 허용, 두 검사를 WEEKLY_REWARD 행에만 적용해 ADMIN_ADJUST 행(음수 `amount`, `remaining` 0)을 허용 |
+| `shared_recipes` | V12: `ck_shared_recipes_status`가 VISIBLE/HIDDEN만 허용 | 새 마이그레이션으로 `DELETED` 허용 |
 
 ## 이전 ERD v3(32개)와 차이
 

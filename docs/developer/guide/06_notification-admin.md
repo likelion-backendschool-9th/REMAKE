@@ -38,8 +38,6 @@
 
 ### 10. 어드민
 
-| 항목 | 규칙 | 상태 |
-| --- | --- | --- |
 피그마 '운영자 페이지'(etTm84sh 2005:4)가 기준이에요(11/26). 화면과 API는 API 정의서 61~71에 있어요.
 
 | 항목 | 규칙 | 상태 |
@@ -53,10 +51,12 @@
 | 신고 묶음 | 같은 글 신고는 한 줄로 묶고 신고 수가 많은 순. 처리는 글 단위로 그 글의 대기 신고를 한 번에 | 확정 |
 | 신고 처리 결과 | 위반으로 처리 = 글 숨김 + 다음 제재. 문제 없음 = 글 그대로, 제재 없음. 글 삭제 = 공유 공간에서 지우고(되돌릴 수 없음) 위반으로 세어 다음 제재. 모두 확인 모달 후 처리 | 확정 |
 | 제재 단계 | 확정된 위반 1차 7일 레시피 공유 정지, 2차 30일 공유 정지, 3차 30일 계정 정지, 4차 영구 계정 정지. 4차 직전에는 상세에 경고 | 확정 |
+| 제재 겹침 | 새 제재는 처리 시각부터 시작(이전 제재에 이어 붙이지 않음). 현재 제재는 끝나지 않은 행 중 가장 높은 단계. 4차(영구) 이후 위반은 글만 숨김·삭제하고 제재 행은 더 만들지 않음 | 확정(11/26 PR #292 리뷰) |
+| 같은 작성자 동시 처리 | 처리할 때 작성자(users 행)를 잠그고 단계를 정함. `user_sanctions`의 UK(user_id+level)가 마지막 안전장치 | 확정(11/26 PR #292 리뷰) |
 | 동시 처리 | 다른 운영자가 먼저 처리했으면 "이미 처리한 신고" 안내 후 목록을 새로 불러옴(409) | 확정 |
 | 계정 제한 | 운영자가 직접 정지·해제하는 기능은 없고 제재로만 걸림. 제재 중인 사용자가 앱에서 보는 화면은 추가될 페이지 15번(그전까지 앱 쪽 차단 규칙은 보류) | 확정 / 앱 화면은 보류 |
 | 횟수 조정 | 운영자가 회원별 보상 생성 횟수를 늘리거나 줄임. 사유 필수, 조정 이력에 남음. 남은 보상보다 많이 줄일 수 없음 | 확정 |
-| 숨김·삭제 | 숨긴(HIDDEN)·삭제한(DELETED) 공유 레시피는 공유 목록·랭킹·보상에서 빠짐 | 확정 |
+| 숨김·삭제 | 숨긴(HIDDEN)·삭제한(DELETED) 공유 레시피는 공유 목록·랭킹·보상에서 빠짐. 이미 준 주간 보상은 회수하지 않음. 그 글을 저장한 사용자의 저장 목록은 원본 레시피라 그대로 보임(공유 상세로는 못 들어감) | 확정(보상·저장은 11/26 PR #292 리뷰) |
 | 랭킹·보상 조회 | 주간 TOP 3와 지급 이력만 보여 줌. 저장 수 0인 레시피는 보상 없음 | 확정 |
 
 ## API
@@ -77,7 +77,7 @@
 | 번호 | 메서드 | 경로 | 설명 | 요청 | 응답 | 관련 테이블 |
 | --- | --- | --- | --- | --- | --- | --- |
 | 65 | GET | `/admin/reports` | 신고 목록. 같은 글 신고는 한 줄(글 단위), 신고 수 많은 순. `pendingCount`는 사이드 메뉴 숫자 | `?status=PENDING\|DONE&page=0&size=20` | `200 { pendingCount, content: [{ sharedRecipeId, title, reportCount, reasonCounts: [{ reason, count }], lastReportedAt, authorViolationCount, status, result?, sanction?: { level, type, days }, handledAt?, handledBy? }], page, size, totalElements, hasNext }` | shared_recipe_reports, shared_recipes, user_sanctions |
-| 66 | GET | `/admin/reports/{sharedRecipeId}` | 신고 상세. 공유 레시피를 사용자에게 보이는 그대로, 신고 목록, 작성자 위반·제재, 위반 처리 때 적용될 다음 제재 | `-` | `200 { sharedRecipe: { id, title, imageUrl, createdAt, saveCount, recipe(재료·단계·인분·시간) }, status, reports: [{ reportedAt, reason, reporterId }], author: { userId, violationCount, currentSanction? }, nextSanction: { level, type, days(영구면 null) }, handled?: { result, handledAt, handledBy, sanction? } }` | shared_recipes, shared_recipe_reports, recipes, user_sanctions |
+| 66 | GET | `/admin/reports/{sharedRecipeId}` | 신고 상세. 공유 레시피를 사용자에게 보이는 그대로, 신고 목록, 작성자 위반·제재, 위반 처리 때 적용될 다음 제재(4차 이후는 `nextSanction` null) | `-` | `200 { sharedRecipe: { id, title, imageUrl, createdAt, saveCount, recipe(재료·단계·인분·시간) }, status, reports: [{ reportedAt, reason, reporterId }], author: { userId, violationCount, currentSanction? }, nextSanction: { level, type, days(영구면 null) }, handled?: { result, handledAt, handledBy, sanction? } }` | shared_recipes, shared_recipe_reports, recipes, user_sanctions |
 | 67 | PATCH | `/admin/reports/{sharedRecipeId}` | 신고 처리(글 단위). VIOLATION = 글 숨김 + 다음 제재, NO_ISSUE = 그대로, DELETED = 글 삭제 + 위반으로 세어 다음 제재. 대기 신고가 없으면 409 | `{ result: VIOLATION\|NO_ISSUE\|DELETED }` | `200 { result, sanction?: { level, type, endsAt } }` | shared_recipe_reports, shared_recipes, user_sanctions |
 | 68 | GET | `/admin/users` | 사용자 목록·회원 번호 검색 | `?filter=ALL\|SANCTIONED&userId=&page=0&size=20` | `200 { content: [{ userId, provider, joinedAt, plan, violationCount, sanction?: { type, endsAt }, deletedAt? }], page, size, totalElements, hasNext }` | users, user_sanctions |
 | 69 | GET | `/admin/users/{userId}` | 사용자 상세 패널 | `-` | `200 { userId, provider, joinedAt, deletedAt?, quota: { todayRemaining, rewardRemaining, blocked }, currentSanction?, sanctions: [{ level, type, startsAt, endsAt, sharedRecipeTitle }] }` | users, user_sanctions, usage_logs, generation_quota_grants |
@@ -102,7 +102,7 @@
 
 ## 지금 코드와 다른 점
 
-- 아직 이 영역 코드는 없어요. 이전 가이드의 웹 푸시(`push_subscriptions`), 영수증 완료 알림은 없어졌어요. 이전 어드민 API 중 감사 로그(`admin_audit_logs`)·공유 글 직접 관리·계정 직접 정지는 11/26에 없앴어요(api-summary "Admin: changes from the previous admin APIs").
+- 알림 API(43·44)와 알림 정기 작업은 구현돼 `dev`에 있어요. 어드민 운영(API 65~71) 코드는 아직 없어요. 이전 가이드의 웹 푸시(`push_subscriptions`), 영수증 완료 알림은 없어졌어요. 이전 어드민 API 중 감사 로그(`admin_audit_logs`)·공유 글 직접 관리·계정 직접 정지는 11/26에 없앴어요(api-summary "Admin: changes from the previous admin APIs").
 - 기존 어드민 보류 이슈(#84·#85·#87·#94)는 이번 API 번호·범위로 정리가 필요해요.
 
 ## 에러 코드

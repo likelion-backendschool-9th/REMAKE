@@ -847,7 +847,7 @@ One row per violation confirmed by report handling (1st-4th sanction). Owner 이
 | `id` | bigint | PK |  | no |  | ID |
 | `user_id` | bigint | FK | users | no |  | Sanctioned member (author of the reported post) |
 | `shared_recipe_id` | bigint | FK | shared_recipes | no |  | Reported post that caused the sanction |
-| `level` | int |  |  | no |  | 1st-4th. The number of this member's rows = confirmed violations |
+| `level` | int |  |  | no |  | 1st-4th. UK(user_id + level). The number of this member's rows = confirmed violations, at most 4 (violations after the 4th ban add no row) |
 | `type` | varchar |  |  | no |  | SHARE_BAN (recipe sharing ban, 1st and 2nd)/ACCOUNT_BAN (account ban, 3rd and 4th) |
 | `starts_at` | timestamp |  |  | no |  | Sanction start (handling time) |
 | `ends_at` | timestamp |  |  | yes |  | End time. Empty for the 4th (permanent) ban |
@@ -929,7 +929,7 @@ These values appear on screens but have no column. They are computed from the so
 | p1 login | "Recent login" bubble | Not in the DB. Stored on the device (localStorage) |
 | p1.3.4 before subscribing | Next billing date (if subscribing today) | Today + 1 month. Not stored |
 | a4 report management | Report count, count per reason, and latest report per post; pending count (side-menu number) | `shared_recipe_reports` grouped by `shared_recipe_id` (`status` = PENDING) |
-| a4.1, a5 | Author's confirmed violation count, current sanction, next sanction step | Count of `user_sanctions` rows; the row whose `ends_at` has not passed or is empty; row count + 1 (up to the 4th) |
+| a4.1, a5 | Author's confirmed violation count, current sanction, next sanction step | Count of `user_sanctions` rows; the highest level among rows whose `ends_at` has not passed or is empty; row count + 1 (none after the 4th) |
 | a5 user management | Sanction status (sharing ban, account ban, permanent), withdrawal, remaining generation count | `user_sanctions` + `users.deleted_at`; `usage_logs` + `generation_quota_grants.remaining` |
 
 ## Processing rules
@@ -955,7 +955,7 @@ These values appear on screens but have no column. They are computed from the so
 | Subscription start | Toss card registration -> the server issues a billingKey -> on first payment success create `subscriptions` (ACTIVE) and `subscription_payments` (DONE) and set `users.plan` = PREMIUM. If the first payment fails, do not create a subscription and do not insert a `subscription_payments` row (E85 only). Premium limits apply at once (recipes 4 per day, meal plans 4 this month and 7 days) |
 | Subscription renewal | Every early morning, charge ACTIVE subscriptions whose `next_billing_date` is today with the billingKey. On success extend the period by a month. On failure end the subscription at once (ENDED, clear `billing_key`, `users.plan` = BASIC); to subscribe again, register a card again (11/24 terms decision; resolves policy ch. 12 item 11) |
 | Subscription cancel | Cancel request sets `status` = CANCELED and `canceled_at`. PREMIUM stays until the day before the next billing date; on that date's early morning do not charge, set ENDED, clear `billing_key`, set `users.plan` = BASIC. Basic limits apply afterwards (counts already used this month still count) |
-| Report handling (operator) | Handle per post. Set all of the post's PENDING reports to DONE and record `result`, `handled_by`, `handled_at`. VIOLATION sets `shared_recipes.status` = HIDDEN and DELETED sets DELETED; both add one `user_sanctions` row at the next step (1st SHARE_BAN 7 days, 2nd SHARE_BAN 30 days, 3rd ACCOUNT_BAN 30 days, 4th ACCOUNT_BAN permanent). NO_ISSUE leaves the post and sanctions unchanged. No pending report -> 409 (already handled) |
+| Report handling (operator) | Handle per post. Set all of the post's PENDING reports to DONE and record `result`, `handled_by`, `handled_at`. VIOLATION sets `shared_recipes.status` = HIDDEN and DELETED sets DELETED; both add one `user_sanctions` row at the next step (1st SHARE_BAN 7 days, 2nd SHARE_BAN 30 days, 3rd ACCOUNT_BAN 30 days, 4th ACCOUNT_BAN permanent). NO_ISSUE leaves the post and sanctions unchanged. No pending report -> 409 (already handled). Lock the author's `users` row while deciding the level (`UK(user_id + level)` is the last guard). A new sanction starts at the handling time, not after the previous one. After the 4th ban, VIOLATION and DELETED only change the post. Weekly rewards already granted are not taken back (11/26, PR #292 review) |
 | Generation count adjustment (operator) | An increase adds an ADMIN_ADJUST row (`remaining` = `amount`, valid one month). A decrease keeps a row with a negative `amount` and `remaining` 0, and subtracts from the remaining reward rows, nearest expiry first (cannot exceed the remaining reward) |
 | Common | Amounts `numeric(10,3)`, money `bigint` (KRW), time `timestamp` (Korea time), JSON `jsonb`. `created_at` on every app-created row, `updated_at` only on tables whose values change |
 
@@ -965,10 +965,14 @@ Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged
 
 | Table | Current code | To match this ERD |
 | --- | --- | --- |
-| `users` | Has `status` (ACTIVE/SUSPENDED) | Drop `status` |
+| `users` | Has `status` (ACTIVE/SUSPENDED); `AuthService` login and token refresh return `ACCOUNT_SUSPENDED` for SUSPENDED | Drop `status` and those checks with a new migration (#171). No API sets SUSPENDED, so this changes no current behavior. Blocking `ACCOUNT_BAN` members (`user_sanctions`) in the app is on hold as "added page 15"; until then account bans are recorded but not enforced in the app |
 | `refresh_tokens` | Has `revoked_at` (logout = mark revoked) | Drop `revoked_at`. Logout deletes the row |
 | `ingredient_catalog` | PR #140 (V5): no `unit`, has autocomplete API `GET /user/ingredient-catalog` | Add `unit`, remove the autocomplete API |
 | `events` | Same | Nothing to change |
+| `user_sanctions` | Not in code | Create the table with `UK(user_id + level)` and its FKs in a new migration |
+| `shared_recipe_reports` | V14: no `result`, `handled_by`, `handled_at` | Add the three nullable columns in a new migration |
+| `generation_quota_grants` | V26: no `grant_type`, `reason`, `admin_id`; `week_start` and `rank_no` NOT NULL; checks `ck_quota_grants_reward` (rank-based amounts) and `ck_quota_grants_remaining` (0 to `amount`) | New migration: add the columns (`grant_type` default WEEKLY_REWARD), make `week_start` and `rank_no` nullable, and limit the two checks to WEEKLY_REWARD rows so ADMIN_ADJUST rows (negative `amount`, `remaining` 0) are allowed |
+| `shared_recipes` | V12: `ck_shared_recipes_status` allows VISIBLE/HIDDEN | Allow `DELETED` in a new migration |
 
 ## Differences from ERD v3 (32 tables)
 

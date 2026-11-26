@@ -279,7 +279,7 @@ Apply #57, the [ERD](../erd.md#19-cart_items-cart), and the subsequently approve
 - Ranking eligibility (confirmed 2026-11-25, PR #255 review item 3): exclude posts with zero valid saves this week before assigning TOP 3 and popular TOP 100 ranks. Return only eligible posts, up to each limit. Share age is unrestricted; cumulative saves do not determine eligibility.
 - Popular count: saves received from Monday 00:00 KST through the current time that still exist; ties go to the earlier share (proposal). Excluding own saves remains a proposal.
 - Search over shared recipes; 0 results empty state (screen pending).
-- Only recipes I generated with Remake can be shared, not recipes saved from others. Fully anonymous: no nickname or author info.
+- Only recipes I generated with Remake can be shared, not recipes saved from others. Fully anonymous: no nickname or author info in `user` API responses (admin APIs 66 and 71 return only the author member number for report handling and rewards).
 - Write: detail ⋮ "공유 하기" → 1 photo (required, "탭해서 이미지 수정"), title (required, maximum 100 UTF-16 code units before trimming, matching Java `@Size` and HTML `maxlength`), recipe content (read only) → "레시피 공유 하기". Enabled only with title and photo. No confirm modal.
 - The same recipe can be shared once per week (again next week).
 - Shared detail: photo, title, flag (report), "재료 준비 · servings · time", ingredients (missing ones with a red border), steps with read-aloud, Tips!, heart + save count, "레시피 저장", "레시피 저장 시 부족한 재료는 장바구니로 들어가요".
@@ -316,9 +316,11 @@ Source: Figma "운영자 페이지" (node 2005:4), confirmed 11/26. Screens and 
 - Report results: violation = hide the post + next sanction. No issue = post unchanged, no sanction. Delete = remove the post from the shared space (cannot be undone) and count it as a violation (next sanction). Each goes through a confirm modal.
 - Sanction steps: confirmed violations get 1st a 7-day recipe sharing ban, 2nd a 30-day sharing ban, 3rd a 30-day account ban, 4th a permanent account ban (11/24 terms decision). Before the 4th, the report detail shows a warning.
 - Concurrent handling: if another operator handled the post first, show "이미 처리한 신고" and reload the list (409).
+- Overlapping sanctions: a new sanction starts at the handling time (it is not appended after the previous one). The current sanction is the highest level among the rows that have not ended. After the 4th (permanent) ban, further violations only hide or delete the post and add no sanction row (11/26, PR #292 review).
+- Same author handled concurrently: lock the author's `users` row while deciding the level; `UK(user_id + level)` on `user_sanctions` is the last guard (11/26, PR #292 review).
 - Account restriction: operators cannot suspend or restore accounts directly; restrictions come only from sanctions. What a sanctioned member sees in the app is "added page 15" (screen pending); until then the app-side blocking rules are on hold.
 - Quota adjustment: operators increase or decrease a member's reward generation count. A reason is required and kept in the adjustment history. A decrease cannot exceed the remaining reward.
-- Hidden and deleted posts: hidden (`HIDDEN`) and deleted (`DELETED`) shared recipes leave the shared list, ranking, and rewards.
+- Hidden and deleted posts: hidden (`HIDDEN`) and deleted (`DELETED`) shared recipes leave the shared list, ranking, and rewards. Weekly rewards already granted are not taken back. Members who saved the post keep it in their saved list as the original recipe (the shared detail no longer opens) (11/26, PR #292 review).
 - Ranking and rewards: the screen shows only the weekly top 3 and the reward history. Recipes with 0 saves get no reward.
 
 ## Out of scope (release 1)
