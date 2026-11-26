@@ -1,0 +1,335 @@
+# 식약처 재료 이름(공백 뺀 것) → 사전 이름(- = 사전과 연결 안 함), 카테고리(비우면 사전 카테고리, "-"인데 비우면 카테고리 없음)
+# 서버도 JSON의 aliases로 AI 레시피 재료 이름에 같은 표를 쓴다. 사전과 연결하지 않은 이름과 SEASONING은 조합 검사에서 뺀다
+# 사전 이름이 들어 있어 자동으로 맞춘 것 가운데 다른 재료인 것
+콜라비	-	VEGETABLE
+참나물	-	VEGETABLE
+취나물	-	VEGETABLE
+건취나물	-	VEGETABLE
+곤드레나물	-	VEGETABLE
+건곤드레나물	-	VEGETABLE
+불린곤드레나물	-	VEGETABLE
+세발나물	-	VEGETABLE
+깨소금	깨
+버섯마늘소금	소금
+레몬소금	소금
+레몬즙	-	SEASONING
+소스레몬즙	-	SEASONING
+다진레몬청과육	-	SEASONING
+호박잎	-	VEGETABLE
+호박씨	-	ETC
+호박가루	-	PROCESSED
+단호박가루	-	PROCESSED
+돼지감자가루	-	PROCESSED
+파프리카가루	-	SEASONING
+사과식초	식초
+사과드레싱식초	식초
+매실식초	식초
+매실청	-	SEASONING
+매실액	-	SEASONING
+토마토소스	-	SEASONING
+토마토페이스트	-	SEASONING
+토마토페스트	-	SEASONING
+홀토마토	-	PROCESSED
+토마토홀	-	PROCESSED
+통조림홀토마토	-	PROCESSED
+건조토마토	-	PROCESSED
+드라이토마토	-	PROCESSED
+체리토마토	방울토마토
+데리야키소스	데리야끼소스
+머스터드소스	머스타드
+물김치국물	-
+고추기름	-	SEASONING
+고추냉이	-	SEASONING
+실고추	-	SEASONING
+건고추	-	SEASONING
+라면스프	-	SEASONING
+김밥용김	김
+쌀국수	-	GRAIN
+곤약국수	-	PROCESSED
+메밀면	메밀국수
+쌀파스타면	-	GRAIN
+현미유	-	SEASONING
+마늘기름	-	SEASONING
+마늘오일	-	SEASONING
+마늘칩	-	PROCESSED
+마늘종	-	VEGETABLE
+마늘가루	-	SEASONING
+생강즙	-	SEASONING
+생강청	-	SEASONING
+생강가루	-	SEASONING
+양파가루	-	SEASONING
+양파즙	-	SEASONING
+포도주스	주스
+사과쥬스	사과주스
+새우젓	젓갈
+잘게다진새우젓	젓갈
+청국장가루	-	SEASONING
+검은콩두유	두유
+양상추	-	VEGETABLE
+재료양상추	-	VEGETABLE
+찹쌀가루	-	GRAIN
+현미쌀가루	-	GRAIN
+다시마국물	-
+다시마물	-
+다시마육수	-
+멸치육수	-
+녹차우린물	-
+다시마가루	-	SEASONING
+표고버섯가루	-	SEASONING
+연두부	-	BEAN_TOFU
+옥수수콘	통조림옥수수
+파인애플통조림	-	PROCESSED
+치즈슬라이스	슬라이스치즈
+어린이치즈	슬라이스치즈
+유기농아기치즈	슬라이스치즈
+모차렐라치즈	모짜렐라치즈
+슈레드모차렐라치즈	모짜렐라치즈
+피자치즈	모짜렐라치즈
+생모짜렐라치즈	모짜렐라치즈
+파르메산치즈가루	파마산치즈
+간파르메산치즈	파마산치즈
+그라나파다노치즈	파마산치즈
+파르미지아노치즈	파마산치즈
+파마산가루	파마산치즈
+치즈가루	파마산치즈
+주키니호박	애호박
+쥬키니호박	애호박
+3가지색소면	소면
+물전분	-
+녹말물	-
+# 머리말이 이름에 붙어 읽힌 것
+밥밑간참기름	참기름
+톳무침양념설탕	설탕
+미나리볶음고추장무	무
+두부강된장참기름	참기름
+닭고기삶는재료된장	된장
+주먹밥데친꼬막살	-	SEAFOOD
+볶음밥쌀	쌀
+버터(	버터
+잣바질페이소스	-	SEASONING
+# 사전에 없는 이름
+후춧가루	후추
+흰후춧가루	후추
+흰후추	후추
+백후추	후추
+통후추	후추
+올리브오일	올리브유
+튀김기름	식용유
+통깨	참깨
+흰깨	참깨
+부순참깨	참깨
+흑임자	깨
+볶은흑임자	깨
+검은깨	깨
+검정깨	깨
+들깻가루	들깨가루
+커리가루	카레가루
+미향	맛술
+청주	-	SEASONING
+정종	-	SEASONING
+파슬리가루	-	SEASONING
+파슬리말린것	-	SEASONING
+파슬리	-	VEGETABLE
+파슬리다진것	-	VEGETABLE
+바질	-	VEGETABLE
+바질잎	-	VEGETABLE
+바질가루	-	SEASONING
+건바질	-	SEASONING
+월계수잎	-	SEASONING
+로즈마리	-	SEASONING
+로즈메리	-	SEASONING
+건로즈마리	-	SEASONING
+오레가노	-	SEASONING
+오레가노가루	-	SEASONING
+타임	-	SEASONING
+타임다진것	-	SEASONING
+딜	-	SEASONING
+차이브	-	VEGETABLE
+정향	-	SEASONING
+팔각	-	SEASONING
+커민	-	SEASONING
+큐민파우더	-	SEASONING
+코리앤더가루	-	SEASONING
+이태리시즈닝	-	SEASONING
+카엔패퍼	-	SEASONING
+레드크러쉬드페퍼	-	SEASONING
+강황가루	-	SEASONING
+강황	-	SEASONING
+울금가루	-	SEASONING
+치자가루	-	SEASONING
+뽕잎가루	-	SEASONING
+백년초가루	-	SEASONING
+함초가루	-	SEASONING
+메주가루	-	SEASONING
+겨자가루	-	SEASONING
+겨잣가루	-	SEASONING
+겨자	-	SEASONING
+와사비	-	SEASONING
+머스터드	머스타드
+홀그레인머스터드	머스타드
+르네디종홀그레인머스터	머스타드
+가다랑어포	-	SEASONING
+가쓰오부시	-	SEASONING
+가쯔오부시	-	SEASONING
+유자청	-	SEASONING
+알룰로스	-	SEASONING
+스테비아	-	SEASONING
+수제조미료	-	SEASONING
+양념장	-	SEASONING
+홍초	-	SEASONING
+배즙	-	SEASONING
+떡볶이양념파우더	-	SEASONING
+삼계탕티백	-	SEASONING
+녹말가루	전분
+녹말	전분
+육수	-
+닭육수	-
+사골육수	-
+해물육수	-
+야채육수	-
+채소육수	-
+닭뼈육수	-
+삼계탕육수	-
+동치미국물	-
+양송이	양송이버섯
+새송이	새송이버섯
+표고	표고버섯
+백일송이	버섯
+스파게티	스파게티면
+삶은스파게티	스파게티면
+파스타	파스타면
+먹물파스타	파스타면
+펜네	파스타면
+푸실리	파스타면
+실곤약	-	PROCESSED
+곤약	-	PROCESSED
+냉동곤약	-	PROCESSED
+곤약면	-	PROCESSED
+불린곤약쌀	-	PROCESSED
+브로컬리	브로콜리
+어린잎채소	-	VEGETABLE
+어린잎	-	VEGETABLE
+새싹	-	VEGETABLE
+새싹채소	-	VEGETABLE
+각종새싹	-	VEGETABLE
+어린싹	-	VEGETABLE
+무순	-	VEGETABLE
+라이스페이퍼	-	GRAIN
+라이스페퍼	-	GRAIN
+파	대파
+다진파	대파
+파다진것	대파
+실파	쪽파
+다진실파	쪽파
+참치	참치캔
+통조림참치	참치캔
+떡볶이떡	떡
+누들떡볶이떡	떡
+관자	-	SEAFOOD
+샐러리	셀러리
+샐러리다진것	셀러리
+근대	-	VEGETABLE
+아욱	-	VEGETABLE
+냉이	-	VEGETABLE
+달래	-	VEGETABLE
+봄동	-	VEGETABLE
+두릅	-	VEGETABLE
+신선초	-	VEGETABLE
+적겨자	-	VEGETABLE
+비타민	-	VEGETABLE
+치커리	-	VEGETABLE
+앤다이브	-	VEGETABLE
+루꼴라	-	VEGETABLE
+머윗대	-	VEGETABLE
+시래기	-	VEGETABLE
+무청시래기불린것	-	VEGETABLE
+건곤드레	-	VEGETABLE
+삶은죽순	-	VEGETABLE
+마	-	VEGETABLE
+인삼	-	VEGETABLE
+수삼	-	VEGETABLE
+함초	-	VEGETABLE
+건함초	-	VEGETABLE
+적채	양배추
+배춧잎	배추
+래디쉬	래디시
+청고주	고추
+은행	-	ETC
+밤	-	ETC
+백미	쌀
+멥쌀	쌀
+불린쌀	쌀
+강황쌀	쌀
+흑미	잡곡
+율무	잡곡
+조	잡곡
+서리태	검은콩
+콩	대두
+멥쌀가루	-	GRAIN
+쌀가루	-	GRAIN
+콩가루	-	BEAN_TOFU
+콩물	-	BEAN_TOFU
+콩국물	-	BEAN_TOFU
+콩비지	-	BEAN_TOFU
+청포묵	-	PROCESSED
+도토리묵	-	PROCESSED
+올방개묵	-	PROCESSED
+검정깨묵	-	PROCESSED
+묵말랭이	-	PROCESSED
+톳	-	SEAFOOD
+매생이	-	SEAFOOD
+생김	김
+파래김	김
+김가루	김
+크렌베리	-	FRUIT
+라즈베리	-	FRUIT
+통삼겹	삼겹살
+돼지등심	돼지고기
+부챗살	쇠고기
+닭살	닭고기
+닭	닭고기
+삼계탕용닭	통닭
+돼지머리	-	MEAT
+족발	-	MEAT
+닭뼈	-	MEAT
+우렁이	-	SEAFOOD
+날치알	-	SEAFOOD
+뒤포리	-	SEAFOOD
+흰살생선	-	SEAFOOD
+미더덕	-	SEAFOOD
+멍게살	-	SEAFOOD
+조개	조개류
+조개살	조개류
+가자미	-	SEAFOOD
+쭈꾸미	주꾸미
+게살	-	SEAFOOD
+크래비	맛살
+크레미	맛살
+대구살	-	SEAFOOD
+만두피	-	GRAIN
+포카치아빵	빵
+바케트	바게트
+시판크루통	-	PROCESSED
+그라놀라	시리얼
+쿠스쿠스	-	GRAIN
+누룽지	-	GRAIN
+우동	우동면
+생면	-	GRAIN
+쫄면사리	-	GRAIN
+양장피면	-	GRAIN
+석박지	-	SIDE_DISH
+동치미	-	SIDE_DISH
+묵은지	배추김치
+쌈무	-	SIDE_DISH
+화이트크림	생크림
+사워크림	-	DAIRY_EGG
+요플레	요거트
+플레인요구르트	요거트
+수란	달걀
+코코넛워터	-	BEVERAGE
+블랙올리브	-	PROCESSED
+절임올리브	-	PROCESSED
+생수	-
+통조림연어	-	PROCESSED
+건조체리	-	FRUIT
+마늘다진것	다진마늘
