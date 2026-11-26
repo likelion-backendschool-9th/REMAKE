@@ -73,7 +73,8 @@ final class GenerationIngredients {
 	static List<FridgeItem> toAiItems(List<FridgeIngredient> selected) {
 		return selected.stream()
 				.map(f -> new FridgeItem(f.ingredient().id(), f.ingredient().name(), f.ingredient().amount(),
-						f.ingredient().unit().name(), f.ingredient().expirationDate(), f.status() != ExpiryStatus.OK))
+						f.ingredient().unit().name(), f.ingredient().expirationDate(), f.status() != ExpiryStatus.OK,
+						f.category().code()))
 				.toList();
 	}
 

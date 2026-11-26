@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.recipe.domain.CustomOptions;
 import com.remake.recipe.domain.RecipeSource;
 import com.remake.user.domain.AllergenCode;
@@ -37,8 +38,15 @@ public record RecipeAiRequest(
 	 *
 	 * @param unit         단위 코드(G, EA 등)
 	 * @param expiringSoon 소비기한 임박(우선 사용 대상)
+	 * @param categoryCode 그 냉장고 재료의 카테고리. 이 재료로 만든 레시피 줄의 카테고리가 된다(#76). AI에는 보내지 않는다
 	 */
 	public record FridgeItem(Long ingredientId, String name, BigDecimal amount, String unit,
-			LocalDate expirationDate, boolean expiringSoon) {
+			LocalDate expirationDate, boolean expiringSoon, IngredientCategoryCode categoryCode) {
+
+		/** 카테고리를 모를 때(테스트 등). 이 재료로 만든 줄의 카테고리는 사전·AI 값으로 정한다. */
+		public FridgeItem(Long ingredientId, String name, BigDecimal amount, String unit, LocalDate expirationDate,
+				boolean expiringSoon) {
+			this(ingredientId, name, amount, unit, expirationDate, expiringSoon, null);
+		}
 	}
 }

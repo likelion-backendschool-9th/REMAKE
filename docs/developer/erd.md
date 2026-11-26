@@ -241,6 +241,7 @@ erDiagram
     varchar name
     numeric amount
     varchar unit
+    varchar category_code
     int sort_order
     timestamp created_at
   }
@@ -579,6 +580,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `name` | varchar |  |  | 아니오 |  | 재료명 |
 | `amount` | numeric(10,3) |  |  | 예 |  | 양. 비어 있으면 "약간" |
 | `unit` | varchar |  |  | 아니오 |  | 단위 |
+| `category_code` | varchar |  |  | 예 |  | 재료 카테고리(12개 코드). 부족 재료를 장바구니에 담을 때 쓴다(#76). 생성할 때 정한다: 사전 이름과 같으면 사전 카테고리, 아니면 그 줄의 냉장고 재료 카테고리, 아니면 AI가 고른 값. 이 컬럼 전에 만든 레시피나 AI가 맞는 코드를 주지 않은 줄은 비어 있다 |
 | `sort_order` | int |  |  | 아니오 |  | 순서 |
 | `created_at` | timestamp |  |  | 아니오 |  | 만든 시각 |
 

@@ -3,13 +3,18 @@ package com.remake.recipe.application.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.recipe.application.port.out.GeneratedRecipe;
 import com.remake.recipe.application.port.out.RecipeAiRequest;
 import com.remake.recipe.domain.Recipe;
@@ -24,6 +29,8 @@ import com.remake.recipe.domain.RecipeUnit;
  * <li>요청에 없는 냉장고 재료 id는 냉장고에 없는 재료(null)로 본다</li>
  * <li>재료 보충이 꺼져 있으면 냉장고에 없는 재료는 실패. 물({@link #WATER})만 예외이고, 소금·식용유 같은 양념과 꼬집·약간은 예외가 아니다(#158)</li>
  * <li>인분은 AI 값이 아니라 요청한 인분을 쓴다. "약간"(TO_TASTE)은 양을 비우고, 양은 소수 셋째 자리로 반올림한다</li>
+ * <li>재료 카테고리(#76, 장바구니 담기용): 사전 이름과 정확히 같으면 사전 카테고리, 아니면 그 줄의 냉장고 재료 카테고리, 아니면 AI가 고른 값.
+ * AI 값이 12개 코드에 없으면 비운다(실패로 보지 않음)</li>
  * </ul>
  */
 final class GeneratedRecipeValidator {
@@ -37,12 +44,21 @@ final class GeneratedRecipeValidator {
 	}
 
 	static Recipe toRecipe(Long userId, RecipeAiRequest request, GeneratedRecipe generated) {
+		return toRecipe(userId, request, generated, name -> Optional.empty());
+	}
+
+	/** @param catalogCategory 재료 이름이 사전 이름과 정확히 같을 때 그 사전 카테고리 */
+	static Recipe toRecipe(Long userId, RecipeAiRequest request, GeneratedRecipe generated,
+			Function<String, Optional<IngredientCategoryCode>> catalogCategory) {
 		if (generated == null || generated.cookMinutes() == null || generated.ingredients() == null) {
 			throw invalid();
 		}
 		Set<Long> fridgeIds = request.fridgeIngredients().stream()
 				.map(RecipeAiRequest.FridgeItem::ingredientId)
 				.collect(Collectors.toSet());
+		Map<Long, IngredientCategoryCode> fridgeCategories = new HashMap<>();
+		request.fridgeIngredients().stream().filter(f -> f.categoryCode() != null)
+				.forEach(f -> fridgeCategories.put(f.ingredientId(), f.categoryCode()));
 
 		List<RecipeIngredient> ingredients = new ArrayList<>();
 		for (GeneratedRecipe.Ingredient item : generated.ingredients()) {
@@ -57,7 +73,12 @@ final class GeneratedRecipeValidator {
 			if (ingredientId == null && !request.supplementEnabled() && !isWater(item.name())) {
 				throw invalid();
 			}
-			ingredients.add(toIngredient(ingredientId, item.name(), item.amount(), unit));
+			RecipeIngredient line = toIngredient(ingredientId, item.name(), item.amount(), unit);
+			IngredientCategoryCode category = catalogCategory.apply(line.name())
+					.or(() -> Optional.ofNullable(fridgeCategories.get(ingredientId)))
+					.or(() -> Optional.ofNullable(parseCategory(item.categoryCode())))
+					.orElse(null);
+			ingredients.add(line.withCategoryCode(category));
 		}
 
 		try {
@@ -87,6 +108,18 @@ final class GeneratedRecipeValidator {
 	/** 물인지. 물은 냉장고에 없어도 부족한 재료로 세지 않는다(장바구니에도 담지 않는다) */
 	static boolean isWater(String name) {
 		return name != null && WATER.equals(name.strip());
+	}
+
+	/** AI가 고른 카테고리 코드. 앞뒤 공백·대소문자는 맞춰 주고, 12개 코드에 없으면 null */
+	private static IngredientCategoryCode parseCategory(String code) {
+		if (code == null || code.isBlank()) {
+			return null;
+		}
+		try {
+			return IngredientCategoryCode.valueOf(code.strip().toUpperCase(Locale.ROOT));
+		} catch (IllegalArgumentException e) {
+			return null;
+		}
 	}
 
 	/** 앞뒤 공백·대소문자는 맞춰 주고, 14개 코드에 없으면 null */

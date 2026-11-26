@@ -3,6 +3,7 @@ package com.remake.recipe.adapter.out.persistence;
 import java.math.BigDecimal;
 
 import com.remake.global.common.BaseCreatedEntity;
+import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.recipe.domain.RecipeIngredient;
 import com.remake.recipe.domain.RecipeUnit;
 
@@ -46,6 +47,11 @@ class RecipeIngredientJpaEntity extends BaseCreatedEntity {
 	@Column(nullable = false, length = 10)
 	private RecipeUnit unit;
 
+	// 장바구니 담기용 카테고리(#76). 모르면 null
+	@Enumerated(EnumType.STRING)
+	@Column(length = 20)
+	private IngredientCategoryCode categoryCode;
+
 	@Column(nullable = false)
 	private int sortOrder;
 
@@ -56,11 +62,12 @@ class RecipeIngredientJpaEntity extends BaseCreatedEntity {
 		entity.name = ingredient.name();
 		entity.amount = ingredient.amount();
 		entity.unit = ingredient.unit();
+		entity.categoryCode = ingredient.categoryCode();
 		entity.sortOrder = sortOrder;
 		return entity;
 	}
 
 	RecipeIngredient toDomain() {
-		return new RecipeIngredient(ingredientId, name, amount, unit);
+		return new RecipeIngredient(ingredientId, name, amount, unit, categoryCode);
 	}
 }

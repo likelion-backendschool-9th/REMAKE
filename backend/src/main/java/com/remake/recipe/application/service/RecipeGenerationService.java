@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -18,7 +19,10 @@ import com.remake.event.domain.Screen;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.ingredient.application.port.in.GetFridgeUseCase;
+import com.remake.ingredient.application.port.in.GetIngredientCatalogUseCase;
+import com.remake.ingredient.application.port.in.GetIngredientCategoriesUseCase;
 import com.remake.ingredient.domain.FridgeIngredient;
+import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.quota.application.port.in.ConsumeRecipeQuotaUseCase;
 import com.remake.quota.application.port.in.GetUsageQuotasUseCase;
 import com.remake.quota.domain.RecipeQuota;
@@ -73,6 +77,8 @@ class RecipeGenerationService implements GenerateRecipeUseCase, RegenerateRecipe
 	private final LoadRecipePort loadRecipePort;
 	private final EventTracker eventTracker;
 	private final TransactionTemplate transactionTemplate;
+	private final GetIngredientCatalogUseCase getIngredientCatalogUseCase;
+	private final GetIngredientCategoriesUseCase getIngredientCategoriesUseCase;
 	private final Duration retryDelay;
 
 	RecipeGenerationService(GetUserUseCase getUserUseCase,
@@ -81,6 +87,8 @@ class RecipeGenerationService implements GenerateRecipeUseCase, RegenerateRecipe
 			GenerateRecipeAiPort aiPort,
 			SaveRecipePort saveRecipePort, LoadRecipePort loadRecipePort, EventTracker eventTracker,
 			TransactionTemplate transactionTemplate,
+			GetIngredientCatalogUseCase getIngredientCatalogUseCase,
+			GetIngredientCategoriesUseCase getIngredientCategoriesUseCase,
 			@Value("${remake.recipe.ai-retry-delay:1500ms}") Duration retryDelay) {
 		this.getUserUseCase = getUserUseCase;
 		this.getUserGenerationPreferencesUseCase = getUserGenerationPreferencesUseCase;
@@ -93,6 +101,8 @@ class RecipeGenerationService implements GenerateRecipeUseCase, RegenerateRecipe
 		this.eventTracker = eventTracker;
 		this.transactionTemplate = transactionTemplate;
 		this.retryDelay = retryDelay;
+		this.getIngredientCatalogUseCase = getIngredientCatalogUseCase;
+		this.getIngredientCategoriesUseCase = getIngredientCategoriesUseCase;
 	}
 
 	@Override
@@ -222,12 +232,18 @@ class RecipeGenerationService implements GenerateRecipeUseCase, RegenerateRecipe
 		}
 	}
 
+	/** 재료 이름이 사전 이름과 정확히 같으면 그 사전 카테고리(#76, 장바구니 담기용). */
+	private Optional<IngredientCategoryCode> catalogCategory(String name) {
+		return getIngredientCatalogUseCase.findCatalogItemByName(name)
+				.map(item -> getIngredientCategoriesUseCase.getIngredientCategory(item.categoryId()).code());
+	}
+
 	private Recipe generateWithRetry(Long userId, RecipeAiRequest request) {
 		BusinessException last = null;
 		for (int attempt = 1; attempt <= MAX_AI_ATTEMPTS; attempt++) {
 			try {
 				GeneratedRecipe generated = aiPort.generate(request);
-				return GeneratedRecipeValidator.toRecipe(userId, request, generated);
+				return GeneratedRecipeValidator.toRecipe(userId, request, generated, this::catalogCategory);
 			} catch (BusinessException e) {
 				if (!RETRYABLE.contains(e.getErrorCode())) {
 					throw e;
