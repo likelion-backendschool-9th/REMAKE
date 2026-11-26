@@ -46,7 +46,7 @@ import lombok.extern.slf4j.Slf4j;
  * (AI를 기다리는 동안 DB 연결을 잡고 있지 않게).
  *
  * <p>어떤 실패든 FAILED + 실패 알림으로 끝내고 예외를 밖으로 던지지 않는다. 실패하면 기존 식단과 횟수는 그대로다.
- * <p>AI 응답은 GeneratedMealPlanValidator로 검사하고, AI 오류(연결·시간 초과·응답 이상)면 한 번 더 부른다
+ * <p>AI 응답은 GeneratedMealPlanValidator와 조합 검사(MealPlanCombinationCheck, #288 F2)로 검사하고, AI 오류(연결·시간 초과·응답 이상)면 한 번 더 부른다
  * (domain-rules "AI retries once automatically", 레시피 생성과 같은 기준).
  * 공급자 과부하(MealPlanAiBusyException, Gemini 503)만은 쉬는 시간을 3·5·7·9초로 늘리다가 10초씩 쉬며 9번 더 부른다(총 10번, 쉬는 시간 합 74초).
  * 거절도 무료 한도에 요청으로 세므로(11-24 AI Studio 사용량 확인) 짧은 간격으로 몰아 부르지 않는다. 최대 간격 10초는 11-24 사용자 결정.
@@ -68,6 +68,7 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 	private final GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase;
 	private final GenerateMealPlanAiPort generateMealPlanAiPort;
 	private final MealPlanResultWriter resultWriter;
+	private final MealPlanCombinationCheck combinationCheck;
 	private final Clock clock;
 	private final Duration retryDelay;
 	private final List<Duration> busyRetryDelays;
@@ -75,7 +76,8 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 	public MealPlanGenerationJobService(LoadMealPlanPort loadMealPlanPort, LoadMealPlanSlotPort loadMealPlanSlotPort,
 			MealPlanStockReader stockReader, MealPlanIngredientCategories ingredientCategories,
 			GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase,
-			GenerateMealPlanAiPort generateMealPlanAiPort, MealPlanResultWriter resultWriter, Clock clock,
+			GenerateMealPlanAiPort generateMealPlanAiPort, MealPlanResultWriter resultWriter,
+			MealPlanCombinationCheck combinationCheck, Clock clock,
 			@Value("${remake.meal-plan.ai-retry-delay:1500ms}") Duration retryDelay,
 			@Value("${remake.meal-plan.ai-busy-retry-delays:3s,5s,7s,9s,10s,10s,10s,10s,10s}") String busyRetryDelays) {
 		this.loadMealPlanPort = loadMealPlanPort;
@@ -85,6 +87,7 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 		this.getUserGenerationPreferencesUseCase = getUserGenerationPreferencesUseCase;
 		this.generateMealPlanAiPort = generateMealPlanAiPort;
 		this.resultWriter = resultWriter;
+		this.combinationCheck = combinationCheck;
 		this.clock = clock;
 		this.retryDelay = retryDelay;
 		this.busyRetryDelays = Arrays.stream(busyRetryDelays.split(","))
@@ -148,10 +151,11 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 				.filter(slot -> !replaced.contains(slot.id()))
 				.toList();
 		StockLedger ledger = stockReader.ledger(plan.userId(), fridge, remainingSlots, today);
-		// 시작일 전에 소비기한이 끝나는 재료는 식단표 어느 날에도 쓸 수 없어 보내지 않는다(usableUntilDay가 1 미만)
-		List<FridgeStock> available = ledger.available().stream()
+		// 시작일 전에 소비기한이 끝나는 재료는 식단표 어느 날에도 쓸 수 없어 보내지 않는다(usableUntilDay가 1 미만).
+		// 식약처 요리에 안 나오는 재료(콜라·과자 등)도 보내지 않는다(#288 F1)
+		List<FridgeStock> available = combinationCheck.forAi(ledger.available().stream()
 				.filter(stock -> !stock.expirationDate().isBefore(plan.startDate()))
-				.toList();
+				.toList());
 		if (available.isEmpty()) {
 			throw new NoIngredientsException();
 		}
@@ -189,7 +193,8 @@ public class MealPlanGenerationJobService implements RunMealPlanGenerationUseCas
 		boolean retriedOnce = false;
 		for (int attempt = 1;; attempt++) {
 			try {
-				return GeneratedMealPlanValidator.validate(schedule, generateMealPlanAiPort.generate(request));
+				return combinationCheck.check(
+						GeneratedMealPlanValidator.validate(schedule, generateMealPlanAiPort.generate(request)));
 			} catch (MealPlanAiBusyException e) {
 				log.info("식단표 AI 과부하({}회차) mealPlanId={}", attempt, mealPlanId);
 				if (busyRetries >= busyRetryDelays.size()) {

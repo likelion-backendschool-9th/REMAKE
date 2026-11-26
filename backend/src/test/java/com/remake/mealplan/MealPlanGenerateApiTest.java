@@ -80,6 +80,18 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 				""", Long.class, userId, categoryId("VEGETABLE"), name, expirationDate, grams, grams, now, now);
 	}
 
+	/** 냉장고 재료(카테고리·단위를 고름, 기한 넉넉함). */
+	private Long fridgeItem(Long userId, String name, String categoryCode, int amount, String unit) {
+		LocalDateTime now = LocalDateTime.now(clock);
+		return jdbcTemplate.queryForObject("""
+				INSERT INTO ingredients (user_id, category_id, name, storage, expiration_date, amount, initial_amount,
+				                         unit, price, created_at, updated_at)
+				VALUES (?, ?, ?, 'FRIDGE', ?, ?, ?, ?, NULL, ?, ?)
+				RETURNING id
+				""", Long.class, userId, categoryId(categoryCode), name, TODAY.plusDays(30), amount, amount, unit, now,
+				now);
+	}
+
 	/** 이미 완성된 식단표 하나(칸은 따로 넣는다). */
 	private Long completedPlan(Long userId, LocalDate startDate, int days) {
 		LocalDateTime now = LocalDateTime.now(clock);
@@ -547,6 +559,86 @@ class MealPlanGenerateApiTest extends IntegrationTestSupport {
 		ArgumentCaptor<MealPlanAiRequest> request = ArgumentCaptor.forClass(MealPlanAiRequest.class);
 		verify(mealPlanAiAdapter).generate(request.capture());
 		assertThat(request.getValue().ingredients()).extracting(FridgeStock::name).containsExactly("대파");
+	}
+
+	// ---- 조합 기준(#288 F) ----
+
+	@Test
+	void 식약처_요리에_안_나오는_냉장고_재료와_사전에_없는_음료는_AI에_보내지_않는다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		fridgeItem(userId, "콜라", "BEVERAGE", 1500, "ML");
+		fridgeItem(userId, "밀크 초콜릿", "ETC", 200, "G");
+		fridgeItem(userId, "수제 레몬에이드", "BEVERAGE", 500, "ML");
+		fridgeItem(userId, "생수", "BEVERAGE", 2000, "ML");
+		fridgeItem(userId, "딸기", "FRUIT", 300, "G");
+		aiUses(fridgeId, 100);
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		ArgumentCaptor<MealPlanAiRequest> request = ArgumentCaptor.forClass(MealPlanAiRequest.class);
+		verify(mealPlanAiAdapter).generate(request.capture());
+		// "밀크 초콜릿"은 같은 카테고리(기타)의 사전 이름 "초콜릿"이 들어 있어 맞춰진다(#145)
+		assertThat(request.getValue().ingredients()).extracting(FridgeStock::name)
+				.containsExactlyInAnyOrder("대파", "생수", "딸기");
+	}
+
+	@Test
+	void 보낼_냉장고_재료가_모두_빠지면_AI를_부르지_않고_재료_부족으로_실패한다() throws Exception {
+		Long userId = createUser();
+		fridgeItem(userId, "콜라", "BEVERAGE", 1500, "ML");
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, never()).generate(any());
+		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "FAILED");
+		assertThat(eventProperty("meal_plan_generate_failed", "error_code")).isEqualTo("MEAL_PLAN_NO_INGREDIENTS");
+	}
+
+	@Test
+	void AI가_엉터리_조합을_만들면_한_번_더_불러_두_번째_응답으로_만든다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		// 첫 응답: 칸마다 대파 + 초콜릿(식약처에 파+초콜릿 짝이 없다)
+		given(mealPlanAiAdapter.generate(any())).willAnswer(withChocolate(fridgeId))
+				.willAnswer(everySlotUses(fridgeId, 100));
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(2)).generate(any());
+		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "COMPLETED");
+		assertThat(count("SELECT COUNT(*) FROM recipe_ingredients ri JOIN recipes r ON r.id = ri.recipe_id "
+				+ "WHERE r.user_id = ? AND ri.name = '초콜릿'", userId)).isZero();
+	}
+
+	@Test
+	void AI가_두_번_다_엉터리_조합이면_AI_INVALID_RESPONSE로_실패하고_횟수는_그대로다() throws Exception {
+		Long userId = createUser();
+		Long fridgeId = fridgeGrams(userId, "대파", 1000);
+		given(mealPlanAiAdapter.generate(any())).willAnswer(withChocolate(fridgeId));
+
+		generate(userId, body(TODAY, "[\"DINNER\"]", false)).andExpect(status().isAccepted());
+		awaitMealPlanJobs();
+
+		verify(mealPlanAiAdapter, times(2)).generate(any());
+		assertThat(mealPlan(newestPlanId(userId))).containsEntry("status", "FAILED");
+		assertThat(count("SELECT COUNT(*) FROM usage_logs WHERE user_id = ?", userId)).isZero();
+		assertThat(eventProperty("meal_plan_generate_failed", "error_code")).isEqualTo("AI_INVALID_RESPONSE");
+	}
+
+	/** AI 가짜: 칸마다 대파 100g에 냉장고에 없는 초콜릿을 더 쓰는 레시피(엉터리 조합). */
+	private static Answer<List<GeneratedMealSlot>> withChocolate(Long fridgeId) {
+		return invocation -> everySlotUses(fridgeId, 100).answer(invocation).stream()
+				.map(slot -> {
+					List<SlotIngredient> ingredients = new ArrayList<>(slot.ingredients());
+					ingredients.add(new SlotIngredient(null, "초콜릿", BigDecimal.valueOf(30), RecipeUnit.G));
+					return new GeneratedMealSlot(slot.date(), slot.mealType(), "초코 대파 볶음", slot.cookMinutes(),
+							slot.tips(), ingredients, slot.steps());
+				})
+				.toList();
 	}
 
 	@Test
