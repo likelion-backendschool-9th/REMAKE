@@ -13,6 +13,7 @@
 - **Types**: amounts `numeric(10,3)`, money `bigint` (KRW), time `timestamp` (Korea time, Java `LocalDateTime`), JSON `jsonb`.
 - **Time columns**: every row the app creates has `created_at` (`BaseCreatedEntity`). Only tables whose values change also have `updated_at` (`BaseTimeEntity`). The server `Clock` sets times; do not use `DEFAULT now()`.
 - **Reference data**: `ingredient_categories` and `ingredient_catalog` are inserted only by Flyway migrations. Never edit a merged migration file; add a new numbered one.
+  - Exception (#288): the meal-plan ingredient combination check data is not a table. `scripts/mfds/build_combination_check.py` builds it from the MFDS cooking recipe DB and writes `backend/src/main/resources/mfds/combination-check.json`; the backend reads the file at startup (a missing or broken file stops startup). The lists (caution, breakfast, groups, name fixes) are still being tuned before the deadline, and each change would otherwise need a new migration. The file also carries a copy of the `ingredient_catalog` names and categories (read from V5) so meal plans can match names without another feature's port; rerun the script when the catalog migration changes.
 - **Code values**: Appendix C. Enum names equal the code values.
 
 ## Table list

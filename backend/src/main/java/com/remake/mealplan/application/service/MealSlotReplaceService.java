@@ -59,8 +59,8 @@ import lombok.extern.slf4j.Slf4j;
  * <li>레시피 하루 횟수가 남았는지(GENERATION_LIMIT_EXCEEDED, quota_exceeded 이벤트). 레시피 생성·다시 받기와 같은 횟수다</li>
  * <li>쓸 수 있는 냉장고 재료: 다른 칸(요리 안 한 칸)이 쓰기로 한 양을 빼고, 이 칸이 쓰던 양은 돌려받는다.
  * 바꾸기 전 레시피가 쓰던 냉장고 재료는 주재료로 쓰지 말라고 보낸다(같은 요리가 다시 나오지 않게, 11-25 실측).
- * 칸 날짜 전에 소비기한이 끝나는 재료는 뺀다. 하나도 없으면 AI를 부르지 않는다(MEAL_PLAN_NO_INGREDIENTS)</li>
- * <li>AI 호출과 검사. 실패하면 잠깐 쉬고 1회 다시 시도한다(25초 × 2 + 쉬는 시간 &lt; Nginx 60초, #50)</li>
+ * 칸 날짜 전에 소비기한이 끝나는 재료와 식약처 요리에 안 나오는 재료(#288 F1)는 뺀다. 하나도 없으면 AI를 부르지 않는다(MEAL_PLAN_NO_INGREDIENTS)</li>
+ * <li>AI 호출과 검사(조합 검사 #288 F2 포함). 실패하면 잠깐 쉬고 1회 다시 시도한다(25초 × 2 + 쉬는 시간 &lt; Nginx 60초, #50)</li>
  * <li>재료 카테고리를 정한다(사전 → 냉장고 재료 → AI, 생성과 같은 기준)</li>
  * <li>한 트랜잭션에서 새 레시피 저장 → 바꾸기 전 레시피로 그 칸에서 담은 장바구니 행 정리 → 칸의 레시피 변경(요리 완료 표시 지움)
  * → 새 레시피의 부족 재료 장바구니 담기 → 하루 횟수 차감. 하나라도 실패하면 모두 되돌린다</li>
@@ -92,6 +92,7 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 	private final AddCartItemsUseCase addCartItemsUseCase;
 	private final CleanUpMealPlanSlotCartItemsUseCase cleanUpMealPlanSlotCartItemsUseCase;
 	private final ReplaceMealSlotAiPort aiPort;
+	private final MealPlanCombinationCheck combinationCheck;
 	private final EventTracker eventTracker;
 	private final TransactionTemplate transactionTemplate;
 	private final Clock clock;
@@ -105,7 +106,8 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 			SaveMealPlanRecipesUseCase saveMealPlanRecipesUseCase, MealPlanIngredientCategories ingredientCategories,
 			AddCartItemsUseCase addCartItemsUseCase,
 			CleanUpMealPlanSlotCartItemsUseCase cleanUpMealPlanSlotCartItemsUseCase, ReplaceMealSlotAiPort aiPort,
-			EventTracker eventTracker, TransactionTemplate transactionTemplate, Clock clock,
+			MealPlanCombinationCheck combinationCheck, EventTracker eventTracker,
+			TransactionTemplate transactionTemplate, Clock clock,
 			@Value("${remake.meal-plan.ai-retry-delay:1500ms}") Duration retryDelay) {
 		this.mealPlanSlotPort = mealPlanSlotPort;
 		this.loadMealPlanSlotPort = loadMealPlanSlotPort;
@@ -120,6 +122,7 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 		this.addCartItemsUseCase = addCartItemsUseCase;
 		this.cleanUpMealPlanSlotCartItemsUseCase = cleanUpMealPlanSlotCartItemsUseCase;
 		this.aiPort = aiPort;
+		this.combinationCheck = combinationCheck;
 		this.eventTracker = eventTracker;
 		this.transactionTemplate = transactionTemplate;
 		this.clock = clock;
@@ -144,9 +147,9 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 		List<MealPlanSlot> otherSlots = futureSlots.stream().filter(other -> !other.id().equals(slot.id())).toList();
 		List<FridgeStock> fridge = stockReader.loadFridge(userId);
 		StockLedger ledger = stockReader.ledger(userId, fridge, otherSlots, today);
-		List<FridgeStock> available = ledger.available().stream()
+		List<FridgeStock> available = combinationCheck.forAi(ledger.available().stream()
 				.filter(stock -> !stock.expirationDate().isBefore(slot.slotDate()))
-				.toList();
+				.toList());
 		if (available.isEmpty()) {
 			trackFailure(userId, ErrorCode.MEAL_PLAN_NO_INGREDIENTS, start);
 			throw new BusinessException(ErrorCode.MEAL_PLAN_NO_INGREDIENTS);
@@ -250,14 +253,14 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 	}
 
 	/**
-	 * 생성과 같은 검사(칸 모양·레시피 한도) 뒤, 칸이 장부 안에서 배정되는지 본다: 냉장고 재료를 1개 이상 쓰고 남은 양을 넘지 않아야 한다.
+	 * 생성과 같은 검사(칸 모양·레시피 한도·조합) 뒤, 칸이 장부 안에서 배정되는지 본다: 냉장고 재료를 1개 이상 쓰고 남은 양을 넘지 않아야 한다.
 	 * 쓸 냉장고 재료가 있는데 "못 만듦"(skipped)으로 오거나 배정되지 않으면 형식 오류로 보고 다시 부른다(생성은 그날에서 자르지만
 	 * 교체는 칸이 하나뿐이라 자를 수 없다).
 	 */
-	private static GeneratedMealSlot checked(MealSchedule schedule, List<GeneratedMealSlot> generated,
+	private GeneratedMealSlot checked(MealSchedule schedule, List<GeneratedMealSlot> generated,
 			List<FridgeStock> fridge, StockLedger ledger) {
 		GeneratedMealSlot slot = MealPlanStockReader.normalizeFridgeLinks(
-				GeneratedMealPlanValidator.validate(schedule, generated).getFirst(), fridge);
+				combinationCheck.check(GeneratedMealPlanValidator.validate(schedule, generated)).getFirst(), fridge);
 		if (slot.skipped()) {
 			throw invalid("재료가 있는데 못 만듦으로 옴");
 		}
