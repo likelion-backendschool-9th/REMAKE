@@ -116,10 +116,11 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
   - Payment terms go in the terms drawer (common-약관드로워) (11/24 terms decision).
   - Renewal: on the next payment date (start + 1 month; the last day when that date does not exist) charge the same card and extend one month on success.
   - Auto-payment failure: end the subscription at once (ENDED, clear `billing_key`, `users.plan` = BASIC). To subscribe again, register a card again (11/24 terms decision).
-  - Cancel: schedules the cancellation. Benefits stay until the day before the next payment date; no charge then, and the member returns to basic. The screen or modal after scheduling is (open).
-  - After it ends: basic limits; meal plans already used this month still count. No re-subscribing while a cancellation is scheduled (`ALREADY_SUBSCRIBED`); after it ends, subscribe as new (proposal).
+  - Cancel: schedules the cancellation. Benefits stay until the day before the next payment date; no charge then, and the member returns to basic. #170 (2026-11-27) confirms using the Figma cancellation screen; check #169 for screen details and integration.
+  - After it ends: basic limits; meal plans already used this month still count. No re-subscribing while a cancellation is scheduled (`ALREADY_SUBSCRIBED`); after it ends, subscribe as new (payment terms section 3).
   - Account deletion ends the subscription immediately with no more charges. Payment records are kept. No refund for the remaining period (11/24 terms decision).
-  - Cooling-off and refunds: full refund within 7 days of payment if no premium benefit (recipe or meal-plan generation beyond basic limits) was used; otherwise cancel only, no refund (11/24 terms decision). Refund API and flow: (open).
+  - Cooling-off and refunds: full refund within 7 days of payment if no premium benefit (recipe or meal-plan generation beyond basic limits) was used; otherwise cancel only, no refund (11/24 terms decision). #228 (2026-11-27) records further flow decisions; #318 owns their detailed documentation, including the unused-benefit check, post-refund state, and API/event contract. Do not add an API path or event identifier until specified by that follow-up and the implementation issue.
+  - Price or benefit changes: notify users in the Service 30 days before the next billing date; users may cancel if they do not agree (payment terms section 7).
   - The Toss secret key and `billingKey` stay on the server only; `billingKey` is stored encrypted.
   - Demo payment: Toss Payments test keys only, no real charge (11/24 terms decision).
 
