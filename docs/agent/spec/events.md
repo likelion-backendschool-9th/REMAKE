@@ -312,6 +312,10 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 | M19 | Spending pattern usage | users with `consumption_pattern_viewed` / users with `receipt_list_viewed` | E35, E38 | usage check |
 | M20 | Error exposure rate | `error_shown` / `screen_viewed`, by `error_code` and `screen_name` | E02, E03, E10, E31, E41, E54, E81 | lower is better |
 
+### M05: receipt re-registration (open)
+
+Receipt re-registration of the same numbered purchase restores the receipt and spending without a second stock/cart apply (#266). It can therefore emit `receipt_saved` with `registered_count=0`; this is a successful registration, not an OCR failure. The M05 formula above divides by that count and does not yet define how to handle these events. The planning and metric owner must confirm whether to exclude them from M05 or measure re-registration separately, including the comparison population and zero-denominator display. Track the decision in [#186](https://github.com/likelion-backendschool-9th/REMAKE/issues/186); do not infer an approved exclusion rule or change the event contract from this note.
+
 ## Screen codes
 
 Values for `screen`, `screen_name`, and `previous_screen`. Screens marked "screens to add" are not in Figma yet.

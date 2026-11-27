@@ -102,6 +102,10 @@ track('receipt_item_edited', { item_index: 2, edit_field: 'amount' });
 - 실사용자가 적으므로 시연용 **시드 데이터 생성 스크립트**를 만들고(`is_seed = true`), 지표 계산 때 실제 데이터만 보려면 `is_seed = false`로 거릅니다.
 - 어드민(모니터링)은 운영자 페이지 a1~a3·a6에서 조회합니다(API 61~64, 11/26, 백엔드 이준호).
 
+### M05 영수증 재등록 집계: 미결
+
+같은 번호가 있는 구매 건의 영수증 재등록은 영수증·식비를 복구하되 냉장고·장바구니를 다시 반영하지 않습니다(#266). 따라서 `receipt_saved`의 `registered_count=0`도 정상 등록이며 OCR 실패가 아닙니다. M05는 이 값으로 나누므로, 이 이벤트를 M05에서 제외할지 또는 재등록을 별도 측정할지, 비교 대상과 분모 0 표시까지 기획·지표 담당자가 확인해야 합니다. 결정은 [#186](https://github.com/likelion-backendschool-9th/REMAKE/issues/186)에서 추적하며, 이 설명만으로 제외 정책을 확정하거나 이벤트 계약을 바꾸지 않습니다.
+
 ## 8. 지금 코드와 다른 점
 
 - `EventName`은 정의서 79개와 맞습니다(`EventContractTest`). `cook_feedback_answered`(E50)는 `recipe_id`·`recommended`를 씁니다. E86 `subscription_renewed` 호출은 자동 결제 작업(#168)에서 이어집니다.

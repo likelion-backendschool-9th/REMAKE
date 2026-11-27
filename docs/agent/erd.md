@@ -31,11 +31,11 @@
 | 10 | `receipts` | Receipts | One registered receipt. Kept 6 months. Deleting removes it from spending and patterns (fridge ingredients stay) | 3 receipts | 이동준 | 9 |
 | 11 | `receipt_items` | Receipt items | One food line of a receipt | 3 receipts | 이동준 | 9 |
 | 12 | `recipes` | Recipes | AI-generated recipe. Never edited after creation | 4 AI recipes | 김종수 | 9 |
-| 13 | `recipe_ingredients` | Recipe ingredients | Ingredients and amounts | 4 AI recipes | 김종수 | 8 |
+| 13 | `recipe_ingredients` | Recipe ingredients | Ingredients and amounts | 4 AI recipes | 김종수 | 9 |
 | 14 | `recipe_steps` | Recipe steps | Cooking steps | 4 AI recipes | 김종수 | 5 |
 | 15 | `saved_recipes` | Saved recipes | My saved list. Saving a shared recipe points at the original (no copy) | 4 AI recipes | 김종수 | 6 |
 | 16 | `usage_logs` | Generation usage | One row per successful recipe or meal-plan generation. Source of remaining counts | 4 AI recipes | 김종수 | 5 |
-| 17 | `meal_plans` | Meal plans | One meal-plan generation request and its result (generating, done, failed) | 5 meal plan | 한윤수 | 9 |
+| 17 | `meal_plans` | Meal plans | One meal-plan generation request and its result (generating, done, failed) | 5 meal plan | 한윤수 | 10 |
 | 18 | `meal_plan_slots` | Meal plan slots | One recipe per date and meal | 5 meal plan | 한윤수 | 8 |
 | 19 | `cart_items` | Cart | Missing ingredients (added automatically by saving a shared recipe, saving my recipe with supplemented ingredients, and meal-plan generation) | 7 sharing/cart | 최유리 | 10 |
 | 20 | `shared_recipes` | Shared recipes | Posts in the shared space (fully anonymous) | 7 sharing/cart | 최유리 | 7 |
@@ -46,7 +46,7 @@
 | 25 | `events` | Events | Raw behavior events (frontend and server). Names and properties in `spec/events.md` | common (events) | 이준호 | 12 |
 | 26 | `ingredient_catalog` | Ingredient unit dictionary | Ingredient name -> unit, category, shelf life. Used only inside the server to pick units (API 14, 15, 16, 21). Never exposed by screens or APIs | 2 fridge | 김재연 | 6 |
 | 27 | `manual_ingredient_expenses` | Manual ingredient expenses | Registration snapshots for ingredients added without a receipt | 3 receipts | 이동준 | 9 |
-| 28 | `receipt_first_applications` | Receipt first stock applications | First fridge/cart apply for a numbered purchase; survives receipt delete so re-register skips stock/cart (#266) | 3 receipts | 이동준 | 6 |
+| 28 | `receipt_first_applications` | Receipt first stock applications | First fridge/cart apply for a numbered purchase; survives receipt delete so re-register skips stock/cart (#266) | 3 receipts | 이동준 | 7 |
 | 29 | `shared_recipe_weekly_settlements` | Weekly settlement completion | One completion record per week, including empty weeks; prevents duplicate rank/reward settlement | 7 sharing/cart | 최유리 | 2 |
 | 30 | `user_sanctions` | Sanctions | One row per violation confirmed by report handling (1st-4th sanction) | admin operations | 이상호 | 9 |
 
