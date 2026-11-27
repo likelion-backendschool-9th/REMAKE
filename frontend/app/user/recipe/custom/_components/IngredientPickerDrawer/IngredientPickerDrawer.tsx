@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { BottomBar } from "@/components/BottomBar/BottomBar";
 import { Button } from "@/components/Button/Button";
@@ -27,6 +27,7 @@ type IngredientPickerDrawerProps = {
 
 /**
  * 피그마 p4.1.2-커스텀 레시피 생성-드로워 디세이블·액티브: 내 냉장고 재료를 여러 개 골라 레시피에 넣는다.
+ * 맨 위 "전체 선택(N개)"로 한 번에 고르거나 풀 수 있다(피그마 11/27).
  * 하나도 안 고르면 "선택"이 꺼지고, 고르면 "N개의 재료 선택".
  */
 export function IngredientPickerDrawer({
@@ -51,7 +52,12 @@ function PickerBody({
   defaultIds,
   onConfirm,
 }: Pick<IngredientPickerDrawerProps, "ingredients" | "defaultIds" | "onConfirm">) {
+  const selectAllId = useId();
   const [selected, setSelected] = useState<ReadonlySet<number>>(() => new Set(defaultIds));
+  const isAllSelected = ingredients.length > 0 && selected.size === ingredients.length;
+
+  const toggleAll = () =>
+    setSelected(isAllSelected ? new Set() : new Set(ingredients.map((item) => item.id)));
 
   const toggle = (id: number) =>
     setSelected((prev) => {
@@ -67,26 +73,34 @@ function PickerBody({
         // 피그마에 없는 상태. 냉장고 빈 목록 문구(p2)를 따른다
         <EmptyState>냉장고에 재료가 없어요</EmptyState>
       ) : (
-        <ul className={styles.list}>
-          {ingredients.map((ingredient) => (
-            <li key={ingredient.id}>
-              <label className={styles.row}>
-                <Checkbox
-                  checked={selected.has(ingredient.id)}
-                  onChange={() => toggle(ingredient.id)}
-                  aria-label={ingredient.name}
-                />
-                <IngredientRow
-                  name={ingredient.name}
-                  imageSrc={getCategoryImage(ingredient.categoryCode)}
-                  description={`${getStorage(ingredient.storage).place} · ${formatAmount(ingredient.amount, ingredient.unit)}`}
-                  trailing={<ExpiryLabel status={ingredient.expiryStatus} text={ingredient.dDay} />}
-                  className={styles.ingredient}
-                />
-              </label>
-            </li>
-          ))}
-        </ul>
+        <>
+          <label htmlFor={selectAllId} className={styles.selectAll}>
+            <Checkbox id={selectAllId} checked={isAllSelected} onChange={toggleAll} />
+            전체 선택({ingredients.length}개)
+          </label>
+          <ul className={styles.list}>
+            {ingredients.map((ingredient) => (
+              <li key={ingredient.id}>
+                <label className={styles.row}>
+                  <Checkbox
+                    checked={selected.has(ingredient.id)}
+                    onChange={() => toggle(ingredient.id)}
+                    aria-label={ingredient.name}
+                  />
+                  <IngredientRow
+                    name={ingredient.name}
+                    imageSrc={getCategoryImage(ingredient.categoryCode)}
+                    description={`${getStorage(ingredient.storage).place} · ${formatAmount(ingredient.amount, ingredient.unit)}`}
+                    trailing={
+                      <ExpiryLabel status={ingredient.expiryStatus} text={ingredient.dDay} />
+                    }
+                    className={styles.ingredient}
+                  />
+                </label>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       <BottomBar>
