@@ -56,10 +56,11 @@ export function UserManagementContainer({
   const [isModalOpen, setIsModalOpen] = useState(Boolean(initialModal));
   const [rewardOverrides, setRewardOverrides] = useState<Record<number, number>>({});
   const toast = useTimedToast(initialToast ?? null);
+  const searchedId = userId.trim().replace(/^#/, "");
   const visibleUsers = users?.filter(
     (user) =>
       (filter === "ALL" || (Boolean(user.currentSanction) && !user.deletedAt)) &&
-      (!userId || String(user.userId) === userId.replace(/^#/, "")),
+      (!userId.trim() || String(user.userId) === searchedId),
   );
   const selected = visibleUsers?.find((user) => user.userId === selectedId) ?? visibleUsers?.[0];
   const remaining = selected
@@ -87,12 +88,10 @@ export function UserManagementContainer({
             <SearchField
               className={styles.search}
               aria-label="회원 번호 검색"
-              placeholder="회원 번호로 검색"
+              placeholder="회원 번호 (예: 10087)"
+              inputMode="numeric"
               value={userId}
-              clearable={false}
-              onChange={(event) =>
-                void setQuery({ userId: event.target.value.replace(/[^#\d]/g, "") })
-              }
+              onChange={(event) => void setQuery({ userId: event.target.value })}
             />
           </div>
         }
@@ -186,8 +185,10 @@ export function UserManagementContainer({
                     <tr>
                       <td className={styles.empty} colSpan={6}>
                         <EmptyState>
-                          {userId
-                            ? `회원 #${userId.replace(/^#/, "")}를 찾지 못했어요`
+                          {userId.trim()
+                            ? /^\d+$/.test(searchedId)
+                              ? `회원 #${searchedId}를 찾지 못했어요`
+                              : "회원 번호를 숫자로 입력해 주세요 (예: 10087)"
                             : "조건에 맞는 사용자가 없어요"}
                         </EmptyState>
                       </td>

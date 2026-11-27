@@ -31,7 +31,19 @@ import {
 /** 미리보기 주소(/dev/admin/...)로는 지금 메뉴를 알 수 없어 넘긴다. 피그마처럼 "신고 관리" 옆에 처리 대기 12건을 보인다 */
 function withLayout(activeMenu: AdminMenuKey, content: ReactNode) {
   return (
-    <AdminLayout activeMenu={activeMenu} pendingReportCount={SAMPLE_DASHBOARD.pendingReportCount}>
+    <AdminLayout
+      activeMenu={activeMenu}
+      pendingReportCount={SAMPLE_DASHBOARD.pendingReportCount}
+      menuHrefs={{
+        dashboard: "/dev/admin/a1-dashboard",
+        funnel: "/dev/admin/a2-funnel",
+        "event-logs": "/dev/admin/a6-event-logs",
+        users: "/dev/admin/a5-users",
+        rankings: "/dev/admin/a7-rewards",
+        "feature-metrics": null,
+        reports: null,
+      }}
+    >
       {content}
     </AdminLayout>
   );
