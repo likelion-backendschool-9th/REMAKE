@@ -119,7 +119,7 @@ Used by the fridge filter, spending-pattern ratios, expiry estimation (receipts 
   - Cancel: schedules the cancellation. Benefits stay until the day before the next payment date; no charge then, and the member returns to basic. The screen or modal after scheduling is (open).
   - After it ends: basic limits; meal plans already used this month still count. No re-subscribing while a cancellation is scheduled (`ALREADY_SUBSCRIBED`); after it ends, subscribe as new (proposal).
   - Account deletion ends the subscription immediately with no more charges. Payment records are kept. No refund for the remaining period (11/24 terms decision).
-  - Cooling-off and refunds: full refund within 7 days of payment if no premium benefit (recipe or meal-plan generation beyond basic limits) was used; otherwise cancel only, no refund (11/24 terms decision). Refund API and flow: (open).
+  - Cooling-off and refunds (11/24 terms; flow decided #228, docs #318): full refund within 7 days of payment if **no premium benefit was used** — meaning, since that payment, meal-plan generation count is 0 **and** AI recipe generations above the BASIC daily limit are 0. Request from the Figma refund page. On success: subscription ENDED, `users.plan` BASIC, billingKey cleared; payment rows stay in DB (no in-app payment-history screen). Record E89 `subscription_refunded` only (not E88). Otherwise cancel only, no refund. Refund request API path: fixed in the implementation issue.
   - The Toss secret key and `billingKey` stay on the server only; `billingKey` is stored encrypted.
   - Demo payment: Toss Payments test keys only, no real charge (11/24 terms decision).
 

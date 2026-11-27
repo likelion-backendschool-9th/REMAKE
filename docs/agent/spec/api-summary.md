@@ -43,6 +43,7 @@ Source: API definition v4 (Figma-based, Korean, kept in Notion; not in the repo)
 | 58 | POST | `/user/subscription/billing-auth` | Values to open the Toss card registration window. The frontend calls Toss SDK `requestBillingAuth`; Toss returns to the frontend success URL with `authKey` and `customerKey` | no body | `200 { customerKey, orderName, amount }` | |
 | 59 | POST | `/user/subscription` | Start the subscription: issue a billingKey with `authKey`, charge the first month (9,900 KRW), and on success start it (`users.plan` PREMIUM, next billing date = today + 1 month). If the first payment fails, no subscription is created | `{ authKey, customerKey }` | `201` (same shape as API 57) | subscription_started, subscription_payment_failed |
 | 60 | POST | `/user/subscription/cancel` | Schedule cancellation. Benefits stay until the day before the next billing date; on that date no charge and the plan becomes BASIC. Already scheduled -> 200 unchanged | no body | `200` (same shape as API 57, status CANCELED) | subscription_canceled |
+| — | — | refund request API (path fixed in the implementation issue) | 7-day full refund when premium benefits were unused since payment (meal-plan generations = 0 and AI recipe generations above BASIC daily limit = 0). On success: Toss cancel, subscription ENDED, `users.plan` BASIC, billingKey cleared; keep `subscription_payments` rows. Requested from the Figma refund page (#228, #318) | (TBD with path) | (TBD with path) | subscription_refunded |
 
 ## 2. Fridge (owner: 김재연)
 
@@ -266,7 +267,10 @@ The 15 admin APIs that were on hold in the previous plan. Do not implement the r
 ## Open questions (do not decide in code; ask the PO)
 
 - What the subscription screen shows after scheduling cancellation, and whether a confirm modal is needed.
-- Which API and flow handle the 7-day full refund (Toss payment cancel, subscription status, events)?
 - Which API and screen let an author delete their own shared post?
 - What a sanctioned member sees in the app (sharing ban, account ban) and which errors the app APIs return (`ACCOUNT_SUSPENDED`, a sharing-ban code). Storage is decided (`user_sanctions`, 11/26); the app screens are on hold as "added page 15".
 - Which E88 `end_reason` value marks an auto-payment failure ending?
+
+## Decided (do not reopen in code)
+
+- **7-day full refund** (#228, docs #318): request from the Figma refund page. Eligible when, since payment, meal-plan generation = 0 and AI recipe generation above BASIC daily limit = 0. On success: Toss payment cancel, subscription ENDED, `users.plan` BASIC, billingKey cleared; keep payment rows (no in-app history screen). Server event E89 `subscription_refunded` only (not E88). **Refund API method/path string**: fix in the implementation feat issue, then replace the placeholder row under subscription APIs above.
