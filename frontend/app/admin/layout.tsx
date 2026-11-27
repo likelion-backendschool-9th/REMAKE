@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { AdminLayout } from "./_components/AdminLayout/AdminLayout";
 
 /**
@@ -5,5 +7,10 @@ import { AdminLayout } from "./_components/AdminLayout/AdminLayout";
  * 처리 대기 신고 숫자(API 65)와 권한 없음(a0, 프로필 role·서버 403)은 API 연동 때 붙인다
  */
 export default function AdminRootLayout({ children }: LayoutProps<"/admin">) {
-  return <AdminLayout>{children}</AdminLayout>;
+  // 메뉴가 주소(usePathname)를 읽으므로 Suspense로 감싼다. 값을 미리 알 수 없는 동적 주소(예: /admin/operation/reports/[sharedRecipeId])를 빌드할 때 필요하다(cacheComponents, blueprint §5)
+  return (
+    <Suspense>
+      <AdminLayout>{children}</AdminLayout>
+    </Suspense>
+  );
 }
