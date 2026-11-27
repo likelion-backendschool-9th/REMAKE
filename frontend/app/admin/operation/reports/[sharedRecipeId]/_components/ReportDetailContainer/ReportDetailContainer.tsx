@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { ArrowLeftIcon, GalleryIcon } from "@solar-icons/react/linear";
@@ -130,37 +131,86 @@ export function ReportDetailContainer({
   );
 }
 
-/** 왼쪽 카드: 사용자에게 보이는 레시피 그대로. 사진 자리, 제목, 재료 준비·인분·시간, 재료, 만드는 방법 */
+/**
+ * 왼쪽 카드: 사용자에게 보이는 글 그대로(피그마 a4.1 상세 게시글, 폭 460).
+ * 제목 줄, 사진, 재료 준비·인분·시간, 재료 칩(부족한 재료는 빨강), 번호 붙은 만드는 방법, 팁 순서
+ */
 function RecipeCard({ report }: { report: ReportDetail }) {
   const { recipe } = report;
 
   return (
-    <AdminCard title="공유 레시피" meta="사용자에게 보이는 그대로" className={styles.recipe}>
-      <div className={styles.photo} aria-hidden="true">
-        <GalleryIcon className={styles.photoIcon} />
+    <section className={styles.recipe} aria-label="공유 레시피">
+      <div className={styles.postHeader}>
+        <ArrowLeftIcon className={styles.postBackIcon} aria-hidden="true" />
+        <h3 className={styles.postTitle}>{report.title}</h3>
       </div>
 
-      <h3 className={styles.recipeTitle}>{report.title}</h3>
-      <p className={styles.recipeMeta}>
-        {recipe.readiness} · {recipe.servings} · {recipe.cookingTime}
-      </p>
+      <div className={styles.photo}>
+        {recipe.imageUrl ? (
+          // 공유 사진은 로그인 쿠키가 필요한 API에서 오므로 Next 이미지 최적화를 거치지 않는다
+          <Image
+            src={recipe.imageUrl}
+            alt={`${report.title} 사진`}
+            fill
+            sizes="460px"
+            unoptimized
+            className={styles.image}
+          />
+        ) : (
+          <GalleryIcon className={styles.photoIcon} aria-hidden="true" />
+        )}
+      </div>
 
-      <h3 className={styles.sectionTitle}>재료</h3>
-      <p className={styles.ingredients}>
-        {recipe.ingredients
-          .map((ingredient) => `${ingredient.name} ${ingredient.amount}`)
-          .join(", ")}
-      </p>
+      <div className={styles.meta}>
+        <div className={styles.metaLine}>
+          <p className={styles.metaTitle}>재료 준비</p>
+          <span className={styles.dot} aria-hidden="true" />
+          <span className={styles.metaSub}>{recipe.servings}</span>
+          <span className={styles.dot} aria-hidden="true" />
+          <span className={styles.metaSub}>{recipe.cookingTime}</span>
+        </div>
 
-      <h3 className={styles.sectionTitle}>만드는 방법</h3>
-      <ol className={styles.steps}>
-        {recipe.steps.map((step, index) => (
-          <li key={step}>
-            {index + 1}. {step}
-          </li>
-        ))}
-      </ol>
-    </AdminCard>
+        <ul className={styles.tags}>
+          {recipe.ingredients.map((ingredient) => (
+            <li
+              key={ingredient.name}
+              className={ingredient.missing ? styles.tagMissing : styles.tag}
+            >
+              <span className={styles.tagName}>{ingredient.name}</span>
+              <span className={styles.tagAmount}>{ingredient.amount}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className={styles.steps}>
+        <h3 className={styles.stepsTitle}>만드는 방법</h3>
+        <ol className={styles.stepList}>
+          {recipe.steps.map((step, index) => (
+            <li key={step} className={styles.step}>
+              <span className={styles.stepNumber} aria-hidden="true">
+                {index + 1}
+              </span>
+              {step}
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {recipe.tips.length > 0 && (
+        <aside className={styles.tips}>
+          <p className={styles.tipsTitle}>Tips!</p>
+          <ul className={styles.tipList}>
+            {recipe.tips.map((tip) => (
+              <li key={tip} className={styles.tipItem}>
+                <span className={styles.tipDot} aria-hidden="true" />
+                {tip}
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
+    </section>
   );
 }
 
@@ -237,7 +287,6 @@ function AuthorCard({ report, onChoose }: AuthorCardProps) {
         <>
           <InfoBox variant="gray">{getNextSanctionNotice(author.violationCount)}</InfoBox>
 
-          {/* 남는 높이는 안내 박스와 버튼 사이에 두어 버튼을 카드 아래에 붙인다 */}
           <div className={styles.actions}>
             <Button tone="danger" size="lg" onClick={() => onChoose("VIOLATION")}>
               위반으로 처리하기

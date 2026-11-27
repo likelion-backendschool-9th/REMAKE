@@ -44,13 +44,22 @@ export type ReportEntry = {
   reporterId: number;
 };
 
+export type ReportIngredient = {
+  name: string;
+  amount: string;
+  /** 준비되지 않은 재료. 피그마 a4.1에서 빨간 테두리로 보인다 */
+  missing: boolean;
+};
+
+/** 사용자에게 보이는 레시피 내용(피그마 a4.1 상세 게시글) */
 export type ReportRecipe = {
-  /** 재료 준비 현황. 예: "재료 준비 3/4" */
-  readiness: string;
+  /** 글 사진. 없으면 이미지 아이콘이 있는 회색 자리를 보인다 */
+  imageUrl: string | null;
   servings: string;
   cookingTime: string;
-  ingredients: { name: string; amount: string }[];
+  ingredients: ReportIngredient[];
   steps: string[];
+  tips: string[];
 };
 
 export type HandledInfo = {
@@ -311,21 +320,27 @@ export const SAMPLE_HANDLED_REPORTS: HandledReportItem[] = [
   },
 ];
 
+/** 피그마 a4.1(처리 끝남·처리 대기 최저가 프레임)과 같은 샘플 레시피 */
 const SAMPLE_RECIPE: ReportRecipe = {
-  readiness: "재료 준비 3/4",
+  imageUrl: "/images/recipe/sample-shared-photo.webp",
   servings: "2인분",
-  cookingTime: "20분",
+  cookingTime: "30분 이내",
   ingredients: [
-    { name: "계란", amount: "2개" },
-    { name: "대파", amount: "1/2대" },
-    { name: "밥", amount: "1공기" },
-    { name: "간장", amount: "1큰술" },
-    { name: "참기름", amount: "약간" },
+    { name: "양상추", amount: "1줌", missing: true },
+    { name: "베이컨", amount: "2줄", missing: false },
+    { name: "찬밥", amount: "1공기", missing: false },
+    { name: "토마토", amount: "1개", missing: true },
+    { name: "계란", amount: "1개", missing: false },
   ],
   steps: [
-    "대파를 송송 썰어 기름에 볶아요.",
-    "계란을 풀어 넣고 반쯤 익으면 밥을 넣어요.",
-    "간장과 참기름으로 간을 맞춰요.",
+    "재료 썰기: 베이컨은 1cm 두께로 썰고, 양상추는 볶음밥에 잘 섞이도록 듬성듬성 한 입 크기로 썰어줍니다. 달걀은 그릇에 미리 풀어둡니다.",
+    "기름 내기: 중불로 달군 팬에 베이컨을 올려 굽습니다. 베이컨에서 기름이 충분히 나오면 한쪽으로 몰아둡니다. (대파가 있다면 이때 같이 볶아 파기름을 내주세요.)",
+    "스크램블 에그: 팬의 빈 공간에 풀어둔 달걀을 붓고 젓가락으로 빠르게 저어 부드러운 스크램블을 만듭니다.",
+    "밥 볶기: 달걀이 반쯤 익으면 찬밥을 넣고 주걱을 세워 밥알을 가르듯이 볶아줍니다. 밥알이 코팅되면 간장과 굴소스를 팬 가장자리에 끓이듯 눌러 풍미를 더한 뒤 전체적으로 섞어줍니다.",
+    "양상추 섞기 (핵심): 가스레인지 불을 끄고, 썰어둔 양상추를 넣습니다. 잔열을 이용해 가볍게 두세 번만 뒤적여 양상추의 숨이 너무 죽지 않고 아삭함을 유지하게 합니다.",
+  ],
+  tips: [
+    "잔열을 이용해 가볍게 두세 번만 뒤적여 양상추의 숨이 너무 죽지 않고 아삭함을 유지하게 합니다.",
   ],
 };
 

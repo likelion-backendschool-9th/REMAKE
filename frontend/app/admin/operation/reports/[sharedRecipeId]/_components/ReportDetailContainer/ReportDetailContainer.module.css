@@ -1,4 +1,4 @@
-/* 피그마 a4.1 신고 상세: 왼쪽 글 내용(남는 폭), 오른쪽 신고 내역·작성자 400. 두 열은 본문 높이를 채운다 */
+/* 피그마 a4.1 신고 상세: 왼쪽 상세 게시글 460, 오른쪽 신고 내역·작성자 400, 사이 16. 두 열은 본문 높이를 채운다 */
 
 /* 뒤로 가기·제목·카드 묶음 사이 간격 16. 본문 높이를 모두 쓴다 */
 .page {
@@ -33,10 +33,11 @@
   height: 1rem;
 }
 
+/* 두 열 모두 내용 높이만큼만 차지한다(늘어나지 않고 아래가 비어 있다) */
 .body {
   display: flex;
   flex: 1;
-  align-items: stretch;
+  align-items: flex-start;
   gap: var(--space-16);
   min-height: 0;
 }
@@ -49,20 +50,16 @@
   width: 25rem;
 }
 
-@media (max-width: 960px) {
+/* 두 열(460 + 16 + 400)이 들어가지 않는 폭에서는 세로로 쌓는다 */
+@media (max-width: 1100px) {
   .body {
     flex-direction: column;
   }
 
+  .recipe,
   .side {
     width: 100%;
   }
-}
-
-/* 왼쪽 카드: 안쪽 간격 14 */
-.body .recipe {
-  flex: 1;
-  gap: var(--space-14);
 }
 
 /* 오른쪽 카드: 안쪽 간격 12 */
@@ -70,21 +67,59 @@
   gap: var(--space-12);
 }
 
-/* 작성자 카드는 남는 높이를 차지한다 */
-.author {
-  flex: 1;
+/* 왼쪽 상세 게시글: 폭 460, 테두리만 있고 모서리는 직각. 안에 제목 줄·사진·재료·단계·팁이 쌓인다 */
+.recipe {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 28.75rem;
+  max-width: 100%;
+  border: 1px solid var(--color-border-default);
+  background: var(--color-bg-surface);
 }
 
-/* 사진 자리: 300×200, bg/skeleton, radius/lg, 가운데에 이미지 아이콘 24 */
+/* 제목 줄: 높이 56, 왼쪽 여백 18. 뒤로 아이콘은 왼쪽 4 띄운 자리(피그마 서브 헤더) */
+.postHeader {
+  display: flex;
+  align-items: center;
+  height: 3.5rem;
+  padding: 0 0.375rem 0 1.125rem;
+}
+
+.postBackIcon {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0 1.375rem 0 0.25rem;
+  color: var(--color-text-strong);
+}
+
+.postTitle {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-text-strong);
+  font: var(--font-header);
+}
+
+/* 작성자 카드: 제목·정보·안내 박스 사이 15, 처리 영역은 정보와 50 떨어진다(아래 .actions·.result 위 여백 35 포함) */
+.side > .author {
+  gap: 0.9375rem;
+}
+
+/* 사진: 폭 전부, 높이 309(피그마 레시피 이미지). 사진이 없으면 bg/skeleton 자리에 이미지 아이콘 24 */
 .photo {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18.75rem;
-  max-width: 100%;
-  height: 12.5rem;
-  border-radius: var(--radius-lg);
+  width: 100%;
+  height: 19.3125rem;
   background: var(--color-bg-skeleton);
+}
+
+.image {
+  object-fit: cover;
 }
 
 .photoIcon {
@@ -93,31 +128,167 @@
   color: var(--color-text-sub);
 }
 
-/* 글 제목 Remake/title·text/strong, 재료 준비·인분·시간 Remake/assist·text/sub */
-.recipeTitle {
-  color: var(--color-text-strong);
+/* 재료 준비 줄: 여백 상하 20 좌우 16, 간격 20. 재료 준비는 Remake/title, 인분·시간은 Remake/content·text/assist */
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem 1rem;
+}
+
+.metaLine {
+  display: flex;
+  align-items: center;
+  gap: 0.3125rem;
+}
+
+.metaTitle {
+  margin: 0;
+  color: var(--color-text-title);
   font: var(--font-title);
 }
 
-.recipeMeta {
-  color: var(--color-text-sub);
-  font: var(--font-assist);
+.metaSub {
+  color: var(--color-text-assist);
+  font: var(--font-content);
 }
 
-.sectionTitle {
-  color: var(--color-text-title);
-  font: var(--font-content-strong);
+.dot {
+  flex: none;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--color-text-assist);
 }
 
-/* 재료는 쉼표로 이은 한 줄, 만드는 방법은 번호를 붙인 줄 */
-.ingredients,
-.steps {
-  max-width: 35rem;
+/* 재료 칩: 테두리 알약, 안쪽 여백 6·14, 이름과 분량 사이 5. 부족한 재료는 빨강 테두리 */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
   margin: 0;
   padding: 0;
-  color: var(--color-text-body);
-  font: var(--font-content-regular);
   list-style: none;
+}
+
+.tag,
+.tagMissing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.375rem 0.875rem;
+  border: 1px solid;
+  border-radius: 50px;
+  background: var(--color-bg-surface);
+  font: var(--font-content);
+}
+
+.tag {
+  border-color: rgb(49 130 246 / 0.6);
+}
+
+.tagMissing {
+  border-color: var(--color-text-danger);
+}
+
+.tagName {
+  color: var(--color-text-body);
+}
+
+.tagAmount {
+  color: var(--color-text-assist);
+}
+
+/* 만드는 방법: 여백 상하 15 좌우 16, 제목과 목록 사이 30 */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.875rem;
+  margin: 0;
+  padding: 0.9375rem 1rem;
+}
+
+.stepsTitle {
+  margin: 0;
+  color: var(--color-text-title);
+  font: var(--font-title);
+}
+
+/* 번호 원형 20, 단계 사이 15. 글은 번호 오른쪽 30 띄운 자리에 Remake/content·행간 150% */
+.stepList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  padding-left: 1.875rem;
+  color: var(--color-text-body);
+  font: var(--font-content);
+  line-height: 1.5;
+}
+
+.stepNumber {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--color-bg-primary-tint);
+  color: var(--color-text-primary);
+  font: var(--font-assist-strong);
+}
+
+/* 팁 박스: 폭 328 가운데, 배경 bg/subtle, 여백 13, 모서리 12 */
+.tips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 20.5rem;
+  max-width: calc(100% - 2rem);
+  margin: 0 auto 1rem;
+  padding: 0.8125rem;
+  border-radius: 0.75rem;
+  background: var(--color-bg-subtle);
+}
+
+.tipsTitle {
+  margin: 0;
+  color: var(--color-text-warning);
+  font: var(--font-content);
+}
+
+.tipList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tipItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: var(--color-text-assist);
+  font: var(--font-content-regular);
+}
+
+.tipDot {
+  flex: none;
+  width: 0.25rem;
+  height: 0.25rem;
+  margin-top: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-text-assist);
 }
 
 /* 신고 사유 요약 배지 */
@@ -161,7 +332,7 @@
 .facts {
   display: flex;
   flex-direction: column;
-  gap: var(--space-12);
+  gap: 0.9375rem;
   margin: 0;
 }
 
@@ -187,12 +358,12 @@
   color: var(--color-text-strong);
 }
 
-/* 처리 끝남: 처리 결과 박스(bg/section, radius/sm, 여백 16, 간격 6). 카드 아래에 붙는다 */
+/* 처리 끝남: 처리 결과 박스(bg/section, radius/sm, 여백 16, 간격 6). 작성자 정보와 50 떨어진다 */
 .result {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-  margin-top: auto;
+  margin-top: 2.1875rem;
   padding: var(--space-16);
   border-radius: var(--radius-sm);
   background: var(--color-bg-section);
@@ -214,12 +385,12 @@
   font: var(--font-content);
 }
 
-/* 처리 버튼 묶음: 카드 아래에 붙고, 버튼과 글 버튼 줄 사이 간격 12 */
+/* 처리 버튼 묶음: 안내 박스와 50 떨어지고, 버튼과 글 버튼 줄 사이 간격 12 */
 .actions {
   display: flex;
   flex-direction: column;
   gap: var(--space-12);
-  margin-top: auto;
+  margin-top: 2.1875rem;
 }
 
 /* 문제 없음·글 삭제 글 버튼: 가운데, 간격 24, 위 여백 4 */
