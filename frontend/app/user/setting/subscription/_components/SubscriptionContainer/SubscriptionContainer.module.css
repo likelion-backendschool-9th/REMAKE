@@ -82,24 +82,31 @@
   font: var(--font-subheader);
 }
 
+/* 피그마 11/27: 제목·혜택 사이와 혜택끼리 간격 25 */
 .benefitList {
   display: flex;
   flex-direction: column;
-  gap: 1.375rem;
-  margin-top: 0.6875rem;
+  gap: 1.5625rem;
+  margin-top: 1.5625rem;
   padding: 0;
   list-style: none;
 }
 
-/* 그림 74 + 간격 8 + "혜택 N." / 이름(Remake/subheader·text/title, 강조 text/primary). 설명은 그림 아래 20, Remake/assist·text/body */
+/* 그림 칸 50 + 간격 10 + "혜택 N." / 이름(Remake/subheader·text/title, 강조 text/primary). 설명은 그림 아래 15, Remake/assist·text/body */
 .benefitHead {
   display: flex;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-10);
 }
 
-.benefitHead img {
+/* 그림 칸 50×50. 그림은 가운데(레시피 50, 식단표 40) */
+.benefitImage {
+  display: flex;
   flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 3.125rem;
+  height: 3.125rem;
 }
 
 .benefitName {
@@ -112,20 +119,24 @@
 }
 
 .benefitDescription {
-  margin-top: var(--space-20);
+  margin-top: 0.9375rem;
   color: var(--color-text-body);
   font: var(--font-assist);
   white-space: pre-line;
 }
 
-/* 아래 고정 영역: 피그마는 위로 그림자(0 -2 4, 10%) */
+/* 아래 고정 영역 */
 .bottom {
   align-items: stretch;
   gap: 0.9375rem;
+}
+
+/* 구독 전: 위로 그림자(0 -2 4, 10%). 구독 중에는 그림자 없음(피그마 11/27) */
+.bottomShadow {
   box-shadow: 0 -2px 4px 0 rgba(0, 0, 0, 0.1);
 }
 
-/* 결제 약관 동의 줄: 체크박스 + "결제 약관 동의"(Remake/content·text/body) + "자세히 보기"(text/warning), 간격 5 */
+/* 결제 약관 동의 줄: 체크박스 + "결제 약관 동의"(Remake/content·text/body) + "자세히 보기"(text/assist), 간격 5 */
 .agree {
   display: flex;
   align-items: center;
@@ -138,5 +149,5 @@
 }
 
 .terms {
-  color: var(--color-text-warning);
+  color: var(--color-text-assist);
 }

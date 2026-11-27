@@ -13,6 +13,7 @@ import { LegalDocument } from "@/components/LegalDocument/LegalDocument";
 import { Skeleton } from "@/components/Skeleton/Skeleton";
 import { SubHeader } from "@/components/SubHeader/SubHeader";
 import { TextButton } from "@/components/TextButton/TextButton";
+import { cx } from "@/lib/cx";
 import { formatFullDate, formatWon } from "@/lib/format";
 
 import { BENEFITS, PAYMENT_TERMS, type Subscription } from "../../_lib/subscription";
@@ -107,7 +108,14 @@ export function SubscriptionContainer({
             {BENEFITS.map((benefit) => (
               <li key={benefit.label} className={styles.benefit}>
                 <div className={styles.benefitHead}>
-                  <Image src={benefit.image} alt="" width={74} height={74} />
+                  <span className={styles.benefitImage}>
+                    <Image
+                      src={benefit.image}
+                      alt=""
+                      width={benefit.imageSize}
+                      height={benefit.imageSize}
+                    />
+                  </span>
                   <p className={styles.benefitName}>
                     {benefit.label}
                     <br />
@@ -121,7 +129,8 @@ export function SubscriptionContainer({
         </section>
       </main>
 
-      <BottomBar className={styles.bottom}>
+      {/* 피그마: 구독 전에만 위로 그림자, 구독 중에는 그림자 없음 */}
+      <BottomBar className={cx(styles.bottom, !isSubscribed && styles.bottomShadow)}>
         {isSubscribed ? (
           <Button tone="danger" onClick={() => setIsCancelOpen(true)}>
             구독 해지하기
