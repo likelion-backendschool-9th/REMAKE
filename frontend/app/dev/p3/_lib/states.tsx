@@ -29,7 +29,12 @@ const ITEM_ADD_ROUTE = "/user/receipt/scan/items/new";
 const PATTERNS_ROUTE = "/user/receipt/patterns";
 const DISCARDED_ROUTE = "/user/receipt/patterns/discarded";
 /** 피그마 p3.3.1처럼 재료명을 우둔살로 바꾼 상태 */
-const EDITED_DRAFT = { ...SAMPLE_SCAN_EDIT_ITEM, name: "우둔살" };
+// 수정 중인 입력 값(재료명만 바꿈). 예시 품목은 양이 있어 0으로 바꿀 일이 없다
+const EDITED_DRAFT = {
+  ...SAMPLE_SCAN_EDIT_ITEM,
+  amount: SAMPLE_SCAN_EDIT_ITEM.amount ?? 0,
+  name: "우둔살",
+};
 
 const ITEM_SHEETS = [
   ["name", "재료명 수정"],
@@ -104,14 +109,6 @@ export const P3_STATES: PreviewState[] = [
     label: "p3.3-ocr 결과",
     route: RESULT_ROUTE,
     render: () => <ReceiptResultContainer result={SAMPLE_SCAN_RESULT} today={TODAY} />,
-  },
-  {
-    slug: "result-menu",
-    label: "p3.3-ocr 결과-케밥 선택",
-    route: RESULT_ROUTE,
-    render: () => (
-      <ReceiptResultContainer result={SAMPLE_SCAN_RESULT} today={TODAY} initialMenuOpen />
-    ),
   },
   {
     slug: "result-skeleton",

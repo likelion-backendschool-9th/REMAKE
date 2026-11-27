@@ -12,8 +12,8 @@ type IngredientRowProps = {
   name: string;
   /** 왼쪽 그림(3:2). 보통 카테고리 기본 이미지 */
   imageSrc: string;
-  /** 이름 아래 회색 글. 예: "냉동실 · 600g" */
-  description?: string;
+  /** 이름 아래 회색 글. 예: "냉동실 · 600g". 일부만 색을 바꿀 때(OCR "수량 측정 불가")는 요소로 넘긴다 */
+  description?: ReactNode;
   /** 오른쪽 값. 피그마 오른쪽=소비기한(<ExpiryLabel />)·가격·수량·작은 버튼 */
   trailing?: ReactNode;
   /** 있으면 행 전체(그림·글·오른쪽 값)가 버튼이 된다. 냉장고: 재료 사용 시트 열기 */
