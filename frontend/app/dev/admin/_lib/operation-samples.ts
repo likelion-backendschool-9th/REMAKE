@@ -66,6 +66,15 @@ function user(
   };
 }
 
+export const WITHDRAWN_USER: AdminUser = {
+  ...user(10044, "KAKAO", "01", "BASIC", 1),
+  joinedAt: "2026-10-30",
+  deletedAt: "2026-11-20",
+  sanctions: [
+    { level: 1, type: "SHARING", startsAt: "2026-11-02", sharedRecipeTitle: "할인 쿠폰 레시피" },
+  ],
+};
+
 export const SAMPLE_USERS: AdminUser[] = [
   {
     ...user(10087, "KAKAO", "03", "BASIC", 2),
@@ -90,16 +99,8 @@ export const SAMPLE_USERS: AdminUser[] = [
     currentSanction: PERMANENT[0],
   },
   user(10533, "KAKAO", "20"),
+  WITHDRAWN_USER,
 ];
-
-export const WITHDRAWN_USER: AdminUser = {
-  ...user(10044, "KAKAO", "01", "BASIC", 1),
-  joinedAt: "2026-10-30",
-  deletedAt: "2026-11-20",
-  sanctions: [
-    { level: 1, type: "SHARING", startsAt: "2026-11-02", sharedRecipeTitle: "할인 쿠폰 레시피" },
-  ],
-};
 
 const weeks = ["2026-11-17", "2026-11-10", "2026-11-03"];
 const top = [

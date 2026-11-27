@@ -20,13 +20,7 @@ import { SAMPLE_FUNNEL } from "../../../admin/monitoring/funnels/_lib/funnel";
 import { UserManagementContainer } from "../../../admin/operation/users/_components/UserManagementContainer/UserManagementContainer";
 import { WeeklyRewardsContainer } from "../../../admin/operation/weekly-rewards/_components/WeeklyRewardsContainer/WeeklyRewardsContainer";
 import type { PreviewState } from "../../_lib/preview";
-import {
-  EMPTY_REWARDS,
-  FEWER_REWARDS,
-  SAMPLE_REWARDS,
-  SAMPLE_USERS,
-  WITHDRAWN_USER,
-} from "./operation-samples";
+import { EMPTY_REWARDS, FEWER_REWARDS, SAMPLE_REWARDS, SAMPLE_USERS } from "./operation-samples";
 
 /** 미리보기 주소(/dev/admin/...)로는 지금 메뉴를 알 수 없어 넘긴다. 피그마처럼 "신고 관리" 옆에 처리 대기 12건을 보인다 */
 function withLayout(activeMenu: AdminMenuKey, content: ReactNode) {
@@ -188,10 +182,7 @@ export const ADMIN_STATES: PreviewState[] = [
     label: "a5-사용자 관리-탈퇴한 사용자",
     route: ADMIN_PATHS.users,
     render: () =>
-      withLayout(
-        "users",
-        <UserManagementContainer users={[WITHDRAWN_USER]} initialSearch="#10044" />,
-      ),
+      withLayout("users", <UserManagementContainer users={SAMPLE_USERS} initialSearch="#10044" />),
   },
   {
     slug: "a5-users-adjusted",
