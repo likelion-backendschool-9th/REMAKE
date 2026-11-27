@@ -2,7 +2,13 @@
 
 이 프로젝트의 핵심 기능입니다. 사용자 행동을 이벤트로 쌓고 지표(KPI)·퍼널로 모니터링합니다. 팀원 모두 "이벤트 데이터를 남기는 API/모듈을 활용"했다고 쓸 수 있도록 **이준호가 공통 `EventTracker` 모듈과 수집 API**를 만들고, 각 담당자가 **자기 API에서 서버 이벤트를 발행**합니다.
 
-기준 문서: 이벤트 정의서 v2(피그마 기준, 2026-11-22, 노션. 이벤트 79개, 속성 102개, 지표 21개, 화면 코드 41개). 영문 전체 목록은 [`docs/agent/spec/events.md`](../../agent/spec/events.md), 영역별 이벤트 표는 각 영역 문서(01~07)의 "발행 이벤트"에 있습니다.
+기준 문서: 이벤트 정의서 v2(피그마 기준, 2026-11-22, 노션. 이벤트 79개, 원문 속성 102개, 지표 21개, 화면 코드 41개). 2026-11-24 `deleted_item_count` 복원 후 현재 계약은 속성 **103개**입니다. 영문 전체 목록은 [`docs/agent/spec/events.md`](../../agent/spec/events.md), 영역별 이벤트 표는 각 영역 문서(01~07)의 "발행 이벤트"에 있습니다.
+
+## 계약 정합성과 발행 QA
+
+- PR [#290](https://github.com/likelion-backendschool-9th/REMAKE/pull/290)은 이벤트 이름·허용 속성을 맞추고 `EventContractTest`를 추가했습니다. PR [#302](https://github.com/likelion-backendschool-9th/REMAKE/pull/302)는 속성 값·화면 코드를 맞추고 #172를 완료했습니다. 두 PR 모두 병합됐으며 그 구현을 기준으로 이어갑니다.
+- [인수인계](https://github.com/likelion-backendschool-9th/REMAKE/issues/196#issuecomment-7181075194)에 따라 실제 발행·적재 QA는 이준호(@JUNHORANG)가 [#196](https://github.com/likelion-backendschool-9th/REMAKE/issues/196)에서 이어갑니다. WBS 10.6의 최초 담당 김재연 기록은 이력으로 보존합니다. 각 기능의 SERVER 이벤트 구현은 기능 담당자, CLIENT 이벤트 구현은 해당 화면의 프론트 담당자가 계속 맡습니다.
+- 계약 정합성이 맞아도 실제 동작 QA가 끝난 것은 아닙니다. 행동별 누락·중복, 속성 값·화면 코드·공통 헤더, 개인정보 필터, 시드 분리·보관 기간, 전송 실패가 사용자 흐름을 막지 않는지를 확인하고 결과는 #196에 남깁니다.
 
 ## 1. 구조
 
@@ -19,7 +25,7 @@
 
 모든 이벤트에 붙는 공통 값: `user_id`(내부 회원 번호, 로그인 전 null, 탈퇴해도 번호만 남음), `session_id`(앱을 연 뒤 30분 무행동이면 새 세션), `source`(CLIENT/SERVER), `screen`(화면 코드, 서버 이벤트는 요청 헤더 `X-Screen`, 정기 작업은 null), `platform`(TWA/PWA/WEB, 헤더 `X-Client-Platform`), `app_version`(헤더 `X-App-Version`), `is_seed`(시연용 가상 이벤트), `occurred_at`(한국 시간).
 
-이벤트별 값은 `properties`(JSON). **중첩 없이 문자·숫자·참거짓만, 25개 이하.** 코드값은 소문자입니다.
+이벤트별 값은 `properties`(JSON). **중첩 없이 문자·숫자·참거짓만, 25개 이하.** 코드값은 소문자이며, `storage`·`filter_value`는 속성 표에 정의된 대문자 값을 유지합니다.
 
 ```json
 { "name": "receipt_saved", "screen": "receipt_result",

@@ -707,7 +707,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `recipe_id` | bigint | FK | recipes | 아니오 |  | 공유한 레시피(같은 레시피는 한 주에 한 번) |
 | `title` | varchar |  |  | 아니오 |  | 공유 제목 |
 | `image_key` | varchar |  |  | 아니오 |  | 조리 사진 1장 경로 |
-| `status` | varchar |  |  | 아니오 | VISIBLE | VISIBLE/HIDDEN(위반 처리로 숨김)/DELETED(운영자가 글 삭제. 행은 남기고 어디에도 안 보임) |
+| `status` | varchar |  |  | 아니오 | VISIBLE | VISIBLE/HIDDEN(위반 처리로 숨김)/DELETED(운영자가 글 삭제. 행은 남기되 공유 목록·공유 상세·랭킹·보상에서 제외. 저장 목록에는 원본 레시피가 남고 이미 지급한 주간 보상은 회수하지 않음) |
 | `created_at` | timestamp |  |  | 아니오 |  | 공유 시각 |
 | `updated_at` | timestamp |  |  | 아니오 |  | 상태 변경 시각 |
 

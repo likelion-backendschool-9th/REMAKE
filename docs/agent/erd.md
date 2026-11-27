@@ -707,7 +707,7 @@ Posts in the shared space (fully anonymous). Owner 최유리 (7 sharing/cart).
 | `recipe_id` | bigint | FK | recipes | no |  | Shared recipe (the same recipe once per week) |
 | `title` | varchar |  |  | no |  | Title |
 | `image_key` | varchar |  |  | no |  | Path of the single cooking photo |
-| `status` | varchar |  |  | no | VISIBLE | VISIBLE/HIDDEN (hidden by a violation decision)/DELETED (deleted by an operator; the row stays and is shown nowhere) |
+| `status` | varchar |  |  | no | VISIBLE | VISIBLE/HIDDEN (hidden by a violation decision)/DELETED (deleted by an operator; retain the row but exclude the post from shared lists, shared detail, rankings, and rewards. Saved lists keep the original recipe; already granted weekly rewards are not taken back) |
 | `created_at` | timestamp |  |  | no |  | Shared time |
 | `updated_at` | timestamp |  |  | no |  | Status change time |
 
