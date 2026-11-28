@@ -94,7 +94,7 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 | 34 | receipts (이동준) | `RECEIPT_DUPLICATE` | 409 | 20, 21 | Already registered (same store (branch name), receipt number, and purchase time; if the number is unreadable compare store, purchase date, and food names; if the time is unreadable compare by purchase date). Blocked at scan, checked again at registration | 이미 등록한 영수증이에요 | OCR failure screen, different text | Not saved |
 | 35 | receipts (이동준) | `RECEIPT_NOT_FOUND` | 404 | 23, 24 | Missing or not owned, or removed by the 6-month cleanup | 영수증을 찾을 수 없어요 | Back to the receipt list (p3) and reload | - |
 | 36 | receipts / sharing | `FILE_TOO_LARGE` | 413 | 20, 21, 51 | Receipt over 10 MB; cooking photo over 5 MiB (#64) | 영수증: 파일이 너무 커요 (최대 10MB) / 공유: 파일이 너무 커요 (최대 5MiB) | Pick another photo. The frontend checks before upload. Common toast | No OCR call |
-| 37 | receipts / sharing | `UNSUPPORTED_FILE_TYPE` | 415 | 20, 21, 51 | Receipt: not jpg/png/heic; cooking photo: not JPEG/PNG/WebP, or MIME/header mismatch (#64) | 지원하지 않는 파일 형식이에요 | Same as above | No OCR call |
+| 37 | receipts / sharing | `UNSUPPORTED_FILE_TYPE` | 415 | 20, 21, 51 | Receipt: not jpg/png/heic; cooking photo: not JPEG/PNG/WebP, or MIME/header mismatch (#64/#174). Raw HEIC is rejected; FE converts it before upload (#329/#112) | 지원하지 않는 파일 형식이에요 | Same as above | No OCR call |
 | 38 | receipts (이동준) | `CAMERA_UNAVAILABLE` | (client) | - | Camera permission denied or camera unavailable on p3.1 (no server request). p3.1 opens the device camera app (11/25), so this is a rare fallback | 카메라를 쓸 수 없어요. 갤러리에서 골라 주세요 | Suggest the gallery. Common toast | No OCR call |
 | 39 | AI recipes (김종수) | `GENERATION_LIMIT_EXCEEDED` | 429 | 28, 29, 42 | Daily recipe count used up (basic 2, premium 4, + rewards). Regenerate and meal-slot replace use the same count. `details.remaining` = 0 | 오늘의 레시피 생성 횟수를 모두 사용했어요 | Quota exhausted screen | Not charged |
 | 40 | AI recipes (김종수) | `NO_INGREDIENTS` | 422 | 28 | Recipe supplement off and too few fridge (or chosen) ingredients, including an empty fridge | 냉장고 재료가 부족해서 레시피를 만들지 못했어요. 설정에서 레시피 재료 보충을 켜 보세요 | Generation failure screen | Not charged |
@@ -253,6 +253,7 @@ No data returns 200 with empty values; the screen draws its empty state.
 | Validation failure | AI output with missing fields or unusable units: ask once more, then 502 | Same |
 | Repeated failures | Failure-rate monitoring is the admin dashboard anomaly (API 61: the OCR failure rate in the last hour is at least twice the average of the same hour over the past 7 days) | After 3 failures in a row show "잠시 후 다시 시도해 주세요" (do not block the feature) |
 
+- Shared-photo preprocessing (#174): conversion failure or an output still above 5 MiB blocks upload and asks the user to choose another photo. This is a client-side failure, not a new server error code. Verify this behavior in #329 and API error handling in #112.
 - The server checks receipt photos (20, 21: 10 MB, jpg/png/heic) and cooking photos (51: 5 MiB, JPEG/PNG/WebP, #64) first and returns 413/415 on invalid size/type without calling OCR.
 - The frontend runs the same checks before upload (the server check is final).
 - No share photo -> `PHOTO_REQUIRED` (400).
