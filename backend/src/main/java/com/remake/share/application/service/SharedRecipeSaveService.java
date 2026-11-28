@@ -69,7 +69,7 @@ class SharedRecipeSaveService implements SaveSharedRecipeUseCase {
 	}
 
 	private SharedRecipe visiblePost(Long id) {
-		return posts.findById(id).filter(p -> p.status() == SharedRecipe.Status.VISIBLE)
+		return posts.findByIdForUpdate(id).filter(p -> p.status() == SharedRecipe.Status.VISIBLE)
 				.orElseThrow(() -> new BusinessException(ErrorCode.SHARED_RECIPE_NOT_FOUND));
 	}
 }

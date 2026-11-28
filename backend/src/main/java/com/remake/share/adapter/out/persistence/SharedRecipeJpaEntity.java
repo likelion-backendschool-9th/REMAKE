@@ -24,9 +24,9 @@ class SharedRecipeJpaEntity extends BaseTimeEntity {
 	private Long id;
 	@Column(nullable = false)
 	private Long recipeId;
-	@Column(nullable = false, columnDefinition = "text")
+	@Column(columnDefinition = "text")
 	private String title;
-	@Column(nullable = false)
+	@Column
 	private String imageKey;
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
