@@ -89,15 +89,17 @@ class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseC
 			throw limitExceeded(quota);
 		}
 		Long grantId = null;
-		if (quota.used() >= quota.limit() && quota.bonusRemaining() > 0) {
+		// 기본 횟수(baseUsed 기준)를 다 쓴 뒤에만 보상 횟수를 차감한다
+		if (quota.baseUsed() >= quota.limit() && quota.bonusRemaining() > 0) {
 			grantId = rewards.consume(userId, LocalDateTime.now(clock)).orElse(null);
 			if (enforced && grantId == null) {
 				throw limitExceeded(quota);
 			}
 		}
 		usageLogPort.save(userId, UsageType.RECIPE, grantId);
-		return new RecipeQuota(quota.limit(), quota.used() + 1,
-				quota.bonusRemaining() - (grantId == null ? 0 : 1), quota.resetsAt());
+		boolean usedBonus = grantId != null;
+		return new RecipeQuota(quota.limit(), quota.used() + 1, quota.baseUsed() + (usedBonus ? 0 : 1),
+				quota.bonusRemaining() - (usedBonus ? 1 : 0), quota.resetsAt());
 	}
 
 	@Override
@@ -128,8 +130,10 @@ class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseC
 	}
 
 	private RecipeQuota recipeQuota(Long userId, PlanQuota plan, LocalDate today) {
-		int used = usageLogPort.countSince(userId, UsageType.RECIPE, today.atStartOfDay());
-		return new RecipeQuota(plan.recipeDaily(), used, rewards.remaining(userId, LocalDateTime.now(clock)),
+		LocalDateTime from = today.atStartOfDay();
+		int used = usageLogPort.countSince(userId, UsageType.RECIPE, from);
+		int baseUsed = usageLogPort.countBaseSince(userId, UsageType.RECIPE, from);
+		return new RecipeQuota(plan.recipeDaily(), used, baseUsed, rewards.remaining(userId, LocalDateTime.now(clock)),
 				today.plusDays(1).atStartOfDay());
 	}
 

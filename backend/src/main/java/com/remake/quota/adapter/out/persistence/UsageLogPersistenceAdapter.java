@@ -31,6 +31,11 @@ class UsageLogPersistenceAdapter implements UsageLogPort, DeleteUsageLogsForUser
 	}
 
 	@Override
+	public int countBaseSince(Long userId, UsageType type, LocalDateTime from) {
+		return repository.countByUserIdAndTypeAndGrantIdIsNullAndCreatedAtGreaterThanEqual(userId, type, from);
+	}
+
+	@Override
 	public void save(Long userId, UsageType type, Long grantId) {
 		repository.save(UsageLogJpaEntity.of(userId, type, grantId));
 	}
