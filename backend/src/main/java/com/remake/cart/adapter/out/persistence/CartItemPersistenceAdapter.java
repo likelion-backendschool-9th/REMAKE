@@ -44,6 +44,11 @@ public class CartItemPersistenceAdapter
 	}
 
 	@Override
+	public List<CartItem> loadOwnedForUpdate(Long userId) {
+		return repository.findAllOwnedForUpdate(userId).stream().map(CartItemJpaEntity::toDomain).toList();
+	}
+
+	@Override
 	public long countOwned(Long userId) {
 		return repository.countByUserId(userId);
 	}
