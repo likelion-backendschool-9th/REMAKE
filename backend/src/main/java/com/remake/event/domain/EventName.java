@@ -40,6 +40,7 @@ public enum EventName {
 	SUBSCRIPTION_RENEWED("subscription_renewed", EventSource.SERVER, Set.of("payment_amount", "renewal_count")), // E86
 	SUBSCRIPTION_CANCELED("subscription_canceled", EventSource.SERVER, Set.of("subscribed_days")), // E87
 	SUBSCRIPTION_ENDED("subscription_ended", EventSource.SERVER, Set.of("end_reason", "subscribed_days")), // E88
+	SUBSCRIPTION_REFUNDED("subscription_refunded", EventSource.SERVER, Set.of("payment_amount", "refund_amount", "subscribed_days")), // E89
 	FRIDGE_LIST_VIEWED("fridge_list_viewed", EventSource.CLIENT, Set.of("total_count", "danger_count", "soon_count", "ok_count")), // E19
 	FRIDGE_FILTER_APPLIED("fridge_filter_applied", EventSource.CLIENT, Set.of("filter_type", "filter_value")), // E20
 	INGREDIENT_ADD_STARTED("ingredient_add_started", EventSource.CLIENT, Set.of("add_source")), // E21
