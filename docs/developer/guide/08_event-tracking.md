@@ -2,7 +2,7 @@
 
 이 프로젝트의 핵심 기능입니다. 사용자 행동을 이벤트로 쌓고 지표(KPI)·퍼널로 모니터링합니다. 팀원 모두 "이벤트 데이터를 남기는 API/모듈을 활용"했다고 쓸 수 있도록 **이준호가 공통 `EventTracker` 모듈과 수집 API**를 만들고, 각 담당자가 **자기 API에서 서버 이벤트를 발행**합니다.
 
-기준 문서: 이벤트 정의서 v2(피그마 기준, 2026-11-22, 노션) + 구독 환불 E89(#318). 현재 계약은 이벤트 80개, 속성 104개, 지표 21개, 화면 코드 41개. 영문 전체 목록은 [`docs/agent/spec/events.md`](../../agent/spec/events.md), 영역별 이벤트 표는 각 영역 문서(01~07)의 "발행 이벤트"에 있습니다.
+기준 문서: 이벤트 정의서 v2(피그마 기준, 2026-11-22, 노션) + 구독 환불 E89(#318). 현재 계약은 이벤트 80개(P0 37, P1 38, P2 5 / CLIENT 45, SERVER 35), 속성 104개, 지표 21개, 화면 코드 41개. E50 우선순위는 P0(#53, #348). 영문 전체 목록은 [`docs/agent/spec/events.md`](../../agent/spec/events.md), 영역별 이벤트 표는 각 영역 문서(01~07)의 "발행 이벤트"에 있습니다.
 
 ## 1. 구조
 
@@ -98,7 +98,7 @@ track('receipt_item_edited', { item_index: 2, edit_field: 'amount' });
 
 ## 8. 지금 코드와 다른 점
 
-- `EventName`은 정의서 80개와 맞습니다(`EventContractTest`). `cook_feedback_answered`(E50)는 `recipe_id`·`recommended`를 씁니다. E86 `subscription_renewed` 호출은 자동 결제 작업(#168), E89 `subscription_refunded` 호출은 환불 API 구현(#343)에서 이어집니다.
+- `EventName`은 정의서 80개와 맞습니다(`EventContractTest`). `cook_feedback_answered`(E50)는 `recipe_id`·`recommended`이며 우선순위 **P0**입니다(#348). E86 `subscription_renewed` 호출은 자동 결제 작업(#168), E89 `subscription_refunded` 호출은 환불 API 구현(#343)에서 이어집니다.
 - `Screen` enum은 정의서 화면 코드 41개(+ `UNKNOWN`)와 맞습니다. 스케줄·배치처럼 화면이 없으면 `null`을 넘깁니다.
 - 속성 코드 값은 소문자입니다(#172). `storage`·`filter_value`만 정의서대로 대문자입니다. 검증기와 서버 송신은 한 PR에서 같이 바꿨고, 이미 쌓인 대문자 행은 Flyway `V30`으로 소문자로 고쳤습니다.
 - 우선순위는 정의서를 따릅니다. 결정 [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58)대로 공유·장바구니·보상 이벤트는 P1이고, #58의 어드민 부분(ADMIN 접근 제어 선행, 분석 API)은 운영자 페이지 a1~a3·a6에서 조회(API 61~64)로 정리됐습니다(11/26).
