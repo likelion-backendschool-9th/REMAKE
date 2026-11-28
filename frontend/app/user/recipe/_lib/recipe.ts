@@ -97,6 +97,11 @@ export function recipePath(recipeId: number): string {
   return `/user/recipe/recipes/${recipeId}`;
 }
 
+/** 생성·다시 받기 결과 주소(p4.1.3) */
+export function recipeResultPath(recipeId: number): string {
+  return `/user/recipe/results/${recipeId}`;
+}
+
 /** 공유 레시피 상세 주소(p4.1.4.1) */
 export function sharedRecipePath(sharedRecipeId: number): string {
   return `${SHARED_RECIPES_PATH}/${sharedRecipeId}`;
