@@ -38,7 +38,7 @@ import com.remake.receipt.adapter.out.ocr.GeminiReceiptTextAdapter;
 import com.remake.receipt.application.port.out.ReceiptImageStoragePort;
 import com.remake.recipe.adapter.out.ai.GeminiRecipeAdapter;
 import com.remake.user.adapter.out.mail.LoggingDeletionCodeMailAdapter;
-import com.remake.user.adapter.out.payment.TossPaymentsAdapter;
+import com.remake.subscription.adapter.out.payment.TossPaymentsAdapter;
 import com.remake.user.domain.AuthProvider;
 
 /**
