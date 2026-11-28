@@ -99,6 +99,8 @@
 
 `users`, `user_excluded_ingredients`, `refresh_tokens`, `account_deletion_requests`, `subscriptions`, `subscription_payments`. 컬럼은 [`../erd.md`](../erd.md)를 보세요.
 
+백엔드 패키지(#150 A, #344): `auth`(로그인·토큰), `user`(회원·설정·온보딩·탈퇴), `subscription`(구독·토스·해지·환불·자동결제 Job). API 경로의 `/user/subscription`은 그대로입니다.
+
 ## 구현 메모
 
 - JWT([#42](https://github.com/likelion-backendschool-9th/REMAKE/issues/42) A안): 액세스(30분)·리프레시(14일) 모두 HttpOnly 쿠키(`Secure; SameSite=Lax`). 응답 본문에 토큰을 넣지 않고 프론트는 `Authorization` 헤더를 쓰지 않아요. 리프레시는 DB에 해시로만 저장하고, 로그아웃하면 행을 지워요.

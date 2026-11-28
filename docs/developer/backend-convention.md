@@ -13,7 +13,7 @@
 
 ```
 com.remake
-├── user / auth / ingredient / receipt / recipe / mealplan / cart / share / quota / notification / event / admin
+├── user / auth / subscription / ingredient / receipt / recipe / mealplan / cart / share / quota / notification / event / admin
 │   ├── domain                  핵심 객체와 규칙 (Spring, JPA 모름)
 │   ├── application
 │   │   ├── port
@@ -26,7 +26,7 @@ com.remake
 │       │   └── scheduler       예약 작업 (필요한 기능만)
 │       └── out
 │           ├── persistence     JPA Entity, Repository, Port 구현
-│           └── ai / ocr / oauth / filestorage / mail  외부 서비스 호출 (필요한 기능만)
+│           └── ai / ocr / oauth / filestorage / mail / payment  외부 서비스 호출 (필요한 기능만)
 │
 └── global                      모든 기능이 같이 쓰는 것
     ├── error                   ErrorCode, BusinessException, GlobalExceptionHandler
@@ -39,8 +39,9 @@ com.remake
 
 | 기능 폴더 | 테이블 |
 |---|---|
-| `user` | users, user_excluded_ingredients, account_deletion_requests, subscriptions, subscription_payments |
+| `user` | users, user_excluded_ingredients, account_deletion_requests |
 | `auth` | refresh_tokens |
+| `subscription` | subscriptions, subscription_payments |
 | `ingredient` | ingredient_categories, ingredient_catalog, ingredients, ingredient_logs |
 | `receipt` | receipts, receipt_items |
 | `recipe` | recipes, recipe_ingredients, recipe_steps, saved_recipes |
@@ -83,7 +84,7 @@ com.remake
 | 파일 저장 (영수증 사진, 조리 사진) | `adapter/out/filestorage` | `receipt/adapter/out/filestorage` |
 | 소셜 연결 끊기 (카카오 unlink / 네이버 delete) | `adapter/out/oauth` | `user/adapter/out/oauth` |
 | 메일 발송 (카카오·구글 계정 삭제 인증번호) | `adapter/out/mail` | `user/adapter/out/mail` |
-| 결제 (토스 billingKey 발급·자동결제) | `adapter/out/payment` | `user/adapter/out/payment` |
+| 결제 (토스 billingKey 발급·자동결제) | `adapter/out/payment` | `subscription/adapter/out/payment` |
 
 - 스케줄러는 Controller처럼 `UseCase`만 부릅니다. 두 번 돌아도 결과가 같게 만들고, 동시에 도는 중복은 DB 유니크 키로 막습니다.
 - Service는 외부 서비스를 직접 부르지 않고 `port/out` 인터페이스만 부릅니다. 외부 서비스 호출 코드는 위 adapter 폴더에서 그 인터페이스를 구현합니다.
