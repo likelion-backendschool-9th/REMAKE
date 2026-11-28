@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 import jakarta.servlet.http.Cookie;
 
@@ -205,6 +206,25 @@ class ReceiptScanApiTest extends IntegrationTestSupport {
 				.andExpect(status().is(422))
 				.andExpect(jsonPath("$.code").value("RECEIPT_TOO_OLD"));
 		assertFailureEvent("RECEIPT_TOO_OLD");
+	}
+
+	@Test
+	void 하루_레시피_횟수를_다_써도_스캔은_성공하고_사용_기록을_남기지_않는다() throws Exception {
+		for (int i = 0; i < 2; i++) {
+			jdbcTemplate.update("INSERT INTO usage_logs (user_id, type, created_at) VALUES (?, 'RECIPE', ?)", userId,
+					LocalDateTime.of(2026, 3, 4, 9, i));
+		}
+		stubReceiptText("판매일 2025-09-04");
+
+		mockMvc.perform(multipart(SCAN_PATH).file(receiptImage()).cookie(accessToken()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.items[0].name").value("우유"));
+
+		awaitEventWrites();
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM events WHERE event_name = 'receipt_scan_succeeded' AND user_id = ?", Integer.class,
+				userId)).isEqualTo(1);
+		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM usage_logs", Integer.class)).isEqualTo(2);
 	}
 
 	@Test

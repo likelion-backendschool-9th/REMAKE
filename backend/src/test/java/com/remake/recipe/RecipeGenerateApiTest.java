@@ -253,6 +253,33 @@ class RecipeGenerateApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void AI를_기다리는_사이_다른_요청이_마지막_횟수를_쓰면_429이고_저장도_추가_차감도_하지_않는다() throws Exception {
+		Long egg = fridge("DAIRY_EGG", "계란", 5);
+		Long onion = fridge("VEGETABLE", "양파", 5);
+		jdbcTemplate.update("INSERT INTO usage_logs (user_id, type, created_at) VALUES (?, 'RECIPE', ?)", userId,
+				LocalDateTime.of(2026, 3, 4, 9, 0));
+		when(geminiRecipeAdapter.generate(any())).thenAnswer(invocation -> {
+			// 횟수 확인은 이미 통과했다. AI 응답을 기다리는 동안 동시 요청이 마지막 횟수를 쓴다.
+			jdbcTemplate.update("INSERT INTO usage_logs (user_id, type, created_at) VALUES (?, 'RECIPE', ?)", userId,
+					LocalDateTime.of(2026, 3, 4, 9, 30));
+			return aiRecipe(egg, onion);
+		});
+
+		generate("{\"mode\":\"QUICK\"}")
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("GENERATION_LIMIT_EXCEEDED"))
+				.andExpect(jsonPath("$.details.remaining").value(0));
+
+		sentRequest(1);
+		assertThat(recipeRows()).isZero();
+		assertThat(usageRows()).isEqualTo(2);
+		assertThat(eventProperties("quota_exceeded"))
+				.contains("\"limit_feature\": \"recipe\"", "\"limit_total\": 2", "\"used_count\": 2");
+		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM events WHERE event_name = 'quota_exceeded'",
+				Integer.class)).isEqualTo(1);
+	}
+
+	@Test
 	void AI가_한_번_실패하면_다시_시도하고_성공하면_한_번만_차감한다() throws Exception {
 		Long egg = fridge("DAIRY_EGG", "계란", 5);
 		Long onion = fridge("VEGETABLE", "양파", 5);
