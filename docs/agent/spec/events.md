@@ -6,11 +6,17 @@ Source of truth: the Korean "Remake event definition (Figma-based)" v2 (2026-11-
 - API numbers are the numbers in [`api-summary.md`](api-summary.md); error codes are from [`errors.md`](errors.md).
 - There are no admin events. The operator page (Figma, 11/26) shows the metrics in a1-a3 and the raw events in a6 (APIs 61-64).
 
+## Contract alignment and publication QA
+
+- PR [#290](https://github.com/likelion-backendschool-9th/REMAKE/pull/290) aligned event names and allowed properties and added `EventContractTest`. PR [#302](https://github.com/likelion-backendschool-9th/REMAKE/pull/302) aligned property values and screen codes and completed #172. Both PRs are merged; use their implementation as the baseline.
+- Following the [handoff](https://github.com/likelion-backendschool-9th/REMAKE/issues/196#issuecomment-7181075194), 이준호 (@JUNHORANG) continues actual publication and ingestion QA in [#196](https://github.com/likelion-backendschool-9th/REMAKE/issues/196). Preserve 김재연's original WBS 10.6 assignment as history. Each feature owner still implements its SERVER events; each screen's frontend owner still implements CLIENT events.
+- Contract alignment does not establish runtime QA completion. Verify actual actions for missing or duplicate events, property values, screen codes and common headers, PII filtering, seed separation, retention, and transmission failures that must not disrupt user flows. Record results in #196.
+
 ## Rules
 
 - **Collection**: events go into the server `events` table (no external analytics tool). The frontend sends CLIENT events to `POST /api/v1/user/events` (API 56, batch <= 50, 202). The server records SERVER events itself.
 - **One action is recorded once**, as CLIENT or SERVER (column Source). Results that matter (OCR and AI results, quota, notifications, rewards, ingredient add/deduct, cart add/remove) are SERVER.
-- **Naming**: lowercase snake_case. Events are `object_action` in the past tense. Booleans `is_`/`has_`/`was_`, durations `_ms`/`_sec`, money `_amount`, counts `_count`. Code values are lowercase.
+- **Naming**: lowercase snake_case. Events are `object_action` in the past tense. Booleans `is_`/`has_`/`was_`, durations `_ms`/`_sec`, money `_amount`, counts `_count`. Code values are lowercase except `storage` and `filter_value`, which keep the uppercase values listed in the property table.
 - **Priority**: P0 is required to compute a PRD metric, P1 helps explain causes, P2 if time allows.
 - **Publisher**: 이준호 builds the shared `EventTracker` module (async insert, PII filter) and the ingest API. Each owner calls `EventTracker` where their API ends (success, failure, or rejection). CLIENT events are sent by the frontend owner of the screen.
 - **Errors**: put the error code from `errors.md` in `error_code` unchanged. Errors the server knows (AI, OCR, quota, login) are SERVER events; errors seen on a screen are `error_shown`. AI failures are not written to `usage_logs`, so the event is the only record.
@@ -309,6 +315,10 @@ E88 vs E89: `subscription_ended` covers ends **without** a cooling-off refund (p
 | M18 | Discarded food cost this month | monthly sum of `ingredient_discarded.cost_amount` (`has_price=true` only; count unpriced ones separately) | E26 | falling trend |
 | M19 | Spending pattern usage | users with `consumption_pattern_viewed` / users with `receipt_list_viewed` | E35, E38 | usage check |
 | M20 | Error exposure rate | `error_shown` / `screen_viewed`, by `error_code` and `screen_name` | E02, E03, E10, E31, E41, E54, E81 | lower is better |
+
+### M05: receipt re-registration (open)
+
+Receipt re-registration of the same numbered purchase restores the receipt and spending without a second stock/cart apply (#266). It can therefore emit `receipt_saved` with `registered_count=0`; this is a successful registration, not an OCR failure. The M05 formula above divides by that count and does not yet define how to handle these events. The planning and metric owner must confirm whether to exclude them from M05 or measure re-registration separately, including the comparison population and zero-denominator display. Track the decision in [#186](https://github.com/likelion-backendschool-9th/REMAKE/issues/186); do not infer an approved exclusion rule or change the event contract from this note.
 
 ## Screen codes
 

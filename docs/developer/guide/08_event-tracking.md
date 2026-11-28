@@ -4,6 +4,12 @@
 
 기준 문서: 이벤트 정의서 v2(피그마 기준, 2026-11-22, 노션) + 구독 환불 E89(#318). 현재 계약은 이벤트 80개(P0 37, P1 38, P2 5 / CLIENT 45, SERVER 35), 속성 104개, 지표 21개, 화면 코드 41개. E50 우선순위는 P0(#53, #348). 영문 전체 목록은 [`docs/agent/spec/events.md`](../../agent/spec/events.md), 영역별 이벤트 표는 각 영역 문서(01~07)의 "발행 이벤트"에 있습니다.
 
+## 계약 정합성과 발행 QA
+
+- PR [#290](https://github.com/likelion-backendschool-9th/REMAKE/pull/290)은 이벤트 이름·허용 속성을 맞추고 `EventContractTest`를 추가했습니다. PR [#302](https://github.com/likelion-backendschool-9th/REMAKE/pull/302)는 속성 값·화면 코드를 맞추고 #172를 완료했습니다. 두 PR 모두 병합됐으며 그 구현을 기준으로 이어갑니다.
+- [인수인계](https://github.com/likelion-backendschool-9th/REMAKE/issues/196#issuecomment-7181075194)에 따라 실제 발행·적재 QA는 이준호(@JUNHORANG)가 [#196](https://github.com/likelion-backendschool-9th/REMAKE/issues/196)에서 이어갑니다. WBS 10.6의 최초 담당 김재연 기록은 이력으로 보존합니다. 각 기능의 SERVER 이벤트 구현은 기능 담당자, CLIENT 이벤트 구현은 해당 화면의 프론트 담당자가 계속 맡습니다.
+- 계약 정합성이 맞아도 실제 동작 QA가 끝난 것은 아닙니다. 행동별 누락·중복, 속성 값·화면 코드·공통 헤더, 개인정보 필터, 시드 분리·보관 기간, 전송 실패가 사용자 흐름을 막지 않는지를 확인하고 결과는 #196에 남깁니다.
+
 ## 1. 구조
 
 ```
@@ -19,7 +25,7 @@
 
 모든 이벤트에 붙는 공통 값: `user_id`(내부 회원 번호, 로그인 전 null, 탈퇴해도 번호만 남음), `session_id`(앱을 연 뒤 30분 무행동이면 새 세션), `source`(CLIENT/SERVER), `screen`(화면 코드, 서버 이벤트는 요청 헤더 `X-Screen`, 정기 작업은 null), `platform`(TWA/PWA/WEB, 헤더 `X-Client-Platform`), `app_version`(헤더 `X-App-Version`), `is_seed`(시연용 가상 이벤트), `occurred_at`(한국 시간).
 
-이벤트별 값은 `properties`(JSON). **중첩 없이 문자·숫자·참거짓만, 25개 이하.** 코드값은 소문자입니다.
+이벤트별 값은 `properties`(JSON). **중첩 없이 문자·숫자·참거짓만, 25개 이하.** 코드값은 소문자이며, `storage`·`filter_value`는 속성 표에 정의된 대문자 값을 유지합니다.
 
 ```json
 { "name": "receipt_saved", "screen": "receipt_result",
@@ -95,6 +101,10 @@ track('receipt_item_edited', { item_index: 2, edit_field: 'amount' });
 - KPI 20개(M01~M20): 온보딩 완료율, 첫 재료 등록률, OCR 성공률·품목 수정률, 영수증 등록 소요 시간, 임박 알림 확인율, 임박 재료 소진율, 레시피 생성 → 요리 완료율, AI 생성 성공률·응답 시간, 식단표 → 칸 열람률, 장바구니 → 냉장고 전환율, 공유 작성 완료율, 공유 저장율·신고율, D1·D7·WAU, AI·OCR 호출 수와 한도 소진율, 핵심 흐름 퍼널, 이번 달 버린 식재료 금액, 소비 패턴 이용률, 오류 노출률. 계산식은 영문 [`events.md`](../../agent/spec/events.md) Metrics.
 - 실사용자가 적으므로 시연용 **시드 데이터 생성 스크립트**를 만들고(`is_seed = true`), 지표 계산 때 실제 데이터만 보려면 `is_seed = false`로 거릅니다.
 - 어드민(모니터링)은 운영자 페이지 a1~a3·a6에서 조회합니다(API 61~64, 11/26, 백엔드 이준호).
+
+### M05 영수증 재등록 집계: 미결
+
+같은 번호가 있는 구매 건의 영수증 재등록은 영수증·식비를 복구하되 냉장고·장바구니를 다시 반영하지 않습니다(#266). 따라서 `receipt_saved`의 `registered_count=0`도 정상 등록이며 OCR 실패가 아닙니다. M05는 이 값으로 나누므로, 이 이벤트를 M05에서 제외할지 또는 재등록을 별도 측정할지, 비교 대상과 분모 0 표시까지 기획·지표 담당자가 확인해야 합니다. 결정은 [#186](https://github.com/likelion-backendschool-9th/REMAKE/issues/186)에서 추적하며, 이 설명만으로 제외 정책을 확정하거나 이벤트 계약을 바꾸지 않습니다.
 
 ## 8. 지금 코드와 다른 점
 

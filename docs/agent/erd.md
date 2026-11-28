@@ -32,11 +32,11 @@
 | 10 | `receipts` | Receipts | One registered receipt. Kept 6 months. Deleting removes it from spending and patterns (fridge ingredients stay) | 3 receipts | 이동준 | 9 |
 | 11 | `receipt_items` | Receipt items | One food line of a receipt | 3 receipts | 이동준 | 9 |
 | 12 | `recipes` | Recipes | AI-generated recipe. Never edited after creation | 4 AI recipes | 김종수 | 9 |
-| 13 | `recipe_ingredients` | Recipe ingredients | Ingredients and amounts | 4 AI recipes | 김종수 | 8 |
+| 13 | `recipe_ingredients` | Recipe ingredients | Ingredients and amounts | 4 AI recipes | 김종수 | 9 |
 | 14 | `recipe_steps` | Recipe steps | Cooking steps | 4 AI recipes | 김종수 | 5 |
 | 15 | `saved_recipes` | Saved recipes | My saved list. Saving a shared recipe points at the original (no copy) | 4 AI recipes | 김종수 | 6 |
 | 16 | `usage_logs` | Generation usage | One row per successful recipe or meal-plan generation. Source of remaining counts | 4 AI recipes | 김종수 | 5 |
-| 17 | `meal_plans` | Meal plans | One meal-plan generation request and its result (generating, done, failed) | 5 meal plan | 한윤수 | 9 |
+| 17 | `meal_plans` | Meal plans | One meal-plan generation request and its result (generating, done, failed) | 5 meal plan | 한윤수 | 10 |
 | 18 | `meal_plan_slots` | Meal plan slots | One recipe per date and meal | 5 meal plan | 한윤수 | 8 |
 | 19 | `cart_items` | Cart | Missing ingredients (added automatically by saving a shared recipe, saving my recipe with supplemented ingredients, and meal-plan generation) | 7 sharing/cart | 최유리 | 10 |
 | 20 | `shared_recipes` | Shared recipes | Posts in the shared space (fully anonymous) | 7 sharing/cart | 최유리 | 7 |
@@ -47,7 +47,7 @@
 | 25 | `events` | Events | Raw behavior events (frontend and server). Names and properties in `spec/events.md` | common (events) | 이준호 | 12 |
 | 26 | `ingredient_catalog` | Ingredient unit dictionary | Ingredient name -> unit, category, shelf life. Used only inside the server to pick units (API 14, 15, 16, 21). Never exposed by screens or APIs | 2 fridge | 김재연 | 6 |
 | 27 | `manual_ingredient_expenses` | Manual ingredient expenses | Registration snapshots for ingredients added without a receipt | 3 receipts | 이동준 | 9 |
-| 28 | `receipt_first_applications` | Receipt first stock applications | First fridge/cart apply for a numbered purchase; survives receipt delete so re-register skips stock/cart (#266) | 3 receipts | 이동준 | 6 |
+| 28 | `receipt_first_applications` | Receipt first stock applications | First fridge/cart apply for a numbered purchase; survives receipt delete so re-register skips stock/cart (#266) | 3 receipts | 이동준 | 7 |
 | 29 | `shared_recipe_weekly_settlements` | Weekly settlement completion | One completion record per week, including empty weeks; prevents duplicate rank/reward settlement | 7 sharing/cart | 최유리 | 2 |
 | 30 | `user_sanctions` | Sanctions | One row per violation confirmed by report handling (1st-4th sanction) | admin operations | 이상호 | 9 |
 
@@ -708,7 +708,7 @@ Posts in the shared space (fully anonymous). Owner 최유리 (7 sharing/cart).
 | `recipe_id` | bigint | FK | recipes | no |  | Shared recipe (the same recipe once per week) |
 | `title` | varchar |  |  | no |  | Title |
 | `image_key` | varchar |  |  | no |  | Path of the single cooking photo |
-| `status` | varchar |  |  | no | VISIBLE | VISIBLE/HIDDEN (hidden by a violation decision)/DELETED (deleted by an operator; the row stays and is shown nowhere) |
+| `status` | varchar |  |  | no | VISIBLE | VISIBLE/HIDDEN (hidden by a violation decision)/DELETED (deleted by an operator; retain the row but exclude the post from shared lists, shared detail, rankings, and rewards. Saved lists keep the original recipe; already granted weekly rewards are not taken back) |
 | `created_at` | timestamp |  |  | no |  | Shared time |
 | `updated_at` | timestamp |  |  | no |  | Status change time |
 
@@ -966,7 +966,7 @@ These values appear on screens but have no column. They are computed from the so
 | Cart -> fridge | Fill storage and expiry from the category's `default_storage` and `default_shelf_life_days`; leave the price empty. The category was set when the item was added. Delete moved items from `cart_items` |
 | Receipt cart deduction (#57) | Only explicitly selected cart rows, using the final registered name and identical unit. Sum deductions per target, reject totals above the remaining amount, subtract and delete only at zero. Skip leaves the cart unchanged. Join the receipt/fridge transaction; failures roll back all changes |
 | Meal delete / replace | Delete removes the `meal_plan_slots` row. Replace generates a new recipe, changes `recipe_id`, and uses one daily recipe generation (one `usage_logs` RECIPE row). Only slots from today on; past slots cannot be changed |
-| Meal-plan generation | API 38 checks the start date, quota, and overlap, creates `meal_plans` as `GENERATING`, and replies 202. A server job fills the slots and the cart, sets `COMPLETED`, charges one `usage_logs` row, and creates a `MEAL_PLAN_COMPLETED` notification. Too few ingredients, AI error, or timeout set `FAILED`, charge nothing, and create `MEAL_PLAN_FAILED`. Meal-plan notifications ignore `notification_enabled`. A new request while one is `GENERATING` → `MEAL_PLAN_IN_PROGRESS` (409). `MEAL_PLAN_COMPLETED` sets `notifications.meal_plan_id` (tap opens p5 at the start date); `MEAL_PLAN_FAILED` opens the setup screen. No failure-reason column. Overwrite deletes the old overlapping slots when the job completes, so a failed job keeps the existing plan. (deferred, #144): whether `GENERATING`/`FAILED` plans show in the calendar (39) or count for overlap |
+| Meal-plan generation | API 38 checks the start date, quota, and overlap, creates `meal_plans` as `GENERATING`, and replies 202. A server job fills the slots and the cart, sets `COMPLETED`, charges one `usage_logs` row, and creates a `MEAL_PLAN_COMPLETED` notification. Too few ingredients, AI error, or timeout set `FAILED`, charge nothing, and create `MEAL_PLAN_FAILED`. Meal-plan notifications ignore `notification_enabled`. A new request while one is `GENERATING` → `MEAL_PLAN_IN_PROGRESS` (409). `MEAL_PLAN_COMPLETED` sets `notifications.meal_plan_id` (tap opens p5 at the start date); `MEAL_PLAN_FAILED` opens the setup screen. No failure-reason column. Overwrite deletes the old overlapping slots when the job completes, so a failed job keeps the existing plan. Calendar and overlap (#144, decided 11/25): only `COMPLETED` plans count for calendar (39) periods, dates with meals, and `hasAnyMealPlan`; `GENERATING`/`FAILED` are excluded. Overlap is checked against existing slots regardless of plan status (generating/failed plans have no slots) |
 | Meal-plan overwrite | The start date can only be today or later, so past days never change. Delete existing slots on dates in the requested period (start date through the maximum days, including days not made for lack of ingredients, #78), except today's meals already cooked (`cooked_at` set): they keep their recipe and the new plan does not fill them. The delete happens when the generation job completes, not at acceptance |
 | Cooked mark | Cooking a recipe opened from today's slot sets that slot's `cooked_at` (never for other days) |
 | Receipt delete | Delete the `receipts` and `receipt_items` rows (image included). It leaves spending and patterns; registered fridge ingredients stay (only `receipt_item_id` is cleared). `receipt_first_applications` stays until the 6-month purchase-date cleanup or withdrawal |
