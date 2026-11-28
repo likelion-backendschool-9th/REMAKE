@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.remake.ingredient.domain.Ingredient;
 import com.remake.receipt.application.port.in.RecordManualIngredientExpenseUseCase;
 import com.remake.receipt.application.port.in.UpdateManualIngredientExpensePriceUseCase;
+import com.remake.receipt.application.port.in.UpdateManualIngredientExpenseUseCase;
 import com.remake.receipt.application.port.out.ManualIngredientExpensePort;
 
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,8 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 class ManualIngredientExpenseService
-		implements RecordManualIngredientExpenseUseCase, UpdateManualIngredientExpensePriceUseCase {
+		implements RecordManualIngredientExpenseUseCase, UpdateManualIngredientExpensePriceUseCase,
+		UpdateManualIngredientExpenseUseCase {
 
 	private final ManualIngredientExpensePort expenses;
 
@@ -29,6 +31,14 @@ class ManualIngredientExpenseService
 	@Override
 	@Transactional(propagation = Propagation.MANDATORY)
 	public void updatePrice(Long ingredientId, Long price) {
-		expenses.updatePrice(ingredientId, price);
+		update(new Command(ingredientId, null, null, null, null, null, true, price));
+	}
+
+	@Override
+	@Transactional(propagation = Propagation.MANDATORY)
+	public void update(Command command) {
+		if (command.hasChanges()) {
+			expenses.update(command);
+		}
 	}
 }

@@ -36,6 +36,8 @@ import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.ingredient.domain.StorageLocation;
 import com.remake.receipt.application.port.in.DeleteReceiptsForUserUseCase;
 import com.remake.receipt.application.port.in.UpdateManualIngredientExpensePriceUseCase;
+import com.remake.receipt.application.port.in.UpdateManualIngredientExpenseUseCase;
+import com.remake.receipt.application.port.in.UpdateManualIngredientExpenseUseCase.Command;
 import com.remake.support.IntegrationTestSupport;
 import com.remake.user.domain.UserRole;
 
@@ -61,6 +63,9 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 
 	@Autowired
 	private UpdateManualIngredientExpensePriceUseCase updateManualExpensePrice;
+
+	@Autowired
+	private UpdateManualIngredientExpenseUseCase updateManualExpense;
 
 	private Long owner;
 
@@ -222,6 +227,26 @@ class ExpenseHistoryApiTest extends IntegrationTestSupport {
 				.andExpect(status().isNotFound());
 
 		assertThat(manualPrice(id)).isEqualTo(1500L);
+	}
+
+	@Test
+	void 직접_등록_지출_변경을_한번에_반영하고_미변경_가격과_등록일을_유지한다() throws Exception {
+		long id = registerIngredient(owner, "3000");
+		Long categoryId = jdbcTemplate.queryForObject(
+				"SELECT id FROM ingredient_categories WHERE code = 'VEGETABLE'", Long.class);
+		String originalDate = jdbcTemplate.queryForObject(
+				"SELECT created_at::text FROM manual_ingredient_expenses WHERE ingredient_id = ?", String.class, id);
+
+		transactionTemplate.executeWithoutResult(status -> updateManualExpense.update(new Command(
+				id, "대파", categoryId, StorageLocation.FRIDGE, new BigDecimal("2"), IngredientUnit.BUNCH, false, null)));
+		assertThat(jdbcTemplate.queryForObject("""
+				SELECT concat_ws(':', name, category_id, storage, trim_scale(amount), unit, price, created_at)
+				FROM manual_ingredient_expenses WHERE ingredient_id = ?
+				""", String.class, id)).isEqualTo("대파:" + categoryId + ":FRIDGE:2:BUNCH:3000:" + originalDate);
+
+		transactionTemplate.executeWithoutResult(status -> updateManualExpense.update(new Command(
+				id, null, null, null, null, null, true, null)));
+		assertThat(manualPrice(id)).isNull();
 	}
 
 	@Test
