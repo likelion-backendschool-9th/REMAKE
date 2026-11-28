@@ -52,6 +52,16 @@ export function formatServings(servings: number): string {
 }
 
 /**
+ * 서버가 준 소비기한 dDay(정수)를 그대로 표시한다. 계산하지 않는다.
+ * -2 → "폐기-2", 0 → "D-DAY", 3 → "D-3"
+ */
+export function formatDDay(dDay: number): string {
+  if (dDay < 0) return `폐기-${-dDay}`;
+  if (dDay === 0) return "D-DAY";
+  return `D-${dDay}`;
+}
+
+/**
  * 알림 묶음 제목: 오늘이면 "오늘", 지난 날이면 "N일 전". 날짜만 비교한다.
  * 화면 묶음 표시용이며 소비기한처럼 서버가 정하는 값에는 쓰지 않는다.
  */

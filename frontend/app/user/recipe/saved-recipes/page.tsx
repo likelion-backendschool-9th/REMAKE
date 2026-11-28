@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 
 /** p4.1 레시피 */
 export default function SavedRecipesPage() {
-  return <RecipesContainer />;
+  return <RecipesContainer live />;
 }

@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { ArrowRightIcon } from "@solar-icons/react/linear";
 
 import { ConfirmModal } from "@/components/ConfirmModal/ConfirmModal";
 import { MainHeader } from "@/components/MainHeader/MainHeader";
+import { Toast } from "@/components/Toast/Toast";
+import { useTimedToast } from "@/hooks/useTimedToast";
+import { getErrorMessage } from "@/lib/error-messages";
+import { SCREENS } from "@/lib/events/screens";
+import { trackRecipeGenerateStarted } from "@/lib/events/tracker";
 import { MAIN_TABS, NOTIFICATIONS_HREF, SETTINGS_HREF } from "@/lib/navigation";
+import { useProfileQuery } from "@/lib/queries/profile";
+import { useGenerateRecipeMutation } from "@/lib/queries/recipes";
 
-import { CUSTOM_RECIPE_PATH, RECIPE_HOME_PATH } from "../../../_lib/recipe";
+import { RecipeGenerationStatus } from "../../../_components/RecipeGenerationStatus/RecipeGenerationStatus";
+import { CUSTOM_RECIPE_PATH, RECIPE_HOME_PATH, recipeResultPath } from "../../../_lib/recipe";
 import type { SavedRecipeList, WeeklyTopItem } from "../../_lib/saved-recipes";
 import { SavedRecipeSection } from "../SavedRecipeSection/SavedRecipeSection";
 import { WeeklyTopSection } from "../WeeklyTopSection/WeeklyTopSection";
@@ -25,6 +34,8 @@ type RecipesContainerProps = {
   notice?: { message: string; unreadCount: number };
   /** 빠른 레시피 생성 모달을 처음부터 연다. 미리보기용 */
   initialQuickModalOpen?: boolean;
+  /** true면 빠른 생성(API 28)과 프로필(API 5)을 실제로 부른다. 미리보기(app/dev)는 false라 요청을 보내지 않는다 */
+  live?: boolean;
 };
 
 /**
@@ -37,8 +48,81 @@ export function RecipesContainer({
   savedRecipes,
   notice,
   initialQuickModalOpen = false,
+  live = false,
 }: RecipesContainerProps) {
+  const router = useRouter();
   const [isQuickModalOpen, setIsQuickModalOpen] = useState(initialQuickModalOpen);
+  const [generationError, setGenerationError] = useState<unknown>(null);
+  /** 생성 중에 뒤로 가기로 빠져나왔는지. 이때는 응답이 와도 결과 화면으로 보내지 않는다 */
+  const [hasLeft, setHasLeft] = useState(false);
+  const toast = useTimedToast<string>();
+  const mountedRef = useRef(false);
+  /** 생성 요청 번호. 뒤로 가기·재시도로 번호가 바뀐 옛 요청의 응답은 무시한다 */
+  const attemptRef = useRef(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // E39에 필요한 가구원 수·재료 보충 설정(API 5). 아직 못 불렀으면 1·false
+  const { data: profile } = useProfileQuery({ enabled: live });
+  const generateMutation = useGenerateRecipeMutation();
+
+  const startQuickGeneration = () => {
+    if (generateMutation.isPending) return;
+    attemptRef.current += 1;
+    const attempt = attemptRef.current;
+    setHasLeft(false);
+    setGenerationError(null);
+
+    trackRecipeGenerateStarted(SCREENS.recipeCreate, {
+      recipe_mode: "quick",
+      servings: profile?.householdSize ?? 1,
+      option_count: 0,
+      supplement_enabled: profile?.recipeSupplementEnabled ?? false,
+    });
+    generateMutation.mutate(
+      { body: { mode: "QUICK" }, screen: SCREENS.recipeCreate },
+      {
+        onSuccess: (data) => {
+          if (!mountedRef.current || attemptRef.current !== attempt) return;
+          router.push(recipeResultPath(data.id));
+        },
+        onError: (error) => {
+          if (!mountedRef.current || attemptRef.current !== attempt) return;
+          setGenerationError(error);
+          toast.show(getErrorMessage(error));
+        },
+      },
+    );
+  };
+
+  /** 생성 화면에서 빠져나와 레시피 홈으로 돌아온다. 아직 오는 중인 응답은 무시한다 */
+  const leaveGeneration = () => {
+    attemptRef.current += 1;
+    setHasLeft(true);
+    setGenerationError(null);
+  };
+
+  const isGenerating = live && generateMutation.isPending && !hasLeft;
+  const hasGenerationError = live && generationError !== null;
+
+  if (isGenerating || hasGenerationError) {
+    return (
+      <>
+        <RecipeGenerationStatus
+          status={hasGenerationError ? "error" : "loading"}
+          error={generationError}
+          onRetry={startQuickGeneration}
+          onBack={leaveGeneration}
+        />
+        <ToastArea message={toast.value} isLeaving={toast.isLeaving} onLeft={toast.remove} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -91,14 +175,44 @@ export function RecipesContainer({
         isOpen={isQuickModalOpen}
         onClose={() => setIsQuickModalOpen(false)}
         onConfirm={() => {
-          // TODO: API 28({ mode: "QUICK" })을 보내고 생성 결과(p4.1.3)로 이동. 기다리는 동안·실패·횟수 소진은 그 화면 상태
+          if (!live) {
+            setIsQuickModalOpen(false);
+            return;
+          }
+          // 중복 클릭 방지
+          if (generateMutation.isPending) return;
+          // 모달을 먼저 닫고 요청을 보낸다(blueprint §7.1)
           setIsQuickModalOpen(false);
+          startQuickGeneration();
         }}
         title="빠른 레시피 생성"
         message="가구원 수와 냉장고의 재료에 맞게 레시피를 생성합니다. 레시피를 생성하면 하루 생성 횟수를 차감합니다. 생성하시겠습니까?"
         confirmLabel="생성하기"
       />
+
+      <ToastArea message={toast.value} isLeaving={toast.isLeaving} onLeft={toast.remove} />
     </>
+  );
+}
+
+/** 문구를 바꿔 끼우면 읽히도록 항상 그려 두는 영역(blueprint §6.3) */
+function ToastArea({
+  message,
+  isLeaving,
+  onLeft,
+}: {
+  message: string | null;
+  isLeaving: boolean;
+  onLeft: () => void;
+}) {
+  return (
+    <div className={styles.toastArea} aria-live="polite">
+      {message && (
+        <Toast variant="error" isLeaving={isLeaving} onLeft={onLeft}>
+          {message}
+        </Toast>
+      )}
+    </div>
   );
 }
 
