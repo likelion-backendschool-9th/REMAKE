@@ -7,4 +7,5 @@ import com.remake.share.domain.SharedRecipe;
 public interface LoadSharedRecipePort {
 	boolean existsInWeek(Long recipeId, LocalDateTime start, LocalDateTime end);
 	Optional<SharedRecipe> findById(Long id);
+	Optional<SharedRecipe> findByIdForUpdate(Long id);
 }

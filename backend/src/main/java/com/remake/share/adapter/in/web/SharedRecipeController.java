@@ -21,6 +21,9 @@ import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.global.web.LoginUserId;
 import com.remake.share.application.port.in.GetSharedRecipeUseCase;
+import com.remake.share.application.port.in.GetMySharedRecipesUseCase;
+import com.remake.share.application.port.in.DeleteSharedRecipeUseCase;
+import com.remake.global.common.PageResponse;
 import com.remake.share.application.port.in.GetSharedRecipeRankingUseCase;
 import com.remake.share.application.port.in.PublishSharedRecipeUseCase;
 import com.remake.share.application.port.in.ReportSharedRecipeUseCase;
@@ -43,11 +46,27 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/user/shared-recipes")
 @RequiredArgsConstructor
 public class SharedRecipeController {
+	private final GetMySharedRecipesUseCase mySharedRecipes;
+	private final DeleteSharedRecipeUseCase deleteSharedRecipe;
 	private final PublishSharedRecipeUseCase publishSharedRecipe;
 	private final GetSharedRecipeUseCase getSharedRecipe;
 	private final ReportSharedRecipeUseCase reportSharedRecipe;
 	private final SaveSharedRecipeUseCase saveSharedRecipe;
 	private final GetSharedRecipeRankingUseCase rankings;
+
+	@Operation(summary = "내 공유 글 목록", description = "본인의 공개·숨김 글을 최신 공유 시각·ID 내림차순으로 반환합니다. 삭제 글은 제외하고 숨김 글의 imageUrl은 null입니다.")
+	@GetMapping("/mine")
+	public PageResponse<GetMySharedRecipesUseCase.Item> mine(@LoginUserId Long userId,
+			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+		return mySharedRecipes.getMine(userId, page, size);
+	}
+
+	@Operation(summary = "내 공유 글 삭제", description = "공유 제목·사진을 제거하고 원본·타인 저장·장바구니·최소 이력을 보존합니다. 본인 삭제 글 재호출도 204, 타인·없는 글은 404입니다.")
+	@DeleteMapping("/{id}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void delete(@LoginUserId Long userId, @PathVariable Long id) {
+		deleteSharedRecipe.delete(userId, id);
+	}
 
 	@Operation(summary = "이번 주 공유 레시피 TOP 3", description = "KST 월요일부터 현재까지 유효 저장이 1건 이상인 공개 글을 최대 3개 반환합니다. 순위 변동은 반환하지 않습니다.")
 	@GetMapping("/weekly-top")
@@ -91,7 +110,7 @@ public class SharedRecipeController {
 		return new PublishedResponse(publishSharedRecipe.publish(userId, payload.recipeId(), payload.title(), photo));
 	}
 
-	@Operation(summary = "익명 공유 상세", description = "공개 게시글의 조리 내용과 내 냉장고 재료명 기준 보유 여부를 조회합니다. 작성자 식별정보는 반환하지 않습니다.")
+	@Operation(summary = "익명 공유 상세", description = "공개 게시글과 본인의 숨김 글을 조회합니다. canDelete는 작성자 메뉴 표시용이며 작성자 식별정보는 반환하지 않습니다. 숨김 글의 imageUrl은 null입니다.")
 	@GetMapping("/{id}")
 	public GetSharedRecipeUseCase.Detail detail(@LoginUserId Long userId, @PathVariable Long id) {
 		return getSharedRecipe.getDetail(userId, id);

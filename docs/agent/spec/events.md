@@ -367,3 +367,9 @@ Values for `screen`, `screen_name`, and `previous_screen`. Screens marked "scree
 - The `Screen` enum matches the 41 screen codes above, plus `UNKNOWN` for unrecognized client strings. Scheduled jobs pass `null` for `screen` (not `unknown`).
 - Properties removed from the contract and the code: `permission_result` (with the push event), `needs_check_count`, `feedback_value` (E50 now uses `recipe_id`, `recommended`), `slot_source`, `has_recipe`, `group_count`, `duplicate_suspected`, and `duration_sec` on `receipt_result_abandoned`.
 - Priorities now follow the source document. Decision [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58) moved sharing, cart, and reward events to P1; the source keeps them P1. Its admin parts (ADMIN gate, analytics APIs) are now the operator page a1-a3 and a6 (APIs 61-64, 11/26).
+
+## Author deletion (#230/#295; BE #296 and settlement #297 implemented; FE #299 pending)
+
+- No author-delete event, property or new screen code is defined in the current catalog. Keep the catalog counts unchanged. Do not reuse `recipe_unsaved`, `cart_items_deleted` or report-handling events: author deletion preserves others' saves/cart and is a distinct action.
+- #297 keeps E75 `weekly_reward_granted` on actual reward grants only. Deleted posts excluded before settlement receive no grant/E75; deleting after settlement or repeating the job does not retract rewards or issue replacement/duplicate E75 events. Rollback of a settlement transaction emits no E75; a subsequent successful retry emits once per actual grant. Tracking remains best effort after commit and a settled-week retry does not resend failed event writes.
+- #299 must check the existing event/screen contract before adding tracking for the owner's list/deletion UI. Any new tracking decision must be documented explicitly; never log author identifiers, shared titles/photos or other free text as event properties.
