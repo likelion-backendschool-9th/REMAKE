@@ -8,7 +8,7 @@
   background: var(--color-bg-surface);
 }
 
-/* 북마크: 저장 전 icon/default 선, 저장 후 brand/primary 채움 */
+/* 북마크: 저장 전 icon/default 선, 저장 후 선과 속 모두 brand/primary(BookmarkIcon이 currentColor를 쓴다) */
 .bookmark[aria-pressed="true"] {
   color: var(--color-brand-primary);
 }
