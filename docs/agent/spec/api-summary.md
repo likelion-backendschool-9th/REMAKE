@@ -265,8 +265,8 @@ The 15 admin APIs that were on hold in the previous plan. Do not implement the r
 
 ## Open questions (do not decide in code; ask the PO)
 
-- What the subscription screen shows after scheduling cancellation, and whether a confirm modal is needed.
-- Which API and flow handle the 7-day full refund (Toss payment cancel, subscription status, events)?
+- Subscription cancellation screen details and integration: #170 (2026-11-27) confirms using the Figma cancellation screen; follow #169 rather than treating the screen choice as undecided.
+- The 7-day full refund has flow decisions in #228 (2026-11-27). Detailed policy/API/event documentation belongs to #318; the final refund API path/method and event contract must be specified there and in the implementation issue before adding an endpoint or event here.
 - Which API and screen let an author delete their own shared post?
 - What a sanctioned member sees in the app (sharing ban, account ban) and which errors the app APIs return (`ACCOUNT_SUSPENDED`, a sharing-ban code). Storage is decided (`user_sanctions`, 11/26); the app screens are on hold as "added page 15".
 - Which E88 `end_reason` value marks an auto-payment failure ending?

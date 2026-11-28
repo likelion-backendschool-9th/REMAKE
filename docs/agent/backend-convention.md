@@ -237,7 +237,7 @@ Build new APIs by following the ingredient category list (`GET /api/v1/user/ingr
 | Expiry notifications | Daily 09:00 | `EXPIRY_SOON` (3 days or less, one per ingredient) and `EXPIRED` (one per day) (in-app only, no device push). Skip users with notifications off. Emit `ingredient_expired` and `notification_sent` |
 | Weekly ranking and reward | Monday 00:00 | Fix last week's TOP 100 in `shared_recipe_weekly_ranks` and give the authors of the top 3 recipes +10/+6/+3 recipe generations (valid one month), in one transaction. Rules in the [ERD](erd.md) table 22. Emit `weekly_reward_granted` |
 | Receipt cleanup | Daily early morning | Delete receipts older than 6 months by purchase date, with images and items |
-| Subscription auto-payment | Daily early morning | Charge ACTIVE subscriptions whose next billing date is today with the billingKey and extend one month; end CANCELED ones (`users.plan` BASIC). Failure handling is open (ask the user) |
+| Subscription auto-payment | Daily early morning | Charge ACTIVE subscriptions whose next billing date is today with the billingKey and extend one month; end CANCELED ones without charging. On auto-payment failure, end the subscription immediately. Both endings set ENDED, clear `billing_key`, and set `users.plan` BASIC (11/24 payment terms). The E88 failure `end_reason` value remains pending in #229 |
 | Event retention | Daily early morning | Delete raw events older than 180 days. No daily aggregation table |
 
 - Daily and monthly quota resets need no job: remaining counts are computed from `usage_logs`. Other cleanups are listed in the ERD implementation rules.
