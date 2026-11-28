@@ -12,6 +12,7 @@ import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.ingredient.domain.StorageLocation;
 import com.remake.receipt.application.port.in.ExpenseHistoryUseCase.Item;
+import com.remake.receipt.application.port.in.UpdateManualIngredientExpenseUseCase.Command;
 import com.remake.receipt.application.port.out.LoadExpenseHistoryPort;
 import com.remake.receipt.application.port.out.ManualIngredientExpensePort;
 
@@ -74,14 +75,25 @@ class ExpenseHistoryPersistenceAdapter implements LoadExpenseHistoryPort, Manual
 	}
 
 	@Override
-	public void updatePrice(Long ingredientId, Long price) {
+	public void update(Command command) {
 		jdbc.sql("""
 				UPDATE manual_ingredient_expenses
-				   SET price = :price
+				   SET name = COALESCE(:name, name),
+				       category_id = COALESCE(:categoryId, category_id),
+				       storage = COALESCE(:storage, storage),
+				       amount = COALESCE(:amount, amount),
+				       unit = COALESCE(:unit, unit),
+				       price = CASE WHEN :priceChanged THEN :price ELSE price END
 				 WHERE ingredient_id = :ingredientId
 				""")
-				.param("price", price)
-				.param("ingredientId", ingredientId)
+				.param("name", command.name())
+				.param("categoryId", command.categoryId())
+				.param("storage", command.storage() == null ? null : command.storage().name())
+				.param("amount", command.amount())
+				.param("unit", command.unit() == null ? null : command.unit().name())
+				.param("priceChanged", command.priceChanged())
+				.param("price", command.price())
+				.param("ingredientId", command.ingredientId())
 				.update();
 	}
 
