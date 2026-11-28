@@ -33,20 +33,25 @@ class SharedRecipeQueryService implements GetSharedRecipeUseCase {
 	@Transactional(readOnly = true)
 	public Detail getDetail(Long userId, Long id) {
 		SharedRecipe post = sharedRecipes.findById(id)
-				.filter(p -> p.status() == SharedRecipe.Status.VISIBLE)
+				.filter(p -> p.status() != SharedRecipe.Status.DELETED)
 				.orElseThrow(() -> new BusinessException(ErrorCode.SHARED_RECIPE_NOT_FOUND));
 		Recipe recipe = recipes.getSharedContent(post.recipeId());
+		boolean canDelete = recipe.userId().equals(userId);
+		if (post.status() == SharedRecipe.Status.HIDDEN && !canDelete) {
+			throw new BusinessException(ErrorCode.SHARED_RECIPE_NOT_FOUND);
+		}
 		var state = saves.getSaveState(userId, recipe.id(), post.id());
 		// ERD의 이름 비교 규칙. 다른 사람의 냉장고·원본 ingredientId·필요 수량은 보유 판정에 쓰지 않는다.
 		Set<String> ownedNames = fridge.getFridgeIngredients(userId, null, null, null).stream()
 				.filter(i -> i.dDay() >= 0)
 				.map(i -> i.ingredient().name()).collect(Collectors.toSet());
-		return new Detail(post.id(), post.title(), "/api/v1/user/shared-recipe-photos/" + post.id(),
+		return new Detail(post.id(), post.title(), post.status() == SharedRecipe.Status.VISIBLE
+				? "/api/v1/user/shared-recipe-photos/" + post.id() : null,
 				recipe.servings(), recipe.cookMinutes(), recipe.tips(),
 				recipe.ingredients().stream().map(i -> new Ingredient(i.name(), i.amount(), i.unit(),
 						WATER.equals(i.name()) || ownedNames.contains(i.name()))).toList(),
 				IntStream.range(0, recipe.steps().size())
 						.mapToObj(i -> new Step(i + 1, recipe.steps().get(i))).toList(),
-				state.saveCount(), state.saved());
+				state.saveCount(), state.saved(), canDelete);
 	}
 }

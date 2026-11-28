@@ -46,7 +46,7 @@ com.remake
 | `recipe` | recipes, recipe_ingredients, recipe_steps, saved_recipes |
 | `mealplan` | meal_plans, meal_plan_slots |
 | `cart` | cart_items |
-| `share` | shared_recipes, shared_recipe_reports, shared_recipe_weekly_ranks |
+| `share` | shared_recipes, shared_recipe_reports, shared_recipe_weekly_ranks, shared_recipe_photo_deletions |
 | `quota` | usage_logs, generation_quota_grants |
 | `notification` | notifications |
 | `event` | events |

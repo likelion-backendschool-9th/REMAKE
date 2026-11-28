@@ -15,7 +15,7 @@ public record SharedRecipe(Long id, Long recipeId, String title, String imageKey
 
 	private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
-	public enum Status { VISIBLE, HIDDEN }
+	public enum Status { VISIBLE, HIDDEN, DELETED }
 
 	/** 같은 원본은 이 시각부터 1주(KST 월요일 0시 시작) 안에 한 번만 공유한다. 게시(51)와 상세의 shareable(30)이 같이 쓴다. */
 	public static LocalDateTime weekStart(Clock clock) {

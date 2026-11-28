@@ -76,7 +76,7 @@ class SharedRecipeDetailApiTest extends IntegrationTestSupport {
 				.andReturn().getResponse().getContentAsString();
 		Map<?, ?> fields = JsonPath.parse(body).read("$", Map.class);
 		assertThat(fields.keySet().stream().map(Object::toString).toList()).containsExactlyInAnyOrder("id", "title", "imageUrl", "servings", "cookMinutes",
-				"tips", "ingredients", "steps", "saveCount", "saved");
+				"tips", "ingredients", "steps", "saveCount", "saved", "canDelete");
 		assertThat(body).doesNotContain("userId", "recipeId", "ingredientId", "imageKey", "author", "email", "customOptions");
 		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM recipes", Long.class)).isEqualTo(1);
 	}
@@ -126,11 +126,11 @@ class SharedRecipeDetailApiTest extends IntegrationTestSupport {
 
 	@Test
 	void 숨긴글과_없는글은_404이고_비로그인은_401이다() throws Exception {
-		Long author = createUser(); Long id = post(author, original(author).id());
+		Long author = createUser(); Long reader = createUser(); Long id = post(author, original(author).id());
 		mockMvc.perform(get(url(id))).andExpect(status().isUnauthorized());
 		jdbcTemplate.update("UPDATE shared_recipes SET status = 'HIDDEN' WHERE id = ?", id);
 		for (Long target : new Long[]{id, 999999L}) {
-			mockMvc.perform(get(url(target)).requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, author))
+			mockMvc.perform(get(url(target)).requestAttr(LoginUserIdArgumentResolver.ATTRIBUTE, reader))
 					.andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("SHARED_RECIPE_NOT_FOUND"));
 		}
 	}
