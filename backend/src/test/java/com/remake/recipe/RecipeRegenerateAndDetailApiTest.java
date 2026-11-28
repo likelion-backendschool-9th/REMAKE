@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,8 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import com.remake.global.error.BusinessException;
+import com.remake.global.error.ErrorCode;
 import com.remake.global.web.LoginUserIdArgumentResolver;
 import com.remake.recipe.application.port.out.GeneratedRecipe;
 import com.remake.recipe.application.port.out.RecipeAiRequest;
@@ -159,6 +162,42 @@ class RecipeRegenerateAndDetailApiTest extends IntegrationTestSupport {
 		assertThat(sent.customOptions()).isNull();
 		assertThat(sent.fridgeIngredients()).extracting(RecipeAiRequest.FridgeItem::ingredientId)
 				.containsExactly(egg, onion);
+	}
+
+	@Test
+	void 다시_받기도_하루_횟수를_다_썼으면_AI를_부르지_않고_429와_details를_준다() throws Exception {
+		fridge("DAIRY_EGG", "계란");
+		fridge("VEGETABLE", "양파");
+		Recipe original = saveRecipe(userId, RecipeSource.QUICK, null);
+		for (int i = 0; i < 2; i++) {
+			jdbcTemplate.update("INSERT INTO usage_logs (user_id, type, created_at) VALUES (?, 'RECIPE', ?)", userId,
+					LocalDateTime.of(2026, 3, 4, 9, i));
+		}
+
+		mockMvc.perform(as(userId, post(URL + original.id() + "/regenerate")))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("GENERATION_LIMIT_EXCEEDED"))
+				.andExpect(jsonPath("$.details.remaining").value(0))
+				.andExpect(jsonPath("$.details.resetsAt").exists());
+
+		verify(geminiRecipeAdapter, never()).generate(any());
+	}
+
+	@Test
+	void 다시_받기에서_AI가_실패하면_502이고_새_레시피를_저장하지_않고_차감하지_않는다() throws Exception {
+		fridge("DAIRY_EGG", "계란");
+		fridge("VEGETABLE", "양파");
+		Recipe original = saveRecipe(userId, RecipeSource.QUICK, null);
+		when(geminiRecipeAdapter.generate(any())).thenThrow(new BusinessException(ErrorCode.AI_UPSTREAM_ERROR));
+
+		mockMvc.perform(as(userId, post(URL + original.id() + "/regenerate")))
+				.andExpect(status().isBadGateway())
+				.andExpect(jsonPath("$.code").value("AI_UPSTREAM_ERROR"));
+
+		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM recipes WHERE user_id = ?", Integer.class,
+				userId)).as("원래 레시피만 남는다").isEqualTo(1);
+		assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM usage_logs WHERE user_id = ?", Integer.class,
+				userId)).isZero();
 	}
 
 	@Test

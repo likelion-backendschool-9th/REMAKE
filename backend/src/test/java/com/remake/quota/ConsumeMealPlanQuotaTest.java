@@ -54,6 +54,18 @@ class ConsumeMealPlanQuotaTest extends IntegrationTestSupport {
 	}
 
 	@Test
+	void 일반에서_구독으로_바뀌면_이번_달_쓴_횟수를_빼고_구독_한도만큼_남는다() {
+		Long userId = createUser();
+		usage(userId, "MEAL_PLAN", MONTH_START);
+
+		jdbcTemplate.update("UPDATE users SET plan = 'PREMIUM' WHERE id = ?", userId);
+
+		MealPlanQuota quota = consumeMealPlanQuotaUseCase.requireMealPlanQuota(userId);
+		assertThat(quota).isEqualTo(new MealPlanQuota(4, 1, 7));
+		assertThat(quota.remaining()).isEqualTo(3);
+	}
+
+	@Test
 	void 지난달_식단표와_레시피_기록은_세지_않는다() {
 		Long userId = createUser();
 		usage(userId, "MEAL_PLAN", MONTH_START.minusSeconds(1));

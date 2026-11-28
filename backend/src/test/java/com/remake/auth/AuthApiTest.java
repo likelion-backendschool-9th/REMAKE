@@ -15,19 +15,25 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import com.remake.auth.application.port.out.JwtTokenPort;
 import com.remake.auth.domain.SocialProfile;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.global.web.LoginUserIdArgumentResolver;
 import com.remake.support.IntegrationTestSupport;
 import com.remake.user.domain.AuthProvider;
+import com.remake.user.domain.UserRole;
 
 import jakarta.servlet.http.Cookie;
 
 class AuthApiTest extends IntegrationTestSupport {
+
+	@Autowired
+	private JwtTokenPort jwtTokens;
 
 	@Test
 	void 소셜_로그인_성공_시_쿠키를_심고_온보딩_여부를_돌려준다() throws Exception {
@@ -253,6 +259,19 @@ class AuthApiTest extends IntegrationTestSupport {
 		mockMvc.perform(post("/api/v1/public/auth/refresh").cookie(refresh))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("ACCOUNT_SUSPENDED"));
+	}
+
+	@Test
+	void 일반_USER_권한으로_admin_API를_부르면_403과_에러_응답_형식이다() throws Exception {
+		Long userId = createUser();
+		Cookie access = new Cookie("ACCESS_TOKEN", jwtTokens.issueAccessToken(userId, UserRole.USER));
+
+		mockMvc.perform(get("/api/v1/admin/dashboard").cookie(access))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("FORBIDDEN"))
+				.andExpect(jsonPath("$.status").value(403))
+				.andExpect(jsonPath("$.message").isString())
+				.andExpect(jsonPath("$.traceId").isString());
 	}
 
 	@Test

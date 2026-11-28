@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.concurrent.CompletableFuture;
@@ -127,6 +128,75 @@ class ConsumeRecipeQuotaTest extends IntegrationTestSupport {
 
 		assertThat(usageRows(me)).isEqualTo(1);
 		assertThat(usageRows(other)).isEqualTo(1);
+	}
+
+	private void changePlan(Long userId, String plan) {
+		jdbcTemplate.update("UPDATE users SET plan = ? WHERE id = ?", plan, userId);
+	}
+
+	@Test
+	void 일반에서_구독으로_바뀌면_오늘_쓴_횟수를_빼고_구독_한도만큼_남는다() {
+		Long userId = createUser();
+		consumeRecipeQuotaUseCase.consumeRecipeQuota(userId);
+		consumeRecipeQuotaUseCase.consumeRecipeQuota(userId);
+
+		changePlan(userId, "PREMIUM");
+
+		assertThat(consumeRecipeQuotaUseCase.requireRecipeQuota(userId).remaining()).isEqualTo(2);
+		RecipeQuota after = consumeRecipeQuotaUseCase.consumeRecipeQuota(userId);
+		assertThat(after.used()).isEqualTo(3);
+		assertThat(after.remaining()).isEqualTo(1);
+		assertThat(usageRows(userId)).isEqualTo(3);
+	}
+
+	@Test
+	void 구독에서_일반으로_바뀌어_이미_한도를_넘었으면_막고_기록은_그대로이며_남은_횟수는_음수가_아니다() {
+		Long userId = createUser();
+		changePlan(userId, "PREMIUM");
+		for (int i = 0; i < 4; i++) {
+			consumeRecipeQuotaUseCase.consumeRecipeQuota(userId);
+		}
+
+		changePlan(userId, "BASIC");
+
+		assertThatThrownBy(() -> consumeRecipeQuotaUseCase.requireRecipeQuota(userId))
+				.isInstanceOfSatisfying(BusinessException.class,
+						e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.GENERATION_LIMIT_EXCEEDED));
+		assertThatThrownBy(() -> consumeRecipeQuotaUseCase.consumeRecipeQuota(userId))
+				.isInstanceOfSatisfying(BusinessException.class,
+						e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.GENERATION_LIMIT_EXCEEDED));
+		assertThat(usageRows(userId)).isEqualTo(4);
+	}
+
+	@Test
+	void 보상을_쓴_날_일반에서_구독으로_바뀌어도_기본_횟수를_이중_차감하지_않고_보상은_그대로다() {
+		Long userId = createUser();
+		// ck_quota_grants_reward 때문에 amount는 순위별 고정값(3순위=3)이다. 남은 횟수만 2로 둔다.
+		jdbcTemplate.update("""
+				INSERT INTO generation_quota_grants
+				(user_id, shared_recipe_id, week_start, rank_no, amount, remaining, expires_at, created_at)
+				VALUES (?, NULL, ?, 3, 3, 2, ?, ?)
+				""", userId, LocalDate.of(2026, 2, 23), LocalDateTime.of(2026, 3, 31, 0, 0),
+				LocalDateTime.of(2026, 3, 1, 0, 0));
+		consumeRecipeQuotaUseCase.consumeRecipeQuota(userId);
+		consumeRecipeQuotaUseCase.consumeRecipeQuota(userId);
+		consumeRecipeQuotaUseCase.consumeRecipeQuota(userId);
+
+		changePlan(userId, "PREMIUM");
+
+		RecipeQuota quota = consumeRecipeQuotaUseCase.requireRecipeQuota(userId);
+		assertThat(quota.used()).isEqualTo(3);
+		assertThat(quota.baseUsed()).isEqualTo(2);
+		assertThat(quota.bonusRemaining()).isEqualTo(1);
+		assertThat(quota.remaining()).isEqualTo(3);
+
+		consumeRecipeQuotaUseCase.consumeRecipeQuota(userId);
+
+		assertThat(jdbcTemplate.queryForObject("SELECT remaining FROM generation_quota_grants WHERE user_id = ?",
+				Integer.class, userId)).isEqualTo(1);
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT grant_id FROM usage_logs WHERE user_id = ? ORDER BY id DESC LIMIT 1", Long.class, userId))
+				.isNull();
 	}
 
 	private static void awaitQuietly(CountDownLatch latch) {
