@@ -33,6 +33,7 @@ class UserProfileApiTest extends IntegrationTestSupport {
 		mockMvc.perform(asMe(get("/api/v1/user/profile")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.provider").value("KAKAO"))
+				.andExpect(jsonPath("$.role").value("USER"))
 				.andExpect(jsonPath("$.plan").value("BASIC"))
 				.andExpect(jsonPath("$.householdSize").doesNotExist())
 				.andExpect(jsonPath("$.excludedIngredientCount").value(0))
@@ -139,6 +140,7 @@ class UserProfileApiTest extends IntegrationTestSupport {
 								{ "recipeSupplementEnabled": true }
 								"""))
 				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.role").value("USER"))
 				.andExpect(jsonPath("$.householdSize").value(2))
 				.andExpect(jsonPath("$.recipeSupplementEnabled").value(true))
 				.andExpect(jsonPath("$.notificationEnabled").value(true));
@@ -162,5 +164,23 @@ class UserProfileApiTest extends IntegrationTestSupport {
 		mockMvc.perform(asMe(get("/api/v1/user/profile")))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.excludedIngredientCount").value(0));
+	}
+
+	@Test
+	void ADMIN_회원의_프로필_조회와_수정_응답에_role이_ADMIN이다() throws Exception {
+		jdbcTemplate.update("UPDATE users SET role = 'ADMIN' WHERE id = ?", me);
+
+		mockMvc.perform(asMe(get("/api/v1/user/profile")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.role").value("ADMIN"));
+
+		mockMvc.perform(asMe(patch("/api/v1/user/profile"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{ "notificationEnabled": false }
+								"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.role").value("ADMIN"))
+				.andExpect(jsonPath("$.notificationEnabled").value(false));
 	}
 }
