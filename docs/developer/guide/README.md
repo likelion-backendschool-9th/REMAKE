@@ -32,5 +32,5 @@ AI 코딩 도구(Claude Code 등)는 루트 `AGENTS.md`와 영문 요약 [`docs/
 - API 정의서 v4: API 60개(영문 요약 [`api-summary.md`](../../agent/spec/api-summary.md))
 - 에러·예외 정의서 v2: 에러 코드 59개(영문 요약 [`errors.md`](../../agent/spec/errors.md))
 - ERD v4: 테이블 26개(레포에는 [`../erd.md`](../erd.md))
-- 이벤트 정의서 v2: 이벤트 79개, 원문 속성 102개, 지표 21개, 화면 코드 41개. 2026-11-24 `deleted_item_count` 복원 후 현재 계약은 속성 103개(영문 요약 [`events.md`](../../agent/spec/events.md))
+- 이벤트 정의서 v2 원문: 이벤트 79개·속성 102개. `deleted_item_count` 복원과 구독 환불 E89(#318) 추가 후 현재 계약은 이벤트 80개·속성 104개, 지표 21개, 화면 코드 41개(영문 요약 [`events.md`](../../agent/spec/events.md))
 - WBS v2: 일정·담당

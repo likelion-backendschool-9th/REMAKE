@@ -1,0 +1,89 @@
+/* 피그마 a3 표 카드: bg/surface, border/default, radius/lg, 위 20·아래 8, 제목과 표 간격 12 */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  min-width: 0;
+  padding: var(--space-20) 0 var(--space-8);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
+
+/* 옆 카드 높이를 채울 때: 표 영역이 남는 높이를 차지해 보조 글이 아래에 붙는다 */
+.card[data-fill] .table {
+  flex: 1;
+}
+
+/* 제목 줄: 옆 여백 24 */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: 0 var(--space-24);
+}
+
+/* Remake/subheader·text/strong */
+.title {
+  color: var(--color-text-strong);
+  font: var(--font-subheader);
+}
+
+/* Remake/assist·text/sub */
+.meta {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+  text-align: right;
+}
+
+/* 행: 옆 여백 24, 칸 간격 16. 열 폭(grid-template-columns)은 행마다 같은 값을 준다 */
+.row {
+  display: grid;
+  align-items: center;
+  column-gap: var(--space-16);
+  padding: var(--space-12) var(--space-24);
+  border-bottom: 1px solid var(--color-border-default);
+}
+
+/* 넓은 행: 위아래 여백 14(피그마 a3 AI 탭 표) */
+.card[data-relaxed] .row:not(.head) {
+  padding-block: var(--space-14);
+}
+
+/* 머리줄: bg/section, 위아래 10, Remake/assist·text/sub */
+.head {
+  padding-block: var(--space-10);
+  border-bottom: 0;
+  background: var(--color-bg-section);
+}
+
+/* 칸: Remake/content·text/body, 배지는 글 오른쪽 6 */
+.cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-width: 0;
+  /* 피그마 칸 높이 20(14px·행간 140%를 올림). 행 높이 45가 되게 맞춘다 */
+  min-height: 1.25rem;
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+
+.cell[data-align="right"] {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.head .cell {
+  min-height: 1.0625rem;
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+
+/* 표 아래 보조 글: 옆 여백 24·위 4, Remake/assist·text/sub. 카드 아래 여백 8은 카드가 준다 */
+.note {
+  padding: var(--space-4) var(--space-24) 0;
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}

@@ -23,7 +23,7 @@ public class SecurityConfig {
 
 	private final AuthCookieFilter authCookieFilter;
 	private final SecurityErrorWriter securityErrorWriter;
-	private final ObjectProvider<TestLoginAttributeFilter> testLoginAttributeFilter;
+	private final ObjectProvider<OptionalAuthPreFilter> optionalAuthPreFilter;
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -53,7 +53,7 @@ public class SecurityConfig {
 						.accessDeniedHandler((request, response, accessDeniedException) ->
 								securityErrorWriter.write(response, ErrorCode.FORBIDDEN)))
 				.addFilterBefore(authCookieFilter, UsernamePasswordAuthenticationFilter.class);
-		testLoginAttributeFilter.ifAvailable(filter ->
+		optionalAuthPreFilter.ifAvailable(filter ->
 				http.addFilterBefore(filter, AuthCookieFilter.class));
 		return http.build();
 	}

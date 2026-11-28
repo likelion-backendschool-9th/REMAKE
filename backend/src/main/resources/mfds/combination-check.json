@@ -1,0 +1,3675 @@
+{
+ "source": "식품의약품안전처 조리식품의 레시피 DB(COOKRCP01), scripts/mfds/build_combination_check.py로 만듦",
+ "recipeCount": 1156,
+ "catalog": {
+  "양파": "VEGETABLE",
+  "대파": "VEGETABLE",
+  "쪽파": "VEGETABLE",
+  "마늘": "VEGETABLE",
+  "다진마늘": "VEGETABLE",
+  "생강": "VEGETABLE",
+  "감자": "VEGETABLE",
+  "고구마": "VEGETABLE",
+  "당근": "VEGETABLE",
+  "무": "VEGETABLE",
+  "배추": "VEGETABLE",
+  "양배추": "VEGETABLE",
+  "알배추": "VEGETABLE",
+  "시금치": "VEGETABLE",
+  "상추": "VEGETABLE",
+  "깻잎": "VEGETABLE",
+  "청경채": "VEGETABLE",
+  "부추": "VEGETABLE",
+  "미나리": "VEGETABLE",
+  "쑥갓": "VEGETABLE",
+  "오이": "VEGETABLE",
+  "애호박": "VEGETABLE",
+  "호박": "VEGETABLE",
+  "단호박": "VEGETABLE",
+  "가지": "VEGETABLE",
+  "토마토": "VEGETABLE",
+  "방울토마토": "VEGETABLE",
+  "파프리카": "VEGETABLE",
+  "피망": "VEGETABLE",
+  "고추": "VEGETABLE",
+  "청양고추": "VEGETABLE",
+  "풋고추": "VEGETABLE",
+  "브로콜리": "VEGETABLE",
+  "콜리플라워": "VEGETABLE",
+  "셀러리": "VEGETABLE",
+  "아스파라거스": "VEGETABLE",
+  "연근": "VEGETABLE",
+  "우엉": "VEGETABLE",
+  "도라지": "VEGETABLE",
+  "비트": "VEGETABLE",
+  "옥수수": "VEGETABLE",
+  "버섯": "VEGETABLE",
+  "표고버섯": "VEGETABLE",
+  "새송이버섯": "VEGETABLE",
+  "팽이버섯": "VEGETABLE",
+  "양송이버섯": "VEGETABLE",
+  "느타리버섯": "VEGETABLE",
+  "숙주": "VEGETABLE",
+  "콩나물": "VEGETABLE",
+  "고사리": "VEGETABLE",
+  "열무": "VEGETABLE",
+  "얼갈이배추": "VEGETABLE",
+  "샐러드채소": "VEGETABLE",
+  "방울양배추": "VEGETABLE",
+  "래디시": "VEGETABLE",
+  "케일": "VEGETABLE",
+  "사과": "FRUIT",
+  "배": "FRUIT",
+  "귤": "FRUIT",
+  "오렌지": "FRUIT",
+  "레몬": "FRUIT",
+  "라임": "FRUIT",
+  "자몽": "FRUIT",
+  "바나나": "FRUIT",
+  "딸기": "FRUIT",
+  "블루베리": "FRUIT",
+  "포도": "FRUIT",
+  "샤인머스캣": "FRUIT",
+  "수박": "FRUIT",
+  "참외": "FRUIT",
+  "멜론": "FRUIT",
+  "복숭아": "FRUIT",
+  "자두": "FRUIT",
+  "감": "FRUIT",
+  "곶감": "FRUIT",
+  "키위": "FRUIT",
+  "망고": "FRUIT",
+  "파인애플": "FRUIT",
+  "체리": "FRUIT",
+  "아보카도": "FRUIT",
+  "석류": "FRUIT",
+  "무화과": "FRUIT",
+  "한라봉": "FRUIT",
+  "건포도": "FRUIT",
+  "대추": "FRUIT",
+  "매실": "FRUIT",
+  "쇠고기": "MEAT",
+  "소고기": "MEAT",
+  "한우": "MEAT",
+  "소불고기": "MEAT",
+  "소갈비": "MEAT",
+  "소고기국거리": "MEAT",
+  "돼지고기": "MEAT",
+  "삼겹살": "MEAT",
+  "목살": "MEAT",
+  "앞다리살": "MEAT",
+  "돼지갈비": "MEAT",
+  "다짐육": "MEAT",
+  "닭고기": "MEAT",
+  "닭가슴살": "MEAT",
+  "닭다리": "MEAT",
+  "닭봉": "MEAT",
+  "통닭": "MEAT",
+  "오리고기": "MEAT",
+  "양고기": "MEAT",
+  "베이컨": "MEAT",
+  "햄": "MEAT",
+  "소시지": "MEAT",
+  "스팸": "MEAT",
+  "불고기": "MEAT",
+  "육포": "MEAT",
+  "고등어": "SEAFOOD",
+  "갈치": "SEAFOOD",
+  "삼치": "SEAFOOD",
+  "꽁치": "SEAFOOD",
+  "연어": "SEAFOOD",
+  "광어": "SEAFOOD",
+  "조기": "SEAFOOD",
+  "명태": "SEAFOOD",
+  "오징어": "SEAFOOD",
+  "낙지": "SEAFOOD",
+  "문어": "SEAFOOD",
+  "주꾸미": "SEAFOOD",
+  "새우": "SEAFOOD",
+  "대하": "SEAFOOD",
+  "게": "SEAFOOD",
+  "꽃게": "SEAFOOD",
+  "홍게": "SEAFOOD",
+  "갑각류": "SEAFOOD",
+  "조개류": "SEAFOOD",
+  "바지락": "SEAFOOD",
+  "모시조개": "SEAFOOD",
+  "홍합": "SEAFOOD",
+  "굴": "SEAFOOD",
+  "전복": "SEAFOOD",
+  "가리비": "SEAFOOD",
+  "멸치": "SEAFOOD",
+  "건새우": "SEAFOOD",
+  "북어": "SEAFOOD",
+  "어묵": "SEAFOOD",
+  "맛살": "SEAFOOD",
+  "김": "SEAFOOD",
+  "미역": "SEAFOOD",
+  "다시마": "SEAFOOD",
+  "참치캔": "SEAFOOD",
+  "황태": "SEAFOOD",
+  "장어": "SEAFOOD",
+  "달걀": "DAIRY_EGG",
+  "계란": "DAIRY_EGG",
+  "메추리알": "DAIRY_EGG",
+  "우유": "DAIRY_EGG",
+  "저지방우유": "DAIRY_EGG",
+  "두유": "DAIRY_EGG",
+  "요거트": "DAIRY_EGG",
+  "그릭요거트": "DAIRY_EGG",
+  "버터": "DAIRY_EGG",
+  "치즈": "DAIRY_EGG",
+  "슬라이스치즈": "DAIRY_EGG",
+  "모짜렐라치즈": "DAIRY_EGG",
+  "파마산치즈": "DAIRY_EGG",
+  "크림치즈": "DAIRY_EGG",
+  "생크림": "DAIRY_EGG",
+  "휘핑크림": "DAIRY_EGG",
+  "연유": "DAIRY_EGG",
+  "마가린": "DAIRY_EGG",
+  "쌀": "GRAIN",
+  "현미": "GRAIN",
+  "찹쌀": "GRAIN",
+  "보리": "GRAIN",
+  "귀리": "GRAIN",
+  "잡곡": "GRAIN",
+  "밀가루": "GRAIN",
+  "부침가루": "GRAIN",
+  "튀김가루": "GRAIN",
+  "빵가루": "GRAIN",
+  "식빵": "GRAIN",
+  "바게트": "GRAIN",
+  "베이글": "GRAIN",
+  "모닝빵": "GRAIN",
+  "라면": "GRAIN",
+  "국수": "GRAIN",
+  "소면": "GRAIN",
+  "칼국수면": "GRAIN",
+  "우동면": "GRAIN",
+  "파스타면": "GRAIN",
+  "스파게티면": "GRAIN",
+  "당면": "GRAIN",
+  "떡": "GRAIN",
+  "떡국떡": "GRAIN",
+  "가래떡": "GRAIN",
+  "시리얼": "GRAIN",
+  "오트밀": "GRAIN",
+  "메밀": "GRAIN",
+  "메밀국수": "GRAIN",
+  "밀": "GRAIN",
+  "감자전분": "GRAIN",
+  "전분": "GRAIN",
+  "두부": "BEAN_TOFU",
+  "순두부": "BEAN_TOFU",
+  "유부": "BEAN_TOFU",
+  "대두": "BEAN_TOFU",
+  "검은콩": "BEAN_TOFU",
+  "병아리콩": "BEAN_TOFU",
+  "강낭콩": "BEAN_TOFU",
+  "녹두": "BEAN_TOFU",
+  "팥": "BEAN_TOFU",
+  "완두콩": "BEAN_TOFU",
+  "렌틸콩": "BEAN_TOFU",
+  "콩나물콩": "BEAN_TOFU",
+  "두부면": "BEAN_TOFU",
+  "템페": "BEAN_TOFU",
+  "낫토": "BEAN_TOFU",
+  "청국장": "BEAN_TOFU",
+  "냉동만두": "PROCESSED",
+  "냉동피자": "PROCESSED",
+  "냉동볶음밥": "PROCESSED",
+  "냉동치킨너겟": "PROCESSED",
+  "냉동감자튀김": "PROCESSED",
+  "냉동새우": "PROCESSED",
+  "냉동야채": "PROCESSED",
+  "냉동과일": "PROCESSED",
+  "냉동닭가슴살": "PROCESSED",
+  "냉동돈가스": "PROCESSED",
+  "즉석밥": "PROCESSED",
+  "즉석국": "PROCESSED",
+  "컵라면": "PROCESSED",
+  "햄버거패티": "PROCESSED",
+  "핫도그": "PROCESSED",
+  "어묵탕": "PROCESSED",
+  "순대": "PROCESSED",
+  "아이스크림": "PROCESSED",
+  "통조림옥수수": "PROCESSED",
+  "통조림햄": "PROCESSED",
+  "김치": "SIDE_DISH",
+  "배추김치": "SIDE_DISH",
+  "깍두기": "SIDE_DISH",
+  "총각김치": "SIDE_DISH",
+  "열무김치": "SIDE_DISH",
+  "오이소박이": "SIDE_DISH",
+  "갓김치": "SIDE_DISH",
+  "파김치": "SIDE_DISH",
+  "장아찌": "SIDE_DISH",
+  "단무지": "SIDE_DISH",
+  "피클": "SIDE_DISH",
+  "나물": "SIDE_DISH",
+  "콩나물무침": "SIDE_DISH",
+  "시금치나물": "SIDE_DISH",
+  "멸치볶음": "SIDE_DISH",
+  "진미채볶음": "SIDE_DISH",
+  "장조림": "SIDE_DISH",
+  "계란장조림": "SIDE_DISH",
+  "어묵볶음": "SIDE_DISH",
+  "감자조림": "SIDE_DISH",
+  "두부조림": "SIDE_DISH",
+  "젓갈": "SIDE_DISH",
+  "명란젓": "SIDE_DISH",
+  "창란젓": "SIDE_DISH",
+  "오징어젓": "SIDE_DISH",
+  "김자반": "SIDE_DISH",
+  "잡채": "SIDE_DISH",
+  "소금": "SEASONING",
+  "설탕": "SEASONING",
+  "후추": "SEASONING",
+  "간장": "SEASONING",
+  "진간장": "SEASONING",
+  "국간장": "SEASONING",
+  "된장": "SEASONING",
+  "고추장": "SEASONING",
+  "쌈장": "SEASONING",
+  "참기름": "SEASONING",
+  "들기름": "SEASONING",
+  "식용유": "SEASONING",
+  "올리브유": "SEASONING",
+  "포도씨유": "SEASONING",
+  "식초": "SEASONING",
+  "맛술": "SEASONING",
+  "미림": "SEASONING",
+  "액젓": "SEASONING",
+  "멸치액젓": "SEASONING",
+  "까나리액젓": "SEASONING",
+  "굴소스": "SEASONING",
+  "케첩": "SEASONING",
+  "마요네즈": "SEASONING",
+  "머스타드": "SEASONING",
+  "고춧가루": "SEASONING",
+  "깨": "SEASONING",
+  "참깨": "SEASONING",
+  "들깨가루": "SEASONING",
+  "카레가루": "SEASONING",
+  "쯔유": "SEASONING",
+  "올리고당": "SEASONING",
+  "물엿": "SEASONING",
+  "꿀": "SEASONING",
+  "다시다": "SEASONING",
+  "쇠고기다시다": "SEASONING",
+  "소스": "SEASONING",
+  "데리야끼소스": "SEASONING",
+  "돈가스소스": "SEASONING",
+  "칠리소스": "SEASONING",
+  "스리라차": "SEASONING",
+  "후리가케": "SEASONING",
+  "물": "BEVERAGE",
+  "생수": "BEVERAGE",
+  "탄산수": "BEVERAGE",
+  "콜라": "BEVERAGE",
+  "사이다": "BEVERAGE",
+  "주스": "BEVERAGE",
+  "오렌지주스": "BEVERAGE",
+  "사과주스": "BEVERAGE",
+  "커피": "BEVERAGE",
+  "캔커피": "BEVERAGE",
+  "아메리카노": "BEVERAGE",
+  "녹차": "BEVERAGE",
+  "홍차": "BEVERAGE",
+  "보리차": "BEVERAGE",
+  "옥수수차": "BEVERAGE",
+  "이온음료": "BEVERAGE",
+  "에너지드링크": "BEVERAGE",
+  "맥주": "BEVERAGE",
+  "소주": "BEVERAGE",
+  "막걸리": "BEVERAGE",
+  "와인": "BEVERAGE",
+  "식혜": "BEVERAGE",
+  "요구르트음료": "BEVERAGE",
+  "두유음료": "BEVERAGE",
+  "코코아": "BEVERAGE",
+  "땅콩": "ETC",
+  "호두": "ETC",
+  "잣": "ETC",
+  "아몬드": "ETC",
+  "캐슈넛": "ETC",
+  "피스타치오": "ETC",
+  "견과류": "ETC",
+  "해바라기씨": "ETC",
+  "아몬드가루": "ETC",
+  "초콜릿": "ETC",
+  "잼": "ETC",
+  "땅콩버터": "ETC",
+  "젤리": "ETC",
+  "과자": "ETC",
+  "빵": "ETC",
+  "케이크": "ETC",
+  "쿠키": "ETC",
+  "샐러드": "ETC",
+  "도시락": "ETC",
+  "샌드위치": "ETC",
+  "김밥": "ETC",
+  "아황산류": "ETC"
+ },
+ "synonyms": {
+  "계란": "달걀",
+  "소고기": "쇠고기"
+ },
+ "aliases": {
+  "콜라비": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "참나물": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "취나물": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "건취나물": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "곤드레나물": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "건곤드레나물": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "불린곤드레나물": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "세발나물": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "깨소금": {
+   "catalogName": "깨",
+   "categoryCode": null
+  },
+  "버섯마늘소금": {
+   "catalogName": "소금",
+   "categoryCode": null
+  },
+  "레몬소금": {
+   "catalogName": "소금",
+   "categoryCode": null
+  },
+  "레몬즙": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "소스레몬즙": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "다진레몬청과육": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "호박잎": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "호박씨": {
+   "catalogName": null,
+   "categoryCode": "ETC"
+  },
+  "호박가루": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "단호박가루": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "돼지감자가루": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "파프리카가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "사과식초": {
+   "catalogName": "식초",
+   "categoryCode": null
+  },
+  "사과드레싱식초": {
+   "catalogName": "식초",
+   "categoryCode": null
+  },
+  "매실식초": {
+   "catalogName": "식초",
+   "categoryCode": null
+  },
+  "매실청": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "매실액": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "토마토소스": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "토마토페이스트": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "토마토페스트": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "홀토마토": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "토마토홀": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "통조림홀토마토": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "건조토마토": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "드라이토마토": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "체리토마토": {
+   "catalogName": "방울토마토",
+   "categoryCode": null
+  },
+  "데리야키소스": {
+   "catalogName": "데리야끼소스",
+   "categoryCode": null
+  },
+  "머스터드소스": {
+   "catalogName": "머스타드",
+   "categoryCode": null
+  },
+  "물김치국물": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "고추기름": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "고추냉이": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "실고추": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "건고추": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "라면스프": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "김밥용김": {
+   "catalogName": "김",
+   "categoryCode": null
+  },
+  "쌀국수": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "곤약국수": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "메밀면": {
+   "catalogName": "메밀국수",
+   "categoryCode": null
+  },
+  "쌀파스타면": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "현미유": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "마늘기름": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "마늘오일": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "마늘칩": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "마늘종": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "마늘가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "생강즙": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "생강청": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "생강가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "양파가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "양파즙": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "포도주스": {
+   "catalogName": "주스",
+   "categoryCode": null
+  },
+  "사과쥬스": {
+   "catalogName": "사과주스",
+   "categoryCode": null
+  },
+  "새우젓": {
+   "catalogName": "젓갈",
+   "categoryCode": null
+  },
+  "잘게다진새우젓": {
+   "catalogName": "젓갈",
+   "categoryCode": null
+  },
+  "청국장가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "검은콩두유": {
+   "catalogName": "두유",
+   "categoryCode": null
+  },
+  "양상추": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "재료양상추": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "찹쌀가루": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "현미쌀가루": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "다시마국물": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "다시마물": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "다시마육수": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "멸치육수": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "녹차우린물": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "다시마가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "표고버섯가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "연두부": {
+   "catalogName": null,
+   "categoryCode": "BEAN_TOFU"
+  },
+  "옥수수콘": {
+   "catalogName": "통조림옥수수",
+   "categoryCode": null
+  },
+  "파인애플통조림": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "치즈슬라이스": {
+   "catalogName": "슬라이스치즈",
+   "categoryCode": null
+  },
+  "어린이치즈": {
+   "catalogName": "슬라이스치즈",
+   "categoryCode": null
+  },
+  "유기농아기치즈": {
+   "catalogName": "슬라이스치즈",
+   "categoryCode": null
+  },
+  "모차렐라치즈": {
+   "catalogName": "모짜렐라치즈",
+   "categoryCode": null
+  },
+  "슈레드모차렐라치즈": {
+   "catalogName": "모짜렐라치즈",
+   "categoryCode": null
+  },
+  "피자치즈": {
+   "catalogName": "모짜렐라치즈",
+   "categoryCode": null
+  },
+  "생모짜렐라치즈": {
+   "catalogName": "모짜렐라치즈",
+   "categoryCode": null
+  },
+  "파르메산치즈가루": {
+   "catalogName": "파마산치즈",
+   "categoryCode": null
+  },
+  "간파르메산치즈": {
+   "catalogName": "파마산치즈",
+   "categoryCode": null
+  },
+  "그라나파다노치즈": {
+   "catalogName": "파마산치즈",
+   "categoryCode": null
+  },
+  "파르미지아노치즈": {
+   "catalogName": "파마산치즈",
+   "categoryCode": null
+  },
+  "파마산가루": {
+   "catalogName": "파마산치즈",
+   "categoryCode": null
+  },
+  "치즈가루": {
+   "catalogName": "파마산치즈",
+   "categoryCode": null
+  },
+  "주키니호박": {
+   "catalogName": "애호박",
+   "categoryCode": null
+  },
+  "쥬키니호박": {
+   "catalogName": "애호박",
+   "categoryCode": null
+  },
+  "3가지색소면": {
+   "catalogName": "소면",
+   "categoryCode": null
+  },
+  "물전분": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "녹말물": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "밥밑간참기름": {
+   "catalogName": "참기름",
+   "categoryCode": null
+  },
+  "톳무침양념설탕": {
+   "catalogName": "설탕",
+   "categoryCode": null
+  },
+  "미나리볶음고추장무": {
+   "catalogName": "무",
+   "categoryCode": null
+  },
+  "두부강된장참기름": {
+   "catalogName": "참기름",
+   "categoryCode": null
+  },
+  "닭고기삶는재료된장": {
+   "catalogName": "된장",
+   "categoryCode": null
+  },
+  "주먹밥데친꼬막살": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "볶음밥쌀": {
+   "catalogName": "쌀",
+   "categoryCode": null
+  },
+  "버터(": {
+   "catalogName": "버터",
+   "categoryCode": null
+  },
+  "잣바질페이소스": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "후춧가루": {
+   "catalogName": "후추",
+   "categoryCode": null
+  },
+  "흰후춧가루": {
+   "catalogName": "후추",
+   "categoryCode": null
+  },
+  "흰후추": {
+   "catalogName": "후추",
+   "categoryCode": null
+  },
+  "백후추": {
+   "catalogName": "후추",
+   "categoryCode": null
+  },
+  "통후추": {
+   "catalogName": "후추",
+   "categoryCode": null
+  },
+  "올리브오일": {
+   "catalogName": "올리브유",
+   "categoryCode": null
+  },
+  "튀김기름": {
+   "catalogName": "식용유",
+   "categoryCode": null
+  },
+  "통깨": {
+   "catalogName": "참깨",
+   "categoryCode": null
+  },
+  "흰깨": {
+   "catalogName": "참깨",
+   "categoryCode": null
+  },
+  "부순참깨": {
+   "catalogName": "참깨",
+   "categoryCode": null
+  },
+  "흑임자": {
+   "catalogName": "깨",
+   "categoryCode": null
+  },
+  "볶은흑임자": {
+   "catalogName": "깨",
+   "categoryCode": null
+  },
+  "검은깨": {
+   "catalogName": "깨",
+   "categoryCode": null
+  },
+  "검정깨": {
+   "catalogName": "깨",
+   "categoryCode": null
+  },
+  "들깻가루": {
+   "catalogName": "들깨가루",
+   "categoryCode": null
+  },
+  "커리가루": {
+   "catalogName": "카레가루",
+   "categoryCode": null
+  },
+  "미향": {
+   "catalogName": "맛술",
+   "categoryCode": null
+  },
+  "청주": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "정종": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "파슬리가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "파슬리말린것": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "파슬리": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "파슬리다진것": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "바질": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "바질잎": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "바질가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "건바질": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "월계수잎": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "로즈마리": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "로즈메리": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "건로즈마리": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "오레가노": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "오레가노가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "타임": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "타임다진것": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "딜": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "차이브": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "정향": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "팔각": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "커민": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "큐민파우더": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "코리앤더가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "이태리시즈닝": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "카엔패퍼": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "레드크러쉬드페퍼": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "강황가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "강황": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "울금가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "치자가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "뽕잎가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "백년초가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "함초가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "메주가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "겨자가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "겨잣가루": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "겨자": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "와사비": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "머스터드": {
+   "catalogName": "머스타드",
+   "categoryCode": null
+  },
+  "홀그레인머스터드": {
+   "catalogName": "머스타드",
+   "categoryCode": null
+  },
+  "르네디종홀그레인머스터": {
+   "catalogName": "머스타드",
+   "categoryCode": null
+  },
+  "가다랑어포": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "가쓰오부시": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "가쯔오부시": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "유자청": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "알룰로스": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "스테비아": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "수제조미료": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "양념장": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "홍초": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "배즙": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "떡볶이양념파우더": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "삼계탕티백": {
+   "catalogName": null,
+   "categoryCode": "SEASONING"
+  },
+  "녹말가루": {
+   "catalogName": "전분",
+   "categoryCode": null
+  },
+  "녹말": {
+   "catalogName": "전분",
+   "categoryCode": null
+  },
+  "육수": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "닭육수": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "사골육수": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "해물육수": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "야채육수": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "채소육수": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "닭뼈육수": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "삼계탕육수": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "동치미국물": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "양송이": {
+   "catalogName": "양송이버섯",
+   "categoryCode": null
+  },
+  "새송이": {
+   "catalogName": "새송이버섯",
+   "categoryCode": null
+  },
+  "표고": {
+   "catalogName": "표고버섯",
+   "categoryCode": null
+  },
+  "백일송이": {
+   "catalogName": "버섯",
+   "categoryCode": null
+  },
+  "스파게티": {
+   "catalogName": "스파게티면",
+   "categoryCode": null
+  },
+  "삶은스파게티": {
+   "catalogName": "스파게티면",
+   "categoryCode": null
+  },
+  "파스타": {
+   "catalogName": "파스타면",
+   "categoryCode": null
+  },
+  "먹물파스타": {
+   "catalogName": "파스타면",
+   "categoryCode": null
+  },
+  "펜네": {
+   "catalogName": "파스타면",
+   "categoryCode": null
+  },
+  "푸실리": {
+   "catalogName": "파스타면",
+   "categoryCode": null
+  },
+  "실곤약": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "곤약": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "냉동곤약": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "곤약면": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "불린곤약쌀": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "브로컬리": {
+   "catalogName": "브로콜리",
+   "categoryCode": null
+  },
+  "어린잎채소": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "어린잎": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "새싹": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "새싹채소": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "각종새싹": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "어린싹": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "무순": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "라이스페이퍼": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "라이스페퍼": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "파": {
+   "catalogName": "대파",
+   "categoryCode": null
+  },
+  "다진파": {
+   "catalogName": "대파",
+   "categoryCode": null
+  },
+  "파다진것": {
+   "catalogName": "대파",
+   "categoryCode": null
+  },
+  "실파": {
+   "catalogName": "쪽파",
+   "categoryCode": null
+  },
+  "다진실파": {
+   "catalogName": "쪽파",
+   "categoryCode": null
+  },
+  "참치": {
+   "catalogName": "참치캔",
+   "categoryCode": null
+  },
+  "통조림참치": {
+   "catalogName": "참치캔",
+   "categoryCode": null
+  },
+  "떡볶이떡": {
+   "catalogName": "떡",
+   "categoryCode": null
+  },
+  "누들떡볶이떡": {
+   "catalogName": "떡",
+   "categoryCode": null
+  },
+  "관자": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "샐러리": {
+   "catalogName": "셀러리",
+   "categoryCode": null
+  },
+  "샐러리다진것": {
+   "catalogName": "셀러리",
+   "categoryCode": null
+  },
+  "근대": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "아욱": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "냉이": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "달래": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "봄동": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "두릅": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "신선초": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "적겨자": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "비타민": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "치커리": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "앤다이브": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "루꼴라": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "머윗대": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "시래기": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "무청시래기불린것": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "건곤드레": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "삶은죽순": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "마": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "인삼": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "수삼": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "함초": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "건함초": {
+   "catalogName": null,
+   "categoryCode": "VEGETABLE"
+  },
+  "적채": {
+   "catalogName": "양배추",
+   "categoryCode": null
+  },
+  "배춧잎": {
+   "catalogName": "배추",
+   "categoryCode": null
+  },
+  "래디쉬": {
+   "catalogName": "래디시",
+   "categoryCode": null
+  },
+  "청고주": {
+   "catalogName": "고추",
+   "categoryCode": null
+  },
+  "은행": {
+   "catalogName": null,
+   "categoryCode": "ETC"
+  },
+  "밤": {
+   "catalogName": null,
+   "categoryCode": "ETC"
+  },
+  "백미": {
+   "catalogName": "쌀",
+   "categoryCode": null
+  },
+  "멥쌀": {
+   "catalogName": "쌀",
+   "categoryCode": null
+  },
+  "불린쌀": {
+   "catalogName": "쌀",
+   "categoryCode": null
+  },
+  "강황쌀": {
+   "catalogName": "쌀",
+   "categoryCode": null
+  },
+  "흑미": {
+   "catalogName": "잡곡",
+   "categoryCode": null
+  },
+  "율무": {
+   "catalogName": "잡곡",
+   "categoryCode": null
+  },
+  "조": {
+   "catalogName": "잡곡",
+   "categoryCode": null
+  },
+  "서리태": {
+   "catalogName": "검은콩",
+   "categoryCode": null
+  },
+  "콩": {
+   "catalogName": "대두",
+   "categoryCode": null
+  },
+  "멥쌀가루": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "쌀가루": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "콩가루": {
+   "catalogName": null,
+   "categoryCode": "BEAN_TOFU"
+  },
+  "콩물": {
+   "catalogName": null,
+   "categoryCode": "BEAN_TOFU"
+  },
+  "콩국물": {
+   "catalogName": null,
+   "categoryCode": "BEAN_TOFU"
+  },
+  "콩비지": {
+   "catalogName": null,
+   "categoryCode": "BEAN_TOFU"
+  },
+  "청포묵": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "도토리묵": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "올방개묵": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "검정깨묵": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "묵말랭이": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "톳": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "매생이": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "생김": {
+   "catalogName": "김",
+   "categoryCode": null
+  },
+  "파래김": {
+   "catalogName": "김",
+   "categoryCode": null
+  },
+  "김가루": {
+   "catalogName": "김",
+   "categoryCode": null
+  },
+  "크렌베리": {
+   "catalogName": null,
+   "categoryCode": "FRUIT"
+  },
+  "라즈베리": {
+   "catalogName": null,
+   "categoryCode": "FRUIT"
+  },
+  "통삼겹": {
+   "catalogName": "삼겹살",
+   "categoryCode": null
+  },
+  "돼지등심": {
+   "catalogName": "돼지고기",
+   "categoryCode": null
+  },
+  "부챗살": {
+   "catalogName": "쇠고기",
+   "categoryCode": null
+  },
+  "닭살": {
+   "catalogName": "닭고기",
+   "categoryCode": null
+  },
+  "닭": {
+   "catalogName": "닭고기",
+   "categoryCode": null
+  },
+  "삼계탕용닭": {
+   "catalogName": "통닭",
+   "categoryCode": null
+  },
+  "돼지머리": {
+   "catalogName": null,
+   "categoryCode": "MEAT"
+  },
+  "족발": {
+   "catalogName": null,
+   "categoryCode": "MEAT"
+  },
+  "닭뼈": {
+   "catalogName": null,
+   "categoryCode": "MEAT"
+  },
+  "우렁이": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "날치알": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "뒤포리": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "흰살생선": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "미더덕": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "멍게살": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "조개": {
+   "catalogName": "조개류",
+   "categoryCode": null
+  },
+  "조개살": {
+   "catalogName": "조개류",
+   "categoryCode": null
+  },
+  "가자미": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "쭈꾸미": {
+   "catalogName": "주꾸미",
+   "categoryCode": null
+  },
+  "게살": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "크래비": {
+   "catalogName": "맛살",
+   "categoryCode": null
+  },
+  "크레미": {
+   "catalogName": "맛살",
+   "categoryCode": null
+  },
+  "대구살": {
+   "catalogName": null,
+   "categoryCode": "SEAFOOD"
+  },
+  "만두피": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "포카치아빵": {
+   "catalogName": "빵",
+   "categoryCode": null
+  },
+  "바케트": {
+   "catalogName": "바게트",
+   "categoryCode": null
+  },
+  "시판크루통": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "그라놀라": {
+   "catalogName": "시리얼",
+   "categoryCode": null
+  },
+  "쿠스쿠스": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "누룽지": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "우동": {
+   "catalogName": "우동면",
+   "categoryCode": null
+  },
+  "생면": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "쫄면사리": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "양장피면": {
+   "catalogName": null,
+   "categoryCode": "GRAIN"
+  },
+  "석박지": {
+   "catalogName": null,
+   "categoryCode": "SIDE_DISH"
+  },
+  "동치미": {
+   "catalogName": null,
+   "categoryCode": "SIDE_DISH"
+  },
+  "묵은지": {
+   "catalogName": "배추김치",
+   "categoryCode": null
+  },
+  "쌈무": {
+   "catalogName": null,
+   "categoryCode": "SIDE_DISH"
+  },
+  "화이트크림": {
+   "catalogName": "생크림",
+   "categoryCode": null
+  },
+  "사워크림": {
+   "catalogName": null,
+   "categoryCode": "DAIRY_EGG"
+  },
+  "요플레": {
+   "catalogName": "요거트",
+   "categoryCode": null
+  },
+  "플레인요구르트": {
+   "catalogName": "요거트",
+   "categoryCode": null
+  },
+  "수란": {
+   "catalogName": "달걀",
+   "categoryCode": null
+  },
+  "코코넛워터": {
+   "catalogName": null,
+   "categoryCode": "BEVERAGE"
+  },
+  "블랙올리브": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "절임올리브": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "생수": {
+   "catalogName": null,
+   "categoryCode": null
+  },
+  "통조림연어": {
+   "catalogName": null,
+   "categoryCode": "PROCESSED"
+  },
+  "건조체리": {
+   "catalogName": null,
+   "categoryCode": "FRUIT"
+  },
+  "마늘다진것": {
+   "catalogName": "다진마늘",
+   "categoryCode": null
+  },
+  "초코": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "초코칩": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "초코시럽": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "초코소스": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "초코잼": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "초코크림": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "초코볼": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "초콜렛": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "쵸콜릿": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "쵸코": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "쵸코칩": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "누텔라": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "카카오닙스": {
+   "catalogName": "초콜릿",
+   "categoryCode": null
+  },
+  "소고기다짐육": {
+   "catalogName": "쇠고기",
+   "categoryCode": null
+  },
+  "쇠고기다짐육": {
+   "catalogName": "쇠고기",
+   "categoryCode": null
+  }
+ },
+ "groups": {
+  "김치": "김치",
+  "배추김치": "김치",
+  "깍두기": "김치",
+  "총각김치": "김치",
+  "열무김치": "김치",
+  "갓김치": "김치",
+  "파김치": "김치",
+  "묵은지": "김치",
+  "돼지고기": "돼지고기",
+  "삼겹살": "돼지고기",
+  "목살": "돼지고기",
+  "앞다리살": "돼지고기",
+  "돼지갈비": "돼지고기",
+  "다짐육": "돼지고기",
+  "쇠고기": "쇠고기",
+  "한우": "쇠고기",
+  "소불고기": "쇠고기",
+  "소갈비": "쇠고기",
+  "소고기국거리": "쇠고기",
+  "불고기": "쇠고기",
+  "닭고기": "닭고기",
+  "닭가슴살": "닭고기",
+  "닭다리": "닭고기",
+  "닭봉": "닭고기",
+  "통닭": "닭고기",
+  "면": "면",
+  "국수": "면",
+  "소면": "면",
+  "칼국수면": "면",
+  "우동면": "면",
+  "파스타면": "면",
+  "스파게티면": "면",
+  "당면": "면",
+  "라면": "면",
+  "메밀국수": "면",
+  "빵": "빵",
+  "식빵": "빵",
+  "바게트": "빵",
+  "베이글": "빵",
+  "모닝빵": "빵",
+  "새우": "새우",
+  "대하": "새우",
+  "냉동새우": "새우",
+  "건새우": "새우",
+  "고추": "고추",
+  "청양고추": "고추",
+  "풋고추": "고추",
+  "대파": "파",
+  "쪽파": "파",
+  "버섯": "버섯",
+  "표고버섯": "버섯",
+  "새송이버섯": "버섯",
+  "팽이버섯": "버섯",
+  "양송이버섯": "버섯",
+  "느타리버섯": "버섯",
+  "쌀": "쌀",
+  "현미": "쌀",
+  "찹쌀": "쌀",
+  "잡곡": "쌀",
+  "보리": "쌀",
+  "귀리": "쌀",
+  "즉석밥": "쌀",
+  "견과류": "견과류",
+  "땅콩": "견과류",
+  "호두": "견과류",
+  "잣": "견과류",
+  "아몬드": "견과류",
+  "캐슈넛": "견과류",
+  "피스타치오": "견과류",
+  "해바라기씨": "견과류",
+  "아몬드가루": "견과류"
+ },
+ "skippedNames": [
+  "물",
+  "생수",
+  "육수"
+ ],
+ "dishNames": [
+  "감자조림",
+  "계란장조림",
+  "김밥",
+  "김자반",
+  "나물",
+  "냉동볶음밥",
+  "냉동피자",
+  "도시락",
+  "두부조림",
+  "멸치볶음",
+  "샌드위치",
+  "샐러드",
+  "시금치나물",
+  "아황산류",
+  "어묵볶음",
+  "어묵탕",
+  "잡채",
+  "장아찌",
+  "장조림",
+  "주스",
+  "즉석국",
+  "즉석밥",
+  "진미채볶음",
+  "콩나물무침",
+  "핫도그"
+ ],
+ "titleOnlyTerms": [
+  "새우젓",
+  "멸치액젓",
+  "까나리액젓",
+  "액젓"
+ ],
+ "stapleGroups": [
+  "면",
+  "빵",
+  "쌀"
+ ],
+ "breakfast": [
+  "감",
+  "건포도",
+  "견과류",
+  "곶감",
+  "귤",
+  "그릭요거트",
+  "꿀",
+  "대추",
+  "딸기",
+  "땅콩버터",
+  "라임",
+  "레몬",
+  "망고",
+  "매실",
+  "멜론",
+  "모짜렐라치즈",
+  "무화과",
+  "바나나",
+  "배",
+  "버터",
+  "복숭아",
+  "블루베리",
+  "빵",
+  "사과",
+  "샤인머스캣",
+  "석류",
+  "수박",
+  "시리얼",
+  "아보카도",
+  "연유",
+  "오렌지",
+  "요거트",
+  "우유",
+  "자두",
+  "자몽",
+  "잼",
+  "참외",
+  "체리",
+  "초콜릿",
+  "치즈",
+  "키위",
+  "파인애플",
+  "포도",
+  "한라봉"
+ ],
+ "excludedFromAi": [
+  "콜라",
+  "캔커피",
+  "아메리카노",
+  "홍차",
+  "보리차",
+  "옥수수차",
+  "이온음료",
+  "에너지드링크",
+  "요구르트음료",
+  "두유음료",
+  "식혜",
+  "초콜릿",
+  "아이스크림",
+  "젤리",
+  "과자",
+  "케이크",
+  "쿠키",
+  "잼"
+ ],
+ "partners": {
+  "감": [],
+  "건포도": [
+   "감자",
+   "강낭콩",
+   "견과류",
+   "고구마",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "두유",
+   "딸기",
+   "무화과",
+   "밀가루",
+   "바나나",
+   "버섯",
+   "버터",
+   "브로콜리",
+   "빵",
+   "사과",
+   "셀러리",
+   "쌀",
+   "양파",
+   "오트밀",
+   "요거트",
+   "우유",
+   "주스",
+   "체리",
+   "초콜릿",
+   "코코아",
+   "키위"
+  ],
+  "견과류": [
+   "가지",
+   "감자",
+   "강낭콩",
+   "건포도",
+   "검은콩",
+   "고구마",
+   "고등어",
+   "고추",
+   "곶감",
+   "광어",
+   "그릭요거트",
+   "김",
+   "김치",
+   "깻잎",
+   "낙지",
+   "녹두",
+   "녹차",
+   "다시마",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "당근",
+   "대추",
+   "돼지고기",
+   "두부",
+   "두유",
+   "딸기",
+   "땅콩버터",
+   "떡",
+   "라임",
+   "레몬",
+   "마늘",
+   "막걸리",
+   "망고",
+   "메추리알",
+   "면",
+   "멸치",
+   "모짜렐라치즈",
+   "무화과",
+   "문어",
+   "미나리",
+   "미역",
+   "밀가루",
+   "바나나",
+   "방울토마토",
+   "배",
+   "배추",
+   "버섯",
+   "버터",
+   "베이컨",
+   "병아리콩",
+   "부추",
+   "브로콜리",
+   "블루베리",
+   "비트",
+   "빵",
+   "빵가루",
+   "사과",
+   "상추",
+   "새우",
+   "생강",
+   "생크림",
+   "석류",
+   "셀러리",
+   "쇠고기",
+   "순두부",
+   "슬라이스치즈",
+   "시금치",
+   "쌀",
+   "쑥갓",
+   "아스파라거스",
+   "애호박",
+   "양배추",
+   "양파",
+   "어묵",
+   "연근",
+   "연어",
+   "연유",
+   "오렌지",
+   "오렌지주스",
+   "오리고기",
+   "오이",
+   "오징어",
+   "오트밀",
+   "옥수수",
+   "와인",
+   "완두콩",
+   "요거트",
+   "우엉",
+   "우유",
+   "자두",
+   "자몽",
+   "전복",
+   "전분",
+   "젓갈",
+   "주스",
+   "참외",
+   "청경채",
+   "청국장",
+   "체리",
+   "초콜릿",
+   "치즈",
+   "코코아",
+   "크림치즈",
+   "키위",
+   "토마토",
+   "튀김가루",
+   "파",
+   "파마산치즈",
+   "파프리카",
+   "포도",
+   "피망",
+   "피클",
+   "호박",
+   "휘핑크림"
+  ],
+  "곶감": [
+   "견과류",
+   "고구마",
+   "달걀",
+   "대추",
+   "레몬",
+   "밀가루",
+   "배",
+   "버터",
+   "블루베리",
+   "사과",
+   "생강",
+   "연유",
+   "자몽"
+  ],
+  "과자": [],
+  "귤": [
+   "고추",
+   "다진마늘",
+   "달걀",
+   "렌틸콩",
+   "미나리",
+   "배추",
+   "버터",
+   "블루베리",
+   "생크림",
+   "우유",
+   "크림치즈",
+   "키위"
+  ],
+  "그릭요거트": [
+   "감자",
+   "견과류",
+   "다진마늘",
+   "달걀",
+   "닭고기",
+   "당근",
+   "땅콩버터",
+   "밀가루",
+   "버터",
+   "쌀",
+   "양파",
+   "우유",
+   "코코아",
+   "크림치즈",
+   "토마토"
+  ],
+  "녹차": [
+   "견과류",
+   "다시마",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "당근",
+   "대추",
+   "밀가루",
+   "버섯",
+   "버터",
+   "브로콜리",
+   "생크림",
+   "쇠고기",
+   "쌀",
+   "양파",
+   "연어",
+   "오이",
+   "와인",
+   "우유",
+   "전분",
+   "치즈",
+   "콩나물",
+   "포도"
+  ],
+  "대추": [
+   "감자",
+   "감자전분",
+   "견과류",
+   "고구마",
+   "고사리",
+   "고추",
+   "곶감",
+   "김치",
+   "깻잎",
+   "녹차",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "당근",
+   "돼지고기",
+   "두부",
+   "땅콩버터",
+   "떡",
+   "마늘",
+   "막걸리",
+   "메추리알",
+   "면",
+   "멸치",
+   "무",
+   "문어",
+   "미나리",
+   "미역",
+   "밀가루",
+   "바나나",
+   "배",
+   "배추",
+   "버섯",
+   "버터",
+   "부추",
+   "브로콜리",
+   "블루베리",
+   "사과",
+   "사과주스",
+   "새우",
+   "생강",
+   "생크림",
+   "석류",
+   "소주",
+   "쇠고기",
+   "숙주",
+   "시금치",
+   "쌀",
+   "쑥갓",
+   "아스파라거스",
+   "애호박",
+   "양배추",
+   "양파",
+   "연어",
+   "연유",
+   "오렌지주스",
+   "오이",
+   "오징어",
+   "와인",
+   "완두콩",
+   "우유",
+   "전분",
+   "초콜릿",
+   "치즈",
+   "파",
+   "파프리카",
+   "팥",
+   "피망",
+   "피클",
+   "호박"
+  ],
+  "두유음료": [],
+  "딸기": [
+   "감자",
+   "건포도",
+   "견과류",
+   "고구마",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "당근",
+   "두유",
+   "레몬",
+   "렌틸콩",
+   "망고",
+   "매실",
+   "메추리알",
+   "밀가루",
+   "바나나",
+   "방울토마토",
+   "배",
+   "버터",
+   "복숭아",
+   "브로콜리",
+   "블루베리",
+   "빵",
+   "빵가루",
+   "사과",
+   "생크림",
+   "쇠고기",
+   "시금치",
+   "쌀",
+   "양배추",
+   "양파",
+   "오렌지",
+   "오징어",
+   "요거트",
+   "우유",
+   "자두",
+   "저지방우유",
+   "주스",
+   "체리",
+   "크림치즈",
+   "키위",
+   "파프리카",
+   "포도"
+  ],
+  "땅콩버터": [
+   "견과류",
+   "고추",
+   "그릭요거트",
+   "다진마늘",
+   "달걀",
+   "닭고기",
+   "대추",
+   "두부",
+   "두유",
+   "레몬",
+   "마늘",
+   "바나나",
+   "빵가루",
+   "새우",
+   "생강",
+   "생크림",
+   "쇠고기",
+   "쌀",
+   "양파",
+   "우유",
+   "초콜릿",
+   "코코아",
+   "크림치즈",
+   "토마토",
+   "파",
+   "피망"
+  ],
+  "라임": [
+   "견과류",
+   "다진마늘",
+   "두부",
+   "레몬",
+   "마늘",
+   "모짜렐라치즈",
+   "문어",
+   "배",
+   "병아리콩",
+   "사과",
+   "셀러리",
+   "시금치",
+   "아보카도",
+   "양파",
+   "오이",
+   "요거트",
+   "우유",
+   "탄산수",
+   "토마토",
+   "파",
+   "피클"
+  ],
+  "레몬": [
+   "가지",
+   "감자",
+   "견과류",
+   "고등어",
+   "고추",
+   "곶감",
+   "광어",
+   "김",
+   "김치",
+   "깻잎",
+   "낙지",
+   "다시마",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "당근",
+   "도라지",
+   "돼지고기",
+   "두부",
+   "두유",
+   "딸기",
+   "땅콩버터",
+   "라임",
+   "렌틸콩",
+   "마늘",
+   "막걸리",
+   "망고",
+   "메추리알",
+   "멜론",
+   "면",
+   "멸치",
+   "명태",
+   "무",
+   "문어",
+   "미나리",
+   "미역",
+   "밀가루",
+   "바지락",
+   "방울토마토",
+   "배",
+   "배추",
+   "버섯",
+   "버터",
+   "베이컨",
+   "부추",
+   "브로콜리",
+   "블루베리",
+   "비트",
+   "빵가루",
+   "사과",
+   "삼치",
+   "상추",
+   "새우",
+   "생강",
+   "생크림",
+   "셀러리",
+   "소주",
+   "쇠고기",
+   "시금치",
+   "쌀",
+   "아보카도",
+   "아스파라거스",
+   "애호박",
+   "양배추",
+   "양파",
+   "연근",
+   "연어",
+   "연유",
+   "오렌지",
+   "오렌지주스",
+   "오이",
+   "오징어",
+   "옥수수",
+   "와인",
+   "요거트",
+   "우엉",
+   "우유",
+   "자몽",
+   "전복",
+   "전분",
+   "주꾸미",
+   "주스",
+   "청경채",
+   "체리",
+   "케일",
+   "콜리플라워",
+   "크림치즈",
+   "탄산수",
+   "토마토",
+   "튀김가루",
+   "파",
+   "파마산치즈",
+   "파인애플",
+   "파프리카",
+   "포도",
+   "피망",
+   "피클"
+  ],
+  "막걸리": [
+   "견과류",
+   "고등어",
+   "대추",
+   "레몬",
+   "밀가루",
+   "배",
+   "버터",
+   "비트",
+   "새우",
+   "생강",
+   "쌀"
+  ],
+  "망고": [
+   "감자",
+   "견과류",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "당근",
+   "딸기",
+   "레몬",
+   "매실",
+   "방울토마토",
+   "버터",
+   "브로콜리",
+   "블루베리",
+   "새우",
+   "생크림",
+   "시금치",
+   "아스파라거스",
+   "양파",
+   "오이",
+   "요거트",
+   "우유",
+   "자몽",
+   "크림치즈",
+   "키위",
+   "파프리카",
+   "포도",
+   "피망"
+  ],
+  "매실": [
+   "가지",
+   "고추",
+   "닭고기",
+   "두유",
+   "딸기",
+   "마늘",
+   "망고",
+   "부추",
+   "상추",
+   "양파",
+   "우유",
+   "키위",
+   "파"
+  ],
+  "맥주": [
+   "가지",
+   "고구마",
+   "김치",
+   "당근",
+   "두부",
+   "마늘",
+   "버섯",
+   "쇠고기",
+   "양파",
+   "전분",
+   "튀김가루"
+  ],
+  "멜론": [
+   "감자",
+   "레몬",
+   "바나나",
+   "브로콜리",
+   "사과",
+   "오렌지",
+   "오렌지주스",
+   "요거트",
+   "전분",
+   "주스",
+   "탄산수"
+  ],
+  "무화과": [
+   "감자",
+   "건포도",
+   "견과류",
+   "다시마",
+   "단호박",
+   "버섯",
+   "새우",
+   "쌀",
+   "양파",
+   "요거트",
+   "파",
+   "파프리카",
+   "피망"
+  ],
+  "바나나": [
+   "가지",
+   "감자",
+   "강낭콩",
+   "건포도",
+   "검은콩",
+   "견과류",
+   "고구마",
+   "고추",
+   "김",
+   "김치",
+   "깻잎",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "당근",
+   "대추",
+   "두부",
+   "두유",
+   "딸기",
+   "땅콩버터",
+   "마늘",
+   "맛살",
+   "멜론",
+   "면",
+   "밀가루",
+   "방울토마토",
+   "배",
+   "버섯",
+   "버터",
+   "베이컨",
+   "병아리콩",
+   "부추",
+   "브로콜리",
+   "블루베리",
+   "비트",
+   "빵가루",
+   "사과",
+   "생크림",
+   "쇠고기",
+   "쌀",
+   "아보카도",
+   "양배추",
+   "양파",
+   "연근",
+   "연유",
+   "오렌지",
+   "오렌지주스",
+   "오트밀",
+   "옥수수",
+   "요거트",
+   "우유",
+   "저지방우유",
+   "전분",
+   "젓갈",
+   "주스",
+   "체리",
+   "초콜릿",
+   "치즈",
+   "코코아",
+   "크림치즈",
+   "키위",
+   "토마토",
+   "파",
+   "파인애플",
+   "파프리카",
+   "포도",
+   "피클",
+   "휘핑크림"
+  ],
+  "배": [
+   "가래떡",
+   "가지",
+   "감자",
+   "강낭콩",
+   "견과류",
+   "고구마",
+   "고추",
+   "곶감",
+   "김치",
+   "깻잎",
+   "낙지",
+   "다시마",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "당근",
+   "대추",
+   "도라지",
+   "돼지고기",
+   "두부",
+   "두유",
+   "딸기",
+   "떡",
+   "라임",
+   "래디시",
+   "레몬",
+   "마늘",
+   "막걸리",
+   "면",
+   "멸치",
+   "무",
+   "문어",
+   "미나리",
+   "밀가루",
+   "바나나",
+   "방울토마토",
+   "배추",
+   "버섯",
+   "버터",
+   "베이컨",
+   "복숭아",
+   "부추",
+   "브로콜리",
+   "빵가루",
+   "사과",
+   "사과주스",
+   "사이다",
+   "상추",
+   "새우",
+   "생강",
+   "석류",
+   "셀러리",
+   "소주",
+   "쇠고기",
+   "시금치",
+   "쌀",
+   "아보카도",
+   "아스파라거스",
+   "애호박",
+   "양배추",
+   "양파",
+   "연근",
+   "연어",
+   "연유",
+   "오렌지",
+   "오렌지주스",
+   "오이",
+   "와인",
+   "요거트",
+   "우엉",
+   "우유",
+   "전분",
+   "젓갈",
+   "주꾸미",
+   "주스",
+   "참외",
+   "청경채",
+   "콩나물",
+   "크림치즈",
+   "키위",
+   "탄산수",
+   "토마토",
+   "파",
+   "파인애플",
+   "파프리카",
+   "포도",
+   "피망",
+   "피클"
+  ],
+  "보리차": [],
+  "복숭아": [
+   "깻잎",
+   "다진마늘",
+   "딸기",
+   "마늘",
+   "배",
+   "버섯",
+   "블루베리",
+   "사과",
+   "상추",
+   "새우",
+   "식혜",
+   "오이",
+   "자두",
+   "주스",
+   "체리",
+   "토마토",
+   "포도"
+  ],
+  "블루베리": [
+   "감자",
+   "견과류",
+   "고구마",
+   "곶감",
+   "귤",
+   "깻잎",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "당근",
+   "대추",
+   "두부",
+   "두유",
+   "딸기",
+   "레몬",
+   "렌틸콩",
+   "망고",
+   "메추리알",
+   "바나나",
+   "버섯",
+   "버터",
+   "베이컨",
+   "복숭아",
+   "브로콜리",
+   "사과",
+   "새우",
+   "생크림",
+   "쌀",
+   "아스파라거스",
+   "양파",
+   "오렌지",
+   "오리고기",
+   "와인",
+   "요거트",
+   "우유",
+   "자두",
+   "저지방우유",
+   "주스",
+   "체리",
+   "초콜릿",
+   "치즈",
+   "크림치즈",
+   "키위",
+   "토마토",
+   "파인애플",
+   "파프리카",
+   "포도"
+  ],
+  "사과": [
+   "가래떡",
+   "가지",
+   "감자",
+   "건포도",
+   "견과류",
+   "고구마",
+   "고등어",
+   "고추",
+   "곶감",
+   "김",
+   "김치",
+   "깻잎",
+   "낙지",
+   "다시마",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "당근",
+   "대추",
+   "도라지",
+   "돼지고기",
+   "두부",
+   "두유",
+   "딸기",
+   "떡",
+   "라임",
+   "래디시",
+   "레몬",
+   "마늘",
+   "멜론",
+   "면",
+   "멸치",
+   "모짜렐라치즈",
+   "무",
+   "미나리",
+   "밀가루",
+   "바나나",
+   "방울토마토",
+   "배",
+   "배추",
+   "버섯",
+   "버터",
+   "복숭아",
+   "부추",
+   "북어",
+   "브로콜리",
+   "블루베리",
+   "비트",
+   "빵",
+   "빵가루",
+   "사과주스",
+   "새우",
+   "생강",
+   "생크림",
+   "셀러리",
+   "소주",
+   "쇠고기",
+   "순두부",
+   "시금치",
+   "시리얼",
+   "쌀",
+   "쑥갓",
+   "아보카도",
+   "아스파라거스",
+   "아이스크림",
+   "알배추",
+   "애호박",
+   "양배추",
+   "양파",
+   "어묵",
+   "얼갈이배추",
+   "연근",
+   "연어",
+   "연유",
+   "오렌지",
+   "오렌지주스",
+   "오이",
+   "오트밀",
+   "와인",
+   "완두콩",
+   "요거트",
+   "우유",
+   "유부",
+   "자두",
+   "자몽",
+   "전분",
+   "주꾸미",
+   "주스",
+   "참치캔",
+   "청국장",
+   "체리",
+   "치즈",
+   "케일",
+   "크림치즈",
+   "키위",
+   "탄산수",
+   "토마토",
+   "파",
+   "파인애플",
+   "파프리카",
+   "포도",
+   "피망",
+   "피클",
+   "호박"
+  ],
+  "사과주스": [
+   "고추",
+   "깻잎",
+   "낙지",
+   "다시마",
+   "다진마늘",
+   "당근",
+   "대추",
+   "미나리",
+   "미역",
+   "방울토마토",
+   "배",
+   "버섯",
+   "사과",
+   "쇠고기",
+   "쌀",
+   "양파",
+   "오이",
+   "요거트",
+   "치즈",
+   "파",
+   "포도"
+  ],
+  "사이다": [
+   "고추",
+   "깻잎",
+   "다시마",
+   "미나리",
+   "배",
+   "쇠고기",
+   "쌀",
+   "양배추",
+   "오징어",
+   "케일",
+   "탄산수"
+  ],
+  "샤인머스캣": [],
+  "석류": [
+   "견과류",
+   "깻잎",
+   "나물",
+   "다진마늘",
+   "대추",
+   "면",
+   "무",
+   "미나리",
+   "배",
+   "배추",
+   "새우",
+   "생강",
+   "오이",
+   "파"
+  ],
+  "소주": [
+   "고구마",
+   "고추",
+   "깻잎",
+   "다진마늘",
+   "단호박",
+   "닭고기",
+   "당근",
+   "대추",
+   "돼지고기",
+   "레몬",
+   "마늘",
+   "무",
+   "바지락",
+   "배",
+   "부추",
+   "사과",
+   "새우",
+   "생강",
+   "쌀",
+   "양배추",
+   "양파",
+   "연근",
+   "오이",
+   "요거트",
+   "전복",
+   "토마토",
+   "파"
+  ],
+  "수박": [
+   "가지",
+   "감자",
+   "고추",
+   "다진마늘",
+   "닭고기",
+   "돼지고기",
+   "두부",
+   "브로콜리",
+   "아스파라거스",
+   "양배추",
+   "양파",
+   "요거트",
+   "우유",
+   "치즈",
+   "토마토",
+   "팥",
+   "피망"
+  ],
+  "시리얼": [
+   "버터",
+   "사과",
+   "생강",
+   "양파",
+   "요거트"
+  ],
+  "식혜": [
+   "복숭아",
+   "팥"
+  ],
+  "아메리카노": [],
+  "아보카도": [
+   "가지",
+   "감자",
+   "강낭콩",
+   "고추",
+   "다진마늘",
+   "달걀",
+   "닭고기",
+   "당근",
+   "돼지고기",
+   "라임",
+   "레몬",
+   "마늘",
+   "맛살",
+   "면",
+   "모짜렐라치즈",
+   "미나리",
+   "미역",
+   "바나나",
+   "방울토마토",
+   "배",
+   "버섯",
+   "베이컨",
+   "부침가루",
+   "빵",
+   "사과",
+   "상추",
+   "새우",
+   "쇠고기",
+   "시금치",
+   "양파",
+   "연근",
+   "연어",
+   "오렌지",
+   "오이",
+   "와인",
+   "요거트",
+   "우유",
+   "주스",
+   "치즈",
+   "크림치즈",
+   "탄산수",
+   "토마토",
+   "튀김가루",
+   "파",
+   "파마산치즈",
+   "파인애플",
+   "파프리카",
+   "피클",
+   "휘핑크림"
+  ],
+  "아이스크림": [
+   "사과",
+   "주스"
+  ],
+  "에너지드링크": [],
+  "연유": [
+   "견과류",
+   "고구마",
+   "곶감",
+   "다진마늘",
+   "달걀",
+   "닭고기",
+   "대추",
+   "레몬",
+   "면",
+   "바나나",
+   "배",
+   "사과",
+   "생강",
+   "요거트",
+   "전분"
+  ],
+  "오렌지": [
+   "감자",
+   "강낭콩",
+   "견과류",
+   "고구마",
+   "고추",
+   "깻잎",
+   "꽁치",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "당근",
+   "돼지고기",
+   "두부",
+   "딸기",
+   "레몬",
+   "마늘",
+   "멜론",
+   "미나리",
+   "밀가루",
+   "바나나",
+   "배",
+   "버섯",
+   "버터",
+   "베이컨",
+   "부추",
+   "부침가루",
+   "브로콜리",
+   "블루베리",
+   "비트",
+   "빵",
+   "사과",
+   "새우",
+   "생강",
+   "생크림",
+   "쇠고기",
+   "시금치",
+   "쌀",
+   "아보카도",
+   "아스파라거스",
+   "애호박",
+   "양배추",
+   "양파",
+   "연근",
+   "연어",
+   "오렌지주스",
+   "오리고기",
+   "오이",
+   "완두콩",
+   "요거트",
+   "우엉",
+   "우유",
+   "자두",
+   "자몽",
+   "전분",
+   "주스",
+   "키위",
+   "탄산수",
+   "토마토",
+   "파",
+   "파인애플",
+   "파프리카",
+   "포도",
+   "피클"
+  ],
+  "오렌지주스": [
+   "견과류",
+   "고구마",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "당근",
+   "대추",
+   "돼지고기",
+   "두부",
+   "레몬",
+   "마늘",
+   "멜론",
+   "무",
+   "미나리",
+   "밀가루",
+   "바나나",
+   "방울토마토",
+   "배",
+   "버섯",
+   "버터",
+   "브로콜리",
+   "사과",
+   "새우",
+   "생강",
+   "생크림",
+   "쇠고기",
+   "시금치",
+   "아스파라거스",
+   "알배추",
+   "양파",
+   "연근",
+   "연어",
+   "오렌지",
+   "요거트",
+   "우유",
+   "전분",
+   "주스",
+   "콜리플라워",
+   "튀김가루",
+   "파",
+   "파인애플",
+   "파프리카",
+   "피망",
+   "피클"
+  ],
+  "옥수수차": [],
+  "와인": [
+   "가지",
+   "감자",
+   "견과류",
+   "고구마",
+   "고추",
+   "김",
+   "김치",
+   "깻잎",
+   "녹차",
+   "다시마",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "당근",
+   "대추",
+   "돼지고기",
+   "두부",
+   "레몬",
+   "마늘",
+   "메추리알",
+   "면",
+   "모짜렐라치즈",
+   "미나리",
+   "밀가루",
+   "바지락",
+   "방울토마토",
+   "배",
+   "배추",
+   "버섯",
+   "버터",
+   "브로콜리",
+   "블루베리",
+   "빵",
+   "빵가루",
+   "사과",
+   "상추",
+   "새우",
+   "생강",
+   "생크림",
+   "셀러리",
+   "쇠고기",
+   "숙주",
+   "시금치",
+   "쌀",
+   "아보카도",
+   "아스파라거스",
+   "양파",
+   "연근",
+   "연어",
+   "우엉",
+   "우유",
+   "자두",
+   "전분",
+   "조기",
+   "청경채",
+   "치즈",
+   "크림치즈",
+   "토마토",
+   "파",
+   "파인애플",
+   "파프리카",
+   "피망",
+   "피클"
+  ],
+  "요거트": [
+   "가지",
+   "감자",
+   "강낭콩",
+   "건포도",
+   "견과류",
+   "고구마",
+   "고추",
+   "광어",
+   "깻잎",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "당근",
+   "돼지고기",
+   "두부",
+   "두유",
+   "딸기",
+   "라임",
+   "레몬",
+   "마늘",
+   "맛살",
+   "망고",
+   "메추리알",
+   "멜론",
+   "모짜렐라치즈",
+   "무화과",
+   "미나리",
+   "밀가루",
+   "바나나",
+   "방울토마토",
+   "배",
+   "버섯",
+   "버터",
+   "부추",
+   "브로콜리",
+   "블루베리",
+   "비트",
+   "빵",
+   "빵가루",
+   "사과",
+   "사과주스",
+   "새우",
+   "생강",
+   "생크림",
+   "셀러리",
+   "소주",
+   "쇠고기",
+   "수박",
+   "시금치",
+   "시리얼",
+   "쌀",
+   "아보카도",
+   "아스파라거스",
+   "양배추",
+   "양파",
+   "어묵",
+   "연근",
+   "연유",
+   "오렌지",
+   "오렌지주스",
+   "오이",
+   "오트밀",
+   "완두콩",
+   "우엉",
+   "우유",
+   "자몽",
+   "전분",
+   "주스",
+   "체리",
+   "치즈",
+   "크림치즈",
+   "키위",
+   "토마토",
+   "파",
+   "파마산치즈",
+   "파인애플",
+   "파프리카",
+   "피망",
+   "피클",
+   "호박"
+  ],
+  "요구르트음료": [],
+  "이온음료": [],
+  "자두": [
+   "견과류",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "당근",
+   "돼지고기",
+   "딸기",
+   "마늘",
+   "복숭아",
+   "부추",
+   "블루베리",
+   "빵",
+   "사과",
+   "상추",
+   "생강",
+   "양파",
+   "오렌지",
+   "와인",
+   "우유",
+   "젓갈",
+   "주스",
+   "체리",
+   "치즈",
+   "탄산수",
+   "파프리카",
+   "포도"
+  ],
+  "자몽": [
+   "감자",
+   "견과류",
+   "곶감",
+   "단호박",
+   "당근",
+   "레몬",
+   "망고",
+   "방울토마토",
+   "브로콜리",
+   "사과",
+   "새우",
+   "생강",
+   "생크림",
+   "오렌지",
+   "오이",
+   "요거트",
+   "체리",
+   "키위"
+  ],
+  "잼": [],
+  "젤리": [],
+  "주스": [
+   "가지",
+   "감자",
+   "강낭콩",
+   "건포도",
+   "견과류",
+   "고구마",
+   "고추",
+   "다진마늘",
+   "단호박",
+   "달걀",
+   "닭고기",
+   "당근",
+   "도라지",
+   "돼지고기",
+   "두유",
+   "딸기",
+   "레몬",
+   "마늘",
+   "멜론",
+   "밀가루",
+   "바나나",
+   "배",
+   "버섯",
+   "버터",
+   "베이컨",
+   "복숭아",
+   "브로콜리",
+   "블루베리",
+   "빵",
+   "빵가루",
+   "사과",
+   "상추",
+   "새우",
+   "샐러드",
+   "생강",
+   "생크림",
+   "셀러리",
+   "쇠고기",
+   "아보카도",
+   "아이스크림",
+   "애호박",
+   "양배추",
+   "양파",
+   "연어",
+   "오렌지",
+   "오렌지주스",
+   "요거트",
+   "우유",
+   "자두",
+   "체리",
+   "토마토",
+   "파마산치즈",
+   "파프리카",
+   "포도"
+  ],
+  "참외": [
+   "감자전분",
+   "견과류",
+   "고추",
+   "다진마늘",
+   "달걀",
+   "돼지고기",
+   "마늘",
+   "무",
+   "미나리",
+   "밀가루",
+   "배",
+   "빵가루",
+   "생강",
+   "순두부",
+   "쌀",
+   "애호박",
+   "양파",
+   "오이",
+   "전분",
+   "젓갈",
+   "치즈",
+   "토마토",
+   "파"
+  ],
+  "체리": [
+   "감자",
+   "건포도",
+   "견과류",
+   "고구마",
+   "달걀",
+   "당근",
+   "딸기",
+   "레몬",
+   "밀가루",
+   "바나나",
+   "방울토마토",
+   "버터",
+   "복숭아",
+   "브로콜리",
+   "블루베리",
+   "사과",
+   "생크림",
+   "양파",
+   "요거트",
+   "자두",
+   "자몽",
+   "주스",
+   "초콜릿",
+   "키위",
+   "포도"
+  ],
+  "초콜릿": [
+   "건포도",
+   "견과류",
+   "고구마",
+   "달걀",
+   "대추",
+   "땅콩버터",
+   "바나나",
+   "버터",
+   "병아리콩",
+   "블루베리",
+   "생크림",
+   "쌀",
+   "우유",
+   "체리",
+   "코코아",
+   "키위",
+   "휘핑크림"
+  ],
+  "캔커피": [],
+  "커피": [
+   "버터",
+   "삼치",
+   "생강",
+   "파"
+  ],
+  "케이크": [],
+  "코코아": [
+   "건포도",
+   "견과류",
+   "그릭요거트",
+   "달걀",
+   "두부",
+   "두유",
+   "땅콩버터",
+   "밀가루",
+   "바나나",
+   "버터",
+   "병아리콩",
+   "쌀",
+   "우유",
+   "초콜릿",
+   "크림치즈",
+   "휘핑크림"
+  ],
+  "콜라": [
+   "감자",
+   "밀가루",
+   "양파"
+  ],
+  "쿠키": [],
+  "키위": [
+   "건포도",
+   "견과류",
+   "고구마",
+   "귤",
+   "다진마늘",
+   "달걀",
+   "닭고기",
+   "당근",
+   "두부",
+   "딸기",
+   "렌틸콩",
+   "마늘",
+   "망고",
+   "매실",
+   "바나나",
+   "방울토마토",
+   "배",
+   "버섯",
+   "버터",
+   "브로콜리",
+   "블루베리",
+   "사과",
+   "생크림",
+   "양파",
+   "오렌지",
+   "오이",
+   "오트밀",
+   "요거트",
+   "우유",
+   "자몽",
+   "전분",
+   "체리",
+   "초콜릿",
+   "치즈",
+   "크림치즈",
+   "토마토",
+   "파인애플"
+  ],
+  "탄산수": [
+   "달걀",
+   "당근",
+   "라임",
+   "레몬",
+   "맛살",
+   "멜론",
+   "미역",
+   "방울토마토",
+   "배",
+   "부침가루",
+   "비트",
+   "사과",
+   "사이다",
+   "새우",
+   "아보카도",
+   "양파",
+   "오렌지",
+   "오이",
+   "자두",
+   "전분",
+   "튀김가루"
+  ],
+  "파인애플": [
+   "감자",
+   "고구마",
+   "고사리",
+   "고추",
+   "김",
+   "깻잎",
+   "다진마늘",
+   "달걀",
+   "닭고기",
+   "당근",
+   "도라지",
+   "돼지고기",
+   "두부",
+   "래디시",
+   "레몬",
+   "마늘",
+   "면",
+   "모짜렐라치즈",
+   "밀가루",
+   "바나나",
+   "방울토마토",
+   "배",
+   "버섯",
+   "버터",
+   "베이컨",
+   "부추",
+   "브로콜리",
+   "블루베리",
+   "빵가루",
+   "사과",
+   "새우",
+   "생강",
+   "셀러리",
+   "쇠고기",
+   "숙주",
+   "시금치",
+   "쌀",
+   "아보카도",
+   "아스파라거스",
+   "애호박",
+   "양배추",
+   "양파",
+   "연근",
+   "연어",
+   "오렌지",
+   "오렌지주스",
+   "오이",
+   "와인",
+   "요거트",
+   "우유",
+   "전분",
+   "참치캔",
+   "치즈",
+   "케일",
+   "키위",
+   "토마토",
+   "파",
+   "파프리카",
+   "포도",
+   "피망",
+   "황태"
+  ],
+  "포도": [
+   "감자",
+   "견과류",
+   "김치",
+   "녹차",
+   "다진마늘",
+   "달걀",
+   "닭고기",
+   "당근",
+   "두부",
+   "딸기",
+   "레몬",
+   "망고",
+   "밀가루",
+   "바나나",
+   "방울토마토",
+   "배",
+   "버터",
+   "복숭아",
+   "블루베리",
+   "빵",
+   "사과",
+   "사과주스",
+   "생강",
+   "쇠고기",
+   "쌀",
+   "아스파라거스",
+   "양파",
+   "오렌지",
+   "오이",
+   "자두",
+   "전분",
+   "주스",
+   "체리",
+   "파",
+   "파인애플",
+   "피클"
+  ],
+  "한라봉": [],
+  "홍차": []
+ }
+}

@@ -2,7 +2,7 @@
 
 Source of truth: the Korean "Remake event definition (Figma-based)" v2 (2026-11-22, Notion "이벤트 v2"; not in the repo). Names are snake_case and fixed; to add or rename an event, update that document first and ask the user.
 
-- Scale: 79 events (P0 36, P1 37, P2 5, plus E50 with priority (open, #53); CLIENT 45, SERVER 34), 103 properties (v2 has 102; `deleted_item_count` restored 11/24), 21 metrics (north star + 20 KPIs), 41 screen codes.
+- Scale: 80 events (P0 37, P1 38, P2 5; CLIENT 45, SERVER 35), 104 properties (v2 has 102; `deleted_item_count` restored 11/24; `refund_amount` added for E89, #318), 21 metrics (north star + 20 KPIs), 41 screen codes. E50 priority is P0 (#53, docs #348).
 - API numbers are the numbers in [`api-summary.md`](api-summary.md); error codes are from [`errors.md`](errors.md).
 - There are no admin events. The operator page (Figma, 11/26) shows the metrics in a1-a3 and the raw events in a6 (APIs 61-64).
 
@@ -84,6 +84,9 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 | E86 | `subscription_renewed` | SERVER | P1 | payment_amount, renewal_count | - | job: subscription auto-payment | 이준호 |
 | E87 | `subscription_canceled` | SERVER | P1 | subscribed_days | - | 60 `POST /user/subscription/cancel` | 이준호 |
 | E88 | `subscription_ended` | SERVER | P1 | end_reason, subscribed_days | - | job: subscription auto-payment<br>10 `POST /user/account/deletion` | 이준호 |
+| E89 | `subscription_refunded` | SERVER | P1 | payment_amount, refund_amount, subscribed_days | - | refund request API (path fixed in #343) | 이준호 |
+
+E88 vs E89: `subscription_ended` covers ends **without** a cooling-off refund (period end after cancel, account deletion, auto-payment failure). A successful 7-day full refund records **only** `subscription_refunded` (not E88). The subscription still ends (ENDED, `users.plan` BASIC, billingKey cleared) as part of that refund flow.
 
 ### Fridge
 
@@ -130,7 +133,7 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 | E47 | `step_play_started` | CLIENT | P2 | recipe_id | - | 56 (frontend) | frontend (assigned by 이준호) |
 | E48 | `cook_deduct_viewed` | CLIENT | P1 | recipe_id, deduct_item_count | M08 | 56 (frontend) | frontend (assigned by 이준호) |
 | E49 | `cook_completed` | SERVER | P0 | recipe_id, deducted_count, adjusted_count, from_meal_plan | M08, M11, M17 | 32 `POST /user/recipes/{id}/cook` | 김종수 |
-| E50 | `cook_feedback_answered` | CLIENT | (open, #53) | recipe_id, recommended | - | 56 (frontend). Fridge (p2) bottom sheet "이 레시피 어땠나요?" after the cook deduction | frontend (assigned by 이준호) |
+| E50 | `cook_feedback_answered` | CLIENT | P0 | recipe_id, recommended | - | 56 (frontend). Fridge (p2) bottom sheet "이 레시피 어땠나요?" after the cook deduction | frontend (assigned by 이준호) |
 | E77 | `recipe_favorited` | CLIENT | P2 | is_favorite | - | 56 (frontend) | frontend (assigned by 이준호) |
 
 ### Meal plan
@@ -280,11 +283,12 @@ CLIENT events are sent by the frontend through API 56. SERVER events are recorde
 | `report_reason` | string | offensive_image / ad_title / dangerous_recipe / other | E74 |
 | `reward_rank` | number | 1~3 | E75 |
 | `reward_amount` | number | 10 / 6 / 3 | E75 |
-| `payment_amount` | number | 9900 | E84, E86 |
+| `payment_amount` | number | 9900 | E84, E86, E89 |
 | `is_renewal` | boolean | true(monthly auto-payment) / false(first payment) | E85 |
 | `renewal_count` | number | >= 1 | E86 |
-| `subscribed_days` | number | >= 0 | E87, E88 |
-| `end_reason` | string | canceled(period ended after cancel) / account_deleted(withdrawal) / auto-payment failure value added once decided | E88 |
+| `subscribed_days` | number | >= 0 | E87, E88, E89 |
+| `end_reason` | string | canceled(period ended after cancel) / account_deleted(withdrawal) / auto-payment failure value added once decided. Not used for cooling-off refunds (use E89) | E88 |
+| `refund_amount` | number | KRW refunded (full refund = same as `payment_amount`, currently 9900) | E89 |
 
 ## Metrics
 
@@ -366,9 +370,9 @@ Values for `screen`, `screen_name`, and `previous_screen`. Screens marked "scree
 
 ## Differences from the current code
 
-- `EventName` now has the 79 events above (names, sources, and allowed properties match this document). `EventContractTest` reads the event table in this file and fails when the enum and the document differ, so change both together. Removed from the enum (not in the contract): `pwa_install_prompted`, `pwa_installed`, `push_permission_result`, `camera_unavailable` (use `error_shown` with `CAMERA_UNAVAILABLE`), `meal_plan_shortage_shown`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`.
-- `cook_feedback_answered` (E50) is no longer on hold (11/22): the frontend sends it from the fridge (p2) bottom sheet shown after the cook deduction. Tracking data only (success rate, later improvements); no API or table. Properties are `recipe_id` and `recommended`. Priority is (open, #53).
-- The server-side call sites for E84 `subscription_started`, E85 `subscription_payment_failed`, E87 `subscription_canceled`, and E88 `subscription_ended` exist (subscription API, #270). E86 `subscription_renewed` has no call site yet; it comes with the auto-payment job (#168).
+- `EventName` now has the 80 events above (names, sources, and allowed properties match this document). `EventContractTest` reads the event table in this file and fails when the enum and the document differ, so change both together. Removed from the enum (not in the contract): `pwa_install_prompted`, `pwa_installed`, `push_permission_result`, `camera_unavailable` (use `error_shown` with `CAMERA_UNAVAILABLE`), `meal_plan_shortage_shown`, `meal_slot_detail_generated`, `meal_slot_detail_failed`, `meal_added`.
+- `cook_feedback_answered` (E50) is no longer on hold (11/22): the frontend sends it from the fridge (p2) bottom sheet shown after the cook deduction. Tracking data only (success rate, later improvements); no API or table. Properties are `recipe_id` and `recommended`. Priority is **P0** (#53).
+- The server-side call sites for E84 `subscription_started`, E85 `subscription_payment_failed`, E87 `subscription_canceled`, and E88 `subscription_ended` exist (subscription API, #270). E86 `subscription_renewed` has no call site yet; it comes with the auto-payment job (#168). E89 `subscription_refunded` has no call site yet; it comes with the refund request API (#343, docs #318, decision #228).
 - Property **values** (#172): the validator and server senders use lowercase code values (`limit_feature`, `add_source`, `recipe_mode`, `meal_purpose`, `meal_type`, `date_relation`, and the CLIENT lists such as `scan_method`, `filter_type`, `detail_origin`, `view_from`, `rank_bucket`, `ranking_view`, `edit_field`). `storage` and `filter_value` stay uppercase as listed in this document. Existing uppercase rows were rewritten once by Flyway `V30__lowercase_event_property_values.sql`.
 - The `Screen` enum matches the 41 screen codes above, plus `UNKNOWN` for unrecognized client strings. Scheduled jobs pass `null` for `screen` (not `unknown`).
 - Properties removed from the contract and the code: `permission_result` (with the push event), `needs_check_count`, `feedback_value` (E50 now uses `recipe_id`, `recommended`), `slot_source`, `has_recipe`, `group_count`, `duplicate_suspected`, and `duration_sec` on `receipt_result_abandoned`.

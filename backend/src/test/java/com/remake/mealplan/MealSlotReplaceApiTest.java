@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -447,6 +448,27 @@ class MealSlotReplaceApiTest extends IntegrationTestSupport {
 
 		verify(mealPlanAiAdapter, times(2)).replace(any());
 		assertThat(recipeUsage()).isZero();
+	}
+
+	@Test
+	void AI가_엉터리_조합을_두_번_만들면_형식_오류이고_횟수는_그대로다() throws Exception {
+		Long target = slot(TODAY, "DINNER", "대파볶음밥", 100);
+		// 대파두부볶음에 딸기(식약처에 두부+딸기·파+딸기 짝이 없다, #288 F2)
+		given(mealPlanAiAdapter.replace(any())).willAnswer(invocation -> {
+			GeneratedMealSlot slot = newSlot(invocation.getArgument(0), greenOnion, 100);
+			List<SlotIngredient> ingredients = new ArrayList<>(slot.ingredients());
+			ingredients.add(new SlotIngredient(null, "딸기", BigDecimal.valueOf(50), RecipeUnit.G));
+			return List.of(new GeneratedMealSlot(slot.date(), slot.mealType(), "딸기 대파두부볶음", slot.cookMinutes(),
+					slot.tips(), ingredients, slot.steps()));
+		});
+
+		replace(me, target).andExpect(status().isBadGateway())
+				.andExpect(jsonPath("$.code").value("AI_INVALID_RESPONSE"));
+
+		verify(mealPlanAiAdapter, times(2)).replace(any());
+		assertThat(recipeUsage()).isZero();
+		assertThat(events("meal_slot_replace_failed")).singleElement()
+				.satisfies(event -> assertThat(event).containsEntry("error_code", "AI_INVALID_RESPONSE"));
 	}
 
 	@Test

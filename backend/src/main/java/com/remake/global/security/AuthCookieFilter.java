@@ -21,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 액세스 토큰 HttpOnly 쿠키를 읽어 SecurityContext에 로그인 사용자를 넣는다.
- * 테스트용 요청 속성은 {@link TestLoginAttributeFilter}(test 프로필)가 처리한다.
+ * 통합 테스트의 요청 속성 로그인은 {@link OptionalAuthPreFilter}로 이 필터 앞에 끼운다.
  */
 @Component
 @RequiredArgsConstructor

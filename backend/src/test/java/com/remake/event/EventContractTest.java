@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 import com.remake.event.domain.EventName;
 import com.remake.event.domain.Screen;
 
-// docs/agent/spec/events.md 의 이벤트 표(79개)와 EventName enum이 이름·발송 주체·허용 속성까지 같은지 확인한다(#196).
+// docs/agent/spec/events.md 의 이벤트 표(80개)와 EventName enum이 이름·발송 주체·허용 속성까지 같은지 확인한다(#196, E89 #318).
 // 문서만 고치거나 코드만 고쳐서 어긋나면, 수집 API(56)가 이름을 몰라 조용히 거부하는 일이 생기므로 여기서 먼저 잡는다.
 class EventContractTest {
 
@@ -47,12 +47,12 @@ class EventContractTest {
 	}
 
 	@Test
-	void 문서의_79개_이벤트와_EventName이름이_같다() throws IOException {
+	void 문서의_80개_이벤트와_EventName이름이_같다() throws IOException {
 		Map<String, DocEvent> doc = readDocEvents();
 
 		Set<String> code = Arrays.stream(EventName.values()).map(EventName::getWireName).collect(Collectors.toSet());
 
-		assertThat(doc).hasSize(79);
+		assertThat(doc).hasSize(80);
 		assertThat(code).containsExactlyInAnyOrderElementsOf(doc.keySet());
 	}
 
@@ -79,14 +79,14 @@ class EventContractTest {
 	}
 
 	@Test
-	void 문서의_CLIENT_45개_SERVER_34개_구성이_맞다() throws IOException {
+	void 문서의_CLIENT_45개_SERVER_35개_구성이_맞다() throws IOException {
 		Map<String, DocEvent> doc = readDocEvents();
 
 		long client = doc.values().stream().filter(e -> e.source().equals("CLIENT")).count();
 		long server = doc.values().stream().filter(e -> e.source().equals("SERVER")).count();
 
 		assertThat(client).isEqualTo(45);
-		assertThat(server).isEqualTo(34);
+		assertThat(server).isEqualTo(35);
 	}
 
 	@Test
