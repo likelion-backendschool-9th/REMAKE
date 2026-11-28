@@ -112,6 +112,7 @@ public class UserProfileService implements CompleteOnboardingUseCase, GetProfile
 	private Profile toProfile(User user) {
 		return new Profile(
 				user.provider(),
+				user.role(),
 				user.plan(),
 				user.householdSize(),
 				loadExcludedIngredientPort.countByUserId(user.id()),
