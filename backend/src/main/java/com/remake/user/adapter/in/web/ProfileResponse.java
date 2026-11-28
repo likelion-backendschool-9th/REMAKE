@@ -5,14 +5,17 @@ import com.remake.user.application.port.in.GetProfileUseCase;
 import com.remake.user.domain.AuthProvider;
 import com.remake.user.domain.UserPlan;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ProfileResponse(
 		AuthProvider provider,
 		UserPlan plan,
-		Integer householdSize,
+		@Schema(nullable = true) Integer householdSize,
 		int excludedIngredientCount,
 		boolean recipeSupplementEnabled,
 		boolean notificationEnabled,
+		@Schema(nullable = true, allowableValues = {"BALANCED", "DIET", "HIGH_PROTEIN", "SIMPLE", "SAVING"})
 		String lastMealPurpose,
 		boolean onboardingCompleted) {
 

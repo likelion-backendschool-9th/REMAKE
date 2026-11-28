@@ -48,8 +48,8 @@ public class SavedRecipeController {
 	}
 
 	@Operation(summary = "레시피 저장", description = """
-			내가 만든 레시피를 저장합니다. 이미 저장돼 있어도 같은 결과입니다. 재료 보충으로 들어간 부족 재료는 장바구니에 담습니다
-			(장바구니 기능이 생기기 전까지 cartAddedCount는 0).""")
+			내가 만든 레시피를 저장합니다. 이미 저장돼 있어도 같은 결과입니다. 재료 보충으로 들어간 부족 재료는 장바구니에 담고,
+			새로 담은 행 수를 cartAddedCount로 돌려줍니다.""")
 	@PutMapping("/{recipeId}")
 	public SaveRecipeResponse save(@LoginUserId Long userId, @PathVariable Long recipeId) {
 		SaveRecipeUseCase.SaveResult result = saveRecipeUseCase.save(userId, recipeId);
