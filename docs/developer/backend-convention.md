@@ -237,7 +237,7 @@ com.remake
 | 소비기한 알림 | 매일 09:00 | `EXPIRY_SOON`(3일 이하, 재료마다), `EXPIRED`(하루 한 건) 생성(앱 안 알림만, 기기 푸시 없음). 알림을 끈 사용자는 제외. `ingredient_expired`, `notification_sent` 발행 |
 | 주간 랭킹·보상 | 월요일 0시 | 지난주 TOP 100을 `shared_recipe_weekly_ranks`에 확정하고, 상위 레시피 3개의 작성자에게 레시피 생성 +10/+6/+3회(한 달 유효)를 한 트랜잭션에서 지급. 규칙은 [ERD](erd.md) 22번 테이블. `weekly_reward_granted` 발행 |
 | 영수증 정리 | 매일 새벽 | 구매일 기준 6개월 지난 영수증을 이미지·품목과 함께 삭제 |
-| 구독 자동 결제 | 매일 새벽 | 다음 결제일이 오늘인 ACTIVE 구독을 billingKey로 결제하고 한 달 연장, CANCELED 구독은 끝냄(`users.plan` BASIC). 실패 처리는 미결(사용자에게 질문) |
+| 구독 자동 결제 | 매일 새벽 | 다음 결제일이 오늘인 ACTIVE 구독을 billingKey로 결제하고 한 달 연장. CANCELED 구독은 결제하지 않고 끝내며, 자동 결제 실패 시에도 즉시 종료. 두 종료 모두 ENDED·`billing_key` 비움·`users.plan` BASIC으로 처리(11/24 결제 약관). 실패 시 E88 `end_reason` 값은 #229에서 확인 대기 |
 | 이벤트 보관 | 매일 새벽 | 180일 지난 원본 이벤트 삭제. 일별 집계 테이블 없음 |
 
 - 하루·한 달 횟수 초기화 작업은 없습니다. 남은 횟수는 `usage_logs`로 계산합니다. 그 밖의 정리 작업은 ERD의 구현 규칙에 있습니다.

@@ -2,10 +2,8 @@ package com.remake.global.security;
 
 import java.io.IOException;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.remake.global.web.LoginUserIdArgumentResolver;
@@ -18,11 +16,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * 통합 테스트 전용. 요청 속성({@link LoginUserIdArgumentResolver#ATTRIBUTE})으로 로그인을 흉내 낸다.
- * 운영·로컬 프로필에는 등록되지 않는다.
+ * {@code IntegrationTestSupport}가 빈으로 등록한다. {@code src/main}에는 두지 않는다.
  */
-@Component
-@Profile("test")
-public class TestLoginAttributeFilter extends OncePerRequestFilter {
+public class TestLoginAttributeFilter extends OncePerRequestFilter implements OptionalAuthPreFilter {
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
