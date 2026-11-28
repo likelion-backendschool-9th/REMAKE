@@ -37,6 +37,7 @@ import com.remake.quota.application.port.in.DeleteUsageLogsForUserUseCase;
 import com.remake.receipt.application.port.in.DeleteReceiptsForUserUseCase;
 import com.remake.recipe.application.port.in.DeleteSavedRecipesForUserUseCase;
 import com.remake.user.application.port.in.DeleteAccountUseCase;
+import com.remake.user.application.port.in.DeleteSubscriptionPaymentsForUserUseCase;
 import com.remake.user.application.port.in.EndSubscriptionForWithdrawalUseCase;
 import com.remake.user.application.port.in.PurgeExpiredDeletionCodesUseCase;
 import com.remake.user.application.port.in.RequestAccountDeletionCodeUseCase;
@@ -53,7 +54,7 @@ import com.remake.user.domain.User;
 
 /**
  * 계정 삭제(API 9·10)와 하루 지난 인증번호 정리.
- * 미종료 구독은 탈퇴 직전에 즉시 종료한다(#258).
+ * 미종료 구독은 탈퇴 직전에 즉시 종료하고(#258), 결제 기록(subscription_payments)은 파기한다(#350).
  */
 @Service
 public class AccountDeletionService
@@ -77,6 +78,7 @@ public class AccountDeletionService
 	private final DeleteRefreshTokensForUserUseCase deleteRefreshTokensForUserUseCase;
 	private final ExchangeOAuthProfileUseCase exchangeOAuthProfileUseCase;
 	private final EndSubscriptionForWithdrawalUseCase endSubscriptionForWithdrawalUseCase;
+	private final DeleteSubscriptionPaymentsForUserUseCase deleteSubscriptionPaymentsForUserUseCase;
 	private final EventTracker eventTracker;
 	private final Clock clock;
 	private final TransactionTemplate requiresNewTransaction;
@@ -94,8 +96,9 @@ public class AccountDeletionService
 			DeleteUsageLogsForUserUseCase deleteUsageLogsForUserUseCase,
 			DeleteRefreshTokensForUserUseCase deleteRefreshTokensForUserUseCase,
 			ExchangeOAuthProfileUseCase exchangeOAuthProfileUseCase,
-			EndSubscriptionForWithdrawalUseCase endSubscriptionForWithdrawalUseCase, EventTracker eventTracker,
-			Clock clock, PlatformTransactionManager transactionManager) {
+			EndSubscriptionForWithdrawalUseCase endSubscriptionForWithdrawalUseCase,
+			DeleteSubscriptionPaymentsForUserUseCase deleteSubscriptionPaymentsForUserUseCase,
+			EventTracker eventTracker, Clock clock, PlatformTransactionManager transactionManager) {
 		this.loadUserPort = loadUserPort;
 		this.saveUserPort = saveUserPort;
 		this.loadAccountDeletionRequestPort = loadAccountDeletionRequestPort;
@@ -112,6 +115,7 @@ public class AccountDeletionService
 		this.deleteRefreshTokensForUserUseCase = deleteRefreshTokensForUserUseCase;
 		this.exchangeOAuthProfileUseCase = exchangeOAuthProfileUseCase;
 		this.endSubscriptionForWithdrawalUseCase = endSubscriptionForWithdrawalUseCase;
+		this.deleteSubscriptionPaymentsForUserUseCase = deleteSubscriptionPaymentsForUserUseCase;
 		this.eventTracker = eventTracker;
 		this.clock = clock;
 		this.requiresNewTransaction = new TransactionTemplate(transactionManager);
@@ -157,6 +161,7 @@ public class AccountDeletionService
 		long tenureDays = tenureDays(user, now);
 
 		endSubscriptionForWithdrawalUseCase.endForWithdrawal(user.id());
+		deleteSubscriptionPaymentsForUserUseCase.deleteSubscriptionPaymentsForUser(user.id());
 		deleteUserNotificationsUseCase.deleteUserNotifications(user.id());
 		deleteCartItemsForUserUseCase.deleteCartItemsForUser(user.id());
 		deleteMealPlansForUserUseCase.deleteMealPlansForUser(user.id());

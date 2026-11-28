@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.remake.user.application.port.out.DeleteSubscriptionPaymentsForUserPort;
 import com.remake.user.application.port.out.LoadSubscriptionPort;
 import com.remake.user.application.port.out.SaveSubscriptionPaymentPort;
 import com.remake.user.application.port.out.SaveSubscriptionPort;
@@ -19,7 +20,8 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 class SubscriptionPersistenceAdapter
-		implements LoadSubscriptionPort, SaveSubscriptionPort, SaveSubscriptionPaymentPort {
+		implements LoadSubscriptionPort, SaveSubscriptionPort, SaveSubscriptionPaymentPort,
+		DeleteSubscriptionPaymentsForUserPort {
 
 	private static final EnumSet<SubscriptionStatus> UNFINISHED =
 			EnumSet.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.CANCELED);
@@ -63,5 +65,11 @@ class SubscriptionPersistenceAdapter
 					return existing;
 				}).orElseGet(() -> SubscriptionPaymentJpaEntity.from(payment));
 		return paymentRepository.save(entity).toDomain();
+	}
+
+	@Override
+	@Transactional
+	public void deleteAllByUserId(Long userId) {
+		paymentRepository.deleteAllByUserId(userId);
 	}
 }

@@ -168,7 +168,8 @@ class SubscriptionApiTest extends IntegrationTestSupport {
 	}
 
 	@Test
-	void 탈퇴하면_구독이_ENDED가_되고_plan은_BASIC이다() throws Exception {
+	void 탈퇴하면_구독이_ENDED가_되고_결제_기록은_파기된다() throws Exception {
+		// AUTH-56 / #350: 탈퇴 시 구독 ENDED + subscription_payments 파기(#339 문서).
 		Long userId = createUser(AuthProvider.KAKAO, "kakao-sub-del");
 		jdbcTemplate.update("UPDATE users SET email = ? WHERE id = ?", "sub-del@example.com", userId);
 		startSubscription(userId, "auth-del", "cust-del");
@@ -176,6 +177,8 @@ class SubscriptionApiTest extends IntegrationTestSupport {
 				.isEqualTo("ACTIVE");
 		assertThat(jdbcTemplate.queryForObject("SELECT plan FROM users WHERE id = ?", String.class, userId))
 				.isEqualTo("PREMIUM");
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM subscription_payments WHERE user_id = ?", Integer.class, userId)).isEqualTo(1);
 
 		AtomicReference<String> code = new AtomicReference<>();
 		doAnswer(invocation -> {
@@ -199,6 +202,8 @@ class SubscriptionApiTest extends IntegrationTestSupport {
 				userId)).isNull();
 		assertThat(jdbcTemplate.queryForObject("SELECT plan FROM users WHERE id = ?", String.class, userId))
 				.isEqualTo("BASIC");
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM subscription_payments WHERE user_id = ?", Integer.class, userId)).isZero();
 		awaitEventWrites();
 		assertThat(jdbcTemplate.queryForObject(
 				"SELECT COUNT(*) FROM events WHERE event_name = 'subscription_ended' AND user_id = ?", Integer.class,
