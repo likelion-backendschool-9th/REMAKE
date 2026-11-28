@@ -1,4 +1,5 @@
 /* 피그마 a1-대시보드 > 막대 그래프: 아래 맞춤, 막대 사이 12, 막대·글 간격 6 */
+/* 막대 폭·최대 높이는 --bar-width·--bar-max-height로 바꾼다. 기본은 a1 대시보드 값(32·96) */
 .chart {
   display: flex;
   align-items: flex-end;
@@ -15,10 +16,10 @@
   min-width: 0;
 }
 
-/* 막대: 폭 32, 가장 큰 값이 96, radius/xs, bg/primary. 지난 주들은 투명도 30% */
+/* 막대: 기본 폭 32, 가장 큰 값이 96, radius/xs, bg/primary. 지난 주들은 투명도 30% */
 .bar {
-  width: 2rem;
-  height: calc(6rem * var(--bar-ratio));
+  width: var(--bar-width, 2rem);
+  height: calc(var(--bar-max-height, 6rem) * var(--bar-ratio));
   border-radius: var(--radius-xs);
   background: var(--color-bg-primary);
   opacity: 0.3;

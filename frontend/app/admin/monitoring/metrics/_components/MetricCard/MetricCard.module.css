@@ -1,0 +1,38 @@
+/* 피그마 a3 지표 카드: bg/surface, border/default, radius/lg, 여백 16/20, 간격 6 */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+  height: 100%;
+  padding: var(--space-16) var(--space-20);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+/* Remake/content·text/title */
+.name {
+  color: var(--color-text-title);
+  font: var(--font-content);
+}
+
+/* 지표 값: 숫자 전용 26 Bold, 행간 140%(텍스트 스타일 없음). 오류 탭의 error_code·화면 이름도 같은 크기 */
+.value {
+  color: var(--color-text-strong);
+  font: 700 1.625rem/1.4 var(--font-family-base);
+  overflow-wrap: anywhere;
+}
+
+/* Remake/assist·text/sub */
+.caption {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
