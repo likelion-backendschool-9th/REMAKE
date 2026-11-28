@@ -26,8 +26,9 @@ These terms set the payment, cancellation, and refunds of the Remake premium sub
 
 ## 4. Withdrawal of subscription and refunds
 
-1. A full refund is available within 7 days of payment if no premium benefit (recipe or meal-plan generation beyond basic limits) has been used.
-2. Otherwise the user can only cancel; there is no refund for the paid period.
+1. A full refund is available within 7 days of payment if no premium benefit has been used since that payment: meal-plan generation count is 0 and AI recipe generations above the basic daily limit are 0.
+2. Request the refund from the in-app refund page. On success the subscription ends and the member returns to the basic plan; payment records are kept.
+3. Otherwise the user can only cancel; there is no refund for the paid period.
 
 ## 5. Account deletion
 
