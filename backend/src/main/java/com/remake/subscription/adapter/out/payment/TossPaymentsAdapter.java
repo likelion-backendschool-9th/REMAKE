@@ -104,6 +104,39 @@ public class TossPaymentsAdapter implements TossBillingPort {
 		}
 	}
 
+	@Override
+	public void cancelPayment(String paymentKey, String cancelReason, long cancelAmount) {
+		if (properties.mockEnabled()) {
+			if (!StringUtils.hasText(paymentKey) || cancelAmount <= 0) {
+				throw new BusinessException(ErrorCode.PAYMENT_UPSTREAM_ERROR);
+			}
+			if (paymentKey.startsWith("mock_fail_")) {
+				throw new BusinessException(ErrorCode.PAYMENT_UPSTREAM_ERROR);
+			}
+			return;
+		}
+		requireSecret();
+		if (!StringUtils.hasText(paymentKey)) {
+			throw new BusinessException(ErrorCode.PAYMENT_UPSTREAM_ERROR);
+		}
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("cancelReason", StringUtils.hasText(cancelReason) ? cancelReason : "청약 철회 전액 환불");
+		body.put("cancelAmount", cancelAmount);
+		try {
+			restClientBuilder.build().post()
+					.uri(baseUrl() + "/v1/payments/{paymentKey}/cancel", paymentKey)
+					.header("Authorization", authorizationHeader())
+					.contentType(MediaType.APPLICATION_JSON)
+					.body(body)
+					.retrieve()
+					.toBodilessEntity();
+		} catch (RestClientResponseException ex) {
+			throw mapCancelError(ex);
+		} catch (RestClientException ex) {
+			throw new BusinessException(ErrorCode.PAYMENT_UPSTREAM_ERROR);
+		}
+	}
+
 	private BusinessException mapIssueError(RestClientResponseException ex) {
 		HttpStatusCode status = ex.getStatusCode();
 		if (status.is5xxServerError()) {
@@ -123,6 +156,10 @@ public class TossPaymentsAdapter implements TossBillingPort {
 					Map.of("reason", reason));
 		}
 		return new BusinessException(ErrorCode.PAYMENT_FAILED);
+	}
+
+	private BusinessException mapCancelError(RestClientResponseException ex) {
+		return new BusinessException(ErrorCode.PAYMENT_UPSTREAM_ERROR);
 	}
 
 	private void requireSecret() {

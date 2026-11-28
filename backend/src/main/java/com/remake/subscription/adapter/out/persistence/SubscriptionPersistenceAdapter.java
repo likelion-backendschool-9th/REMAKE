@@ -8,11 +8,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.remake.subscription.application.port.out.DeleteSubscriptionPaymentsForUserPort;
+import com.remake.subscription.application.port.out.LoadSubscriptionPaymentPort;
 import com.remake.subscription.application.port.out.LoadSubscriptionPort;
 import com.remake.subscription.application.port.out.SaveSubscriptionPaymentPort;
 import com.remake.subscription.application.port.out.SaveSubscriptionPort;
 import com.remake.subscription.domain.Subscription;
 import com.remake.subscription.domain.SubscriptionPayment;
+import com.remake.subscription.domain.SubscriptionPaymentStatus;
 import com.remake.subscription.domain.SubscriptionStatus;
 
 import lombok.RequiredArgsConstructor;
@@ -21,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 class SubscriptionPersistenceAdapter
 		implements LoadSubscriptionPort, SaveSubscriptionPort, SaveSubscriptionPaymentPort,
-		DeleteSubscriptionPaymentsForUserPort {
+		LoadSubscriptionPaymentPort, DeleteSubscriptionPaymentsForUserPort {
 
 	private static final EnumSet<SubscriptionStatus> UNFINISHED =
 			EnumSet.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.CANCELED);
@@ -65,6 +67,14 @@ class SubscriptionPersistenceAdapter
 					return existing;
 				}).orElseGet(() -> SubscriptionPaymentJpaEntity.from(payment));
 		return paymentRepository.save(entity).toDomain();
+	}
+
+	@Override
+	public Optional<SubscriptionPayment> findLatestDoneBySubscriptionId(Long subscriptionId) {
+		return paymentRepository
+				.findFirstBySubscriptionIdAndStatusOrderByApprovedAtDescIdDesc(subscriptionId,
+						SubscriptionPaymentStatus.DONE)
+				.map(SubscriptionPaymentJpaEntity::toDomain);
 	}
 
 	@Override

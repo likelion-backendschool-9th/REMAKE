@@ -3,6 +3,8 @@ package com.remake.subscription.application.service;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -18,12 +20,15 @@ import com.remake.event.domain.EventName;
 import com.remake.event.domain.Screen;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.quota.application.port.in.GetPremiumBenefitUsageSinceUseCase;
 import com.remake.subscription.application.port.in.CancelSubscriptionUseCase;
 import com.remake.subscription.application.port.in.EndSubscriptionForWithdrawalUseCase;
 import com.remake.subscription.application.port.in.GetSubscriptionUseCase;
 import com.remake.subscription.application.port.in.PrepareBillingAuthUseCase;
+import com.remake.subscription.application.port.in.RefundSubscriptionUseCase;
 import com.remake.subscription.application.port.in.StartSubscriptionUseCase;
 import com.remake.subscription.application.port.out.BillingKeyCipherPort;
+import com.remake.subscription.application.port.out.LoadSubscriptionPaymentPort;
 import com.remake.subscription.application.port.out.LoadSubscriptionPort;
 import com.remake.subscription.application.port.out.SaveSubscriptionPaymentPort;
 import com.remake.subscription.application.port.out.SaveSubscriptionPort;
@@ -36,18 +41,23 @@ import com.remake.user.domain.User;
 import com.remake.user.domain.UserPlan;
 
 /**
- * 구독 조회·카드 등록 준비·첫 결제·해지 예약(#167)과 탈퇴 시 즉시 종료(#258).
+ * 구독 조회·카드 등록 준비·첫 결제·해지 예약(#167), 탈퇴 시 즉시 종료(#258), 7일 전액 환불(#343).
  * 정기 자동결제 작업은 #168. 회원 조회·plan 변경은 user UseCase만 쓴다(#344).
  */
 @Service
 public class SubscriptionService implements GetSubscriptionUseCase, PrepareBillingAuthUseCase, StartSubscriptionUseCase,
-		CancelSubscriptionUseCase, EndSubscriptionForWithdrawalUseCase {
+		CancelSubscriptionUseCase, EndSubscriptionForWithdrawalUseCase, RefundSubscriptionUseCase {
+
+	/** 결제일(승인일)부터 전액 환불 가능한 달력 일수(#228). 결제 당일 포함 7일. */
+	static final int REFUND_WINDOW_DAYS = 7;
 
 	private final GetUserUseCase getUserUseCase;
 	private final ChangeUserPlanUseCase changeUserPlanUseCase;
+	private final GetPremiumBenefitUsageSinceUseCase getPremiumBenefitUsageSinceUseCase;
 	private final LoadSubscriptionPort loadSubscriptionPort;
 	private final SaveSubscriptionPort saveSubscriptionPort;
 	private final SaveSubscriptionPaymentPort saveSubscriptionPaymentPort;
+	private final LoadSubscriptionPaymentPort loadSubscriptionPaymentPort;
 	private final TossBillingPort tossBillingPort;
 	private final BillingKeyCipherPort billingKeyCipherPort;
 	private final EventTracker eventTracker;
@@ -55,15 +65,19 @@ public class SubscriptionService implements GetSubscriptionUseCase, PrepareBilli
 	private final TransactionTemplate transactionTemplate;
 
 	public SubscriptionService(GetUserUseCase getUserUseCase, ChangeUserPlanUseCase changeUserPlanUseCase,
+			GetPremiumBenefitUsageSinceUseCase getPremiumBenefitUsageSinceUseCase,
 			LoadSubscriptionPort loadSubscriptionPort, SaveSubscriptionPort saveSubscriptionPort,
-			SaveSubscriptionPaymentPort saveSubscriptionPaymentPort, TossBillingPort tossBillingPort,
+			SaveSubscriptionPaymentPort saveSubscriptionPaymentPort,
+			LoadSubscriptionPaymentPort loadSubscriptionPaymentPort, TossBillingPort tossBillingPort,
 			BillingKeyCipherPort billingKeyCipherPort, EventTracker eventTracker, Clock clock,
 			PlatformTransactionManager transactionManager) {
 		this.getUserUseCase = getUserUseCase;
 		this.changeUserPlanUseCase = changeUserPlanUseCase;
+		this.getPremiumBenefitUsageSinceUseCase = getPremiumBenefitUsageSinceUseCase;
 		this.loadSubscriptionPort = loadSubscriptionPort;
 		this.saveSubscriptionPort = saveSubscriptionPort;
 		this.saveSubscriptionPaymentPort = saveSubscriptionPaymentPort;
+		this.loadSubscriptionPaymentPort = loadSubscriptionPaymentPort;
 		this.tossBillingPort = tossBillingPort;
 		this.billingKeyCipherPort = billingKeyCipherPort;
 		this.eventTracker = eventTracker;
@@ -184,6 +198,54 @@ public class SubscriptionService implements GetSubscriptionUseCase, PrepareBilli
 			eventTracker.track(EventName.SUBSCRIPTION_ENDED, Screen.SETTING_MAIN,
 					Map.of("end_reason", "account_deleted", "subscribed_days", subscription.subscribedDays(now)),
 					EventTrackCommand.ofUser(userId));
+		});
+	}
+
+	@Override
+	public SubscriptionView refund(Long userId) {
+		requireActiveUser(userId);
+		Subscription subscription = loadSubscriptionPort.findUnfinishedByUserId(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.SUBSCRIPTION_NOT_FOUND));
+		SubscriptionPayment payment = loadSubscriptionPaymentPort.findLatestDoneBySubscriptionId(subscription.id())
+				.orElseThrow(() -> new BusinessException(ErrorCode.REFUND_NOT_ELIGIBLE,
+						ErrorCode.REFUND_NOT_ELIGIBLE.getMessage(), Map.of("reason", "NO_PAYMENT")));
+		if (!StringUtils.hasText(payment.paymentKey())) {
+			throw new BusinessException(ErrorCode.REFUND_NOT_ELIGIBLE, ErrorCode.REFUND_NOT_ELIGIBLE.getMessage(),
+					Map.of("reason", "NO_PAYMENT"));
+		}
+
+		LocalDateTime now = LocalDateTime.now(clock);
+		LocalDateTime paidAt = payment.approvedAt() != null ? payment.approvedAt() : payment.createdAt();
+		if (paidAt == null || ChronoUnit.DAYS.between(paidAt.toLocalDate(), now.toLocalDate()) >= REFUND_WINDOW_DAYS) {
+			throw new BusinessException(ErrorCode.REFUND_NOT_ELIGIBLE, ErrorCode.REFUND_NOT_ELIGIBLE.getMessage(),
+					Map.of("reason", "WINDOW_EXPIRED"));
+		}
+		if (!getPremiumBenefitUsageSinceUseCase.since(userId, paidAt).unused()) {
+			throw new BusinessException(ErrorCode.REFUND_NOT_ELIGIBLE, ErrorCode.REFUND_NOT_ELIGIBLE.getMessage(),
+					Map.of("reason", "BENEFIT_USED"));
+		}
+
+		long refundAmount = payment.amount();
+		try {
+			tossBillingPort.cancelPayment(payment.paymentKey(), "청약 철회 전액 환불", refundAmount);
+		} catch (BusinessException ex) {
+			throw ex;
+		} catch (RuntimeException ex) {
+			throw new BusinessException(ErrorCode.PAYMENT_UPSTREAM_ERROR);
+		}
+
+		return transactionTemplate.execute(status -> {
+			int updated = saveSubscriptionPort.endUnfinished(subscription.id(), now);
+			if (updated == 0) {
+				throw new BusinessException(ErrorCode.SUBSCRIPTION_NOT_FOUND);
+			}
+			changeUserPlanUseCase.changePlan(userId, UserPlan.BASIC);
+			Map<String, Object> props = new LinkedHashMap<>();
+			props.put("payment_amount", refundAmount);
+			props.put("refund_amount", refundAmount);
+			props.put("subscribed_days", subscription.subscribedDays(now));
+			eventTracker.track(EventName.SUBSCRIPTION_REFUNDED, null, props, EventTrackCommand.ofUser(userId));
+			return noneView();
 		});
 	}
 

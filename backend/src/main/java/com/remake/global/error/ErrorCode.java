@@ -53,6 +53,7 @@ public enum ErrorCode {
 	BILLING_AUTH_FAILED(HttpStatus.BAD_REQUEST, "카드 등록에 실패했어요. 다시 시도해 주세요"),
 	PAYMENT_FAILED(HttpStatus.PAYMENT_REQUIRED, "결제에 실패했어요. 다른 카드로 다시 시도해 주세요"),
 	PAYMENT_UPSTREAM_ERROR(HttpStatus.BAD_GATEWAY, "결제 서비스에 문제가 있어요. 잠시 후 다시 시도해 주세요"),
+	REFUND_NOT_ELIGIBLE(HttpStatus.UNPROCESSABLE_CONTENT, "지금은 전액 환불을 받을 수 없어요"),
 	// 재료
 	INGREDIENT_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "재료 카테고리를 찾을 수 없습니다."),
 	INGREDIENT_NOT_FOUND(HttpStatus.NOT_FOUND, "재료를 찾을 수 없습니다."),

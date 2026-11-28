@@ -98,7 +98,7 @@ track('receipt_item_edited', { item_index: 2, edit_field: 'amount' });
 
 ## 8. 지금 코드와 다른 점
 
-- `EventName`은 정의서 80개와 맞습니다(`EventContractTest`). `cook_feedback_answered`(E50)는 `recipe_id`·`recommended`이며 우선순위 **P0**입니다(#348). E86 `subscription_renewed` 호출은 자동 결제 작업(#168), E89 `subscription_refunded` 호출은 환불 API 구현(#343)에서 이어집니다.
+- `EventName`은 정의서 80개와 맞습니다(`EventContractTest`). `cook_feedback_answered`(E50)는 `recipe_id`·`recommended`이며 우선순위 **P0**입니다(#348). E86 `subscription_renewed` 호출은 자동 결제 작업(#168)에서 이어집니다. E89 `subscription_refunded`는 `POST /user/subscription/refund`(#343)에서 발행합니다.
 - `Screen` enum은 정의서 화면 코드 41개(+ `UNKNOWN`)와 맞습니다. 스케줄·배치처럼 화면이 없으면 `null`을 넘깁니다.
 - 속성 코드 값은 소문자입니다(#172). `storage`·`filter_value`만 정의서대로 대문자입니다. 검증기와 서버 송신은 한 PR에서 같이 바꿨고, 이미 쌓인 대문자 행은 Flyway `V30`으로 소문자로 고쳤습니다.
 - 우선순위는 정의서를 따릅니다. 결정 [#58](https://github.com/likelion-backendschool-9th/REMAKE/issues/58)대로 공유·장바구니·보상 이벤트는 P1이고, #58의 어드민 부분(ADMIN 접근 제어 선행, 분석 API)은 운영자 페이지 a1~a3·a6에서 조회(API 61~64)로 정리됐습니다(11/26).

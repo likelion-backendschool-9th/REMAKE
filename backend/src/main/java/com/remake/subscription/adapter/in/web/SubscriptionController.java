@@ -13,6 +13,7 @@ import com.remake.global.web.LoginUserId;
 import com.remake.subscription.application.port.in.CancelSubscriptionUseCase;
 import com.remake.subscription.application.port.in.GetSubscriptionUseCase;
 import com.remake.subscription.application.port.in.PrepareBillingAuthUseCase;
+import com.remake.subscription.application.port.in.RefundSubscriptionUseCase;
 import com.remake.subscription.application.port.in.StartSubscriptionUseCase;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +33,7 @@ public class SubscriptionController {
 	private final PrepareBillingAuthUseCase prepareBillingAuthUseCase;
 	private final StartSubscriptionUseCase startSubscriptionUseCase;
 	private final CancelSubscriptionUseCase cancelSubscriptionUseCase;
+	private final RefundSubscriptionUseCase refundSubscriptionUseCase;
 
 	@Operation(summary = "내 구독 상태·결제일 조회")
 	@GetMapping
@@ -56,5 +58,11 @@ public class SubscriptionController {
 	@PostMapping("/cancel")
 	public SubscriptionResponse cancel(@LoginUserId Long userId) {
 		return SubscriptionResponse.from(cancelSubscriptionUseCase.cancel(userId));
+	}
+
+	@Operation(summary = "7일 안 전액 환불")
+	@PostMapping("/refund")
+	public SubscriptionResponse refund(@LoginUserId Long userId) {
+		return SubscriptionResponse.from(refundSubscriptionUseCase.refund(userId));
 	}
 }

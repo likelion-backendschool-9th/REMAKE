@@ -31,6 +31,27 @@ class UsageLogPersistenceAdapter implements UsageLogPort, DeleteUsageLogsForUser
 	}
 
 	@Override
+	public int countRecipeUsageAboveDailyLimit(Long userId, LocalDateTime from, int dailyLimit) {
+		Number result = (Number) entityManager.createNativeQuery("""
+				SELECT COALESCE(SUM(day_count - :dailyLimit), 0)
+				FROM (
+					SELECT COUNT(*) AS day_count
+					FROM usage_logs
+					WHERE user_id = :userId
+					  AND type = 'RECIPE'
+					  AND created_at >= :from
+					GROUP BY CAST(created_at AS DATE)
+					HAVING COUNT(*) > :dailyLimit
+				) overflow_days
+				""")
+				.setParameter("userId", userId)
+				.setParameter("from", from)
+				.setParameter("dailyLimit", dailyLimit)
+				.getSingleResult();
+		return result.intValue();
+	}
+
+	@Override
 	public void save(Long userId, UsageType type, Long grantId) {
 		repository.save(UsageLogJpaEntity.of(userId, type, grantId));
 	}

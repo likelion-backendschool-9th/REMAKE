@@ -14,6 +14,7 @@ import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.quota.application.port.in.ConsumeMealPlanQuotaUseCase;
 import com.remake.quota.application.port.in.ConsumeRecipeQuotaUseCase;
+import com.remake.quota.application.port.in.GetPremiumBenefitUsageSinceUseCase;
 import com.remake.quota.application.port.in.GetUsageQuotasUseCase;
 import com.remake.quota.application.port.out.RecipeRewardPort;
 import com.remake.quota.application.port.out.UsageLogPort;
@@ -36,7 +37,8 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
-class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseCase, ConsumeMealPlanQuotaUseCase {
+class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseCase, ConsumeMealPlanQuotaUseCase,
+		GetPremiumBenefitUsageSinceUseCase {
 
 	private final UsageLogPort usageLogPort;
 	private final GetUserUseCase getUserUseCase;
@@ -120,6 +122,15 @@ class UsageQuotaService implements GetUsageQuotasUseCase, ConsumeRecipeQuotaUseC
 		}
 		usageLogPort.save(userId, UsageType.MEAL_PLAN, null);
 		return new MealPlanQuota(quota.limit(), quota.used() + 1, quota.maxDays());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public BenefitUsage since(Long userId, LocalDateTime from) {
+		int mealPlans = usageLogPort.countSince(userId, UsageType.MEAL_PLAN, from);
+		int recipeAboveBasic = usageLogPort.countRecipeUsageAboveDailyLimit(userId, from,
+				PlanQuota.BASIC.recipeDaily());
+		return new BenefitUsage(mealPlans, recipeAboveBasic);
 	}
 
 	private MealPlanQuota mealPlanQuota(Long userId, PlanQuota plan, LocalDate today) {
