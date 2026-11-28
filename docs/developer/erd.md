@@ -4,14 +4,14 @@
 
 2026-11-22 · 이준호. 원본은 노션 "ERD v4"(피그마 기준, 화면 근거 칸 포함)이고, 이 문서는 그 내용을 개발용으로 옮긴 것이에요. 화면 근거(피그마 노드)는 원본에서 보세요.
 
-- 이 문서의 테이블 30개: 피그마 기준 26개(11/26에 추가한 `user_sanctions` 포함), 단위 사전 `ingredient_catalog`, #73의 직접 등록 재료 지출 기록, #92의 내부 주간 확정 완료 기록, #266의 영수증 최초 반영 기록을 포함해요.
+- 이 문서의 테이블 31개: 피그마 기준 26개(11/26에 추가한 `user_sanctions` 포함), 단위 사전 `ingredient_catalog`, #73의 직접 등록 재료 지출 기록, #92의 내부 주간 확정 완료 기록, #266의 영수증 최초 반영 기록, #296의 사진 삭제 큐를 포함해요.
 - 11/26 피그마 '운영자 페이지' 기준으로 `user_sanctions`를 추가하고, 신고 처리 결과(`result`·`handled_by`·`handled_at`), 운영자 횟수 조정(`grant_type`·`reason`·`admin_id`), 공유 글 `DELETED` 상태를 넣었어요. 기획 ERD는 테이블 26개·컬럼 219개·관계 42개로 세고 `user_sanctions`를 26번으로 매기지만, 이 문서는 레포 번호(30번)를 유지해요.
 - 알림은 앱 안에서만 보여요(휴대폰 푸시 없음).
 
 ## 공통 규칙
 
 - **타입**: 수량 `numeric(10,3)`, 금액 `bigint`(원), 시각 `timestamp`(한국 시간, Java `LocalDateTime`), JSON `jsonb`.
-- **시각 컬럼**: 앱이 만드는 행은 모두 `created_at`을 가짐(`BaseCreatedEntity`). 값이 바뀌는 테이블만 `updated_at`도 가짐(`BaseTimeEntity`). 시각은 서버 `Clock`이 넣고 `DEFAULT now()`는 쓰지 않음.
+- **시각 컬럼**: 앱이 만드는 행은 모두 `created_at`을 가짐(`BaseCreatedEntity`). 값이 바뀌는 테이블만 `updated_at`도 가짐(`BaseTimeEntity`). 시각은 서버 `Clock`이 넣고 `DEFAULT now()`는 쓰지 않음. 예외로 내부 공유 사진 삭제 큐는 감사 컬럼 대신 `requested_at`을 사용함(31번).
 - **기준 데이터**: `ingredient_categories`, `ingredient_catalog`는 Flyway 마이그레이션으로만 넣음. 머지된 마이그레이션 파일은 고치지 않고 새 번호를 추가함.
   - 예외(#288): 식단표 재료 조합 검사 데이터는 테이블이 아님. `scripts/mfds/build_combination_check.py`가 식약처 조리식품 레시피 DB로 만들어 `backend/src/main/resources/mfds/combination-check.json`에 쓰고, 백엔드는 앱이 켜질 때 이 파일을 읽음(파일이 없거나 망가지면 앱이 뜨지 않음). 목록(주의 재료·아침 재료·무리·이름 고침표)을 마감 전까지 다듬는 중이라, 테이블이면 고칠 때마다 새 마이그레이션이 필요하기 때문. 다른 기능의 포트 없이 이름을 맞추려고 `ingredient_catalog`의 이름·카테고리 사본(V5에서 읽음)도 파일에 들어 있음. 사전 마이그레이션이 바뀌면 스크립트를 다시 돌림.
 - **코드값**: 부록 C. enum 이름은 코드값과 같게.
@@ -50,6 +50,7 @@
 | 28 | `receipt_first_applications` | 영수증 최초 반영 | 번호 있는 구매의 최초 냉장고·장바구니 반영. 영수증 삭제 후에도 남아 재등록 시 재고·장바구니를 건너뜀(#266) | 3 영수증 | 이동준 | 6 |
 | 29 | `shared_recipe_weekly_settlements` | 주간 확정 완료 기록 | 대상이 없는 주도 포함한 주별 완료 기록. 순위·보상 중복 확정 방지 | 7 공유 공간·장바구니 | 최유리 | 2 |
 | 30 | `user_sanctions` | 제재 | 신고 처리로 확정된 위반 한 번마다 한 행(1~4차 제재) | 어드민 운영 | 이상호 | 9 |
+| 31 | `shared_recipe_photo_deletions` | 사진 삭제 큐 | 커밋 후 실제 사진 제거와 실패 재시도 영속 기록(#296) | 7 공유 공간·장바구니 | 최유리 | 2 |
 
 ## 관계도
 
@@ -395,6 +396,10 @@ erDiagram
     int shelf_life_days
     boolean is_common_exclusion
   }
+    shared_recipe_photo_deletions {
+        varchar image_key PK
+        timestamp requested_at
+    }
 ```
 
 ## 테이블별 컬럼
@@ -706,19 +711,19 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | --- | --- | --- | --- | --- | --- | --- |
 | `id` | bigint | PK |  | 아니오 |  | 고유 번호 |
 | `recipe_id` | bigint | FK | recipes | 아니오 |  | 공유한 레시피(같은 레시피는 한 주에 한 번) |
-| `title` | text |  |  | 아니오 |  | 공유 제목. 현재 V12는 공백이 아닌 값을 필수로 요구. 제거 표현·제약 변경은 #296 예정 |
-| `image_key` | varchar(255) |  |  | 아니오 |  | 조리 사진 1장 키. 제거·재시도용 표현은 #296 예정 |
-| `status` | varchar |  |  | 아니오 | VISIBLE | 목표: VISIBLE/HIDDEN/DELETED(작성자 또는 운영자 삭제). 현재 V12·Java enum은 VISIBLE/HIDDEN만 허용. 새 마이그레이션의 DELETED 지원은 #296 예정 |
+| `title` | text |  |  | 예 |  | V32: DELETED일 때만 NULL, 그 외에는 공백이 아닌 필수 값 |
+| `image_key` | varchar(255) |  |  | 예 |  | V32: DELETED일 때만 NULL. 이전 키는 실제 파일 정리 성공까지 삭제 큐에 임시 보관 |
+| `status` | varchar |  |  | 아니오 | VISIBLE | V32·Java enum에서 VISIBLE/HIDDEN/DELETED 지원. 작성자 삭제는 제목·키를 NULL로 비우고 행 보존 |
 | `created_at` | timestamp |  |  | 아니오 |  | 공유 시각 |
 | `updated_at` | timestamp |  |  | 아니오 |  | 상태 변경 시각 |
 
-작성자 삭제 계약(#230 확정, 구현은 #296·#297 예정):
+작성자 삭제 저장 계약(#296, V32; 주간 확정 후속 #297):
 
-- 위 표는 현재 7개 컬럼 구조예요. 제목·사진 키의 nullable/삭제 표현이 이미 구현됐다고 설명하지 않아요. V12는 둘 다 NOT NULL이며 `length(trim(title)) > 0`을 강제해요. #296에서 새 마이그레이션의 제약·JPA 필드·이 표를 함께 갱신해야 해요. 구체 삭제 표현과 영속 파일 정리용 컬럼/테이블 추가 여부는 #295에서 정하지 않아요.
-- 작성자 삭제 후에도 `id`, `recipe_id`, `created_at`과 `(recipe_id, date_trunc('week', created_at))` 고유 식별을 유지해요. 같은 주 재공유는 기존 `ALREADY_SHARED`로 막아야 해요. `updated_at`은 상태 변경 시각으로 유지해요. 공유 제목·사진 내용은 제거하되 이력에 필요한 행·관계는 보존해요.
-- 공유 행을 물리 삭제하지 않아요. V14 신고·V23 확정 순위는 ON DELETE CASCADE, V13 저장·V26 보상은 ON DELETE SET NULL이에요. 이는 현재 FK 동작이며 삭제 기능의 처리 순서가 아니에요. 원본 레시피·타인 저장/즐겨찾기·장바구니 수량·확정 순위/신고/보상 연결을 유지해요. 병합된 마이그레이션을 고치거나 FK 변경이 끝났다고 설명하지 않아요.
-- #296에서 공개 목록·상세·사진 접근을 즉시 차단하고 본인의 VISIBLE/HIDDEN 삭제 진입만 제공하며, 파일 제거와 실패 재시도를 구현해야 해요. 공개 사진 키를 비우면서 재시도에 필요한 유일한 키까지 잃으면 안 돼요. 탈퇴로 삭제 글을 다시 노출하지 않아요.
-- #297에서 확정 전 삭제는 제외하고 확정 후 순위 행·완료 기록·보상은 유지해요. 공개 과거 조회에서 삭제 글을 빼되 순위를 다시 매기거나 대체 지급하지 않고, #296과 행 잠금 순서를 맞춰요. 기존 VISIBLE 조건만으로 삭제 경합 검증이 끝난 것은 아니에요. 내부 확정 이력 보존과 새 공개 과거 조회 API 추가는 구분해요.
+- 공유 테이블은 7개 컬럼의 id·recipe_id·created_at·updated_at과 `(recipe_id, date_trunc('week', created_at))` 고유 인덱스를 유지해요. V32에서 DELETED를 추가하고 title/image_key의 NOT NULL을 풀며 체크를 상태별 규칙으로 바꿔요. DELETED는 둘 다 NULL, VISIBLE/HIDDEN은 공백이 아닌 제목과 사진 키 필수예요. JPA도 nullable 컬럼과 맞추며 기존 마이그레이션은 수정하지 않아요.
+- 원본 레시피·타인 저장/즐겨찾기·장바구니 수정 수량·신고/순위/보상 연결을 보존해요. 기존 V14/V23 CASCADE와 V13/V26 SET NULL FK는 그대로이며 작성자 삭제는 공유 행을 물리 삭제하지 않아요. 같은 주 공유는 DELETED 이력도 ALREADY_SHARED로 막아요. 탈퇴로 삭제 글을 복원하지 않아요.
+- 삭제 상태와 같은 트랜잭션에서 사진 키를 큐에 넣고, 커밋 후 새 트랜잭션에서 실제 파일을 지워요. `shared_recipe_photo_deletions`는 파일 오류·프로세스 재시작 뒤에도 남아요. 작업자는 SKIP LOCKED를 사용해 실패를 뒤로 미루고 성공/이미 없는 파일의 키는 지워요. DB 롤백이면 사진은 유지돼요. 삭제된 공유 행에는 제목·사진 키가 남지 않으며 작업자 성공과 무관하게 공개 접근을 차단해요.
+- 잠금 순서는 `pg_advisory_xact_lock(230, 1)` → 본인 공유 글 행 → 큐/삭제 상태예요. 저장/취소도 공유 행을 먼저 잠근 뒤 저장·장바구니를 써요. #297에서 주 완료 기록/순위 조회·보상 전에 같은 권고 잠금을 받아야 하며 배치 참여·경합 테스트는 아직 후속이에요. 확정 행·보상 보존, 공개 과거 조회의 삭제 제외·재순위/대체 지급 금지, 과거 저장 복원 한계를 유지해요.
+- V32는 스키마와 상태 enum을 확장해요. 이전 앱 버전은 DELETED를 해석하지 못하므로 배포·롤백 검토에 반영해야 해요. 스키마 변경만으로 운영자 제재나 #297까지 완료된 것은 아니에요.
 
 ### 21. `shared_recipe_reports` 공유 레시피 신고
 
@@ -880,6 +885,15 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `ends_at` | timestamp |  |  | 예 |  | 끝나는 시각. 4차 영구 정지는 비움 |
 | `admin_id` | bigint | FK | users | 아니오 |  | 처리한 운영자 |
 | `created_at` | timestamp |  |  | 아니오 |  | 만든 시각 |
+### 31. `shared_recipe_photo_deletions` (사진 삭제 큐, #296)
+
+| 컬럼 | 타입 | 키 | NULL | 설명 |
+| --- | --- | --- | --- | --- |
+| `image_key` | varchar(255) | PK | 아니오 | 실제 파일 제거를 기다리는 임의 사진 키. 글/사용자 FK 없음 |
+| `requested_at` | timestamp |  | 아니오 | 큐 삽입·최근 실패의 Clock 시각. 재시도 순서 기준 |
+
+V32에서 만드는 내부 큐이며 공개 API·created_at 컬럼은 없어요. 커밋 후 정리는 REQUIRES_NEW를 사용하고 1분 스케줄러가 requested_at/키 순으로 최대 50행을 FOR UPDATE SKIP LOCKED로 재시도해요. 성공(이미 없는 파일 포함)이면 큐 행을 지우고 실패면 requested_at을 뒤로 미뤄요. 여러 앱 슬롯이 함께 실행해도 안전해요. 작성자 탈퇴 후에도 정리 성공까지 키를 유지해요.
+
 
 ## 관계 목록
 
@@ -1001,13 +1015,13 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `user_sanctions` | 코드에 없음 | 새 마이그레이션으로 테이블 생성(UK(user_id+level)·FK 포함) |
 | `shared_recipe_reports` | V14: `result`·`handled_by`·`handled_at` 없음 | 새 마이그레이션으로 NULL 허용 컬럼 3개 추가 |
 | `generation_quota_grants` | V26: `grant_type`·`reason`·`admin_id` 없음. `week_start`·`rank_no` NOT NULL. 검사 `ck_quota_grants_reward`(순위별 지급 수)·`ck_quota_grants_remaining`(0~`amount`) | 새 마이그레이션: 컬럼 추가(`grant_type` 기본 WEEKLY_REWARD), `week_start`·`rank_no` NULL 허용, 두 검사를 WEEKLY_REWARD 행에만 적용해 ADMIN_ADJUST 행(음수 `amount`, `remaining` 0)을 허용 |
-| `shared_recipes` | V12: VISIBLE/HIDDEN만 허용. 제목은 공백 불가·NOT NULL, image_key는 NOT NULL. 레시피/주 고유 인덱스 | #296: DELETED 추가, 삭제 제목·사진 제거에 맞는 제약과 파일 삭제 재시도 구현. 행·원본/주 식별·관계 보존. 구체 표현은 마이그레이션·엔티티·문서 PR에서 함께 확정하고 V12는 수정하지 않음 |
+| `shared_recipes` | V32에서 DELETED·상태별 nullable 제목/키 지원. 레시피/주 인덱스·전체 FK 보존 | 작성자 삭제는 #296 구현. 운영자 처리와 주간 확정 잠금 참여(#297)는 별도 |
 
 ## 이전 ERD v3(32개)와 차이
 
 요약: 변경 17개, 유지 7개, 삭제 8개, 추가 3개 → 새 ERD 27개. 새로 생긴 테이블은 11/22 구독 추가로 생긴 subscriptions, subscription_payments와 11/26 운영자 페이지로 생긴 user_sanctions예요. admin_audit_logs는 보류에서 삭제로 바뀌었어요(11/26). 기획 ERD는 `ingredient_catalog`를 목록에 넣지 않아 "변경 16, 유지 7, 삭제 9, 추가 3 → 26개"로 적어요.
 
-이후 #73의 `manual_ingredient_expenses`, #92의 `shared_recipe_weekly_settlements`, #266의 `receipt_first_applications`, 11/26 `user_sanctions`가 추가되어 위 목록에 문서화한 테이블은 30개예요.
+이후 #73의 `manual_ingredient_expenses`, #92의 `shared_recipe_weekly_settlements`, #266의 `receipt_first_applications`, 11/26 `user_sanctions`가 추가되어 위 목록에 문서화한 테이블은 30개였고, #296 공유 사진 삭제 큐를 포함해 31개예요.
 
 | 이전 테이블 | 상태 | 추가 컬럼 | 뺀 컬럼 | 이유 |
 | --- | --- | --- | --- | --- |
@@ -1107,7 +1121,7 @@ p1.2 칩 순서 그대로예요.
 | meal_plans.purpose | BALANCED 균형 잡힌 식단 / DIET 다이어트 식단 / HIGH_PROTEIN 고단백 식단 / SIMPLE 간편 식단 / SAVING 재료 절약 식단 |
 | meal_plans.status | GENERATING 진행 중 / COMPLETED 완료 / FAILED 실패 |
 | meal_type | BREAKFAST 아침 / LUNCH 점심 / DINNER 저녁 |
-| shared_recipes.status | 목표: VISIBLE / HIDDEN 위반 처리로 숨김 / DELETED 작성자 또는 운영자 삭제. 현재 V12·enum은 VISIBLE/HIDDEN만 허용(#296 예정) |
+| shared_recipes.status | VISIBLE / HIDDEN 위반 처리로 숨김 / DELETED 작성자 또는 운영자 삭제. V32·Java enum은 모두 지원 |
 | shared_recipe_reports.reason | OFFENSIVE_IMAGE 불쾌한 이미지 사용 / AD_TITLE 광고성 제목 / DANGEROUS_RECIPE 위험한 조리법 공유 / OTHER 기타 |
 | shared_recipe_reports.status | PENDING 접수 / DONE 처리됨 |
 | shared_recipe_reports.result | VIOLATION 위반·숨김 / NO_ISSUE 문제 없음 / DELETED 글 삭제 |

@@ -296,8 +296,8 @@ Removed (do not use in new code; remove from `ErrorCode` when the related code i
 
 Withdrawal codes from the previous version (`OAUTH_STATE_INVALID`, `ACCOUNT_PROVIDER_MISMATCH`, `DELETION_CODE_RESEND_TOO_SOON`) are not in v2: Naver re-auth mismatch is `REAUTH_ACCOUNT_MISMATCH`, and there is no resend interval code.
 
-## Author-deletion implementation contract (#230/#295; #296 pending)
+## Author deletion (#230/#296)
 
-- The paths for the owner's shared-post list and author deletion are decided, but neither handler exists yet. The current shared detail/photo services return `SHARED_RECIPE_NOT_FOUND` (404) for missing/HIDDEN posts; detail does not yet support the owner's hidden-post deletion entry or `canDelete`.
-- #296 must apply the existing owner-scoped 404 convention to missing/foreign deletion targets and record the exact catalog mapping, invalid-input handling and repeated-delete response before implementation/client integration. #230 does not decide whether repeated deletion returns 204 or 404. This documentation change adds no error code or numbered API entry.
-- Do not use operator sanction/report errors for author deletion. A file cleanup failure must preserve retry information while access remains blocked; the cleanup mechanism and request-level failure/rollback behavior must be fixed and tested in #296 rather than inventing a new error here.
+- Login is required. Invalid/nonpositive path IDs, malformed numbers, page < 0 or size outside 1–100 return existing `INVALID_INPUT` (400). Missing/foreign deletion targets return existing `SHARED_RECIPE_NOT_FOUND` (404), including foreign deleted rows; successful/repeated deletion of an owned row returns 204. No new error code or API number is introduced.
+- DELETED detail/photo return 404. HIDDEN detail is owner-only with null imageUrl and canDelete=true; other users get 404. HIDDEN photos remain 404 for every user. `canDelete` is not authorization.
+- The durable photo deletion queue is committed with the tombstone. A DB failure rolls both back and leaves the physical file. A physical-file failure after commit leaves the queue key for minute retries and still returns 204; access stays blocked. Existing filesystem failures are contained by the worker, not mapped to a new API error. Missing files are successful cleanup.

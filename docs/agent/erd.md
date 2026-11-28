@@ -4,14 +4,14 @@
 
 2026-11-22 · 이준호. Source: Notion "ERD v4" (Figma-based, with a screen-evidence column). This file carries the same content for development; see the source for the Figma node evidence.
 
-- Tables documented here: 30 — 26 Figma-based tables (including `user_sanctions`, added 11/26), the unit dictionary `ingredient_catalog`, manual ingredient expense history added in #73, the internal weekly settlement record added in #92, and receipt first applications added in #266.
+- Tables documented here: 31 — 26 Figma-based tables (including `user_sanctions`, added 11/26), the unit dictionary `ingredient_catalog`, manual ingredient expense history added in #73, the internal weekly settlement record added in #92, receipt first applications added in #266, and the photo deletion queue added in #296.
 - 11/26, from the Figma "운영자 페이지" (operator page): added `user_sanctions`, report handling results (`result`, `handled_by`, `handled_at`), operator quota adjustments (`grant_type`, `reason`, `admin_id`), and the shared post status `DELETED`. The planning ERD counts 26 tables, 219 columns, and 42 relationships; it numbers `user_sanctions` 26, while this file keeps the repo numbering (30).
 - Notifications are in-app only (no device push).
 
 ## Common rules
 
 - **Types**: amounts `numeric(10,3)`, money `bigint` (KRW), time `timestamp` (Korea time, Java `LocalDateTime`), JSON `jsonb`.
-- **Time columns**: every row the app creates has `created_at` (`BaseCreatedEntity`). Only tables whose values change also have `updated_at` (`BaseTimeEntity`). The server `Clock` sets times; do not use `DEFAULT now()`.
+- **Time columns**: every row the app creates has `created_at` (`BaseCreatedEntity`). Only tables whose values change also have `updated_at` (`BaseTimeEntity`). The server `Clock` sets times; do not use `DEFAULT now()`. Exception: the internal shared-photo deletion queue uses `requested_at` rather than auditing columns (section 31).
 - **Reference data**: `ingredient_categories` and `ingredient_catalog` are inserted only by Flyway migrations. Never edit a merged migration file; add a new numbered one.
   - Exception (#288): the meal-plan ingredient combination check data is not a table. `scripts/mfds/build_combination_check.py` builds it from the MFDS cooking recipe DB and writes `backend/src/main/resources/mfds/combination-check.json`; the backend reads the file at startup (a missing or broken file stops startup). The lists (caution, breakfast, groups, name fixes) are still being tuned before the deadline, and each change would otherwise need a new migration. The file also carries a copy of the `ingredient_catalog` names and categories (read from V5) so meal plans can match names without another feature's port; rerun the script when the catalog migration changes.
 - **Code values**: Appendix C. Enum names equal the code values.
@@ -50,6 +50,7 @@
 | 28 | `receipt_first_applications` | Receipt first stock applications | First fridge/cart apply for a numbered purchase; survives receipt delete so re-register skips stock/cart (#266) | 3 receipts | 이동준 | 6 |
 | 29 | `shared_recipe_weekly_settlements` | Weekly settlement completion | One completion record per week, including empty weeks; prevents duplicate rank/reward settlement | 7 sharing/cart | 최유리 | 2 |
 | 30 | `user_sanctions` | Sanctions | One row per violation confirmed by report handling (1st-4th sanction) | admin operations | 이상호 | 9 |
+| 31 | `shared_recipe_photo_deletions` | Photo deletion queue | Durable after-commit physical photo cleanup and retries (#296) | 7 sharing/cart | 최유리 | 2 |
 
 ## ERD diagram
 
@@ -395,6 +396,10 @@ erDiagram
     int shelf_life_days
     boolean is_common_exclusion
   }
+    shared_recipe_photo_deletions {
+        varchar image_key PK
+        timestamp requested_at
+    }
 ```
 
 ## Table columns
@@ -706,19 +711,19 @@ Posts in the shared space (fully anonymous). Owner 최유리 (7 sharing/cart).
 | --- | --- | --- | --- | --- | --- | --- |
 | `id` | bigint | PK |  | no |  | ID |
 | `recipe_id` | bigint | FK | recipes | no |  | Shared recipe (the same recipe once per week) |
-| `title` | text |  |  | no |  | Shared title; current V12 requires nonblank text. Removal representation/constraint change is pending #296 |
-| `image_key` | varchar(255) |  |  | no |  | Single cooking photo key; removal/retry representation is pending #296 |
-| `status` | varchar |  |  | no | VISIBLE | Target: VISIBLE/HIDDEN/DELETED (author or operator deletion). Current V12 and Java enum allow only VISIBLE/HIDDEN; DELETED support is pending a new migration (#296) |
+| `title` | text |  |  | yes |  | V32: NULL iff DELETED; otherwise nonblank and required |
+| `image_key` | varchar(255) |  |  | yes |  | V32: NULL iff DELETED; old key is retained temporarily in the deletion queue until physical cleanup succeeds |
+| `status` | varchar |  |  | no | VISIBLE | VISIBLE/HIDDEN/DELETED supported by V32 and Java enum. Author deletion nulls title/key and preserves the row |
 | `created_at` | timestamp |  |  | no |  | Shared time |
 | `updated_at` | timestamp |  |  | no |  | Status change time |
 
-Author-deletion contract (#230, decided; implementation #296/#297 pending):
+Author-deletion storage (#296, V32; settlement follow-up #297):
 
-- The table above records the current seven-column shape. Do not claim nullable/redacted title or photo-key storage is implemented. V12 enforces NOT NULL on both and `length(trim(title)) > 0`; #296 must update constraints, JPA fields and this table together in a new migration. The exact redaction representation and any durable cleanup fields/table are not chosen by #295.
-- Keep `id`, `recipe_id`, `created_at` and the unique `(recipe_id, date_trunc('week', created_at))` identity after author deletion; same-week resharing must still fail with existing `ALREADY_SHARED`. Keep `updated_at` as the status-change time. Remove shared title/photo content while preserving the row and relationships needed for history.
-- Do not physically delete the shared row: V14 reports and V23 final ranks have ON DELETE CASCADE; V13 saves and V26 reward grants use ON DELETE SET NULL. These are current FK actions, not a deletion workflow. Retain original recipes, others' saves/favorites, cart quantities and final rank/report/reward links. Do not rewrite merged migrations or imply FK actions were already changed.
-- #296 must immediately block public list/detail/photo access, expose only the owner's VISIBLE/HIDDEN deletion entries, and implement file removal with failure retries. Clearing the public photo key must not discard the only key needed for retry. Withdrawal must not resurrect deleted posts.
-- #297 excludes deletion before settlement, retains final rows/completion/grants after settlement, omits deleted posts from public historical views without renumbering/replacements and coordinates row locks with #296. Existing VISIBLE-only queries alone do not prove deletion-race correctness. Keep internal settlement history separate from any new public history endpoint.
+- The seven-column post table retains id, recipe_id, created_at, updated_at and the unique `(recipe_id, date_trunc('week', created_at))` index. V32 adds DELETED, drops title/image_key NOT NULL and replaces the checks with a state-dependent rule: DELETED requires both NULL; VISIBLE/HIDDEN require nonblank title and a non-null photo key. JPA matches these nullable columns; original migrations remain unchanged.
+- Preserve original recipes, others' saved/favorite rows, cart edited quantities and report/rank/reward links. Existing V14/V23 CASCADE and V13/V26 SET NULL FK actions remain unchanged; author deletion never physically deletes the shared row. Same-week sharing still rejects DELETED history with ALREADY_SHARED. Withdrawal cannot restore it.
+- Enqueue the photo key in the same transaction as the tombstone, then delete the physical file only after commit in a new transaction. `shared_recipe_photo_deletions` survives file errors and process restarts; workers use SKIP LOCKED, defer failures and remove successful/missing-file keys. DB rollback preserves the photo. The deleted post no longer carries its title/photo key and public access is blocked independently of worker success.
+- Lock order: `pg_advisory_xact_lock(230, 1)` → owned shared-post row → enqueue/tombstone. Save/unsave take the post row before saved/cart writes. #297 must take the same advisory lock before week completion/rank queries and rewards; its batch participation/race tests are still pending. Preserve final rows/grants, omit deleted posts from public history without reranking/replacements and keep the historical-save limitation.
+- V32 expands the schema and status enum. Old application versions cannot interpret DELETED; deployment/rollback review must account for this. The schema change alone does not implement operator moderation or complete #297.
 
 ### 21. `shared_recipe_reports` (Shared recipe reports)
 
@@ -881,6 +886,15 @@ One row per violation confirmed by report handling (1st-4th sanction). Owner 이
 | `admin_id` | bigint | FK | users | no |  | Operator who handled it |
 | `created_at` | timestamp |  |  | no |  | Created time |
 
+### 31. `shared_recipe_photo_deletions` (Photo deletion queue, #296)
+
+| Column | Type | Key | Null | Description |
+| --- | --- | --- | --- | --- |
+| `image_key` | varchar(255) | PK | no | Random photo key awaiting physical removal; no post/user FK |
+| `requested_at` | timestamp |  | no | Clock time of enqueue or latest failure; orders retries |
+
+V32 creates this internal queue. There is no public API or created_at column. After-commit cleanup uses REQUIRES_NEW; the minute scheduler retries up to 50 rows in requested_at/key order with FOR UPDATE SKIP LOCKED. Success (including an absent file) deletes the queue row; failure defers requested_at. Multiple app slots can run safely. Queue keys remain until cleanup succeeds, including after author withdrawal.
+
 ## Relationships
 
 | Parent | Child | Column | Relation | Parent optional | On parent delete |
@@ -1001,13 +1015,13 @@ Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged
 | `user_sanctions` | Not in code | Create the table with `UK(user_id + level)` and its FKs in a new migration |
 | `shared_recipe_reports` | V14: no `result`, `handled_by`, `handled_at` | Add the three nullable columns in a new migration |
 | `generation_quota_grants` | V26: no `grant_type`, `reason`, `admin_id`; `week_start` and `rank_no` NOT NULL; checks `ck_quota_grants_reward` (rank-based amounts) and `ck_quota_grants_remaining` (0 to `amount`) | New migration: add the columns (`grant_type` default WEEKLY_REWARD), make `week_start` and `rank_no` nullable, and limit the two checks to WEEKLY_REWARD rows so ADMIN_ADJUST rows (negative `amount`, `remaining` 0) are allowed |
-| `shared_recipes` | V12: VISIBLE/HIDDEN only; title nonblank NOT NULL, image_key NOT NULL; recipe/week unique index | #296: add DELETED, remove deleted title/photo with matching constraints and retryable file cleanup; retain row, original recipe/week identity and relationships. Fix exact representation in the migration/entity/doc PR; do not edit V12 |
+| `shared_recipes` | V32 supports DELETED and state-dependent nullable title/image_key; recipe/week index and all FKs retained | Author deletion implemented in #296; operator handling and weekly settlement lock participation (#297) remain separate |
 
 ## Differences from ERD v3 (32 tables)
 
 Summary: 17 changed, 7 kept, 8 removed, 3 added -> 27 tables in the new ERD. The new tables are `subscriptions` and `subscription_payments` (subscription, 11/22) and `user_sanctions` (operator page, 11/26); `admin_audit_logs` moved from on hold to removed (11/26). The planning ERD writes "16 changed, 7 kept, 9 removed, 3 added -> 26" because it does not list `ingredient_catalog`.
 
-Later additions in #73 (`manual_ingredient_expenses`), #92 (`shared_recipe_weekly_settlements`), #266 (`receipt_first_applications`), and `user_sanctions` (11/26) bring the table inventory documented above to 30.
+Later additions in #73 (`manual_ingredient_expenses`), #92 (`shared_recipe_weekly_settlements`), #266 (`receipt_first_applications`), and `user_sanctions` (11/26) bring the table inventory documented above to 30; the #296 shared-photo deletion queue brings it to 31.
 
 | Previous table | Status | Added columns | Removed columns | Reason |
 | --- | --- | --- | --- | --- |
@@ -1107,7 +1121,7 @@ In the p1.2 chip order.
 | meal_plans.purpose | BALANCED / DIET / HIGH_PROTEIN / SIMPLE / SAVING |
 | meal_plans.status | GENERATING generating / COMPLETED done / FAILED failed |
 | meal_type | BREAKFAST / LUNCH / DINNER |
-| shared_recipes.status | Target: VISIBLE / HIDDEN hidden by a violation / DELETED author or operator deletion; current V12/enum only VISIBLE/HIDDEN (#296 pending) |
+| shared_recipes.status | VISIBLE / HIDDEN hidden by a violation / DELETED author or operator deletion; V32 and Java enum support all three |
 | shared_recipe_reports.reason | OFFENSIVE_IMAGE / AD_TITLE / DANGEROUS_RECIPE / OTHER |
 | shared_recipe_reports.status | PENDING / DONE |
 | shared_recipe_reports.result | VIOLATION violation, hidden / NO_ISSUE no issue / DELETED post deleted |

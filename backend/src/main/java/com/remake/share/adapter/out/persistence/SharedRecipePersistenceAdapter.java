@@ -33,6 +33,10 @@ class SharedRecipePersistenceAdapter implements SaveSharedRecipePort, LoadShared
 		return repository.existsByRecipeIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(recipeId, start, end);
 	}
 	@Override
+	public Optional<SharedRecipe> findByIdForUpdate(Long id) {
+		return repository.findByIdForUpdate(id).map(SharedRecipeJpaEntity::toDomain);
+	}
+	@Override
 	public Optional<SharedRecipe> findById(Long id) {
 		return repository.findById(id).map(SharedRecipeJpaEntity::toDomain);
 	}
