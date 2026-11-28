@@ -26,7 +26,7 @@ The Service processes only the minimum personal information needed for the purpo
 
 ## Article 2. Retention and destruction
 
-When a user deletes the account, data is destroyed without delay except as listed below.
+When a user deletes the account, data is destroyed without delay except as listed below. **Subscription payment records (`subscription_payments`) are not an exception — they are destroyed on account deletion** (#339). While the account exists they may be kept for billing. The auto-billing key is deleted when the subscription ends (payment terms).
 
 | Item | Retention |
 | --- | --- |

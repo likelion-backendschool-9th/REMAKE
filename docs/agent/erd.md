@@ -881,8 +881,8 @@ One row per violation confirmed by report handling (1st-4th sanction). Owner 이
 | `users` | `refresh_tokens` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `users` | `account_deletion_requests` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `users` | `subscriptions` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
-| `subscriptions` | `subscription_payments` | subscription_id | 1:N | no | RESTRICT (payment records are never deleted) |
-| `users` | `subscription_payments` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `subscriptions` | `subscription_payments` | subscription_id | 1:N | no | RESTRICT while rows exist; on account deletion the app deletes `subscription_payments` first (#339, #349) |
+| `users` | `subscription_payments` | user_id | 1:N | no | - (users rows stay; app deletes payment rows on withdrawal, #339) |
 | `users` | `ingredients` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `ingredient_categories` | `ingredients` | category_id | 1:N | no | RESTRICT (reference data, never deleted) |
 | `receipt_items` | `ingredients` | receipt_item_id | 1:1 | yes | SET NULL |
@@ -971,7 +971,7 @@ These values appear on screens but have no column. They are computed from the so
 | Cooked mark | Cooking a recipe opened from today's slot sets that slot's `cooked_at` (never for other days) |
 | Receipt delete | Delete the `receipts` and `receipt_items` rows (image included). It leaves spending and patterns; registered fridge ingredients stay (only `receipt_item_id` is cleared). `receipt_first_applications` stays until the 6-month purchase-date cleanup or withdrawal |
 | Recipe "delete" | Remove only from the saved list (`saved_recipes`). Shared posts and others' saves stay |
-| Withdrawal and subscription | End the subscription immediately on withdrawal (ENDED, clear `billing_key`, no more payments). Keep `subscription_payments` (payment records). No refund for the remaining period (11/24 terms decision; resolves policy ch. 12 item 13) |
+| Withdrawal and subscription | End the subscription immediately on withdrawal (ENDED, clear `billing_key`, no more payments). **Delete `subscription_payments`** (do not keep payment records after account deletion; #339, docs #349). No refund for the remaining period (11/24 terms decision; resolves policy ch. 12 item 13) |
 | Cleanup jobs | Every early morning: receipts older than 6 months by purchase date (with images), `receipt_first_applications` with purchase date before the same cutoff, notifications older than 30 days, deletion codes older than a day |
 | Subscription start | Toss card registration -> the server issues a billingKey -> on first payment success create `subscriptions` (ACTIVE) and `subscription_payments` (DONE) and set `users.plan` = PREMIUM. If the first payment fails, do not create a subscription and do not insert a `subscription_payments` row (E85 only). Premium limits apply at once (recipes 4 per day, meal plans 4 this month and 7 days) |
 | Subscription renewal | Every early morning, charge ACTIVE subscriptions whose `next_billing_date` is today with the billingKey. On success extend the period by a month. On failure end the subscription at once (ENDED, clear `billing_key`, `users.plan` = BASIC); to subscribe again, register a card again (11/24 terms decision; resolves policy ch. 12 item 11) |

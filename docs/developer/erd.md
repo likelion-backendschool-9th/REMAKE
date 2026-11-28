@@ -881,8 +881,8 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `users` | `refresh_tokens` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `users` | `account_deletion_requests` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `users` | `subscriptions` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
-| `subscriptions` | `subscription_payments` | subscription_id | 1:N | 아니오 | RESTRICT(결제 기록은 지우지 않음) |
-| `users` | `subscription_payments` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
+| `subscriptions` | `subscription_payments` | subscription_id | 1:N | 아니오 | 행이 있는 동안 RESTRICT. 계정 삭제 때는 앱이 `subscription_payments`를 먼저 지움(#339, #349) |
+| `users` | `subscription_payments` | user_id | 1:N | 아니오 | -(users 행은 남김. 탈퇴 때 앱이 결제 행을 지움, #339) |
 | `users` | `ingredients` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `ingredient_categories` | `ingredients` | category_id | 1:N | 아니오 | RESTRICT(기준 데이터라 지우지 않음) |
 | `receipt_items` | `ingredients` | receipt_item_id | 1:1 | 예 | SET NULL |
@@ -971,7 +971,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | 요리 완료 표시 | 오늘 식단 칸에서 연 레시피로 요리 완료하면 그 칸 cooked_at 기록(다른 날 칸에는 기록 안 함) |
 | 영수증 삭제 | receipts·receipt_items 행 삭제(이미지 포함). 식비·소비 패턴에서 빠지고, 등록된 냉장고 재료는 남음(receipt_item_id만 비움). `receipt_first_applications`는 구매일 6개월 정리나 탈퇴 때까지 남음 |
 | 레시피 삭제 하기 | 저장 목록(saved_recipes)에서만 지움. 공유 글과 남이 저장한 것은 그대로 |
-| 탈퇴와 구독 | 탈퇴하면 구독을 바로 끝냄(ENDED, billing_key 비움, 더 결제하지 않음). subscription_payments는 결제 기록이라 지우지 않음. 남은 기간은 환불하지 않음(11/24 약관 결정, 정책 12장 13 해결) |
+| 탈퇴와 구독 | 탈퇴하면 구독을 바로 끝냄(ENDED, billing_key 비움, 더 결제하지 않음). **`subscription_payments`는 파기**(탈퇴 후 결제 메모를 남기지 않음; #339, 문서 #349). 남은 기간은 환불하지 않음(11/24 약관 결정, 정책 12장 13 해결) |
 | 정리 작업 | 매일 새벽: 구매일 6개월 지난 영수증(이미지 포함), 같은 경계의 `receipt_first_applications`, 30일 지난 알림, 하루 지난 인증번호 삭제 |
 | 구독 시작 | 토스 카드 등록 → 서버가 billingKey 발급 → 첫 결제 성공하면 subscriptions(ACTIVE)·subscription_payments(DONE) 만들고 users.plan = PREMIUM. 첫 결제가 실패하면 구독을 만들지 않고 subscription_payments 행도 남기지 않음(E85로만 기록). 한도는 바로 구독 한도(레시피 하루 4회, 식단표 이번 달 4회·7일치) |
 | 구독 자동 연장 | 매일 새벽, next_billing_date가 오늘인 ACTIVE 구독을 billingKey로 결제. 성공하면 기간을 한 달 늘림. 실패하면 구독을 바로 끝냄(ENDED, billing_key 비움, users.plan = BASIC). 다시 구독하려면 카드를 새로 등록(11/24 약관 결정, 정책 12장 11 해결) |

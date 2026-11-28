@@ -108,7 +108,7 @@
 - 식단표 하루 조회·칸 교체(05)는 `GetRecipeListItemsUseCase`로 제목·재료 요약·즐겨찾기를 레시피 id 목록으로 한 번에 읽어요.
 - 로컬은 `application-local.yml`의 `remake.quota.enforced=false`라 횟수 한도에 막히지 않아요(기록은 남음). 한도를 확인하려면 `backend/.env`에 `QUOTA_ENFORCED=true`를 넣어요. Gemini 키는 각자 자기 무료 키를 `backend/.env`에 넣어요.
 - 이벤트 속성 값은 이벤트 모듈 규칙대로 대문자예요(`recipe_mode`: `QUICK`·`CUSTOM`, `limit_feature`: `RECIPE`). 이벤트 정의서 예시의 소문자와 달라요.
-- 기본 양념은 따로 구분하지 않아요(#158). 재료 보충 OFF면 소금·식용유도, 꼬집·약간으로 쓰는 양념도 냉장고에 등록돼 있어야 써요. 물만 예외라서 냉장고에 없어도 쓰고 부족한 재료로 세지 않아요(레시피 영역 담당 결정). 꼬집·약간은 요리 완료 때 차감하지 않는다는 뜻일 뿐이에요.
+- 기본 양념(#158, 문서 #345): **소금·식용유·후추·설탕**은 냉장고에 없어도 “있음”으로 봐요(재료 보충 OFF·바로 가능·부족 판정 포함). **물은 이 목록에 넣지 않아요**(물은 기존처럼 부족으로 치지 않을 수 있으나 기본 양념 목록과는 별개). 꼬집·약간으로만 쓰는 다른 양념은 목록에 없으면 냉장고에 있어야 해요. 요리 완료 차감은 냉장고에 **실제 등록된** 재료만 후보예요.
 - 이전 가이드의 알레르기 경고 표시, 피드백 저장, "AI가 생성한 레시피" 문구, `Idempotency-Key`는 없어졌어요.
 - 공유 레시피를 저장하면 사본을 만들지 않고 원본을 가리켜요(`saved_recipes`).
 
@@ -133,7 +133,7 @@
 | E47 | `step_play_started` | "만드는 방법 재생하기"를 눌렀을 때(기기 음성 읽기) | recipe_id | FE | P2 | 56 POST /user/events(프론트 전송) |
 | E48 | `cook_deduct_viewed` | 요리 완료 재료 차감 화면이 열릴 때 | recipe_id, deduct_item_count | FE | P1 | 56 POST /user/events(프론트 전송) |
 | E49 | `cook_completed` | "N개의 재료 차감 하기"로 차감이 끝났을 때 | recipe_id, deducted_count, adjusted_count, from_meal_plan | BE | P0 | 32 요리 완료 |
-| E50 | `cook_feedback_answered` | 차감 뒤 냉장고 바텀 시트에서 추천 여부를 보냈을 때 | recipe_id, recommended | FE | 미결(#53) | 56 POST /user/events(프론트 전송) |
+| E50 | `cook_feedback_answered` | 차감 뒤 냉장고 바텀 시트에서 추천 여부를 보냈을 때 | recipe_id, recommended | FE | P0 | 56 POST /user/events(프론트 전송) |
 | E77 | `recipe_favorited` | 즐겨찾기 별을 켜거나 껐을 때 | is_favorite | FE | P2 | 56 POST /user/events(프론트 전송) |
 
 ## 체크리스트

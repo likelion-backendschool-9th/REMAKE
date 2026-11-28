@@ -77,7 +77,7 @@ export const PRIVACY_POLICY: LegalDocumentData = {
       blocks: [
         {
           type: "paragraph",
-          text: "이용자가 계정을 삭제하면 아래 표에 따로 적은 것을 빼고 지체 없이 파기합니다.",
+          text: "이용자가 계정을 삭제하면 아래 표에 따로 적은 것을 빼고 지체 없이 파기합니다. 구독 결제 기록(subscription_payments)은 예외 보유 대상이 아니며, 계정 삭제 시 함께 파기합니다. 이용 중에는 결제·연장용으로 둘 수 있습니다. 자동결제 키는 구독이 끝나면 삭제합니다.",
         },
         {
           type: "table",
