@@ -1,0 +1,114 @@
+.weeks {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+.card {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding: var(--space-20) var(--space-24) var(--space-16);
+}
+.heading h2 {
+  color: var(--color-text-strong);
+  font: var(--font-subheader);
+}
+.heading > span {
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+.scroll {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  min-width: 45rem;
+  border-collapse: collapse;
+  table-layout: fixed;
+  text-align: left;
+  font: var(--font-content);
+}
+.table th,
+.table td {
+  padding: 0.8125rem var(--space-8);
+  border-bottom: 1px solid var(--color-border-default);
+}
+.table th {
+  padding-top: var(--space-10);
+  padding-bottom: var(--space-10);
+  background: var(--color-bg-section);
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+.table th:first-child,
+.table td:first-child {
+  padding-left: var(--space-24);
+}
+.table th:last-child,
+.table td:last-child {
+  padding-right: var(--space-24);
+}
+.table tr:last-child td {
+  border-bottom: 0;
+}
+.table th:nth-child(3),
+.table td:nth-child(3),
+.history th:nth-child(5),
+.history td:nth-child(5) {
+  text-align: right;
+}
+.rankCol {
+  width: 5.125rem;
+}
+.countCol {
+  width: 5.375rem;
+}
+.authorCol {
+  width: 6rem;
+}
+.rewardCol {
+  width: 5.375rem;
+}
+.grantedCol {
+  width: 7rem;
+}
+.rank {
+  color: var(--color-text-primary);
+  font: var(--font-content-strong);
+}
+.table tr[data-empty] td {
+  color: var(--color-text-assist);
+}
+.note {
+  padding: var(--space-14) var(--space-24);
+  color: var(--color-text-sub);
+  font: var(--font-assist);
+}
+.empty {
+  padding: var(--space-24) var(--space-24) 3rem;
+}
+.history th:nth-child(3),
+.history td:nth-child(3) {
+  text-align: left;
+}
+.history th:first-child {
+  width: 9.5rem;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.history th:last-child {
+  width: 8.25rem;
+}

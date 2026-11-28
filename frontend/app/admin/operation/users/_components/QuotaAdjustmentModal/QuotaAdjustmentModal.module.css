@@ -1,0 +1,49 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-24);
+}
+.dim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-dim);
+}
+.modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  width: 26.25rem;
+  max-width: 100%;
+  max-height: calc(100dvh - 3rem);
+  overflow-y: auto;
+  padding: var(--space-24) var(--space-24) var(--space-20);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-surface);
+  box-shadow: var(--shadow-modal);
+  outline: none;
+  color: var(--color-text-body);
+  font: var(--font-content);
+}
+.modal h2 {
+  color: var(--color-text-strong);
+  font: var(--font-subheader);
+}
+.modal > p {
+  color: var(--color-text-sub);
+}
+.stepperRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-16);
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-16);
+}

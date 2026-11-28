@@ -24,6 +24,8 @@ type AdminLayoutProps = {
   activeMenu?: AdminMenuKey;
   /** 처리 대기 신고 수. 1 이상이면 "신고 관리" 옆에 빨간 배지로 보인다 */
   pendingReportCount?: number;
+  /** 별도 실행 환경의 메뉴 주소. null인 항목은 이동할 수 없는 준비 중 메뉴로 표시한다. */
+  menuHrefs?: Partial<Record<AdminMenuKey, string | null>>;
   children: ReactNode;
 };
 
@@ -31,7 +33,12 @@ type AdminLayoutProps = {
  * 운영자 공통 레이아웃: 왼쪽 사이드 메뉴(232) + 오른쪽 본문. 피그마 운영자 페이지의 모든 화면이 같은 틀을 쓴다.
  * 본문 맨 위 페이지 제목은 AdminPageHeader로 각 화면이 그린다. app/admin/layout.tsx가 모든 /admin 화면에 씌운다.
  */
-export function AdminLayout({ activeMenu, pendingReportCount = 0, children }: AdminLayoutProps) {
+export function AdminLayout({
+  activeMenu,
+  pendingReportCount = 0,
+  menuHrefs,
+  children,
+}: AdminLayoutProps) {
   const pathname = usePathname();
   const currentMenu = activeMenu ?? findActiveMenu(pathname);
 
@@ -53,6 +60,8 @@ export function AdminLayout({ activeMenu, pendingReportCount = 0, children }: Ad
             <ul className={styles.menu}>
               {group.items.map((item) => {
                 const isActive = item.key === currentMenu;
+                const customHref = menuHrefs?.[item.key];
+                const href = customHref === undefined ? item.href : customHref;
                 const content = (
                   <>
                     {item.label}
@@ -66,13 +75,20 @@ export function AdminLayout({ activeMenu, pendingReportCount = 0, children }: Ad
                 );
                 return (
                   <li key={item.key}>
-                    <Link
-                      href={item.href}
-                      className={styles.item}
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      {content}
-                    </Link>
+                    {href === null ? (
+                      <span className={styles.item} aria-disabled="true">
+                        {item.label}
+                        <Badge>준비 중</Badge>
+                      </span>
+                    ) : (
+                      <Link
+                        href={href}
+                        className={styles.item}
+                        aria-current={isActive ? "page" : undefined}
+                      >
+                        {content}
+                      </Link>
+                    )}
                   </li>
                 );
               })}

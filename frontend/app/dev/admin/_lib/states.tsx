@@ -20,12 +20,27 @@ import { SAMPLE_FUNNEL } from "../../../admin/monitoring/funnels/_lib/funnel";
 import { MetricsContainer } from "../../../admin/monitoring/metrics/_components/MetricsContainer/MetricsContainer";
 import { METRICS_TABS } from "../../../admin/monitoring/metrics/_lib/metrics";
 import { SAMPLE_METRICS } from "../../../admin/monitoring/metrics/_lib/samples";
+import { UserManagementContainer } from "../../../admin/operation/users/_components/UserManagementContainer/UserManagementContainer";
+import { WeeklyRewardsContainer } from "../../../admin/operation/weekly-rewards/_components/WeeklyRewardsContainer/WeeklyRewardsContainer";
 import type { PreviewState } from "../../_lib/preview";
+import { EMPTY_REWARDS, FEWER_REWARDS, SAMPLE_REWARDS, SAMPLE_USERS } from "./operation-samples";
 
 /** 미리보기 주소(/dev/admin/...)로는 지금 메뉴를 알 수 없어 넘긴다. 피그마처럼 "신고 관리" 옆에 처리 대기 12건을 보인다 */
 function withLayout(activeMenu: AdminMenuKey, content: ReactNode) {
   return (
-    <AdminLayout activeMenu={activeMenu} pendingReportCount={SAMPLE_DASHBOARD.pendingReportCount}>
+    <AdminLayout
+      activeMenu={activeMenu}
+      pendingReportCount={SAMPLE_DASHBOARD.pendingReportCount}
+      menuHrefs={{
+        dashboard: "/dev/admin/a1-dashboard",
+        funnel: "/dev/admin/a2-funnel",
+        "event-logs": "/dev/admin/a6-event-logs",
+        users: "/dev/admin/a5-users",
+        rankings: "/dev/admin/a7-rewards",
+        "feature-metrics": "/dev/admin/a3-metrics-ai",
+        reports: null,
+      }}
+    >
       {content}
     </AdminLayout>
   );
@@ -106,6 +121,115 @@ export const ADMIN_STATES: PreviewState[] = [
         "event-logs",
         <EventLogContainer events={[]} initialEventName="recipe_generatd" />,
       ),
+  },
+  {
+    slug: "a5-users",
+    label: "a5-사용자 관리",
+    route: ADMIN_PATHS.users,
+    render: () => withLayout("users", <UserManagementContainer users={SAMPLE_USERS} />),
+  },
+  {
+    slug: "a5-users-adjust",
+    label: "a5-사용자 관리-생성 횟수 조정",
+    route: ADMIN_PATHS.users,
+    render: () =>
+      withLayout(
+        "users",
+        <UserManagementContainer
+          users={SAMPLE_USERS}
+          initialModal="adjust"
+          initialReason="금주의 레시피 보상 누락 보정"
+        />,
+      ),
+  },
+  {
+    slug: "a5-users-reason-empty",
+    label: "a5-사용자 관리-생성 횟수 조정-사유 비움",
+    route: ADMIN_PATHS.users,
+    render: () =>
+      withLayout(
+        "users",
+        <UserManagementContainer users={SAMPLE_USERS} initialModal="reason-empty" />,
+      ),
+  },
+  {
+    slug: "a5-users-empty",
+    label: "a5-사용자 관리-검색 결과 없음",
+    route: ADMIN_PATHS.users,
+    render: () =>
+      withLayout("users", <UserManagementContainer users={SAMPLE_USERS} initialSearch="#99999" />),
+  },
+  {
+    slug: "a5-users-sanctioned",
+    label: "a5-사용자 관리-제재 중",
+    route: ADMIN_PATHS.users,
+    render: () =>
+      withLayout(
+        "users",
+        <UserManagementContainer users={SAMPLE_USERS} initialFilter="SANCTIONED" />,
+      ),
+  },
+  {
+    slug: "a5-users-no-sanctions",
+    label: "a5-사용자 관리-제재 없는 사용자",
+    route: ADMIN_PATHS.users,
+    render: () =>
+      withLayout(
+        "users",
+        <UserManagementContainer users={SAMPLE_USERS} initialSelectedId={10233} />,
+      ),
+  },
+  {
+    slug: "a5-users-permanent",
+    label: "a5-사용자 관리-영구 정지",
+    route: ADMIN_PATHS.users,
+    render: () =>
+      withLayout(
+        "users",
+        <UserManagementContainer users={SAMPLE_USERS} initialSelectedId={10501} />,
+      ),
+  },
+  {
+    slug: "a5-users-withdrawn",
+    label: "a5-사용자 관리-탈퇴한 사용자",
+    route: ADMIN_PATHS.users,
+    render: () =>
+      withLayout("users", <UserManagementContainer users={SAMPLE_USERS} initialSearch="#10044" />),
+  },
+  {
+    slug: "a5-users-adjusted",
+    label: "a5-사용자 관리-조정 완료 토스트",
+    route: ADMIN_PATHS.users,
+    render: () =>
+      withLayout(
+        "users",
+        <UserManagementContainer
+          users={SAMPLE_USERS.map((user) =>
+            user.userId === 10087
+              ? { ...user, quota: { ...user.quota, rewardRemaining: 8 } }
+              : user,
+          )}
+          initialToast="생성 횟수를 2회 늘렸어요"
+        />,
+      ),
+  },
+  {
+    slug: "a7-rewards",
+    label: "a7-랭킹·보상",
+    route: ADMIN_PATHS.weeklyRewards,
+    render: () => withLayout("rankings", <WeeklyRewardsContainer data={SAMPLE_REWARDS} />),
+  },
+  {
+    slug: "a7-rewards-empty",
+    label: "a7-랭킹·보상-보상 없음",
+    route: ADMIN_PATHS.weeklyRewards,
+    render: () => withLayout("rankings", <WeeklyRewardsContainer data={EMPTY_REWARDS} />),
+  },
+  {
+    slug: "a7-rewards-fewer",
+    label: "a7-랭킹·보상-3개 미만",
+    route: ADMIN_PATHS.weeklyRewards,
+    render: () => withLayout("rankings", <WeeklyRewardsContainer data={FEWER_REWARDS} />),
   },
   ...METRICS_STATES,
   {
