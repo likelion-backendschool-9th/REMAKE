@@ -294,3 +294,9 @@ Removed (do not use in new code; remove from `ErrorCode` when the related code i
 | `QUOTA_ADJUST_INVALID` | Invalid adjustment values are `INVALID_INPUT` (the screen has no separate text, 11/26) |
 
 Withdrawal codes from the previous version (`OAUTH_STATE_INVALID`, `ACCOUNT_PROVIDER_MISMATCH`, `DELETION_CODE_RESEND_TOO_SOON`) are not in v2: Naver re-auth mismatch is `REAUTH_ACCOUNT_MISMATCH`, and there is no resend interval code.
+
+## Author-deletion implementation contract (#230/#295; #296 pending)
+
+- The paths for the owner's shared-post list and author deletion are decided, but neither handler exists yet. The current shared detail/photo services return `SHARED_RECIPE_NOT_FOUND` (404) for missing/HIDDEN posts; detail does not yet support the owner's hidden-post deletion entry or `canDelete`.
+- #296 must apply the existing owner-scoped 404 convention to missing/foreign deletion targets and record the exact catalog mapping, invalid-input handling and repeated-delete response before implementation/client integration. #230 does not decide whether repeated deletion returns 204 or 404. This documentation change adds no error code or numbered API entry.
+- Do not use operator sanction/report errors for author deletion. A file cleanup failure must preserve retry information while access remains blocked; the cleanup mechanism and request-level failure/rollback behavior must be fixed and tested in #296 rather than inventing a new error here.
