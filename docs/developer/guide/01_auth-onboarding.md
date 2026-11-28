@@ -68,7 +68,7 @@
 | 구독이 끝난 뒤 | 일반 한도로 돌아감. 그달 이미 쓴 식단표 생성 횟수는 그대로 셈. 해지 예약 기간에는 다시 구독할 수 없고(ALREADY_SUBSCRIBED), 끝난 뒤에는 처음처럼 구독 | 확정(결제 약관 3항) |
 | 탈퇴와 구독 | 탈퇴하면 구독을 바로 끝내고 더 결제하지 않음. **`subscription_payments`는 파기**(탈퇴 후 결제 메모 미보존, #339). 남은 구독 기간은 환불하지 않음(11/24 약관 결정) | 확정 |
 | 청약 철회·환불 | 결제일로부터 7일 안에 **혜택 미사용**(결제 이후 식단표 생성 0회 + BASIC 일일 한도를 넘는 AI 레시피 생성 0회)이면 전액 환불. 그 밖에는 해지만 되고 환불 없음(11/24 약관, #228) | 확정 |
-| 환불 처리 | 피그마 환불 페이지에서 요청. 성공 시 토스 결제 취소 → 구독 ENDED·`users.plan` BASIC·billingKey 비움. 결제 기록은 DB에 남기고 앱 결제 내역 화면은 없음. 서버 이벤트는 E89 `subscription_refunded`만(E88과 겹치지 않음). API 경로·메서드는 #343에서 확정 | 확정(경로 문자열만 후속) |
+| 환불 처리 | 피그마 환불 페이지에서 `POST /user/subscription/refund` 요청. 성공 시 토스 결제 취소 → 구독 ENDED·`users.plan` BASIC·billingKey 비움. 결제 기록은 DB에 남기고 앱 결제 내역 화면은 없음. 서버 이벤트는 E89 `subscription_refunded`만(E88과 겹치지 않음)(#343) | 확정 |
 | 결제 키 보관 | 토스 시크릿 키와 자동결제 키(billingKey)는 서버에만 두고 프론트로 보내지 않음. 자동결제 키는 암호화해 저장 | 확정 |
 | 시연 결제 | 토스페이먼츠 테스트 키로만 하는 시연 결제(실제 청구 없음)(11/24 약관 결정) | 확정 |
 
@@ -92,12 +92,15 @@
 | 58 | POST | `/user/subscription/billing-auth` | 토스페이먼츠 카드 등록 창을 열 값을 줌. 프론트는 이 값으로 토스 SDK 카드 자동결제 등록(requestBillingAuth)을 불러 토스 결제 화면으로 이동(11/22 답 1). 등록이 끝나면 토스가 프론트 성공 주소로 authKey·customerKey를 붙여 돌려보냄 | `본문 없음` | `200 { customerKey, orderName, amount }` | subscriptions |
 | 59 | POST | `/user/subscription` | 구독 시작. 서버가 토스에 authKey로 자동결제 키(billingKey) 발급 요청 → 그 키로 첫 달 9,900원 결제 → 성공하면 구독 시작(users.plan PREMIUM, 다음 결제일 = 오늘 + 1달). 첫 결제가 실패하면 구독을 만들지 않음 | `{ authKey, customerKey }` | `201 (GET /user/subscription과 같은 모양)` | subscriptions, subscription_payments, users |
 | 60 | POST | `/user/subscription/cancel` | 해지 예약. 바로 끝나지 않고 다음 결제일 전날까지 구독 혜택 유지, 다음 결제일에 자동 결제하지 않고 일반으로 바뀜(11/22 답 4). 이미 해지 예약이면 그대로 200 | `본문 없음` | `200 (GET /user/subscription과 같은 모양, status CANCELED)` | subscriptions |
+| 73 | POST | `/user/subscription/refund` | 7일 안 전액 환불. 결제 이후 식단표 생성 0회·BASIC 일일 한도 초과 레시피 생성 0회일 때만. 성공 시 토스 취소·구독 ENDED·BASIC·billingKey 비움, 결제 행 유지, E89만(#343) | `본문 없음` | `200 (GET /user/subscription과 같은 모양, status NONE)` | subscriptions, subscription_payments, users |
 
-구독 API(57~60)는 영역 1이지만 다른 문서의 번호가 바뀌지 않게 맨 뒤 번호를 썼어요.
+구독 API(57~60·73)는 영역 1이지만 다른 문서의 번호가 바뀌지 않게 맨 뒤 번호를 썼어요.
 
 ## 테이블
 
 `users`, `user_excluded_ingredients`, `refresh_tokens`, `account_deletion_requests`, `subscriptions`, `subscription_payments`. 컬럼은 [`../erd.md`](../erd.md)를 보세요.
+
+백엔드 패키지(#150 A, #344): `auth`(로그인·토큰), `user`(회원·설정·온보딩·탈퇴), `subscription`(구독·토스·해지·환불·자동결제 Job). API 경로의 `/user/subscription`은 그대로입니다.
 
 ## 구현 메모
 
@@ -111,7 +114,7 @@
 - 인증번호 메일 발송 코드는 포트 뒤 어댑터에 두고, 로컬은 번호를 로그로 찍는 mock을 써요. SMTP·토스 키 같은 새 환경 변수는 `compose.prod.yml`·`prod.env.example`에 추가하고 배포 담당에게 서버 `.env` 등록을 요청해요.
 - 구독 흐름: 결제 약관 체크 → `POST /user/subscription/billing-auth` → 프론트가 토스 SDK `requestBillingAuth`로 카드 등록 창 → 토스가 성공 주소로 `authKey`·`customerKey`를 붙여 돌려보냄 → `POST /user/subscription`에서 billingKey 발급과 첫 달 9,900원 결제 → 성공하면 `users.plan = PREMIUM`. 첫 결제가 실패하면 구독을 만들지 않아요.
 - 토스 시크릿 키와 billingKey는 서버에만 두고, billingKey는 암호화해 저장해요. 매일 새벽 자동 결제 작업이 다음 결제일이 오늘인 구독을 결제해요(API 요약의 정기 작업 표).
-- 환불 흐름(#228, #318): 피그마 환불 페이지 → 환불 요청 API(경로 #343에서 확정) → 혜택 미사용이면 토스 취소·구독 종료·E89. 해지 화면은 #170에서 피그마 사용으로 결정됐고 상세·연동은 #169를 확인해요. 자동 결제 실패·탈퇴 시 환불 없음·시연 결제(테스트 키만)는 11/24 약관 결정으로 확정. 자동 결제 실패 시 E88 `end_reason`은 #229에서 확인해요.
+- 환불 흐름(#228, #318, #343): 피그마 환불 페이지 → `POST /user/subscription/refund` → 혜택 미사용이면 토스 취소·구독 종료·E89. 조건 미충족은 `REFUND_NOT_ELIGIBLE`(422). 해지 화면은 #170에서 피그마 사용으로 결정됐고 상세·연동은 #169를 확인해요. 자동 결제 실패·탈퇴 시 환불 없음·시연 결제(테스트 키만)는 11/24 약관 결정으로 확정. 자동 결제 실패 시 E88 `end_reason`은 #229에서 확인해요.
 - 설정 값은 본인만 조회해요. 건강(질환) 정보는 받지 않고, 제외 재료 이름은 이벤트에 넣지 않고 개수만 넣어요.
 
 ## 지금 코드와 다른 점
@@ -148,7 +151,7 @@
 | E86 | `subscription_renewed` | 매달 자동 결제가 성공해 구독이 한 달 늘었을 때 | payment_amount, renewal_count | BE | P1 | 서버 정기 작업 구독 자동 결제(API 정의서 5장) |
 | E87 | `subscription_canceled` | 구독 중 화면에서 "구독 해지 하기"로 해지 예약했을 때 | subscribed_days | BE | P1 | 60 구독 해지 |
 | E88 | `subscription_ended` | 구독이 끝나 일반 회원으로 바뀌었을 때(환불 아님: 해지 기간 종료·탈퇴·자동결제 실패) | end_reason, subscribed_days | BE | P1 | 서버 정기 작업 구독 자동 결제(API 정의서 5장), 10 계정 삭제 |
-| E89 | `subscription_refunded` | 7일 안 전액 환불이 성공했을 때. 구독은 이 흐름에서 끝나며 E88은 찍지 않음 | payment_amount, refund_amount, subscribed_days | BE | P1 | 환불 요청 API(경로 #343에서 확정) |
+| E89 | `subscription_refunded` | 7일 안 전액 환불이 성공했을 때. 구독은 이 흐름에서 끝나며 E88은 찍지 않음 | payment_amount, refund_amount, subscribed_days | BE | P1 | 73 `POST /user/subscription/refund` |
 
 ## 체크리스트
 
