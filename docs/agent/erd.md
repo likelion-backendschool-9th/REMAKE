@@ -717,13 +717,13 @@ Posts in the shared space (fully anonymous). Owner 최유리 (7 sharing/cart).
 | `created_at` | timestamp |  |  | no |  | Shared time |
 | `updated_at` | timestamp |  |  | no |  | Status change time |
 
-Author-deletion storage (#296, V32; settlement follow-up #297):
+Author-deletion storage (#296, V32; settlement integration #297):
 
 - The seven-column post table retains id, recipe_id, created_at, updated_at and the unique `(recipe_id, date_trunc('week', created_at))` index. V32 adds DELETED, drops title/image_key NOT NULL and replaces the checks with a state-dependent rule: DELETED requires both NULL; VISIBLE/HIDDEN require nonblank title and a non-null photo key. JPA matches these nullable columns; original migrations remain unchanged.
 - Preserve original recipes, others' saved/favorite rows, cart edited quantities and report/rank/reward links. Existing V14/V23 CASCADE and V13/V26 SET NULL FK actions remain unchanged; author deletion never physically deletes the shared row. Same-week sharing still rejects DELETED history with ALREADY_SHARED. Withdrawal cannot restore it.
 - Enqueue the photo key in the same transaction as the tombstone, then delete the physical file only after commit in a new transaction. `shared_recipe_photo_deletions` survives file errors and process restarts; workers use SKIP LOCKED, defer failures and remove successful/missing-file keys. DB rollback preserves the photo. The deleted post no longer carries its title/photo key and public access is blocked independently of worker success.
-- Lock order: `pg_advisory_xact_lock(230, 1)` → owned shared-post row → enqueue/tombstone. Save/unsave take the post row before saved/cart writes. #297 must take the same advisory lock before week completion/rank queries and rewards; its batch participation/race tests are still pending. Preserve final rows/grants, omit deleted posts from public history without reranking/replacements and keep the historical-save limitation.
-- V32 expands the schema and status enum. Old application versions cannot interpret DELETED; deployment/rollback review must account for this. The schema change alone does not implement operator moderation or complete #297.
+- Lock order: `pg_advisory_xact_lock(230, 1)` → owned shared-post row → enqueue/tombstone. Save/unsave take the post row before saved/cart writes. #297 makes weekly settlement take the same advisory lock as its first DB operation, before claiming the week, reading eligible ranks or granting rewards. Hold it until transaction completion: deletion commits first → exclude it; settlement commits first → preserve its final rank/reward on later deletion; rollback releases the lock without partial effects. A single global key serializes participating deletions and settlements, including different weeks. No extra post-row lock is needed in settlement because deletion cannot pass this lock. Preserve final rows/grants, omit deleted posts from public history without reranking/replacements and keep the historical-save limitation.
+- V32 expands the schema and status enum. Old application versions cannot interpret DELETED; deployment/rollback review must account for this. The schema change alone does not implement operator moderation. The #297 protocol requires all active settlement workers to use this lock; old workers do not participate, including during version overlap or rollback.
 
 ### 21. `shared_recipe_reports` (Shared recipe reports)
 
@@ -753,6 +753,8 @@ Last week's final ranking (for the rank change arrows). Owner 최유리 (7 shari
 | `rank_no` | int |  |  | no |  | Final rank that week |
 | `save_count` | int |  |  | no |  | Saves received that week |
 | `created_at` | timestamp |  |  | no |  | Stored time (weekly batch) |
+
+- #297: author deletion preserves these final rows, including original `rank_no` and `save_count`. Never rerank historical weeks or promote lower ranks. Public reads must omit DELETED posts; the existing public ranking uses history only to compare VISIBLE posts with their unchanged previous rank. There is no dedicated public historical-ranking endpoint.
 
 ### 23. `generation_quota_grants` (Reward generation grants)
 
@@ -1015,7 +1017,7 @@ Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged
 | `user_sanctions` | Not in code | Create the table with `UK(user_id + level)` and its FKs in a new migration |
 | `shared_recipe_reports` | V14: no `result`, `handled_by`, `handled_at` | Add the three nullable columns in a new migration |
 | `generation_quota_grants` | V26: no `grant_type`, `reason`, `admin_id`; `week_start` and `rank_no` NOT NULL; checks `ck_quota_grants_reward` (rank-based amounts) and `ck_quota_grants_remaining` (0 to `amount`) | New migration: add the columns (`grant_type` default WEEKLY_REWARD), make `week_start` and `rank_no` nullable, and limit the two checks to WEEKLY_REWARD rows so ADMIN_ADJUST rows (negative `amount`, `remaining` 0) are allowed |
-| `shared_recipes` | V32 supports DELETED and state-dependent nullable title/image_key; recipe/week index and all FKs retained | Author deletion implemented in #296; operator handling and weekly settlement lock participation (#297) remain separate |
+| `shared_recipes` | V32 supports DELETED and state-dependent nullable title/image_key; recipe/week index and all FKs retained | Author deletion implemented in #296 and weekly settlement lock participation in #297; operator handling remains separate |
 
 ## Differences from ERD v3 (32 tables)
 

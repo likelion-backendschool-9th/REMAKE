@@ -30,7 +30,7 @@ class SharedRecipeManagementPersistenceAdapter implements ManageSharedRecipePort
 
 	@Override
 	public void lockDeletionAndSettlement() {
-		// #297의 주간 확정도 대상 조회 전에 같은 키를 사용한다. 행/주 잠금보다 먼저 획득한다.
+		// 작성자 삭제와 주간 확정이 공유하는 키. 행/주 잠금보다 먼저 획득한다.
 		jdbc.execute("SELECT pg_advisory_xact_lock(230, 1)");
 	}
 
