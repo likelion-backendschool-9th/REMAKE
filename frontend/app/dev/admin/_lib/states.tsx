@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 import { AdminForbidden } from "../../../admin/_components/AdminForbidden/AdminForbidden";
 import { AdminLayout } from "../../../admin/_components/AdminLayout/AdminLayout";
-import { ADMIN_PATHS, type AdminMenuKey } from "../../../admin/_lib/admin-menu";
+import { ADMIN_PATHS, type AdminMenuKey, type MetricsTab } from "../../../admin/_lib/admin-menu";
 import { DashboardContainer } from "../../../admin/monitoring/dashboard/_components/DashboardContainer/DashboardContainer";
 import {
   EMPTY_DASHBOARD,
@@ -17,6 +17,9 @@ import { EventLogContainer } from "../../../admin/monitoring/events/_components/
 import { SAMPLE_EVENT_LOGS } from "../../../admin/monitoring/events/_lib/event-log";
 import { FunnelContainer } from "../../../admin/monitoring/funnels/_components/FunnelContainer/FunnelContainer";
 import { SAMPLE_FUNNEL } from "../../../admin/monitoring/funnels/_lib/funnel";
+import { MetricsContainer } from "../../../admin/monitoring/metrics/_components/MetricsContainer/MetricsContainer";
+import { METRICS_TABS } from "../../../admin/monitoring/metrics/_lib/metrics";
+import { SAMPLE_METRICS } from "../../../admin/monitoring/metrics/_lib/samples";
 import { UserManagementContainer } from "../../../admin/operation/users/_components/UserManagementContainer/UserManagementContainer";
 import { WeeklyRewardsContainer } from "../../../admin/operation/weekly-rewards/_components/WeeklyRewardsContainer/WeeklyRewardsContainer";
 import type { PreviewState } from "../../_lib/preview";
@@ -34,7 +37,7 @@ function withLayout(activeMenu: AdminMenuKey, content: ReactNode) {
         "event-logs": "/dev/admin/a6-event-logs",
         users: "/dev/admin/a5-users",
         rankings: "/dev/admin/a7-rewards",
-        "feature-metrics": null,
+        "feature-metrics": "/dev/admin/a3-metrics-ai",
         reports: null,
       }}
     >
@@ -42,6 +45,15 @@ function withLayout(activeMenu: AdminMenuKey, content: ReactNode) {
     </AdminLayout>
   );
 }
+
+/** a3 기능별 지표 탭 8개 상태. 피그마 프레임 이름이 탭마다 다르다(a3-기능별 지표는 AI 탭) */
+const METRICS_STATES: PreviewState[] = METRICS_TABS.map(({ tab, label }) => ({
+  slug: `a3-metrics-${tab}`,
+  label: tab === "ai" ? "a3-기능별 지표" : `a3-기능별 지표-${label}`,
+  route: ADMIN_PATHS.metrics(tab as MetricsTab),
+  render: () =>
+    withLayout("feature-metrics", <MetricsContainer tab={tab} metrics={SAMPLE_METRICS[tab]} />),
+}));
 
 export const ADMIN_STATES: PreviewState[] = [
   {
@@ -218,5 +230,18 @@ export const ADMIN_STATES: PreviewState[] = [
     label: "a7-랭킹·보상-3개 미만",
     route: ADMIN_PATHS.weeklyRewards,
     render: () => withLayout("rankings", <WeeklyRewardsContainer data={FEWER_REWARDS} />),
+  },
+  ...METRICS_STATES,
+  {
+    slug: "a3-metrics-loading",
+    label: "a3-기능별 지표 로딩 (실제 라우트 처음 상태)",
+    route: ADMIN_PATHS.metrics("registration"),
+    render: () => withLayout("feature-metrics", <MetricsContainer tab="registration" />),
+  },
+  {
+    slug: "a3-metrics-load-error",
+    label: "a3-기능별 지표 불러오기 실패",
+    route: ADMIN_PATHS.metrics("registration"),
+    render: () => withLayout("feature-metrics", <MetricsContainer tab="registration" hasError />),
   },
 ];

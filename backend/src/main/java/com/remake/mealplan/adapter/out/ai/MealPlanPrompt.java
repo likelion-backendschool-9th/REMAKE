@@ -2,6 +2,7 @@ package com.remake.mealplan.adapter.out.ai;
 
 import java.util.Arrays;
 
+import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.mealplan.domain.MealPurpose;
 import com.remake.recipe.domain.RecipeUnit;
 
@@ -46,6 +47,8 @@ final class MealPlanPrompt {
 			2. 재료 규칙
 			- fridgeIngredients의 재료를 쓸 때는 그 재료의 ingredientId를 fridgeIngredientId에 그대로 넣는다.
 			  냉장고에 없는 재료는 fridgeIngredientId를 null로 둔다(사용자가 따로 산다).
+			- 냉장고에 없는 재료(물 제외)는 categoryCode를 다음 코드 중 하나로 고른다: %s.
+			  애매하면 ETC를 쓴다. 냉장고 재료와 물의 categoryCode는 null로 둔다.
 			- 냉장고 재료는 fridgeIngredients의 unit과 같은 단위로 쓴다. 0.3처럼 소수도 된다(예: BUNCH 재료는 BUNCH로).
 			- fridgePlan에는 냉장고 재료마다 어느 칸(day·mealType)에 얼마를 쓸지 uses에 나누고,
 			  uses를 모두 더한 total이 그 재료의 amount를 넘지 않게 한다. 넘으면 뒤쪽 날의 칸에서 양을 줄이거나 다른 냉장고 재료로 바꾼다.
@@ -79,7 +82,7 @@ final class MealPlanPrompt {
 			- 답의 맨 앞 menuPlan에 칸마다 요리 이름(title)·주재료(mainIngredient)·조리법(method)·
 			  그 칸에 쓸 냉장고 재료 id(fridgeIngredientIds)만 먼저 적는다. 냉장고 재료가 남아 있는 동안 fridgeIngredientIds는 비우지 않는다.
 			  다 적은 뒤 위 기준(같은 title, 같은 날 같은 mainIngredient, 이틀 연속 같은 끼니의 같은 method)을 확인해 고치고,
-			  slots의 title은 menuPlan과 같게 쓴다.
+			  slots의 title은 menuPlan과 같게 쓰되, 6번 규칙대로 쓰지 않게 된 재료는 이름에서 뺀다(그때는 menuPlan과 달라도 된다).
 			- 냉장고 재료가 적어 지킬 수 없으면 2번 재료 규칙을 먼저 지킨다.
 
 			6. 레시피 품질
@@ -91,7 +94,8 @@ final class MealPlanPrompt {
 			  각 단계는 한 문장 또는 두 문장이고 단계 번호는 붙이지 않는다.
 			- ingredients에는 steps에서 실제로 쓰는 재료만, 실제로 쓰는 양만큼 넣는다. ingredients의 모든 재료는 steps 어딘가에 나와야 한다.
 			- 맛을 내는 데 필요한 양념(간장·소금·식용유 등)은 넣는다. 물은 실제로 쓰는 만큼만 넣는다.
-			- 요리 이름은 실제로 들어가는 주재료로 짧게 짓고, 쓰지 않는 재료를 이름에 넣지 않는다.
+			- 요리 이름은 실제로 들어가는 주재료로 짧게 짓는다. ingredients를 다 쓴 뒤 이름을 다시 보고,
+			  ingredients에 없는 재료(냉장고 재료가 떨어져 뺀 재료 포함)는 이름에서 뺀다(예: 계란만 쓴 "양파계란국" → "계란국").
 			- 밥이 들어가는 요리(볶음밥·덮밥·비빔밥·죽 등)는 재료에 쌀을 넣는다.
 			  예: 2인분 김치볶음밥 → 재료 "쌀 1CUP", 첫 단계 "쌀을 씻어 밥을 짓는다."
 			- tips는 한두 문장, 없으면 null.
@@ -159,8 +163,8 @@ final class MealPlanPrompt {
 			""";
 
 	static String systemInstruction(MealPurpose purpose) {
-		return COMMON.formatted(BREAKFAST_COOK_MINUTES, purposeBlock(purpose), Arrays.toString(RecipeUnit.values()),
-				MIN_STEPS, MAX_STEPS, LONG_DISH_MIN_STEPS);
+		return COMMON.formatted(Arrays.toString(IngredientCategoryCode.values()), BREAKFAST_COOK_MINUTES,
+				purposeBlock(purpose), Arrays.toString(RecipeUnit.values()), MIN_STEPS, MAX_STEPS, LONG_DISH_MIN_STEPS);
 	}
 
 	/** 식단 칸 교체: 생성과 같은 지시문 + 교체 규칙. */

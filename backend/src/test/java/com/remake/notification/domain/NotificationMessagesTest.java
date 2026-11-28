@@ -28,9 +28,9 @@ class NotificationMessagesTest {
 	}
 
 	@Test
-	void 최대_일수를_채우면_장바구니에_담았어도_부족_문장을_붙이지_않는다() {
+	void 최대_일수를_채워도_장바구니에_담았으면_담은_개수만_덧붙인다() {
 		assertThat(NotificationMessages.mealPlanCompleted(LocalDate.of(2026, 11, 24), 7, 7, 3))
-				.isEqualTo("11월 24일부터 7일치 식단표가 완성됐어요");
+				.isEqualTo("11월 24일부터 7일치 식단표가 완성됐어요. 부족한 재료 3개를 장바구니에 담았어요");
 	}
 
 	@Test

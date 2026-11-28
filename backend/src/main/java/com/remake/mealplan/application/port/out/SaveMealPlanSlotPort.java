@@ -7,7 +7,8 @@ import com.remake.mealplan.domain.MealPlanSlot;
 
 public interface SaveMealPlanSlotPort {
 
-	void saveAll(List<MealPlanSlot> slots);
+	/** 칸들을 저장하고, 넘긴 순서대로 id가 채워진 칸을 돌려준다. */
+	List<MealPlanSlot> saveAll(List<MealPlanSlot> slots);
 
 	void deleteAllById(Collection<Long> slotIds);
 }

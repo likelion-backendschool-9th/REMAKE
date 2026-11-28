@@ -16,6 +16,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.remake.cart.application.port.in.AddCartItemsUseCase;
+import com.remake.cart.application.port.in.CartAdditionCommand;
+import com.remake.cart.application.port.in.CleanUpMealPlanSlotCartItemsUseCase;
+import com.remake.cart.domain.CartSource;
 import com.remake.event.application.port.in.EventTrackCommand;
 import com.remake.event.application.port.in.EventTracker;
 import com.remake.event.domain.EventName;
@@ -55,13 +59,17 @@ import lombok.extern.slf4j.Slf4j;
  * <li>레시피 하루 횟수가 남았는지(GENERATION_LIMIT_EXCEEDED, quota_exceeded 이벤트). 레시피 생성·다시 받기와 같은 횟수다</li>
  * <li>쓸 수 있는 냉장고 재료: 다른 칸(요리 안 한 칸)이 쓰기로 한 양을 빼고, 이 칸이 쓰던 양은 돌려받는다.
  * 바꾸기 전 레시피가 쓰던 냉장고 재료는 주재료로 쓰지 말라고 보낸다(같은 요리가 다시 나오지 않게, 11-25 실측).
- * 칸 날짜 전에 소비기한이 끝나는 재료는 뺀다. 하나도 없으면 AI를 부르지 않는다(MEAL_PLAN_NO_INGREDIENTS)</li>
- * <li>AI 호출과 검사. 실패하면 잠깐 쉬고 1회 다시 시도한다(25초 × 2 + 쉬는 시간 &lt; Nginx 60초, #50)</li>
- * <li>한 트랜잭션에서 새 레시피 저장 + 칸의 레시피 변경(요리 완료 표시 지움) + 하루 횟수 차감</li>
+ * 칸 날짜 전에 소비기한이 끝나는 재료와 식약처 요리에 안 나오는 재료(#288 F1)는 뺀다. 하나도 없으면 AI를 부르지 않는다(MEAL_PLAN_NO_INGREDIENTS)</li>
+ * <li>AI 호출과 검사(조합 검사 #288 F2 포함). 실패하면 잠깐 쉬고 1회 다시 시도한다(25초 × 2 + 쉬는 시간 &lt; Nginx 60초, #50)</li>
+ * <li>재료 카테고리를 정한다(사전 → 냉장고 재료 → AI, 생성과 같은 기준)</li>
+ * <li>한 트랜잭션에서 새 레시피 저장 → 바꾸기 전 레시피로 그 칸에서 담은 장바구니 행 정리 → 칸의 레시피 변경(요리 완료 표시 지움)
+ * → 새 레시피의 부족 재료 장바구니 담기 → 하루 횟수 차감. 하나라도 실패하면 모두 되돌린다</li>
  * </ol>
  * AI 호출은 트랜잭션 밖에서 한다. 실패는 차감하지 않고 meal_slot_replace_failed 이벤트로 남긴다
  * (재료 없음, AI 실패, AI 뒤 저장 직전에 칸이 없어졌거나 자정이 지난 경우).
- * 바꾸기 전 레시피와 장바구니 항목은 그대로 둔다(부족 재료 담기는 #91, 장바구니 자동 삭제 없음).
+ * 바꾸기 전 레시피는 남긴다. 그 레시피로 그 칸에서 담은 장바구니 행은 손대지 않았으면 지우고, 수량을 고쳤거나 저장해 둔 레시피면
+ * 칸 연결만 비운다(#91, CleanUpMealPlanSlotCartItemsUseCase). 같은 칸의 recipe_id만 바뀌어 ON DELETE SET NULL이 걸리지 않으므로
+ * 칸을 바꾸기 전에 부른다. 새 부족 재료는 생성과 같은 기준으로 담는다(MealPlanCartItems).
  */
 @Slf4j
 @Service
@@ -80,7 +88,11 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 	private final ConsumeRecipeQuotaUseCase consumeRecipeQuotaUseCase;
 	private final GetUsageQuotasUseCase getUsageQuotasUseCase;
 	private final SaveMealPlanRecipesUseCase saveMealPlanRecipesUseCase;
+	private final MealPlanIngredientCategories ingredientCategories;
+	private final AddCartItemsUseCase addCartItemsUseCase;
+	private final CleanUpMealPlanSlotCartItemsUseCase cleanUpMealPlanSlotCartItemsUseCase;
 	private final ReplaceMealSlotAiPort aiPort;
+	private final MealPlanCombinationCheck combinationCheck;
 	private final EventTracker eventTracker;
 	private final TransactionTemplate transactionTemplate;
 	private final Clock clock;
@@ -91,8 +103,11 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 			GetRecipeListItemsUseCase getRecipeListItemsUseCase,
 			GetUserGenerationPreferencesUseCase getUserGenerationPreferencesUseCase,
 			ConsumeRecipeQuotaUseCase consumeRecipeQuotaUseCase, GetUsageQuotasUseCase getUsageQuotasUseCase,
-			SaveMealPlanRecipesUseCase saveMealPlanRecipesUseCase, ReplaceMealSlotAiPort aiPort,
-			EventTracker eventTracker, TransactionTemplate transactionTemplate, Clock clock,
+			SaveMealPlanRecipesUseCase saveMealPlanRecipesUseCase, MealPlanIngredientCategories ingredientCategories,
+			AddCartItemsUseCase addCartItemsUseCase,
+			CleanUpMealPlanSlotCartItemsUseCase cleanUpMealPlanSlotCartItemsUseCase, ReplaceMealSlotAiPort aiPort,
+			MealPlanCombinationCheck combinationCheck, EventTracker eventTracker,
+			TransactionTemplate transactionTemplate, Clock clock,
 			@Value("${remake.meal-plan.ai-retry-delay:1500ms}") Duration retryDelay) {
 		this.mealPlanSlotPort = mealPlanSlotPort;
 		this.loadMealPlanSlotPort = loadMealPlanSlotPort;
@@ -103,7 +118,11 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 		this.consumeRecipeQuotaUseCase = consumeRecipeQuotaUseCase;
 		this.getUsageQuotasUseCase = getUsageQuotasUseCase;
 		this.saveMealPlanRecipesUseCase = saveMealPlanRecipesUseCase;
+		this.ingredientCategories = ingredientCategories;
+		this.addCartItemsUseCase = addCartItemsUseCase;
+		this.cleanUpMealPlanSlotCartItemsUseCase = cleanUpMealPlanSlotCartItemsUseCase;
 		this.aiPort = aiPort;
+		this.combinationCheck = combinationCheck;
 		this.eventTracker = eventTracker;
 		this.transactionTemplate = transactionTemplate;
 		this.clock = clock;
@@ -128,9 +147,9 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 		List<MealPlanSlot> otherSlots = futureSlots.stream().filter(other -> !other.id().equals(slot.id())).toList();
 		List<FridgeStock> fridge = stockReader.loadFridge(userId);
 		StockLedger ledger = stockReader.ledger(userId, fridge, otherSlots, today);
-		List<FridgeStock> available = ledger.available().stream()
+		List<FridgeStock> available = combinationCheck.forAi(ledger.available().stream()
 				.filter(stock -> !stock.expirationDate().isBefore(slot.slotDate()))
-				.toList();
+				.toList());
 		if (available.isEmpty()) {
 			trackFailure(userId, ErrorCode.MEAL_PLAN_NO_INGREDIENTS, start);
 			throw new BusinessException(ErrorCode.MEAL_PLAN_NO_INGREDIENTS);
@@ -150,7 +169,8 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 
 		GeneratedMealSlot generated;
 		try {
-			generated = generateWithRetry(slotId, schedule, request, fridge, ledger);
+			generated = ingredientCategories.resolve(
+					List.of(generateWithRetry(slotId, schedule, request, fridge, ledger)), fridge).getFirst();
 		} catch (BusinessException e) {
 			trackFailure(userId, e.getErrorCode(), start);
 			throw e;
@@ -158,7 +178,7 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 
 		Saved saved;
 		try {
-			saved = transactionTemplate.execute(status -> save(userId, slotId, plan.servings(), generated));
+			saved = transactionTemplate.execute(status -> save(userId, slotId, plan.servings(), generated, fridge));
 		} catch (BusinessException e) {
 			// 저장은 롤백됐다. 확인과 저장 사이에 다른 요청이 마지막 횟수를 썼으면 레시피 생성(E41)과 같이 quota_exceeded만 남긴다.
 			// AI를 기다리는 동안 칸이 지워졌거나(SLOT_NOT_FOUND) 자정이 지났으면(PAST_DATE_NOT_ALLOWED) AI는 불렀지만 결과를
@@ -180,7 +200,7 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 		IngredientSummary summary = IngredientSummary.of(
 				generated.ingredients().stream().map(SlotIngredient::name).toList());
 		return new ReplacedMealSlot(slotId, saved.recipeId(), generated.title(), summary.summary(),
-				summary.extraCount());
+				summary.extraCount(), saved.cartAddedCount());
 	}
 
 	/**
@@ -233,14 +253,14 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 	}
 
 	/**
-	 * 생성과 같은 검사(칸 모양·레시피 한도) 뒤, 칸이 장부 안에서 배정되는지 본다: 냉장고 재료를 1개 이상 쓰고 남은 양을 넘지 않아야 한다.
+	 * 생성과 같은 검사(칸 모양·레시피 한도·조합) 뒤, 칸이 장부 안에서 배정되는지 본다: 냉장고 재료를 1개 이상 쓰고 남은 양을 넘지 않아야 한다.
 	 * 쓸 냉장고 재료가 있는데 "못 만듦"(skipped)으로 오거나 배정되지 않으면 형식 오류로 보고 다시 부른다(생성은 그날에서 자르지만
 	 * 교체는 칸이 하나뿐이라 자를 수 없다).
 	 */
-	private static GeneratedMealSlot checked(MealSchedule schedule, List<GeneratedMealSlot> generated,
+	private GeneratedMealSlot checked(MealSchedule schedule, List<GeneratedMealSlot> generated,
 			List<FridgeStock> fridge, StockLedger ledger) {
-		GeneratedMealSlot slot = MealPlanStockReader.keepOwnFridgeIds(
-				GeneratedMealPlanValidator.validate(schedule, generated).getFirst(), fridge);
+		GeneratedMealSlot slot = MealPlanStockReader.normalizeFridgeLinks(
+				combinationCheck.check(GeneratedMealPlanValidator.validate(schedule, generated)).getFirst(), fridge);
 		if (slot.skipped()) {
 			throw invalid("재료가 있는데 못 만듦으로 옴");
 		}
@@ -250,18 +270,27 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 		return slot;
 	}
 
-	/** 저장 직전에 칸을 다시 읽는다. AI를 기다리는 동안 칸이 지워졌거나(삭제·덮어쓰기) 자정이 지났으면 저장하지 않는다. */
-	private Saved save(Long userId, Long slotId, int servings, GeneratedMealSlot generated) {
+	/**
+	 * 저장 직전에 칸을 다시 읽는다. AI를 기다리는 동안 칸이 지워졌거나(삭제·덮어쓰기) 자정이 지났으면 저장하지 않는다.
+	 * 바꾸기 전 레시피로 담은 장바구니 행을 정리하고, 새 레시피의 부족 재료를 이 칸 출처로 담는다.
+	 * 새로 넣은 행 수는 응답 cartAddedCount가 된다(화면은 1 이상일 때 토스트).
+	 */
+	private Saved save(Long userId, Long slotId, int servings, GeneratedMealSlot generated,
+			List<FridgeStock> fridge) {
 		MealPlanSlot current = mealPlanSlotPort.findByIdAndUserId(slotId, userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.SLOT_NOT_FOUND));
 		if (current.isPast(LocalDate.now(clock))) {
 			throw new BusinessException(ErrorCode.PAST_DATE_NOT_ALLOWED);
 		}
+		Long previousRecipeId = current.recipeId();
 		Long recipeId = saveMealPlanRecipesUseCase.saveMealPlanRecipes(userId,
 				List.of(MealPlanResultWriter.toRecipeCommand(generated, servings))).getFirst();
+		cleanUpMealPlanSlotCartItemsUseCase.cleanUp(userId, Map.of(slotId, previousRecipeId));
 		current.replaceRecipe(recipeId);
 		mealPlanSlotPort.update(current);
-		return new Saved(recipeId, consumeRecipeQuotaUseCase.consumeRecipeQuota(userId));
+		List<CartAdditionCommand> shortages = MealPlanCartItems.shortages(generated, recipeId, slotId, fridge);
+		int cartAddedCount = shortages.isEmpty() ? 0 : addCartItemsUseCase.add(userId, CartSource.MEAL_PLAN, shortages);
+		return new Saved(recipeId, consumeRecipeQuotaUseCase.consumeRecipeQuota(userId), cartAddedCount);
 	}
 
 	private void pause() {
@@ -300,6 +329,6 @@ class MealSlotReplaceService implements ReplaceMealSlotUseCase {
 		return Duration.ofNanos(System.nanoTime() - startNanos).toMillis();
 	}
 
-	private record Saved(Long recipeId, RecipeQuota quota) {
+	private record Saved(Long recipeId, RecipeQuota quota, int cartAddedCount) {
 	}
 }

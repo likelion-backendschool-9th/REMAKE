@@ -2,6 +2,7 @@ package com.remake.mealplan.adapter.out.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -34,6 +35,7 @@ import org.springframework.web.client.RestClient;
 import com.remake.global.config.GeminiProperties;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
+import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.mealplan.application.port.out.GeneratedMealSlot;
 import com.remake.mealplan.application.port.out.MealPlanAiBusyException;
@@ -43,6 +45,7 @@ import com.remake.mealplan.domain.MealPurpose;
 import com.remake.mealplan.domain.MealSchedule;
 import com.remake.mealplan.domain.MealSlotKey;
 import com.remake.mealplan.domain.MealType;
+import com.remake.mealplan.domain.SlotIngredient;
 import com.remake.recipe.domain.RecipeUnit;
 import com.remake.user.domain.AllergenCode;
 
@@ -159,6 +162,38 @@ class GeminiMealPlanAdapterTest {
 		assertThat(slots.get(0).skipped()).isTrue();
 		assertThat(slots.get(1).skipped()).isFalse();
 		assertThat(slots.get(1).ingredients()).extracting(ingredient -> ingredient.name()).containsExactly("버섯");
+	}
+
+	@Test
+	void 재료의_카테고리_코드를_읽고_없는_코드는_줄은_남기고_카테고리만_비운다() {
+		List<GeneratedMealSlot> slots = adapter.parse("""
+				{"slots": [{"day": 1, "mealType": "DINNER", "skipped": false, "title": "버섯볶음", "cookMinutes": 10,
+				  "ingredients": [{"fridgeIngredientId": 31, "name": "버섯", "amount": 100, "unit": "G", "categoryCode": null},
+				                  {"fridgeIngredientId": null, "name": "굴소스", "amount": 1, "unit": "TBSP",
+				                   "categoryCode": " seasoning "},
+				                  {"fridgeIngredientId": null, "name": "쪽파", "amount": 10, "unit": "G",
+				                   "categoryCode": "HERB"}],
+				  "steps": ["볶는다."]}]}
+				""", START);
+
+		assertThat(slots.getFirst().ingredients())
+				.extracting(SlotIngredient::name, SlotIngredient::categoryCode)
+				.containsExactly(tuple("버섯", null), tuple("굴소스", IngredientCategoryCode.SEASONING),
+						tuple("쪽파", null));
+	}
+
+	@Test
+	void 지시문과_응답_스키마에_냉장고에_없는_재료의_카테고리_규칙이_있고_냉장고_재료_카테고리는_보내지_않는다() {
+		assertThat(MealPlanPrompt.systemInstruction(MealPurpose.BALANCED))
+				.contains("categoryCode를 다음 코드 중 하나로 고른다", "DAIRY_EGG", "애매하면 ETC");
+		assertThat(GeminiMealPlanAdapter.RESPONSE_SCHEMA.toString()).contains("categoryCode");
+		MealSchedule schedule = new MealSchedule(START, 1, Set.of(MealType.DINNER), Set.of());
+		MealPlanAiRequest withCategory = new MealPlanAiRequest(MealPurpose.BALANCED, 1, schedule, List.of(
+				new FridgeStock(31L, "버섯", new BigDecimal("200"), IngredientUnit.G, START,
+						IngredientCategoryCode.VEGETABLE)), List.of());
+
+		assertThat(GeminiMealPlanAdapter.promptData(withCategory, false).toString())
+				.doesNotContain("categoryCode", "VEGETABLE");
 	}
 
 	@Test

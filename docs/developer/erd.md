@@ -13,6 +13,7 @@
 - **타입**: 수량 `numeric(10,3)`, 금액 `bigint`(원), 시각 `timestamp`(한국 시간, Java `LocalDateTime`), JSON `jsonb`.
 - **시각 컬럼**: 앱이 만드는 행은 모두 `created_at`을 가짐(`BaseCreatedEntity`). 값이 바뀌는 테이블만 `updated_at`도 가짐(`BaseTimeEntity`). 시각은 서버 `Clock`이 넣고 `DEFAULT now()`는 쓰지 않음.
 - **기준 데이터**: `ingredient_categories`, `ingredient_catalog`는 Flyway 마이그레이션으로만 넣음. 머지된 마이그레이션 파일은 고치지 않고 새 번호를 추가함.
+  - 예외(#288): 식단표 재료 조합 검사 데이터는 테이블이 아님. `scripts/mfds/build_combination_check.py`가 식약처 조리식품 레시피 DB로 만들어 `backend/src/main/resources/mfds/combination-check.json`에 쓰고, 백엔드는 앱이 켜질 때 이 파일을 읽음(파일이 없거나 망가지면 앱이 뜨지 않음). 목록(주의 재료·아침 재료·무리·이름 고침표)을 마감 전까지 다듬는 중이라, 테이블이면 고칠 때마다 새 마이그레이션이 필요하기 때문. 다른 기능의 포트 없이 이름을 맞추려고 `ingredient_catalog`의 이름·카테고리 사본(V5에서 읽음)도 파일에 들어 있음. 사전 마이그레이션이 바뀌면 스크립트를 다시 돌림.
 - **코드값**: 부록 C. enum 이름은 코드값과 같게.
 
 ## 테이블 목록
@@ -605,7 +606,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `name` | varchar |  |  | 아니오 |  | 재료명 |
 | `amount` | numeric(10,3) |  |  | 예 |  | 양. 비어 있으면 "약간" |
 | `unit` | varchar |  |  | 아니오 |  | 단위 |
-| `category_code` | varchar |  |  | 예 |  | 재료 카테고리(12개 코드). 부족 재료를 장바구니에 담을 때 쓴다(#76). 생성할 때 정한다: 사전 이름과 같으면 사전 카테고리, 아니면 그 줄의 냉장고 재료 카테고리, 아니면 AI가 고른 값. 이 컬럼 전에 만든 레시피나 AI가 맞는 코드를 주지 않은 줄은 비어 있다 |
+| `category_code` | varchar |  |  | 예 |  | 재료 카테고리(12개 코드). 부족 재료를 장바구니에 담을 때 쓴다(#76). 생성할 때 정한다(레시피 #76, 식단표 칸 레시피 #91): 사전 이름과 같으면 사전 카테고리, 아니면 그 줄의 냉장고 재료 카테고리, 아니면 AI가 고른 값. 이 컬럼 전에 만든 레시피나 AI가 맞는 코드를 주지 않은 줄은 비어 있다 |
 | `sort_order` | int |  |  | 아니오 |  | 순서 |
 | `created_at` | timestamp |  |  | 아니오 |  | 만든 시각 |
 
@@ -687,7 +688,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `id` | bigint | PK |  | 아니오 |  | 고유 번호 |
 | `user_id` | bigint | FK | users | 아니오 |  | 회원 |
 | `recipe_id` | bigint | FK | recipes | 예 |  | 출처 레시피 |
-| `meal_plan_slot_id` | bigint | FK | meal_plan_slots | 예 |  | 최초 담기 식단 칸(#57). 배정 삭제 시 SET NULL로 연결만 비우고 레시피·장바구니 수량은 유지. 기존 장바구니 행을 재사용해도 출처를 바꾸지 않음 |
+| `meal_plan_slot_id` | bigint | FK | meal_plan_slots | 예 |  | 최초 담기 식단 칸(#57). 칸 행이 삭제되면 FK가 SET NULL로 연결을 비우고 레시피는 남음. 기존 장바구니 행을 재사용해도 출처를 바꾸지 않음. 칸 삭제·교체·덮어쓰기 전에 서비스가 그 칸·레시피에서 담은 행을 먼저 정리함: 손대지 않았으면(`updated_at = created_at`) 지우고, 아니면(수량 수정, 영수증 일부 차감, 사용자가 저장한 레시피) 이 연결만 비움. 교체는 칸의 `recipe_id`만 바뀌어 SET NULL이 걸리지 않으므로 코드에서 함(#91) |
 | `category_id` | bigint | FK | ingredient_categories | 아니오 |  | 담을 때 추정한 카테고리(냉장고로 넘길 때 사용) |
 | `name` | varchar |  |  | 아니오 |  | 재료명 |
 | `amount` | numeric(10,3) |  |  | 아니오 |  | 수량 |
@@ -880,8 +881,8 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `users` | `refresh_tokens` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `users` | `account_deletion_requests` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `users` | `subscriptions` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
-| `subscriptions` | `subscription_payments` | subscription_id | 1:N | 아니오 | RESTRICT(결제 기록은 지우지 않음) |
-| `users` | `subscription_payments` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
+| `subscriptions` | `subscription_payments` | subscription_id | 1:N | 아니오 | 행이 있는 동안 RESTRICT. 계정 삭제 때는 앱이 `subscription_payments`를 먼저 지움(#339, #349) |
+| `users` | `subscription_payments` | user_id | 1:N | 아니오 | -(users 행은 남김. 탈퇴 때 앱이 결제 행을 지움, #339) |
 | `users` | `ingredients` | user_id | 1:N | 아니오 | -(users 행은 지우지 않음. 탈퇴 처리 참고) |
 | `ingredient_categories` | `ingredients` | category_id | 1:N | 아니오 | RESTRICT(기준 데이터라 지우지 않음) |
 | `receipt_items` | `ingredients` | receipt_item_id | 1:1 | 예 | SET NULL |
@@ -970,7 +971,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | 요리 완료 표시 | 오늘 식단 칸에서 연 레시피로 요리 완료하면 그 칸 cooked_at 기록(다른 날 칸에는 기록 안 함) |
 | 영수증 삭제 | receipts·receipt_items 행 삭제(이미지 포함). 식비·소비 패턴에서 빠지고, 등록된 냉장고 재료는 남음(receipt_item_id만 비움). `receipt_first_applications`는 구매일 6개월 정리나 탈퇴 때까지 남음 |
 | 레시피 삭제 하기 | 저장 목록(saved_recipes)에서만 지움. 공유 글과 남이 저장한 것은 그대로 |
-| 탈퇴와 구독 | 탈퇴하면 구독을 바로 끝냄(ENDED, billing_key 비움, 더 결제하지 않음). subscription_payments는 결제 기록이라 지우지 않음. 남은 기간은 환불하지 않음(11/24 약관 결정, 정책 12장 13 해결) |
+| 탈퇴와 구독 | 탈퇴하면 구독을 바로 끝냄(ENDED, billing_key 비움, 더 결제하지 않음). **`subscription_payments`는 파기**(탈퇴 후 결제 메모를 남기지 않음; #339, 문서 #349). 남은 기간은 환불하지 않음(11/24 약관 결정, 정책 12장 13 해결) |
 | 정리 작업 | 매일 새벽: 구매일 6개월 지난 영수증(이미지 포함), 같은 경계의 `receipt_first_applications`, 30일 지난 알림, 하루 지난 인증번호 삭제 |
 | 구독 시작 | 토스 카드 등록 → 서버가 billingKey 발급 → 첫 결제 성공하면 subscriptions(ACTIVE)·subscription_payments(DONE) 만들고 users.plan = PREMIUM. 첫 결제가 실패하면 구독을 만들지 않고 subscription_payments 행도 남기지 않음(E85로만 기록). 한도는 바로 구독 한도(레시피 하루 4회, 식단표 이번 달 4회·7일치) |
 | 구독 자동 연장 | 매일 새벽, next_billing_date가 오늘인 ACTIVE 구독을 billingKey로 결제. 성공하면 기간을 한 달 늘림. 실패하면 구독을 바로 끝냄(ENDED, billing_key 비움, users.plan = BASIC). 다시 구독하려면 카드를 새로 등록(11/24 약관 결정, 정책 12장 11 해결) |

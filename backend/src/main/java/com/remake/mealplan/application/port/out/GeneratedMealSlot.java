@@ -34,6 +34,11 @@ public record GeneratedMealSlot(LocalDate date, MealType mealType, String title,
 		return new GeneratedMealSlot(date, mealType, null, 0, null, List.of(), List.of(), true);
 	}
 
+	/** 이름만 바꾼 칸(서버가 이름·재료 불일치를 고칠 때). */
+	public GeneratedMealSlot withTitle(String newTitle) {
+		return new GeneratedMealSlot(date, mealType, newTitle, cookMinutes, tips, ingredients, steps, skipped);
+	}
+
 	public MealSlotKey key() {
 		return new MealSlotKey(date, mealType);
 	}

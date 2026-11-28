@@ -69,8 +69,10 @@ public final class StockLedger {
 			BigDecimal remaining = stock.remaining();
 			if (remaining.signum() > 0) {
 				FridgeStock source = stock.source();
+				// 카테고리도 넘긴다: AI에 보내지 않을 냉장고 재료를 고를 때 이름을 사전 이름에 맞추는 데 쓴다(#288 F1, #145 규칙)
 				result.add(new FridgeStock(source.ingredientId(), source.name(),
-						StockUnits.fromBase(remaining, source.unit()), source.unit(), source.expirationDate()));
+						StockUnits.fromBase(remaining, source.unit()), source.unit(), source.expirationDate(),
+						source.categoryCode()));
 			}
 		}
 		return result;

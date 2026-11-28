@@ -32,6 +32,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import com.remake.auth.adapter.out.oauth.SocialOAuthAdapter;
 import com.remake.global.config.AsyncConfig;
 import com.remake.global.config.UploadProperties;
+import com.remake.global.security.TestLoginAttributeFilter;
 import com.remake.mealplan.adapter.out.ai.GeminiMealPlanAdapter;
 import com.remake.receipt.adapter.out.ocr.GeminiReceiptTextAdapter;
 import com.remake.receipt.application.port.out.ReceiptImageStoragePort;
@@ -77,6 +78,12 @@ public abstract class IntegrationTestSupport {
 		@Bean
 		TestDatabase testDatabase(JdbcTemplate jdbcTemplate) {
 			return new TestDatabase(jdbcTemplate, REFERENCE_TABLES);
+		}
+
+		// MockMvc requestAttr(loginUserId)로 보안 체인에 로그인을 넣는다. src/main에는 두지 않는다(#137).
+		@Bean
+		TestLoginAttributeFilter testLoginAttributeFilter() {
+			return new TestLoginAttributeFilter();
 		}
 	}
 

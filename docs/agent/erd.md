@@ -13,6 +13,7 @@
 - **Types**: amounts `numeric(10,3)`, money `bigint` (KRW), time `timestamp` (Korea time, Java `LocalDateTime`), JSON `jsonb`.
 - **Time columns**: every row the app creates has `created_at` (`BaseCreatedEntity`). Only tables whose values change also have `updated_at` (`BaseTimeEntity`). The server `Clock` sets times; do not use `DEFAULT now()`.
 - **Reference data**: `ingredient_categories` and `ingredient_catalog` are inserted only by Flyway migrations. Never edit a merged migration file; add a new numbered one.
+  - Exception (#288): the meal-plan ingredient combination check data is not a table. `scripts/mfds/build_combination_check.py` builds it from the MFDS cooking recipe DB and writes `backend/src/main/resources/mfds/combination-check.json`; the backend reads the file at startup (a missing or broken file stops startup). The lists (caution, breakfast, groups, name fixes) are still being tuned before the deadline, and each change would otherwise need a new migration. The file also carries a copy of the `ingredient_catalog` names and categories (read from V5) so meal plans can match names without another feature's port; rerun the script when the catalog migration changes.
 - **Code values**: Appendix C. Enum names equal the code values.
 
 ## Table list
@@ -605,7 +606,7 @@ Ingredients and amounts of a recipe. Owner 김종수 (4 AI recipes).
 | `name` | varchar |  |  | no |  | Ingredient name |
 | `amount` | numeric(10,3) |  |  | yes |  | Amount. Empty means "to taste" |
 | `unit` | varchar |  |  | no |  | Unit |
-| `category_code` | varchar |  |  | yes |  | Ingredient category (12 codes) for adding missing ingredients to the cart (#76). Decided at generation: catalog name match, else the fridge ingredient's category, else the AI's pick. Empty for rows made before this column or when the AI gave no valid code |
+| `category_code` | varchar |  |  | yes |  | Ingredient category (12 codes) for adding missing ingredients to the cart (#76). Decided at generation (recipes #76, meal-plan slot recipes #91): catalog name match, else the fridge ingredient's category, else the AI's pick. Empty for rows made before this column or when the AI gave no valid code |
 | `sort_order` | int |  |  | no |  | Order |
 | `created_at` | timestamp |  |  | no |  | Created time |
 
@@ -687,7 +688,7 @@ Missing-ingredient list (added automatically when saving a shared recipe, saving
 | `id` | bigint | PK |  | no |  | ID |
 | `user_id` | bigint | FK | users | no |  | Member |
 | `recipe_id` | bigint | FK | recipes | yes |  | Source recipe |
-| `meal_plan_slot_id` | bigint | FK | meal_plan_slots | yes |  | Initial meal-slot source (#57). SET NULL on slot deletion; keep recipe and cart quantity. Reusing an existing cart row does not replace its source |
+| `meal_plan_slot_id` | bigint | FK | meal_plan_slots | yes |  | Initial meal-slot source (#57). The FK is SET NULL on slot deletion and the recipe stays. Reusing an existing cart row does not replace its source. Before slot delete/replace/overwrite, the service first cleans up rows from that slot and recipe: deleted if unchanged (`updated_at = created_at`), otherwise (edited amount, receipt partial deduction, or a recipe the user saved) only unlinked here; replace must do it in code because updating the slot's `recipe_id` does not fire SET NULL (#91) |
 | `category_id` | bigint | FK | ingredient_categories | no |  | Category estimated when added (used when moving to the fridge) |
 | `name` | varchar |  |  | no |  | Ingredient name |
 | `amount` | numeric(10,3) |  |  | no |  | Amount |
@@ -880,8 +881,8 @@ One row per violation confirmed by report handling (1st-4th sanction). Owner 이
 | `users` | `refresh_tokens` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `users` | `account_deletion_requests` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `users` | `subscriptions` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
-| `subscriptions` | `subscription_payments` | subscription_id | 1:N | no | RESTRICT (payment records are never deleted) |
-| `users` | `subscription_payments` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
+| `subscriptions` | `subscription_payments` | subscription_id | 1:N | no | RESTRICT while rows exist; on account deletion the app deletes `subscription_payments` first (#339, #349) |
+| `users` | `subscription_payments` | user_id | 1:N | no | - (users rows stay; app deletes payment rows on withdrawal, #339) |
 | `users` | `ingredients` | user_id | 1:N | no | - (users rows are never deleted; see withdrawal) |
 | `ingredient_categories` | `ingredients` | category_id | 1:N | no | RESTRICT (reference data, never deleted) |
 | `receipt_items` | `ingredients` | receipt_item_id | 1:1 | yes | SET NULL |
@@ -970,7 +971,7 @@ These values appear on screens but have no column. They are computed from the so
 | Cooked mark | Cooking a recipe opened from today's slot sets that slot's `cooked_at` (never for other days) |
 | Receipt delete | Delete the `receipts` and `receipt_items` rows (image included). It leaves spending and patterns; registered fridge ingredients stay (only `receipt_item_id` is cleared). `receipt_first_applications` stays until the 6-month purchase-date cleanup or withdrawal |
 | Recipe "delete" | Remove only from the saved list (`saved_recipes`). Shared posts and others' saves stay |
-| Withdrawal and subscription | End the subscription immediately on withdrawal (ENDED, clear `billing_key`, no more payments). Keep `subscription_payments` (payment records). No refund for the remaining period (11/24 terms decision; resolves policy ch. 12 item 13) |
+| Withdrawal and subscription | End the subscription immediately on withdrawal (ENDED, clear `billing_key`, no more payments). **Delete `subscription_payments`** (do not keep payment records after account deletion; #339, docs #349). No refund for the remaining period (11/24 terms decision; resolves policy ch. 12 item 13) |
 | Cleanup jobs | Every early morning: receipts older than 6 months by purchase date (with images), `receipt_first_applications` with purchase date before the same cutoff, notifications older than 30 days, deletion codes older than a day |
 | Subscription start | Toss card registration -> the server issues a billingKey -> on first payment success create `subscriptions` (ACTIVE) and `subscription_payments` (DONE) and set `users.plan` = PREMIUM. If the first payment fails, do not create a subscription and do not insert a `subscription_payments` row (E85 only). Premium limits apply at once (recipes 4 per day, meal plans 4 this month and 7 days) |
 | Subscription renewal | Every early morning, charge ACTIVE subscriptions whose `next_billing_date` is today with the billingKey. On success extend the period by a month. On failure end the subscription at once (ENDED, clear `billing_key`, `users.plan` = BASIC); to subscribe again, register a card again (11/24 terms decision; resolves policy ch. 12 item 11) |
