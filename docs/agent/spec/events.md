@@ -225,7 +225,7 @@ E88 vs E89: `subscription_ended` covers ends **without** a cooling-off refund (p
 | `deleted_item_count` | number | >= 0; OCR items the user removed before registering (restored 11/24) | E34, E76 |
 | `added_item_count` | number | >= 0 | E34, E76 |
 | `food_total_amount` | number | KRW | E34 |
-| `cart_removed_count` | number | >= 0; actual cart rows deleted at zero after selected receipt deductions (#57), not deducted quantity or request count | E34 |
+| `cart_removed_count` | number | >= 0; actual cart rows deleted at zero after automatic receipt deductions (#57/#314; endpoint migration #315), not deducted quantity or request count | E34 |
 | `month_offset` | number | 0 (this month), -1 (last month) ... | E35, E38, E56 |
 | `has_comparison` | boolean | true / false | E35 |
 | `recipe_mode` | string | quick / custom | E39, E40, E41, E42 |

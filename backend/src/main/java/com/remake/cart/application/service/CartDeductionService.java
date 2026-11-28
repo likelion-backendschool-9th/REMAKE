@@ -2,6 +2,7 @@ package com.remake.cart.application.service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -9,6 +10,7 @@ import java.util.TreeMap;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.remake.cart.application.port.in.AutomaticCartDeductionCommand;
 import com.remake.cart.application.port.in.CartDeductionCommand;
 import com.remake.cart.application.port.in.DeductCartItemsUseCase;
 import com.remake.cart.application.port.out.LoadCartItemPort;
@@ -25,6 +27,52 @@ public class CartDeductionService implements DeductCartItemsUseCase {
 
 	private final LoadCartItemPort loadCartItemPort;
 	private final SaveCartItemPort saveCartItemPort;
+
+	private record MatchKey(String name, String unit) {}
+
+	@Override
+	@Transactional
+	public int deductAutomatically(Long userId, List<AutomaticCartDeductionCommand> deductions) {
+		if (userId == null || userId <= 0 || deductions == null) {
+			throw new BusinessException(ErrorCode.INVALID_INPUT);
+		}
+		Map<MatchKey, BigDecimal> remaining = new HashMap<>();
+		for (var command : deductions) {
+			if (command == null || command.ingredientName() == null || command.ingredientName().isBlank()
+					|| command.unit() == null) {
+				throw new BusinessException(ErrorCode.INVALID_INPUT);
+			}
+			try {
+				CartItem.validateAmount(command.amount());
+			} catch (IllegalArgumentException e) {
+				throw new BusinessException(ErrorCode.INVALID_INPUT, e.getMessage());
+			}
+			remaining.merge(new MatchKey(command.ingredientName(), command.unit().name()), command.amount(),
+					BigDecimal::add);
+		}
+		if (remaining.isEmpty()) {
+			return 0;
+		}
+		int removedCount = 0;
+		// 입력 순서와 무관하게 모든 행을 ID 순서로 잠가 교착과 동시 초과 차감을 막는다.
+		for (CartItem item : loadCartItemPort.loadOwnedForUpdate(userId)) {
+			var key = new MatchKey(item.name(), item.unit().name());
+			BigDecimal requested = remaining.get(key);
+			if (requested == null || requested.signum() == 0) {
+				continue;
+			}
+			BigDecimal amount = requested.min(item.amount());
+			CartItem changed = item.subtract(amount);
+			remaining.put(key, requested.subtract(amount));
+			if (changed.amount().signum() == 0) {
+				saveCartItemPort.delete(changed.id());
+				removedCount++;
+			} else {
+				saveCartItemPort.save(changed);
+			}
+		}
+		return removedCount;
+	}
 
 	@Override
 	@Transactional

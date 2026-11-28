@@ -12,6 +12,11 @@ import jakarta.persistence.LockModeType;
 
 interface CartItemJpaRepository extends JpaRepository<CartItemJpaEntity, Long> {
 	List<CartItemJpaEntity> findByUserIdOrderById(Long userId);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select c from CartItemJpaEntity c where c.userId = :userId order by c.id")
+	List<CartItemJpaEntity> findAllOwnedForUpdate(@Param("userId") Long userId);
+
 	long countByUserId(Long userId);
 
 	void deleteByUserId(Long userId);

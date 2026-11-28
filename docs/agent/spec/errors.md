@@ -84,7 +84,7 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 | 24 | login/settings (이준호) | `PAYMENT_FAILED` | 402 | 59 | Toss declined the first payment (balance/limit, suspended card). `details.reason` = Toss reason (only user-safe text) | 결제에 실패했어요. 다른 카드로 다시 시도해 주세요 | Back to the before-subscribe screen with the common toast | No subscription or `subscription_payments` row; record E85 `subscription_payment_failed` only (`is_renewal` = false) (#340, #351) |
 | 25 | login/settings (이준호) | `PAYMENT_UPSTREAM_ERROR` | 502 | 59 | Toss server error or no response (timeout included) | 결제 서비스에 문제가 있어요. 잠시 후 다시 시도해 주세요 | Common toast. Never auto-retry the payment (no double charge). If the result is unknown, the server checks the payment with Toss by order id before deciding | No subscription until the result is confirmed |
 | 26 | fridge (김재연) | `INGREDIENT_NOT_FOUND` | 404 | 13, 16, 17, 18, 28 (custom `ingredientIds`) | Missing or not owned, including ingredients deleted at 0 | 재료를 찾을 수 없어요 | Back to the fridge list (p2) and reload | - |
-| 27 | fridge (김재연) | `INSUFFICIENT_QUANTITY` | 400 | 18, 21, 32 | Taking out more than owned (use, discard, cook, receipt-selected cart deduction; #57). `details.remaining` | 가지고 있는 양보다 많아요 | Show the remaining amount. The steppers stop at the remaining amount (proposal) | No change |
+| 27 | fridge (김재연) | `INSUFFICIENT_QUANTITY` | 400 | 18, 32 | Taking out more than owned (use, discard, cook). Automatic receipt cart deduction (#314/#315) caps at the remaining quantity and does not raise this error; the legacy selected-deduction path remains until #315. `details.remaining` | 가지고 있는 양보다 많아요 | Show the remaining amount. The steppers stop at the remaining amount (proposal) | No change |
 | 28 | fridge (김재연) | `INGREDIENT_CATEGORY_NOT_FOUND` | 404 | 15, 16, 21 | `categoryCode` not one of the 12 (including "all") | 선택할 수 없는 카테고리예요 | Does not happen in the normal flow; reload API 19 | Not saved |
 | 29 | receipts (이동준) | `RECEIPT_NOT_RECOGNIZED` | 422 | 20 | Not a receipt, or items unreadable | 영수증을 인식하지 못했어요. 다시 찍어 주세요 | OCR failure screen, retake | No limit (scans are unlimited) |
 | 30 | receipts (이동준) | `OCR_UPSTREAM_ERROR` | 502 | 20 | OCR service error | 영수증을 분석하지 못했어요. 잠시 후 다시 시도해 주세요 | OCR failure screen | No limit |
@@ -109,7 +109,7 @@ Same shape as [`../backend-convention.md`](../backend-convention.md) §Responses
 | 49 | meal plan (한윤수) | `MEAL_PLAN_OVERLAP` | 409 | 38 | Without `overwrite`, the period overlaps an existing plan. `details.overlappingDates` | 이미 식단이 있는 날짜가 있어요. 덮어쓸까요? | Warning modal; on "overwrite" resend with `overwrite: true` | Not saved or charged |
 | 50 | meal plan (한윤수) | `PAST_DATE_NOT_ALLOWED` | 400 | 38, 41, 42 | Start date before today, or deleting/replacing a past slot | 지난 날짜는 바꿀 수 없어요 | The start-date sheet blocks past dates. Past meals keep the ⋮ menu; delete/replace shows this text. Common toast | No change |
 | 51 | meal plan (한윤수) | `SLOT_NOT_FOUND` | 404 | 41, 42 | Missing or not owned slot (including slots removed by overwrite) | 식단을 찾을 수 없어요 | Reload the calendar (p5) | - |
-| 52 | sharing/cart (최유리) | `CART_ITEM_NOT_FOUND` | 404 | 21, 46, 47, 48 | Missing or not owned cart item. If any of several ids is missing, process none | 이미 삭제된 항목이에요 | Reload the cart (p7) | No change |
+| 52 | sharing/cart (최유리) | `CART_ITEM_NOT_FOUND` | 404 | 46, 47, 48 | Missing or not owned cart item. Automatic receipt deduction does not use client IDs; API 21 retains this only on the legacy path until #315. If any of several ids is missing, process none | 이미 삭제된 항목이에요 | Reload the cart (p7) | No change |
 | 53 | sharing/cart (최유리) | `RECIPE_NOT_SHAREABLE` | 400 | 51 | Not my generated recipe (including others' recipes saved from the shared space) | 공유할 수 없는 레시피예요 | Does not happen in the normal flow | - |
 | 54 | sharing/cart (최유리) | `ALREADY_SHARED` | 409 | 51 | Same recipe already shared this week (week starts Monday) | 이번 주에 이미 공유한 레시피예요 | "Share" is disabled first; if it happens close the share screen | - |
 | 55 | sharing/cart (최유리) | `PHOTO_REQUIRED` | 400 | 51 | Share without a cooking photo | 실제로 요리한 사진을 올려 주세요 | Rare (button enabled only with title and photo) | - |
@@ -149,7 +149,7 @@ Every `user` and `admin` API can also return the common codes (`UNAUTHORIZED`, `
 | 18 | `POST /user/ingredients/{id}/consume` | INVALID_INPUT, INGREDIENT_NOT_FOUND, INSUFFICIENT_QUANTITY |
 | 19 | `GET /user/ingredient-categories` | common only |
 | 20 | `POST /user/receipts/scan` | INVALID_INPUT, RECEIPT_NOT_RECOGNIZED, OCR_UPSTREAM_ERROR, OCR_TIMEOUT, RECEIPT_NO_FOOD_ITEMS, RECEIPT_TOO_OLD, RECEIPT_DUPLICATE, FILE_TOO_LARGE, UNSUPPORTED_FILE_TYPE |
-| 21 | `POST /user/receipts` | INVALID_INPUT, CART_ITEM_NOT_FOUND, INSUFFICIENT_QUANTITY, INGREDIENT_CATEGORY_NOT_FOUND, RECEIPT_TOO_OLD, RECEIPT_DUPLICATE, FILE_TOO_LARGE, UNSUPPORTED_FILE_TYPE |
+| 21 | `POST /user/receipts` | INVALID_INPUT, INGREDIENT_CATEGORY_NOT_FOUND, RECEIPT_TOO_OLD, RECEIPT_DUPLICATE, FILE_TOO_LARGE, UNSUPPORTED_FILE_TYPE (legacy selected path until #315 also has CART_ITEM_NOT_FOUND, INSUFFICIENT_QUANTITY) |
 | 22 | `GET /user/receipts` | INVALID_INPUT |
 | 23 | `GET /user/receipts/{id}` | RECEIPT_NOT_FOUND |
 | 24 | `DELETE /user/receipts/{id}` | RECEIPT_NOT_FOUND |
