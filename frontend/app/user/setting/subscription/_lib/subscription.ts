@@ -22,6 +22,8 @@ export const SAMPLE_SUBSCRIPTION: Subscription = {
 export const BENEFITS = [
   {
     image: "/images/subscription/benefit-recipe.png",
+    /** 그림 크기(px). 50×50 칸 안에 가운데 둔다(피그마 11/27: 레시피 50, 식단표 40) */
+    imageSize: 50,
     label: "혜택 1.",
     name: "프리미엄",
     highlight: "PLUS",
@@ -30,6 +32,7 @@ export const BENEFITS = [
   },
   {
     image: "/images/subscription/benefit-meal-plan.png",
+    imageSize: 40,
     label: "혜택 2.",
     name: "맥스",
     highlight: "MENUS",

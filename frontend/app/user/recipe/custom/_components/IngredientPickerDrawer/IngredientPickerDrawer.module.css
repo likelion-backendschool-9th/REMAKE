@@ -3,6 +3,17 @@
   padding: var(--space-10) var(--layout-gutter) calc(7.5rem + env(safe-area-inset-bottom));
 }
 
+/* 전체 선택: 체크박스 22 + 간격 6 + "전체 선택(N개)"(Remake/title·text/body). 아래 목록까지 13 */
+.selectAll {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin-bottom: 0.8125rem;
+  color: var(--color-text-body);
+  font: var(--font-title);
+  cursor: pointer;
+}
+
 .list {
   display: flex;
   flex-direction: column;

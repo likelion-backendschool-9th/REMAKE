@@ -11,7 +11,8 @@ export type ScanItem = {
   name: string;
   categoryCode: CategoryCode;
   storage: StorageCode;
-  amount: number;
+  /** OCR이 양을 못 정하면 null("수량 측정 불가", 사용자가 수정 화면에서 넣는다. api-summary #173) */
+  amount: number | null;
   unit: FridgeUnit;
   /** 원. 사용자가 지우면 null(재료 가격은 선택 항목) */
   price: number | null;
@@ -46,7 +47,14 @@ export function sumScanPrice(items: readonly ScanItem[]): number {
 
 /** OCR 품목 → 재료 입력 카드 값(냉장고 재료 수정과 같은 카드, lib/ingredient-form). id는 순서 */
 export function scanItemToDetail(item: ScanItem, index: number): IngredientDetail {
-  return { id: index, ...item };
+  // 양을 못 읽은 품목은 0에서 시작해 사용자가 넣는다
+  return { id: index, ...item, amount: item.amount ?? 0 };
+}
+
+/** 구매일 "2026-11-21" + 시각 "14:32" → "2026. 11. 21.(토) 14:32". 시각이 없으면 날짜만 */
+export function formatScanPurchase(purchasedOn: string, purchasedTime: string | null): string {
+  const date = dayjs(purchasedOn).format("YYYY. M. D.(ddd)");
+  return purchasedTime ? `${date} ${purchasedTime}` : date;
 }
 
 /** 다 채운 입력 값 → OCR 품목. 필수 값이 비면 null(버튼이 꺼져 있어 보통 오지 않음) */
@@ -73,16 +81,8 @@ export const RECEIPT_TEXT_SHEET_COPY: TextSheetCopyByKind = {
   },
 };
 
-/** OCR 결과 ⋮ 시트(피그마 p3.3-ocr 결과-케밥 선택). 맨 위 항목이 기본 선택(blueprint §6) */
-export const RESULT_MENU = [
-  { value: "ADD", label: "재료 추가" },
-  { value: "RESCAN", label: "영수증 재촬영" },
-] as const;
-
-export type ResultMenuAction = (typeof RESULT_MENU)[number]["value"];
-
 export const EXPIRY_NOTICE =
-  "소비 기한은 카테고리 기본 보관 기간으로 추정했어요. 소비기한을 확인하시고 수정해 주세요";
+  "소비 기한은 카테고리 기본 보관 기간으로 추정했어요. 소비기한을 확인하시고 수정해 주세요.";
 
 /**
  * 소비기한 날짜 → 상태와 문구(D-N, D-DAY, 폐기-N). 기준은 domain-rules 2(지남·당일=위험, 1~3일=임박, 그 외=여유).
@@ -120,7 +120,8 @@ export const SAMPLE_SCAN_RESULT: ScanResult = {
       name: "돼지 목살",
       categoryCode: "MEAT",
       storage: "FREEZER",
-      amount: 200,
+      // 피그마 "수량 측정 불가"
+      amount: null,
       unit: "G",
       price: 11500,
       expirationDate: "2026-11-28",

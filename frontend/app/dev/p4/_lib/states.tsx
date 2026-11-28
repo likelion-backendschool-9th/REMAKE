@@ -259,6 +259,17 @@ export const P4_STATES: PreviewState[] = [
     ),
   },
   {
+    slug: "shared-cart-toast",
+    label: "p4.1.4.1-공유 레시피 상세-저장 시 부족한 재료 토스트",
+    route: SHARED_DETAIL_ROUTE,
+    render: () => (
+      <SharedRecipeDetailContainer
+        recipe={{ ...SAMPLE_SHARED_RECIPE, saved: true, saveCount: 31 }}
+        initialCartAddedCount={2}
+      />
+    ),
+  },
+  {
     slug: "shared-skeleton",
     label: "p4.1.4.1-공유 레시피 상세-스켈레톤 (실제 라우트 처음 상태)",
     route: SHARED_DETAIL_ROUTE,

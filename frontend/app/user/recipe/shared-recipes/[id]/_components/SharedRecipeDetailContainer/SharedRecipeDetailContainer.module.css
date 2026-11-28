@@ -80,3 +80,17 @@
   padding: 1.25rem 0.9375rem calc(1.75rem + env(safe-area-inset-bottom));
   box-shadow: 0 -2px 10px 0 rgba(0, 0, 0, 0.1);
 }
+
+/* 저장 시 부족한 재료 토스트: 피그마 6115-7503에서 아래 고정 영역 위에 겹쳐, 화면 아래에서 28(고정 영역 아래 여백과 같음) */
+.toastArea {
+  position: fixed;
+  right: 0;
+  bottom: calc(1.75rem + env(safe-area-inset-bottom));
+  left: 0;
+  z-index: var(--z-toast);
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: 0 var(--layout-gutter);
+  pointer-events: none;
+}

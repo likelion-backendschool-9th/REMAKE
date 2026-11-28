@@ -1,28 +1,38 @@
-/* 피그마 p4.1.3-레시피 생성: 상세(p4.1.1)와 같은 본문, 아래 고정 버튼 2개(다시 받기·요리 완료) 자리만큼 여백 */
+/* 피그마 p4.1.3-레시피 생성: 상세(p4.1.1)와 같은 본문, 아래 고정 영역(요리 완료 53 + 5 + 다시 받기 40) 자리만큼 여백 */
 .main {
   display: flex;
   flex: 1;
   flex-direction: column;
   width: 100%;
-  padding: 1.0625rem 0 calc(11.5rem + env(safe-area-inset-bottom));
+  padding: 1.0625rem 0 calc(9.25rem + env(safe-area-inset-bottom));
   background: var(--color-bg-surface);
 }
 
-/* 북마크: 저장 전 icon/default 선, 저장 후 brand/primary 채움 */
+/* 북마크: 저장 전 icon/default 선, 저장 후 선과 속 모두 brand/primary(BookmarkIcon이 currentColor를 쓴다) */
 .bookmark[aria-pressed="true"] {
   color: var(--color-brand-primary);
 }
 
-/* 버튼 2개 사이 10 */
+/* "요리 완료" 아래에 "레시피 다시 받기", 사이 5(피그마 11/27) */
 .actions {
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: 0.3125rem;
   width: 100%;
 }
 
-/* "레시피 다시 받기 N회": 피그마 버튼 상태=비활성 모양(bg/input·text/disabled)이지만 누를 수 있다 */
-.actions .regenerate:enabled {
-  background: var(--color-bg-input);
+/* "레시피 다시 받기 N회": 높이 40, 배경 없음, Remake/content-regular·text/disabled. 흐리게 보이지만 누를 수 있다 */
+.regenerate {
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: none;
   color: var(--color-text-disabled);
+  font: var(--font-content-regular);
+}
+
+.regenerate:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
 }
