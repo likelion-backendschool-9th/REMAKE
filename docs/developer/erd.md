@@ -706,11 +706,19 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | --- | --- | --- | --- | --- | --- | --- |
 | `id` | bigint | PK |  | 아니오 |  | 고유 번호 |
 | `recipe_id` | bigint | FK | recipes | 아니오 |  | 공유한 레시피(같은 레시피는 한 주에 한 번) |
-| `title` | varchar |  |  | 아니오 |  | 공유 제목 |
-| `image_key` | varchar |  |  | 아니오 |  | 조리 사진 1장 경로 |
-| `status` | varchar |  |  | 아니오 | VISIBLE | VISIBLE/HIDDEN(위반 처리로 숨김)/DELETED(운영자가 글 삭제. 행은 남기고 어디에도 안 보임) |
+| `title` | text |  |  | 아니오 |  | 공유 제목. 현재 V12는 공백이 아닌 값을 필수로 요구. 제거 표현·제약 변경은 #296 예정 |
+| `image_key` | varchar(255) |  |  | 아니오 |  | 조리 사진 1장 키. 제거·재시도용 표현은 #296 예정 |
+| `status` | varchar |  |  | 아니오 | VISIBLE | 목표: VISIBLE/HIDDEN/DELETED(작성자 또는 운영자 삭제). 현재 V12·Java enum은 VISIBLE/HIDDEN만 허용. 새 마이그레이션의 DELETED 지원은 #296 예정 |
 | `created_at` | timestamp |  |  | 아니오 |  | 공유 시각 |
 | `updated_at` | timestamp |  |  | 아니오 |  | 상태 변경 시각 |
+
+작성자 삭제 계약(#230 확정, 구현은 #296·#297 예정):
+
+- 위 표는 현재 7개 컬럼 구조예요. 제목·사진 키의 nullable/삭제 표현이 이미 구현됐다고 설명하지 않아요. V12는 둘 다 NOT NULL이며 `length(trim(title)) > 0`을 강제해요. #296에서 새 마이그레이션의 제약·JPA 필드·이 표를 함께 갱신해야 해요. 구체 삭제 표현과 영속 파일 정리용 컬럼/테이블 추가 여부는 #295에서 정하지 않아요.
+- 작성자 삭제 후에도 `id`, `recipe_id`, `created_at`과 `(recipe_id, date_trunc('week', created_at))` 고유 식별을 유지해요. 같은 주 재공유는 기존 `ALREADY_SHARED`로 막아야 해요. `updated_at`은 상태 변경 시각으로 유지해요. 공유 제목·사진 내용은 제거하되 이력에 필요한 행·관계는 보존해요.
+- 공유 행을 물리 삭제하지 않아요. V14 신고·V23 확정 순위는 ON DELETE CASCADE, V13 저장·V26 보상은 ON DELETE SET NULL이에요. 이는 현재 FK 동작이며 삭제 기능의 처리 순서가 아니에요. 원본 레시피·타인 저장/즐겨찾기·장바구니 수량·확정 순위/신고/보상 연결을 유지해요. 병합된 마이그레이션을 고치거나 FK 변경이 끝났다고 설명하지 않아요.
+- #296에서 공개 목록·상세·사진 접근을 즉시 차단하고 본인의 VISIBLE/HIDDEN 삭제 진입만 제공하며, 파일 제거와 실패 재시도를 구현해야 해요. 공개 사진 키를 비우면서 재시도에 필요한 유일한 키까지 잃으면 안 돼요. 탈퇴로 삭제 글을 다시 노출하지 않아요.
+- #297에서 확정 전 삭제는 제외하고 확정 후 순위 행·완료 기록·보상은 유지해요. 공개 과거 조회에서 삭제 글을 빼되 순위를 다시 매기거나 대체 지급하지 않고, #296과 행 잠금 순서를 맞춰요. 기존 VISIBLE 조건만으로 삭제 경합 검증이 끝난 것은 아니에요. 내부 확정 이력 보존과 새 공개 과거 조회 API 추가는 구분해요.
 
 ### 21. `shared_recipe_reports` 공유 레시피 신고
 
@@ -855,7 +863,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 - #92 구현: `FinalizeWeeklyRankingUseCase.finalizePreviousWeek()`가 KST 기준 직전 주를 확정해요. 공개(VISIBLE) 글에서 `[주 시작 00:00, 다음 월요일 00:00)`에 저장했고 현재 남아 있는 행을 세며, 본인 저장 제외·동점 순서는 #88과 같은 제안을 사용해요. 저장 0건 제외는 확정이에요. 탈퇴자는 순위에 남기되 보상만 건너뛰고 차순위에 넘기지 않는 것은 제안이에요.
 - 최대 100위까지 기록하고 레시피별 +10/+6/+3회를 지급하여 한 작성자의 여러 순위 수상도 허용해요. 만료는 실제 지급 시각 + 달력상 1개월(해당 일이 없으면 월말)이에요. 기본 횟수를 먼저 쓰고 만료 전 보상을 만료 시각·ID 순으로 차감하며, 사용한 `grant_id`를 같은 트랜잭션의 `usage_logs`에 기록해요.
 - 대상이 없는 주도 확정 완료예요. 순위 행 유무 대신 `shared_recipe_weekly_settlements`를 사용해요. E75는 EventTracker로 커밋 후 제출하며, 이벤트 적재는 최선 노력 방식이라 확정한 주를 재실행해도 재전송하지 않아요.
-- 시점 관련 한계: 취소된 저장 이력이 없어서 첫 실행이 늦으면 실행 시점까지 남은 행을 세며, 주 경계 이후 취소된 저장을 과거 상태로 복원할 수 없어요. 누락 주 자동 소급 실행은 제공하지 않아요. 정확한 과거 복구를 보장한다고 설명하면 안 돼요. 작성자 삭제·확정 후 보상 처리는 #230 미결로 남겨요.
+- 시점 관련 한계: 취소된 저장 이력이 없어서 첫 실행이 늦으면 실행 시점까지 남은 행을 세며, 주 경계 이후 취소된 저장을 과거 상태로 복원할 수 없어요. 누락 주 자동 소급 실행은 제공하지 않아요. 정확한 과거 복구를 보장한다고 설명하면 안 돼요. 작성자 삭제 정책은 #230에서 확정됐어요. #297에서 삭제·확정 잠금, 확정 전 삭제 제외, 확정 후 순위 행·보상 보존 및 과거 순위 재계산 금지를 구현해요. 정책 확정이 과거 저장 이력 한계를 해결하지는 않아요.
 
 ### 30. `user_sanctions` 제재
 
@@ -993,7 +1001,7 @@ AI가 만든 레시피 본체. 만든 뒤 수정하지 않음. 담당 김종수(
 | `user_sanctions` | 코드에 없음 | 새 마이그레이션으로 테이블 생성(UK(user_id+level)·FK 포함) |
 | `shared_recipe_reports` | V14: `result`·`handled_by`·`handled_at` 없음 | 새 마이그레이션으로 NULL 허용 컬럼 3개 추가 |
 | `generation_quota_grants` | V26: `grant_type`·`reason`·`admin_id` 없음. `week_start`·`rank_no` NOT NULL. 검사 `ck_quota_grants_reward`(순위별 지급 수)·`ck_quota_grants_remaining`(0~`amount`) | 새 마이그레이션: 컬럼 추가(`grant_type` 기본 WEEKLY_REWARD), `week_start`·`rank_no` NULL 허용, 두 검사를 WEEKLY_REWARD 행에만 적용해 ADMIN_ADJUST 행(음수 `amount`, `remaining` 0)을 허용 |
-| `shared_recipes` | V12: `ck_shared_recipes_status`가 VISIBLE/HIDDEN만 허용 | 새 마이그레이션으로 `DELETED` 허용 |
+| `shared_recipes` | V12: VISIBLE/HIDDEN만 허용. 제목은 공백 불가·NOT NULL, image_key는 NOT NULL. 레시피/주 고유 인덱스 | #296: DELETED 추가, 삭제 제목·사진 제거에 맞는 제약과 파일 삭제 재시도 구현. 행·원본/주 식별·관계 보존. 구체 표현은 마이그레이션·엔티티·문서 PR에서 함께 확정하고 V12는 수정하지 않음 |
 
 ## 이전 ERD v3(32개)와 차이
 
@@ -1099,7 +1107,7 @@ p1.2 칩 순서 그대로예요.
 | meal_plans.purpose | BALANCED 균형 잡힌 식단 / DIET 다이어트 식단 / HIGH_PROTEIN 고단백 식단 / SIMPLE 간편 식단 / SAVING 재료 절약 식단 |
 | meal_plans.status | GENERATING 진행 중 / COMPLETED 완료 / FAILED 실패 |
 | meal_type | BREAKFAST 아침 / LUNCH 점심 / DINNER 저녁 |
-| shared_recipes.status | VISIBLE 보임 / HIDDEN 위반으로 숨김 / DELETED 운영자가 삭제 |
+| shared_recipes.status | 목표: VISIBLE / HIDDEN 위반 처리로 숨김 / DELETED 작성자 또는 운영자 삭제. 현재 V12·enum은 VISIBLE/HIDDEN만 허용(#296 예정) |
 | shared_recipe_reports.reason | OFFENSIVE_IMAGE 불쾌한 이미지 사용 / AD_TITLE 광고성 제목 / DANGEROUS_RECIPE 위험한 조리법 공유 / OTHER 기타 |
 | shared_recipe_reports.status | PENDING 접수 / DONE 처리됨 |
 | shared_recipe_reports.result | VIOLATION 위반·숨김 / NO_ISSUE 문제 없음 / DELETED 글 삭제 |

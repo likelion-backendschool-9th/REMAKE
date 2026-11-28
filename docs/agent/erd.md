@@ -706,11 +706,19 @@ Posts in the shared space (fully anonymous). Owner 최유리 (7 sharing/cart).
 | --- | --- | --- | --- | --- | --- | --- |
 | `id` | bigint | PK |  | no |  | ID |
 | `recipe_id` | bigint | FK | recipes | no |  | Shared recipe (the same recipe once per week) |
-| `title` | varchar |  |  | no |  | Title |
-| `image_key` | varchar |  |  | no |  | Path of the single cooking photo |
-| `status` | varchar |  |  | no | VISIBLE | VISIBLE/HIDDEN (hidden by a violation decision)/DELETED (deleted by an operator; the row stays and is shown nowhere) |
+| `title` | text |  |  | no |  | Shared title; current V12 requires nonblank text. Removal representation/constraint change is pending #296 |
+| `image_key` | varchar(255) |  |  | no |  | Single cooking photo key; removal/retry representation is pending #296 |
+| `status` | varchar |  |  | no | VISIBLE | Target: VISIBLE/HIDDEN/DELETED (author or operator deletion). Current V12 and Java enum allow only VISIBLE/HIDDEN; DELETED support is pending a new migration (#296) |
 | `created_at` | timestamp |  |  | no |  | Shared time |
 | `updated_at` | timestamp |  |  | no |  | Status change time |
+
+Author-deletion contract (#230, decided; implementation #296/#297 pending):
+
+- The table above records the current seven-column shape. Do not claim nullable/redacted title or photo-key storage is implemented. V12 enforces NOT NULL on both and `length(trim(title)) > 0`; #296 must update constraints, JPA fields and this table together in a new migration. The exact redaction representation and any durable cleanup fields/table are not chosen by #295.
+- Keep `id`, `recipe_id`, `created_at` and the unique `(recipe_id, date_trunc('week', created_at))` identity after author deletion; same-week resharing must still fail with existing `ALREADY_SHARED`. Keep `updated_at` as the status-change time. Remove shared title/photo content while preserving the row and relationships needed for history.
+- Do not physically delete the shared row: V14 reports and V23 final ranks have ON DELETE CASCADE; V13 saves and V26 reward grants use ON DELETE SET NULL. These are current FK actions, not a deletion workflow. Retain original recipes, others' saves/favorites, cart quantities and final rank/report/reward links. Do not rewrite merged migrations or imply FK actions were already changed.
+- #296 must immediately block public list/detail/photo access, expose only the owner's VISIBLE/HIDDEN deletion entries, and implement file removal with failure retries. Clearing the public photo key must not discard the only key needed for retry. Withdrawal must not resurrect deleted posts.
+- #297 excludes deletion before settlement, retains final rows/completion/grants after settlement, omits deleted posts from public historical views without renumbering/replacements and coordinates row locks with #296. Existing VISIBLE-only queries alone do not prove deletion-race correctness. Keep internal settlement history separate from any new public history endpoint.
 
 ### 21. `shared_recipe_reports` (Shared recipe reports)
 
@@ -855,7 +863,7 @@ Use one row per completed week, including weeks with no eligible posts. Insert t
 - #92 implementation: `FinalizeWeeklyRankingUseCase.finalizePreviousWeek()` settles the immediately preceding KST week. Count currently retained saves in `[week_start 00:00, next Monday 00:00)` from VISIBLE posts, using the same own-save exclusion and tie-order proposals as #88. Exclude zero-save posts (confirmed). Proposed: retain withdrawn authors in ranks but skip their reward without promoting lower ranks.
 - Store up to 100 ranks and grant +10/+6/+3 per recipe, including multiple wins by one author. Grant expiry is actual payment time plus one calendar month (clamp to month end). Consume base quota first, then unexpired grants by expiry and ID; save the consumed `grant_id` in `usage_logs` in the same transaction.
 - An empty week is final too: use `shared_recipe_weekly_settlements` rather than inferring completion from rank rows. E75 is submitted after commit through EventTracker; tracking remains best effort and is not retried by re-running a settled week.
-- Timing limitation: deleted saves have no historical record. A delayed first execution counts the retained rows at execution time; it cannot reconstruct saves removed after the boundary. There is no automatic missed-week backfill. Do not claim exact historical recovery. Author deletion and post-settlement reward policy remain open in #230.
+- Timing limitation: deleted saves have no historical record. A delayed first execution counts the retained rows at execution time; it cannot reconstruct saves removed after the boundary. There is no automatic missed-week backfill. Do not claim exact historical recovery. Author-deletion policy is decided in #230; #297 implements deletion/settlement locking, exclusion before settlement, retained final rows/rewards after settlement and no historical reranking. Policy confirmation does not repair the historical-save limitation.
 
 ### 30. `user_sanctions` (Sanctions)
 
@@ -993,7 +1001,7 @@ Tables already in `dev` Flyway V1-V4 and in open PR #140 (V5). Never edit merged
 | `user_sanctions` | Not in code | Create the table with `UK(user_id + level)` and its FKs in a new migration |
 | `shared_recipe_reports` | V14: no `result`, `handled_by`, `handled_at` | Add the three nullable columns in a new migration |
 | `generation_quota_grants` | V26: no `grant_type`, `reason`, `admin_id`; `week_start` and `rank_no` NOT NULL; checks `ck_quota_grants_reward` (rank-based amounts) and `ck_quota_grants_remaining` (0 to `amount`) | New migration: add the columns (`grant_type` default WEEKLY_REWARD), make `week_start` and `rank_no` nullable, and limit the two checks to WEEKLY_REWARD rows so ADMIN_ADJUST rows (negative `amount`, `remaining` 0) are allowed |
-| `shared_recipes` | V12: `ck_shared_recipes_status` allows VISIBLE/HIDDEN | Allow `DELETED` in a new migration |
+| `shared_recipes` | V12: VISIBLE/HIDDEN only; title nonblank NOT NULL, image_key NOT NULL; recipe/week unique index | #296: add DELETED, remove deleted title/photo with matching constraints and retryable file cleanup; retain row, original recipe/week identity and relationships. Fix exact representation in the migration/entity/doc PR; do not edit V12 |
 
 ## Differences from ERD v3 (32 tables)
 
@@ -1099,7 +1107,7 @@ In the p1.2 chip order.
 | meal_plans.purpose | BALANCED / DIET / HIGH_PROTEIN / SIMPLE / SAVING |
 | meal_plans.status | GENERATING generating / COMPLETED done / FAILED failed |
 | meal_type | BREAKFAST / LUNCH / DINNER |
-| shared_recipes.status | VISIBLE / HIDDEN hidden by a violation / DELETED deleted by an operator |
+| shared_recipes.status | Target: VISIBLE / HIDDEN hidden by a violation / DELETED author or operator deletion; current V12/enum only VISIBLE/HIDDEN (#296 pending) |
 | shared_recipe_reports.reason | OFFENSIVE_IMAGE / AD_TITLE / DANGEROUS_RECIPE / OTHER |
 | shared_recipe_reports.status | PENDING / DONE |
 | shared_recipe_reports.result | VIOLATION violation, hidden / NO_ISSUE no issue / DELETED post deleted |

@@ -158,7 +158,17 @@ Receipt integration contract (#57 automatic policy, #314): call `DeductCartItems
 
 Shared-save category contract (agreed by the recipe owner in [#245](https://github.com/likelion-backendschool-9th/REMAKE/issues/245#issuecomment-7182102063), 2026-11-26): pass the persisted recipe line's `categoryCode` to the common add UseCase without reclassifying it. Exact catalog categories take precedence. After excluding water, null amounts, PINCH and TO_TASTE, no catalog category and no fallback means `INVALID_INPUT`: roll back the save and cart changes and emit no success events. Do not silently omit eligible shortages or invent ETC. Pre-#277 rows and invalid/missing AI categories can remain null; do not backfill them in #245. My-recipe saves currently skip unclassified lines; aligning the two save policies is separate follow-up work.
 
-Cart items cannot be added manually. No "take down my shared post" API yet; authors may delete their own posts (11/24 terms decision), see open questions.
+Cart items cannot be added manually. Author deletion is decided in #230; the following contracts are pending implementation in #296 and are not part of the current controller/OpenAPI. Existing numbered rows above describe the current endpoints. Keep their numbering; these additional planned routes have no API-definition number yet.
+
+| Planned contract | Request | Response / access | Implementation |
+| --- | --- | --- | --- |
+| `GET /api/v1/user/shared-recipes/mine` | Common `page`/`size` paging; item fields/order must be fixed in #296 | Common page envelope; only the token owner's VISIBLE/HIDDEN posts, excluding DELETED | #296; FE #299 |
+| `DELETE /api/v1/user/shared-recipes/{id}` | Path ID; token owner is checked against the original recipe author | 204 on success; no response body. Repeated-delete behavior must be fixed in #296 | #296 |
+| `GET /api/v1/user/shared-recipes/{id}` target extension | Existing path; add author-aware hidden-post access for deletion | Add boolean `canDelete`; it is a UI hint, not authorization. Other users receive no author identifiers. Current API 52 has no such field and returns 404 for HIDDEN | #296; FE #299 |
+
+Deletion must preserve originals, others' saves/favorites/cart/edited amounts, report/final-rank/reward relationships and same-week share history. Remove shared title/photo, exclude DELETED from public detail/photo/current lists and support physical-file deletion retries. Current ranks may change; settled ranks and granted rewards must not be recalculated/reclaimed (#297). Missing/foreign resources follow the existing owner-scoped 404 convention; #296 must record the exact existing error mapping and repeat-call behavior before adding tests/client handling. No new deletion error or event is defined by #230/#295. A hidden author-owned post needs an owner-only deletion path; this does not make hidden photos public.
+
+See [ERD implementation gaps](../erd.md#20-shared_recipes-shared-recipes) and the author-deletion section in `domain-rules.md`. #298 design precedes #299 screens; #297 follows #296's state/relationship contract.
 
 Cart contract for APIs 34, 35, 38, 41, 45, 48, 53 and 54 (#57 and the subsequent approvals cited in the domain rules):
 
@@ -267,10 +277,12 @@ The 15 admin APIs that were on hold in the previous plan. Do not implement the r
 ## Open questions (do not decide in code; ask the PO)
 
 - Subscription cancellation screen details and integration: #170 (2026-11-27) confirms using the Figma cancellation screen; follow #169 rather than treating the screen choice as undecided.
-- Which API and screen let an author delete their own shared post?
+- Author-deletion implementation details (#296): list item fields/order, repeated-delete response, deleted-title/photo representation, file cleanup retries and lock ordering with settlement (#297). Product policy, screen entry and API paths are decided in #230; do not treat those as open questions.
 - What a sanctioned member sees in the app (sharing ban, account ban) and which errors the app APIs return (`ACCOUNT_SUSPENDED`, a sharing-ban code). Storage is decided (`user_sanctions`, 11/26); the app screens are on hold as "added page 15".
 - Which E88 `end_reason` value marks an auto-payment failure ending?
 
 ## Decided (do not reopen in code)
+
+- **Author deletion** (#230): "내 공유 글" → detail menu → delete; owner-only list/delete APIs and `canDelete` as described above. Preserve originals, others' saves/cart and settled rewards; block/remove shared title/photo and public access. Decision complete; #296/#297 implement BE, #298/#299 implement design/FE.
 
 - **7-day full refund** (#228, docs #318): request from the Figma refund page. Eligible when, since payment, meal-plan generation = 0 and AI recipe generation above BASIC daily limit = 0. On success: Toss payment cancel, subscription ENDED, `users.plan` BASIC, billingKey cleared; keep payment rows (no in-app history screen). Server event E89 `subscription_refunded` only (not E88). **Refund API method/path string**: fix in #343, then replace the placeholder row under subscription APIs above.
