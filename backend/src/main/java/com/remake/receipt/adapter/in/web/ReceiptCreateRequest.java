@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.springframework.util.StringUtils;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
@@ -42,6 +43,7 @@ public record ReceiptCreateRequest(
 				.toList());
 	}
 
+	@Schema(name = "ReceiptCreateItem")
 	public record Item(
 		@NotBlank @Size(max = 50) String name,
 		@NotNull IngredientCategoryCode categoryCode,
@@ -64,6 +66,7 @@ public record ReceiptCreateRequest(
 		}
 	}
 
+	@Schema(name = "ReceiptCreateVolume")
 	public record Volume(
 		@NotNull @Positive @Digits(integer = 7, fraction = 3) BigDecimal amount,
 		@NotNull IngredientUnit unit,
@@ -71,6 +74,7 @@ public record ReceiptCreateRequest(
 	) {
 	}
 
+	@Schema(name = "ReceiptCartDeduction")
 	public record CartDeduction(
 		@NotNull @Positive Long cartItemId,
 		@NotNull @Positive @Digits(integer = 7, fraction = 3) BigDecimal amount

@@ -1,6 +1,6 @@
 // 백엔드 오류 code → 화면 문구. 문구는 docs/agent/spec/errors.md의 제안 문구를 따른다(화면에서 바꿀 수 있고 code는 바뀌지 않음).
 // 화면은 서버 message가 아니라 이 표를 쓴다. 모르는 code는 INTERNAL_ERROR 문구로 보인다(blueprint §10).
-// 관리자 화면용 code(보류)와 화면에 보이지 않는 code(TOKEN_EXPIRED, EVENT_BATCH_TOO_LARGE)는 넣지 않는다.
+// 보류 중인 code(ACCOUNT_SUSPENDED)와 화면에 보이지 않는 code(TOKEN_EXPIRED, EVENT_BATCH_TOO_LARGE)만 넣지 않는다.
 
 import { isApiError } from "@/lib/api/errors";
 
@@ -79,6 +79,13 @@ export const ERROR_MESSAGES: Record<string, string> = {
   PHOTO_REQUIRED: "실제로 요리한 사진을 올려 주세요",
   SHARED_RECIPE_NOT_FOUND: "삭제되었거나 볼 수 없는 레시피예요",
   REPORT_ALREADY_EXISTS: "이미 신고한 레시피예요",
+
+  // 운영자
+  FORBIDDEN: "운영자만 들어올 수 있어요",
+  ADMIN_REASON_REQUIRED: "조정 사유를 입력해 주세요",
+  REPORT_ALREADY_HANDLED: "다른 운영자가 이미 처리한 신고예요",
+  USER_NOT_FOUND: "회원을 찾을 수 없어요",
+  REPORT_NOT_FOUND: "신고를 찾을 수 없어요",
 };
 
 /** code로 문구를 찾는다. 모르는 code는 INTERNAL_ERROR 문구 */

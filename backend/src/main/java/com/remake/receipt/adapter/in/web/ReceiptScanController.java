@@ -18,6 +18,7 @@ import com.remake.event.application.port.in.EventTrackCommand;
 import com.remake.event.application.port.in.EventTracker;
 import com.remake.event.domain.EventName;
 import com.remake.event.domain.Screen;
+import com.remake.global.config.OpenApiConfig;
 import com.remake.global.error.BusinessException;
 import com.remake.global.error.ErrorCode;
 import com.remake.global.web.LoginUserId;
@@ -31,8 +32,14 @@ import com.remake.receipt.domain.ReceiptImageFormat;
 import com.remake.receipt.domain.ReceiptStoreBrand;
 import com.remake.receipt.domain.ReceiptStoreCode;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "영수증")
+@SecurityRequirement(name = OpenApiConfig.COOKIE_AUTH)
 @RestController
 @RequiredArgsConstructor
 class ReceiptScanController {
@@ -42,6 +49,7 @@ class ReceiptScanController {
 	private final AnalyzeReceiptImageUseCase analyzeReceiptImage;
 	private final EventTracker eventTracker;
 
+	@Operation(summary = "영수증 OCR 스캔")
 	@PostMapping(path = "/api/v1/user/receipts/scan", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	ScanResponse scan(@LoginUserId Long userId, @RequestPart("image") MultipartFile image) throws IOException {
 		long started = System.nanoTime();
@@ -80,13 +88,15 @@ class ReceiptScanController {
 		return bytes;
 	}
 
-	record ScanResponse(List<ScanItem> items, LocalDate purchasedOn, String storeName, LocalTime purchasedTime,
-			String receiptNumber, ReceiptStoreCode storeCode) {
+	record ScanResponse(List<ScanItem> items, @Schema(nullable = true) LocalDate purchasedOn,
+			@Schema(nullable = true) String storeName, @Schema(nullable = true) LocalTime purchasedTime,
+			@Schema(nullable = true) String receiptNumber, @Schema(nullable = true) ReceiptStoreCode storeCode) {
 	}
 
-	record ScanItem(String name, BigDecimal amount, IngredientUnit unit, long price,
-			BigDecimal purchaseQuantity, Volume volume, IngredientCategoryCode categoryCode,
-			StorageLocation storage, LocalDate expirationDate, String sourceName) {
+	record ScanItem(String name, @Schema(nullable = true) BigDecimal amount, IngredientUnit unit, long price,
+			@Schema(nullable = true) BigDecimal purchaseQuantity, @Schema(nullable = true) Volume volume,
+			IngredientCategoryCode categoryCode, StorageLocation storage, LocalDate expirationDate,
+			@Schema(nullable = true) String sourceName) {
 
 		static ScanItem from(ScannedItem item) {
 			var source = item.source();

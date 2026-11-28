@@ -45,6 +45,7 @@ public class AccountDeletionController {
 			카카오·구글은 EMAIL_CODE, 네이버는 REAUTH로 본인 확인 후 탈퇴합니다.
 			성공하면 쿠키를 지우고 204입니다.""")
 	@PostMapping("/deletion")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public ResponseEntity<Void> delete(@LoginUserId Long userId, @Valid @RequestBody AccountDeletionRequestBody body,
 			HttpServletResponse response) {
 		deleteAccountUseCase.delete(body.toCommand(userId));

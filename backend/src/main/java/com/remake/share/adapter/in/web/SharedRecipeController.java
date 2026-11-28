@@ -28,6 +28,8 @@ import com.remake.share.application.port.in.SaveSharedRecipeUseCase;
 import com.remake.share.application.port.in.SharedRecipePhotoUpload;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -55,7 +57,9 @@ public class SharedRecipeController {
 
 	@Operation(summary = "공유 레시피 랭킹", description = "popular는 이번 주 유효 저장이 1건 이상인 공개 글의 TOP 100 안에서 제목을 검색하며 전체 순위를 유지합니다. latest는 저장 수와 관계없이 전체 공개 글의 공유 시각순이며 rank·rankChange는 null입니다. rankChange는 지난주 순위 - 현재 순위입니다.")
 	@GetMapping("/ranking")
-	public GetSharedRecipeRankingUseCase.Ranking ranking(@RequestParam(defaultValue = "popular") String sort,
+	public GetSharedRecipeRankingUseCase.Ranking ranking(
+			@Parameter(schema = @Schema(allowableValues = {"popular", "latest"}, defaultValue = "popular"))
+			@RequestParam(defaultValue = "popular") String sort,
 			@RequestParam(defaultValue = "") String q, @RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "20") int size) {
 		return rankings.ranking(sort, q, page, size);

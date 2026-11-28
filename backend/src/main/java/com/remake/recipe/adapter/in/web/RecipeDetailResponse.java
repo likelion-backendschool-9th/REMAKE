@@ -8,6 +8,8 @@ import com.remake.recipe.application.port.in.GetRecipeUseCase.RecipeDetail;
 import com.remake.recipe.domain.Recipe;
 import com.remake.recipe.domain.RecipeUnit;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * 레시피 상세 모양(API 28·29·30). { id, title, servings, cookMinutes, tips, ingredients: [{ name, amount, unit }],
  * steps: [{ stepNo, content }], saved, favorite, shareable }.
@@ -18,7 +20,7 @@ public record RecipeDetailResponse(
 		String title,
 		int servings,
 		int cookMinutes,
-		String tips,
+		@Schema(nullable = true) String tips,
 		List<Ingredient> ingredients,
 		List<Step> steps,
 		boolean saved,
@@ -26,9 +28,11 @@ public record RecipeDetailResponse(
 		boolean shareable) {
 
 	/** @param amount null이면 "약간" */
-	public record Ingredient(String name, BigDecimal amount, RecipeUnit unit) {
+	@Schema(name = "RecipeDetailIngredient")
+	public record Ingredient(String name, @Schema(nullable = true) BigDecimal amount, RecipeUnit unit) {
 	}
 
+	@Schema(name = "RecipeDetailStep")
 	public record Step(int stepNo, String content) {
 	}
 

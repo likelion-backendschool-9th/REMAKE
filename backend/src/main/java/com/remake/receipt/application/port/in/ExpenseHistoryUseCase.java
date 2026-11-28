@@ -10,6 +10,8 @@ import com.remake.ingredient.domain.IngredientCategoryCode;
 import com.remake.ingredient.domain.IngredientUnit;
 import com.remake.ingredient.domain.StorageLocation;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 public interface ExpenseHistoryUseCase {
 
 	MonthlyPattern patterns(Long userId, YearMonth month);
@@ -18,10 +20,12 @@ public interface ExpenseHistoryUseCase {
 
 	DiscardedItems discardedItems(Long userId, YearMonth month);
 
-	record MonthlyPattern(YearMonth month, BigInteger totalAmount, BigInteger averageDiffAmount,
+	record MonthlyPattern(YearMonth month, BigInteger totalAmount,
+			@Schema(nullable = true) BigInteger averageDiffAmount,
 			BigInteger discardedAmount, List<Category> categories, List<DailyTotal> dailyTotals) {
 	}
 
+	@Schema(name = "ExpenseCategory")
 	record Category(IngredientCategoryCode categoryCode, BigInteger amount, BigDecimal ratio) {
 	}
 
@@ -31,6 +35,7 @@ public interface ExpenseHistoryUseCase {
 	record DailyItems(LocalDate date, BigInteger totalAmount, List<Item> items) {
 	}
 
+	@Schema(name = "ExpenseDailyItem")
 	record Item(String name, IngredientCategoryCode categoryCode, String imageUrl, StorageLocation storage,
 			BigDecimal amount, IngredientUnit unit, long price) {
 	}
@@ -38,6 +43,7 @@ public interface ExpenseHistoryUseCase {
 	record DiscardedItems(YearMonth month, BigInteger totalAmount, List<DiscardedItem> items) {
 	}
 
-	record DiscardedItem(String name, IngredientCategoryCode categoryCode, LocalDate discardedOn, Long amount) {
+	record DiscardedItem(String name, IngredientCategoryCode categoryCode, LocalDate discardedOn,
+			@Schema(nullable = true) Long amount) {
 	}
 }
