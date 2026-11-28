@@ -22,7 +22,7 @@ type SelectSheetProps<T extends string> = {
   onConfirm: (values: T[]) => void;
   /** 피그마 종류: 단일=라디오, 복수=체크박스 */
   multiple?: boolean;
-  /** 피그마 종류=위험(신고 시트) */
+  /** 피그마 종류=위험(신고 시트). 위험이면 아무것도 안 골라도 버튼이 빨간색 그대로다(누르면 아무 일 없음) */
   tone?: "primary" | "danger";
   confirmLabel?: string;
   /** 항목 아래 안내 문구 */
@@ -80,6 +80,9 @@ function SelectSheetBody<T extends string>({
 }) {
   const [selected, setSelected] = useState<T[]>(() => [...defaultValues]);
   const name = useId();
+  const isEmpty = selected.length === 0;
+  // 피그마 신고 시트(위험)는 아무것도 안 골라도 버튼이 빨갛다. 누를 수 없다는 건 aria-disabled로만 알린다
+  const keepsColorWhenEmpty = tone === "danger";
 
   const toggle = (value: T) => {
     setSelected((prev) => {
@@ -111,8 +114,11 @@ function SelectSheetBody<T extends string>({
       <Button
         tone={tone}
         className={styles.confirm}
-        disabled={selected.length === 0}
-        onClick={() => onConfirm(selected)}
+        disabled={isEmpty && !keepsColorWhenEmpty}
+        aria-disabled={(isEmpty && keepsColorWhenEmpty) || undefined}
+        onClick={() => {
+          if (!isEmpty) onConfirm(selected);
+        }}
       >
         {confirmLabel}
       </Button>
